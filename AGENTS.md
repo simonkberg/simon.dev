@@ -117,18 +117,21 @@ Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables
 **Caching with `"use cache"`:**
 
 - Server actions in `app/actions/lastfm.ts` use the `"use cache"` directive for data caching
-- Use `cacheLife("hours")` for successful responses
+- Only one `cacheLife` call should execute per function invocation - use conditional placement
+- Use `cacheLife("hours")` for successful responses (after the fetch succeeds)
 - Use `cacheLife("seconds")` in catch blocks to avoid caching errors for long periods
 - Example pattern:
+
     ```typescript
     export async function getData(): Promise<Result> {
         "use cache";
-        cacheLife("hours");
+
         try {
             const data = await fetchData();
+            cacheLife("hours"); // Only executes on success
             return { status: "ok", data };
         } catch (error) {
-            cacheLife("seconds"); // Don't cache errors for long
+            cacheLife("seconds"); // Only executes on error
             return { status: "error", error: "Failed to fetch" };
         }
     }
