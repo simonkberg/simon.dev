@@ -55,6 +55,9 @@ export function generateStaticParams(): Awaited<
 
 export default function ListeningPage({ params }: ListeningPageProps) {
   const period = toPeriod(use(params).period);
+  const topTracks = getTopTracks(period);
+  const topArtists = getTopArtists(period);
+  const topAlbums = getTopAlbums(period);
 
   return (
     <Page section="Listening">
@@ -75,21 +78,21 @@ export default function ListeningPage({ params }: ListeningPageProps) {
           <Heading level={2}>
             Top Tracks <Subtitle>(Top 10)</Subtitle>
           </Heading>
-          <TopTracksTable topTracks={getTopTracks(period)} />
+          <TopTracksTable topTracks={topTracks} />
         </section>
 
         <section>
           <Heading level={2}>
             Top Artists <Subtitle>(Top 10)</Subtitle>
           </Heading>
-          <TopArtistsTable topArtists={getTopArtists(period)} />
+          <TopArtistsTable topArtists={topArtists} />
         </section>
 
         <section>
           <Heading level={2}>
             Top Albums <Subtitle>(Top 10)</Subtitle>
           </Heading>
-          <TopAlbumsTable topAlbums={getTopAlbums(period)} />
+          <TopAlbumsTable topAlbums={topAlbums} />
         </section>
       </Suspense>
     </Page>

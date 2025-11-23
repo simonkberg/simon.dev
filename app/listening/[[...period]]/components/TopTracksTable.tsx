@@ -1,5 +1,3 @@
-"use client";
-
 import { use } from "react";
 
 import type { GetTopTracksResult } from "@/actions/lastfm";
