@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   userGetRecentTracks,
@@ -11,6 +11,7 @@ import {
   userGetTopTracks,
   type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
+import { log } from "@/lib/log";
 
 import {
   getRecentTracks,
@@ -29,6 +30,10 @@ vi.mock(import("@/lib/lastfm"), () => ({
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
 vi.mock(import("next/server"), () => ({ connection: vi.fn() }));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("getRecentTracks", () => {
   it("should return success status with tracks when userGetRecentTracks succeeds", async () => {
@@ -61,9 +66,7 @@ describe("getRecentTracks", () => {
   });
 
   it("should return error status when userGetRecentTracks fails", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
     const mockError = new Error("API error");
     vi.mocked(userGetRecentTracks).mockRejectedValue(mockError);
@@ -75,12 +78,10 @@ describe("getRecentTracks", () => {
       error: "Failed to fetch recent tracks",
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error fetching recent tracks:",
-      mockError,
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { err: mockError, action: "getRecentTracks" },
+      "Error fetching recent tracks",
     );
-
-    consoleErrorSpy.mockRestore();
   });
 });
 
@@ -103,11 +104,10 @@ describe("getTopTracks", () => {
   });
 
   it("should return error status when fetch fails", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
-    vi.mocked(userGetTopTracks).mockRejectedValue(new Error("API error"));
+    const mockError = new Error("API error");
+    vi.mocked(userGetTopTracks).mockRejectedValue(mockError);
 
     const result = await getTopTracks("7day");
 
@@ -116,7 +116,10 @@ describe("getTopTracks", () => {
       error: "Failed to fetch top tracks",
     });
 
-    consoleErrorSpy.mockRestore();
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { err: mockError, action: "getTopTracks" },
+      "Error fetching top tracks",
+    );
   });
 });
 
@@ -139,11 +142,10 @@ describe("getTopArtists", () => {
   });
 
   it("should return error status when fetch fails", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
-    vi.mocked(userGetTopArtists).mockRejectedValue(new Error("API error"));
+    const mockError = new Error("API error");
+    vi.mocked(userGetTopArtists).mockRejectedValue(mockError);
 
     const result = await getTopArtists("1month");
 
@@ -152,7 +154,10 @@ describe("getTopArtists", () => {
       error: "Failed to fetch top artists",
     });
 
-    consoleErrorSpy.mockRestore();
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { err: mockError, action: "getTopArtists" },
+      "Error fetching top artists",
+    );
   });
 });
 
@@ -175,11 +180,10 @@ describe("getTopAlbums", () => {
   });
 
   it("should return error status when fetch fails", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
-    vi.mocked(userGetTopAlbums).mockRejectedValue(new Error("API error"));
+    const mockError = new Error("API error");
+    vi.mocked(userGetTopAlbums).mockRejectedValue(mockError);
 
     const result = await getTopAlbums("3month");
 
@@ -188,6 +192,9 @@ describe("getTopAlbums", () => {
       error: "Failed to fetch top albums",
     });
 
-    consoleErrorSpy.mockRestore();
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { err: mockError, action: "getTopAlbums" },
+      "Error fetching top albums",
+    );
   });
 });

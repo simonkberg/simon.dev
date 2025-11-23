@@ -6,6 +6,7 @@ import { after, connection } from "next/server";
 import { z } from "zod";
 
 import { identifiers } from "@/lib/identifiers";
+import { log } from "@/lib/log";
 import { getSession } from "@/lib/session";
 import { getHistory, type Message, postMessage } from "@/lib/slack";
 
@@ -18,8 +19,8 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
   try {
     const messages = await getHistory();
     return { status: "ok", messages };
-  } catch (error) {
-    console.error("Error fetching chat history:", error);
+  } catch (err) {
+    log.error({ err, action: "getChatHistory" }, "Error fetching chat history");
     return { status: "error", error: "Failed to fetch chat history" };
   }
 }
@@ -71,16 +72,11 @@ export async function postChatMessage(
 
     const response = await postMessage(text, username);
 
-    void logMessage(text, username);
+    log.info({ username, ip: request.ip, action: "postChatMessage" }, text);
 
     return { status: "ok", message: response };
-  } catch (error) {
-    console.error("Error posting chat message:", error);
+  } catch (err) {
+    log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };
   }
-}
-
-async function logMessage(message: string, username: string) {
-  const { ip } = await identifiers();
-  console.log(`[Chat] [${ip}] ${username}: ${message}`);
 }
