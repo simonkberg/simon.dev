@@ -42,10 +42,10 @@ export async function getTopTracks(
   period: Period,
 ): Promise<GetTopTracksResult> {
   "use cache";
-  cacheLife("hours");
 
   try {
     const tracks = await userGetTopTracks("magijo", { period, limit: 10 });
+    cacheLife("hours");
     return { status: "ok", tracks };
   } catch (error) {
     cacheLife("seconds");
@@ -64,10 +64,10 @@ export async function getTopArtists(
   period: Period,
 ): Promise<GetTopArtistsResult> {
   "use cache";
-  cacheLife("hours");
 
   try {
     const artists = await userGetTopArtists("magijo", { period, limit: 10 });
+    cacheLife("hours");
     return { status: "ok", artists };
   } catch (error) {
     cacheLife("seconds");
@@ -86,10 +86,10 @@ export async function getTopAlbums(
   period: Period,
 ): Promise<GetTopAlbumsResult> {
   "use cache";
-  cacheLife("hours");
 
   try {
     const albums = await userGetTopAlbums("magijo", { period, limit: 10 });
+    cacheLife("hours");
     return { status: "ok", albums };
   } catch (error) {
     cacheLife("seconds");

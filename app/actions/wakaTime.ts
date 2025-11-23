@@ -10,14 +10,14 @@ export type WakaTimeStatsResult =
 
 export async function getWakaTimeStats(): Promise<WakaTimeStatsResult> {
   "use cache";
-  cacheLife("hours");
 
   try {
     const stats = await getStats();
+    cacheLife("hours");
     return { status: "ok", stats };
   } catch (error) {
-    console.error("Error fetching WakaTime stats:", error);
     cacheLife("seconds");
+    console.error("Error fetching WakaTime stats:", error);
     return { status: "error", error: "Failed to fetch WakaTime stats" };
   }
 }
