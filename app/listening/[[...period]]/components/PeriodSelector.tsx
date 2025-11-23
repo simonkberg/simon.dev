@@ -16,10 +16,7 @@ export const PeriodSelector = ({ current }: PeriodSelectorProps) => (
         {current === period ? (
           label
         ) : (
-          <Link
-            href={`/listening/${period === "overall" ? "" : period}`}
-            replace
-          >
+          <Link href={`/listening/${period === "overall" ? "" : period}`}>
             {label}
           </Link>
         )}
