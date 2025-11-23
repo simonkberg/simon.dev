@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { getTopAlbums, getTopArtists, getTopTracks } from "@/actions/lastfm";
 import { ExternalLink } from "@/components/ExternalLink";
@@ -8,53 +7,27 @@ import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
-import {
-  isValidPeriod,
-  type Period,
-  periodLabels,
-  periods,
-} from "@/lib/lastfm";
+import { type Period, periodLabels } from "@/lib/lastfm";
 
-import { PeriodSelector } from "./components/PeriodSelector";
-import { TopAlbumsTable } from "./components/TopAlbumsTable";
-import { TopArtistsTable } from "./components/TopArtistsTable";
-import { TopTracksTable } from "./components/TopTracksTable";
+import { PeriodSelector } from "./PeriodSelector";
+import { TopAlbumsTable } from "./TopAlbumsTable";
+import { TopArtistsTable } from "./TopArtistsTable";
+import { TopTracksTable } from "./TopTracksTable";
 
-type ListeningPageProps = PageProps<"/listening/[[...period]]">;
-
-const toPeriod = (param?: string[]): Period => {
-  if (param === undefined) return "overall";
-
-  const [period, ...rest] = param;
-  if (rest.length === 0 && isValidPeriod(period)) {
-    return period;
-  }
-
-  notFound();
-};
-
-export async function generateMetadata({
-  params,
-}: ListeningPageProps): Promise<Metadata> {
-  const period = toPeriod((await params).period);
-  const periodLabel = periodLabels[period];
-
+export function generateListeningMetadata(period: Period): Metadata {
+  const label = periodLabels[period];
   return {
-    title: `Listening - ${periodLabel}`,
-    description: `My ${periodLabel} listening statistics from Last.fm`,
+    title: `Listening - ${label}`,
+    description: `My ${label} listening statistics from Last.fm`,
   };
 }
 
-export function generateStaticParams(): Awaited<
-  ListeningPageProps["params"]
->[] {
-  return periods.map((period) => ({
-    period: period === "overall" ? undefined : [period],
-  }));
+export interface ListeningPageContentProps {
+  period: Period;
 }
 
-export default function ListeningPage({ params }: ListeningPageProps) {
-  const period = toPeriod(use(params).period);
+export function ListeningPageContent({ period }: ListeningPageContentProps) {
+  const label = periodLabels[period];
   const topTracks = getTopTracks(period);
   const topArtists = getTopArtists(period);
   const topAlbums = getTopAlbums(period);
@@ -63,7 +36,7 @@ export default function ListeningPage({ params }: ListeningPageProps) {
     <Page section="Listening">
       <section>
         <p>
-          My {periodLabels[period]} listening statistics from{" "}
+          My {label} listening statistics from{" "}
           <ExternalLink href="https://www.last.fm/user/magijo">
             Last.fm
           </ExternalLink>
