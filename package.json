@@ -63,7 +63,7 @@
     "husky": "9.1.7",
     "jiti": "2.6.1",
     "lint-staged": "16.2.7",
-    "msw": "2.12.2",
+    "msw": "2.12.3",
     "prettier": "3.6.2",
     "typescript": "5.9.3",
     "vite-tsconfig-paths": "5.1.4",
