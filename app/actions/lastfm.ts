@@ -1,7 +1,6 @@
 "use server";
 
 import { cacheLife } from "next/cache";
-import { connection } from "next/server";
 
 import {
   type Period,
@@ -23,11 +22,14 @@ export type GetRecentTracksResult =
   | { status: "error"; error: string };
 
 export async function getRecentTracks(): Promise<GetRecentTracksResult> {
-  await connection();
+  "use cache";
+
   try {
     const tracks = await userGetRecentTracks("magijo", { limit: 5 });
+    cacheLife("minutes");
     return { status: "ok", tracks };
   } catch (err) {
+    cacheLife("seconds");
     log.error(
       { err, action: "getRecentTracks" },
       "Error fetching recent tracks",
