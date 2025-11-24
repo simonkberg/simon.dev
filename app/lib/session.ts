@@ -6,6 +6,7 @@ import { forbidden } from "next/navigation";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import { log } from "@/lib/log";
 
 const sessionSchema = z.object({ username: z.string() });
 
@@ -30,8 +31,8 @@ export async function decrypt(session: string | undefined) {
       algorithms: ["HS256"],
     });
     return sessionSchema.parse(payload);
-  } catch (error) {
-    console.error("Failed to verify session", error);
+  } catch (err) {
+    log.error({ err }, "Failed to verify session");
     return;
   }
 }

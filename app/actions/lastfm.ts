@@ -14,6 +14,7 @@ import {
   userGetTopTracks,
   type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
+import { log } from "@/lib/log";
 
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
@@ -26,8 +27,11 @@ export async function getRecentTracks(): Promise<GetRecentTracksResult> {
   try {
     const tracks = await userGetRecentTracks("magijo", { limit: 5 });
     return { status: "ok", tracks };
-  } catch (error) {
-    console.error("Error fetching recent tracks:", error);
+  } catch (err) {
+    log.error(
+      { err, action: "getRecentTracks" },
+      "Error fetching recent tracks",
+    );
     return { status: "error", error: "Failed to fetch recent tracks" };
   }
 }
@@ -47,9 +51,9 @@ export async function getTopTracks(
     const tracks = await userGetTopTracks("magijo", { period, limit: 10 });
     cacheLife("hours");
     return { status: "ok", tracks };
-  } catch (error) {
+  } catch (err) {
     cacheLife("seconds");
-    console.error("Error fetching top tracks:", error);
+    log.error({ err, action: "getTopTracks" }, "Error fetching top tracks");
     return { status: "error", error: "Failed to fetch top tracks" };
   }
 }
@@ -69,9 +73,9 @@ export async function getTopArtists(
     const artists = await userGetTopArtists("magijo", { period, limit: 10 });
     cacheLife("hours");
     return { status: "ok", artists };
-  } catch (error) {
+  } catch (err) {
     cacheLife("seconds");
-    console.error("Error fetching top artists:", error);
+    log.error({ err, action: "getTopArtists" }, "Error fetching top artists");
     return { status: "error", error: "Failed to fetch top artists" };
   }
 }
@@ -91,9 +95,9 @@ export async function getTopAlbums(
     const albums = await userGetTopAlbums("magijo", { period, limit: 10 });
     cacheLife("hours");
     return { status: "ok", albums };
-  } catch (error) {
+  } catch (err) {
     cacheLife("seconds");
-    console.error("Error fetching top albums:", error);
+    log.error({ err, action: "getTopAlbums" }, "Error fetching top albums");
     return { status: "error", error: "Failed to fetch top albums" };
   }
 }

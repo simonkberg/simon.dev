@@ -1,6 +1,7 @@
 import { cacheLife } from "next/cache";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { log } from "@/lib/log";
 import { getStats, type WakaTimeStats } from "@/lib/wakaTime";
 
 import { getWakaTimeStats } from "./wakaTime";
@@ -8,6 +9,10 @@ import { getWakaTimeStats } from "./wakaTime";
 vi.mock(import("@/lib/wakaTime"), () => ({ getStats: vi.fn() }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("getWakaTimeStats", () => {
   it("should return success status with stats when getStats succeeds", async () => {
@@ -26,9 +31,7 @@ describe("getWakaTimeStats", () => {
   });
 
   it("should return error status when getStats fails", async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
     const mockError = new Error("Network error");
     vi.mocked(getStats).mockRejectedValue(mockError);
@@ -40,12 +43,10 @@ describe("getWakaTimeStats", () => {
       error: "Failed to fetch WakaTime stats",
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Error fetching WakaTime stats:",
-      mockError,
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { err: mockError, action: "getWakaTimeStats" },
+      "Error fetching WakaTime stats",
     );
     expect(cacheLife).toHaveBeenCalledWith("seconds");
-
-    consoleErrorSpy.mockRestore();
   });
 });

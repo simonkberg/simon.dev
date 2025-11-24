@@ -1,15 +1,14 @@
 import { connection, type NextRequest, NextResponse } from "next/server";
 
+import { log } from "@/lib/log";
 import { subscribe } from "@/lib/slack";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
 const PING_INTERVAL_MS = 30_000;
 const PING_MESSAGE = ": ping\n\n";
 
-const ignoreWriteErrors = (error: unknown) => {
-  if (process.env.NODE_ENV === "development") {
-    console.debug("SSE write error:", error);
-  }
+const ignoreWriteErrors = (err: unknown) => {
+  log.debug({ err }, "SSE write error");
 };
 
 export async function GET(request: NextRequest) {
