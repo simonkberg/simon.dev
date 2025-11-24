@@ -1,4 +1,3 @@
-import { connection } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -29,8 +28,6 @@ vi.mock(import("@/lib/lastfm"), () => ({
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
-vi.mock(import("next/server"), () => ({ connection: vi.fn() }));
-
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -60,7 +57,6 @@ describe("getRecentTracks", () => {
 
     const result = await getRecentTracks();
 
-    expect(connection).toHaveBeenCalled();
     expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
     expect(result).toEqual({ status: "ok", tracks: mockTracks });
   });

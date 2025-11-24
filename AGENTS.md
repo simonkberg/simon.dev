@@ -118,7 +118,9 @@ Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables
 
 - Server actions in `app/actions/lastfm.ts` use the `"use cache"` directive for data caching
 - Only one `cacheLife` call should execute per function invocation - use conditional placement
-- Use `cacheLife("hours")` for successful responses (after the fetch succeeds)
+- Cache duration should match data freshness requirements:
+    - `cacheLife("minutes")` for time-sensitive data (e.g., recent tracks that change frequently)
+    - `cacheLife("hours")` for aggregated or less time-sensitive data (e.g., top tracks/artists over a period)
 - Use `cacheLife("seconds")` in catch blocks to avoid caching errors for long periods
 - Example pattern:
 
