@@ -19,10 +19,10 @@ importers:
         version: 7.13.0
       '@upstash/ratelimit':
         specifier: 2.0.7
-        version: 2.0.7(@upstash/redis@1.35.6)
+        version: 2.0.7(@upstash/redis@1.35.7)
       '@upstash/redis':
-        specifier: 1.35.6
-        version: 1.35.6
+        specifier: 1.35.7
+        version: 1.35.7
       dataloader:
         specifier: 2.2.3
         version: 2.2.3
@@ -1160,8 +1160,8 @@ packages:
     peerDependencies:
       '@upstash/redis': ^1.34.3
 
-  '@upstash/redis@1.35.6':
-    resolution: {integrity: sha512-aSEIGJgJ7XUfTYvhQcQbq835re7e/BXjs8Janq6Pvr6LlmTZnyqwT97RziZLO/8AVUL037RLXqqiQC6kCt+5pA==}
+  '@upstash/redis@1.35.7':
+    resolution: {integrity: sha512-bdCdKhke+kYUjcLLuGWSeQw7OLuWIx3eyKksyToLBAlGIMX9qiII0ptp8E0y7VFE1yuBxBd/3kSzJ8774Q4g+A==}
 
   '@vitejs/plugin-react@5.1.1':
     resolution: {integrity: sha512-WQfkSw0QbQ5aJ2CHYw23ZGkqnRwqKHD/KYsMeTkZzPT4Jcf0DcBxBtwMJxnu6E7oxw5+JC6ZAiePgh28uJ1HBA==}
@@ -4000,14 +4000,14 @@ snapshots:
 
   '@upstash/core-analytics@0.0.10':
     dependencies:
-      '@upstash/redis': 1.35.6
+      '@upstash/redis': 1.35.7
 
-  '@upstash/ratelimit@2.0.7(@upstash/redis@1.35.6)':
+  '@upstash/ratelimit@2.0.7(@upstash/redis@1.35.7)':
     dependencies:
       '@upstash/core-analytics': 0.0.10
-      '@upstash/redis': 1.35.6
+      '@upstash/redis': 1.35.7
 
-  '@upstash/redis@1.35.6':
+  '@upstash/redis@1.35.7':
     dependencies:
       uncrypto: 0.1.3
 

@@ -29,7 +29,7 @@
     "@slack/rtm-api": "7.0.4",
     "@slack/web-api": "7.13.0",
     "@upstash/ratelimit": "2.0.7",
-    "@upstash/redis": "1.35.6",
+    "@upstash/redis": "1.35.7",
     "dataloader": "2.2.3",
     "emoji-datasource": "16.0.0",
     "jose": "6.1.2",
