@@ -1,9 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { GetTopAlbumsResult } from "@/actions/lastfm";
 
 import { TopAlbumsTable } from "./TopAlbumsTable";
+
+vi.mock(import("@/components/AnimatedNumber"), () => ({
+  AnimatedNumber: ({ value }: { value: number }) => <span>{value}</span>,
+}));
 
 describe("TopAlbumsTable", () => {
   it("should render albums in a table", async () => {
