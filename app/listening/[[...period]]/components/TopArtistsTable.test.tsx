@@ -1,9 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { GetTopArtistsResult } from "@/actions/lastfm";
 
 import { TopArtistsTable } from "./TopArtistsTable";
+
+vi.mock(import("@/components/AnimatedNumber"), () => ({
+  AnimatedNumber: ({ value }: { value: number }) => <span>{value}</span>,
+}));
 
 describe("TopArtistsTable", () => {
   it("should render artists in a table", async () => {

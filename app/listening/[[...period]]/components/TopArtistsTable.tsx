@@ -1,6 +1,7 @@
 import { use } from "react";
 
 import type { GetTopArtistsResult } from "@/actions/lastfm";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 export interface TopArtistsTableProps {
   topArtists: Promise<GetTopArtistsResult>;
@@ -32,7 +33,9 @@ export const TopArtistsTable = ({ topArtists }: TopArtistsTableProps) => {
           <tr key={`${artist.rank}-${artist.name}`}>
             <td className="numeric">{artist.rank}</td>
             <td>{artist.name}</td>
-            <td className="numeric">{artist.playcount}</td>
+            <td className="numeric">
+              <AnimatedNumber value={artist.playcount} />
+            </td>
           </tr>
         ))}
       </tbody>
