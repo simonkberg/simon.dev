@@ -6,8 +6,6 @@ import type { Env } from "@/lib/env";
  */
 export const mockEnv = {
   SESSION_SECRET: "test",
-  SLACK_CHANNEL: "test-channel",
-  SLACK_TOKEN: "test-token",
   DISCORD_BOT_TOKEN: "test-discord-bot-token",
   DISCORD_GUILD_ID: "test-discord-guild-id",
   DISCORD_CHANNEL_ID: "test-discord-channel-id",
