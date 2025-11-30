@@ -10,7 +10,7 @@ import {
   getChannelMessages,
   type Message,
   postChannelMessage,
-} from "@/lib/discord";
+} from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { getSession } from "@/lib/session";

@@ -1,7 +1,7 @@
 import SimpleMarkdown from "@khanacademy/simple-markdown";
 import type { CSSProperties } from "react";
 
-import type { Message } from "@/lib/discord";
+import type { Message } from "@/lib/discord/api";
 
 export const ChatMessage = ({ user, content, edited }: Message) => {
   "no compile";

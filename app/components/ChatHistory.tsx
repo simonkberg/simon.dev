@@ -5,7 +5,7 @@ import { use, useEffect } from "react";
 
 import { refreshClientCache } from "@/actions/cache";
 import type { ChatHistoryResult } from "@/actions/chat";
-import type { Message } from "@/lib/discord";
+import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
 

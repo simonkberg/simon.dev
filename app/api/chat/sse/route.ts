@@ -1,6 +1,6 @@
 import { connection, type NextRequest, NextResponse } from "next/server";
 
-import { subscribe } from "@/lib/discord";
+import { subscribe } from "@/lib/discord/gateway";
 import { log } from "@/lib/log";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.

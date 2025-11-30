@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatHistoryResult } from "@/actions/chat";
-import type { Message } from "@/lib/discord";
+import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
 

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { Message } from "@/lib/discord";
+import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
 
