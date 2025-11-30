@@ -36,6 +36,9 @@ describe("env", () => {
         SESSION_SECRET: string;
         SLACK_CHANNEL: string;
         SLACK_TOKEN: string;
+        DISCORD_BOT_TOKEN: string;
+        DISCORD_GUILD_ID: string;
+        DISCORD_CHANNEL_ID: string;
         UPSTASH_REDIS_REST_URL: string;
         UPSTASH_REDIS_REST_TOKEN: string;
         LAST_FM_API_KEY: string;

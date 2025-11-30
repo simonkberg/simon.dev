@@ -3,3 +3,7 @@ ignoredBuiltDependencies:
   - msw
   - sharp
   - unrs-resolver
+peerDependencyRules:
+  allowAny:
+    - "react"
+    - "react-dom"

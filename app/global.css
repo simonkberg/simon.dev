@@ -269,6 +269,18 @@ ul {
     color: var(--terminal--content-color);
     max-height: var(--terminal--content-max-height);
     margin: 0 0.625rem;
+
+    > li::before {
+      content: none;
+    }
+
+    ul > li::before {
+      content: "├";
+    }
+
+    ul > li:last-child::before {
+      content: "└";
+    }
   }
 }
 

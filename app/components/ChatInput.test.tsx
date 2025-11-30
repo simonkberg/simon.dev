@@ -2,23 +2,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { PostChatMessageResult } from "@/actions/chat";
-import { postChatMessage } from "@/actions/chat";
-import type { Message } from "@/lib/slack";
+import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
 
 import { ChatInput } from "./ChatInput";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 
 describe("ChatInput", () => {
-  const createMockMessage = (text: string): Message => ({
-    ts: "1234567890.123456",
-    text,
-    user: { name: "Test", color: "hsl(0 0% 0%)" },
-    edited: false,
-    replies: [],
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -42,7 +32,6 @@ describe("ChatInput", () => {
   it("disables input while form is submitting", async () => {
     const user = userEvent.setup({ delay: null });
     const { promise, resolve } = Promise.withResolvers<PostChatMessageResult>();
-    const mockMessage = createMockMessage("Hello");
 
     vi.mocked(postChatMessage).mockReturnValue(promise);
 
@@ -54,7 +43,7 @@ describe("ChatInput", () => {
 
     expect(input).toBeDisabled();
 
-    resolve({ status: "ok", message: mockMessage });
+    resolve({ status: "ok" });
 
     await waitFor(() => {
       expect(input).toBeEnabled();
@@ -63,12 +52,8 @@ describe("ChatInput", () => {
 
   it("calls postChatMessage when form is submitted", async () => {
     const user = userEvent.setup({ delay: null });
-    const mockMessage = createMockMessage("Test message");
 
-    vi.mocked(postChatMessage).mockResolvedValue({
-      status: "ok",
-      message: mockMessage,
-    });
+    vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
     render(<ChatInput />);
     const input = screen.getByRole("textbox");
@@ -81,12 +66,8 @@ describe("ChatInput", () => {
 
   it("clears input and focuses it after successful submission", async () => {
     const user = userEvent.setup({ delay: null });
-    const mockMessage = createMockMessage("Test message");
 
-    vi.mocked(postChatMessage).mockResolvedValue({
-      status: "ok",
-      message: mockMessage,
-    });
+    vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
     render(<ChatInput />);
     const input = screen.getByRole("textbox") as HTMLInputElement;
@@ -131,10 +112,7 @@ describe("ChatInput", () => {
 
     it("does not show toast on successful submission", async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(postChatMessage).mockResolvedValue({
-        status: "ok",
-        message: createMockMessage("Test"),
-      });
+      vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
       render(<ChatInput />);
       await user.type(screen.getByRole("textbox"), "Test");
@@ -164,10 +142,7 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage)
         .mockResolvedValueOnce({ status: "error", error: "Failed" })
-        .mockResolvedValueOnce({
-          status: "ok",
-          message: createMockMessage(""),
-        });
+        .mockResolvedValueOnce({ status: "ok" });
 
       render(<ChatInput />);
       const input = screen.getByRole("textbox");

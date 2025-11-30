@@ -5,12 +5,12 @@ import { use, useEffect } from "react";
 
 import { refreshClientCache } from "@/actions/cache";
 import type { ChatHistoryResult } from "@/actions/chat";
-import type { BaseMessage, Message } from "@/lib/slack";
+import type { Message } from "@/lib/discord";
 
 import { ChatMessage } from "./ChatMessage";
 
 interface ChatHistoryMessagesProps {
-  messages: (Message | BaseMessage)[];
+  messages: Message[];
   nested?: boolean;
 }
 
@@ -19,7 +19,7 @@ const ChatHistoryMessages = ({
   nested = false,
 }: ChatHistoryMessagesProps) => {
   const transitions = useTransition(messages, {
-    keys: (message) => message.ts,
+    keys: (message) => message.id,
     initial: { opacity: nested ? 1 : 0, x: 0 },
     from: { opacity: 0, x: -100 },
     enter: { opacity: 1, x: 0 },
@@ -36,7 +36,7 @@ const ChatHistoryMessages = ({
           }}
         >
           <ChatMessage {...item} />
-          {"replies" in item && (
+          {item.replies.length > 0 && (
             <ul>
               <ChatHistoryMessages messages={item.replies} nested />
             </ul>

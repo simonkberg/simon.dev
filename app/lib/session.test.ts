@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import { MockCookies } from "@/mocks/headers";
 
-import { decrypt, encrypt, getSession } from "./session";
+import { decrypt, encrypt, getSession, SessionSchema } from "./session";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -24,7 +24,7 @@ describe("session", () => {
 
   describe("encrypt", () => {
     it("should encrypt a session payload with username", async () => {
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const encrypted = await encrypt(payload);
 
       expect(encrypted).toBeDefined();
@@ -33,15 +33,15 @@ describe("session", () => {
     });
 
     it("should create different tokens for different usernames", async () => {
-      const token1 = await encrypt({ username: "user1" });
-      const token2 = await encrypt({ username: "user2" });
+      const token1 = await encrypt(SessionSchema.parse({ username: "user1" }));
+      const token2 = await encrypt(SessionSchema.parse({ username: "user2" }));
 
       expect(token1).not.toBe(token2);
     });
 
     it("should create different tokens each time (due to timestamp)", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const token1 = await encrypt(payload);
 
       vi.advanceTimersByTime(1000);
@@ -53,7 +53,7 @@ describe("session", () => {
 
   describe("decrypt", () => {
     it("should decrypt a valid session token", async () => {
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const encrypted = await encrypt(payload);
       const decrypted = await decrypt(encrypted);
 
@@ -76,7 +76,7 @@ describe("session", () => {
     it("should return undefined for tampered token", async () => {
       const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const encrypted = await encrypt(payload);
       const tampered = encrypted.slice(0, -5) + "xxxxx";
 
@@ -102,7 +102,7 @@ describe("session", () => {
       const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
 
       vi.useFakeTimers({ shouldAdvanceTime: true });
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const encrypted = await encrypt(payload);
 
       // Advance time by more than 365 days (token expiration)
@@ -116,7 +116,7 @@ describe("session", () => {
 
   describe("getSession", () => {
     it("should return session when valid session cookie exists", async () => {
-      const payload = { username: "testuser" };
+      const payload = SessionSchema.parse({ username: "testuser" });
       const sessionToken = await encrypt(payload);
 
       vi.mocked(cookies).mockResolvedValue(

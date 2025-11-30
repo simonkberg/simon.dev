@@ -8,21 +8,24 @@ importers:
 
   .:
     dependencies:
+      '@khanacademy/simple-markdown':
+        specifier: 2.1.3
+        version: 2.1.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@react-spring/web':
         specifier: 10.0.3
         version: 10.0.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@slack/rtm-api':
         specifier: 7.0.4
         version: 7.0.4
-      '@slack/web-api':
-        specifier: 7.13.0
-        version: 7.13.0
       '@upstash/ratelimit':
         specifier: 2.0.7
         version: 2.0.7(@upstash/redis@1.35.7)
       '@upstash/redis':
         specifier: 1.35.7
         version: 1.35.7
+      comparator.ts:
+        specifier: 1.0.4
+        version: 1.0.4
       dataloader:
         specifier: 2.2.3
         version: 2.2.3
@@ -648,6 +651,15 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@khanacademy/perseus-utils@2.1.3':
+    resolution: {integrity: sha512-OM4ClXP/43FGWDIDrxlRB1DD72hqCkrxuH5bwXTVlHAg8vjaO2laAkdvZa3IDnOwL2MgMRXvFAi+FbV/QVL65Q==}
+
+  '@khanacademy/simple-markdown@2.1.3':
+    resolution: {integrity: sha512-ox4uKtMq3sFvKpyK72aDUO1f6InbOsgWRLdHLzz5cGPXTWZWkhu71uM1xl73KddRdo2HIhwiHqYL4SVqkRwyZQ==}
+    peerDependencies:
+      react: ^18.2.0
+      react-dom: ^18.2.0
 
   '@mswjs/interceptors@0.40.0':
     resolution: {integrity: sha512-EFd6cVbHsgLa6wa4RljGj6Wk75qoHxUSyc5asLyyPSyuhIcdS2Q3Phw6ImS1q+CkALthJRShiYfKANcQMuMqsQ==}
@@ -1415,6 +1427,9 @@ packages:
   commander@14.0.2:
     resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==}
     engines: {node: '>=20'}
+
+  comparator.ts@1.0.4:
+    resolution: {integrity: sha512-9owRa69IGm0OfHhbS8f+FAKe1BhJ2x84ujpPIR5nsmuWkj7/xmVea3KDmiUJCAnDEUUMC+pENdMTj/JDP6CEmg==}
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
@@ -3520,6 +3535,14 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@khanacademy/perseus-utils@2.1.3': {}
+
+  '@khanacademy/simple-markdown@2.1.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+    dependencies:
+      '@khanacademy/perseus-utils': 2.1.3
+      react: 19.3.0-canary-fd524fe0-20251121
+      react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
+
   '@mswjs/interceptors@0.40.0':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
@@ -4311,6 +4334,8 @@ snapshots:
       delayed-stream: 1.0.0
 
   commander@14.0.2: {}
+
+  comparator.ts@1.0.4: {}
 
   concat-map@0.0.1: {}
 
