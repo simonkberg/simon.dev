@@ -339,33 +339,15 @@ describe("subscribe", () => {
     const { subscribe } = await import("./gateway");
     const RESUME_URL = "wss://resume.discord.gg/?v=10&encoding=json";
     const resumeGateway = ws.link(RESUME_URL);
-    const resumeMessages: Array<{ op: number; d: unknown }> = [];
+    const resumeMessages: Payload[] = [];
 
     // Initial connection handler
     server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  // Different URL for resume
-                  resume_gateway_url: "wss://resume.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
+      createHandshakeHandler({
+        session: {
+          session_id: "test-session-id",
+          resume_gateway_url: "wss://resume.discord.gg",
+        },
       }),
     );
 
