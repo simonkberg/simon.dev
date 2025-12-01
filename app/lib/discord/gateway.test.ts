@@ -186,4 +186,54 @@ describe("subscribe", () => {
     expect(heartbeatCount).toBe(3);
     expect(connectionClosed).toBe(false);
   });
+
+  it("should close connection when no ACK received (zombie detection)", async () => {
+    const { subscribe } = await import("./gateway");
+    let closeCode: number | undefined;
+    let closeReason: string | undefined;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 1000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+          // Intentionally NOT responding to HEARTBEAT with ACK
+        });
+
+        client.addEventListener("close", (event) => {
+          closeCode = event.code;
+          closeReason = event.reason;
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // First heartbeat fires immediately (jitter = 0), sets awaitingAck = true
+    // Second heartbeat at 1000ms sees awaitingAck = true, closes connection
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(closeCode).toBe(4000);
+    expect(closeReason).toBe("Heartbeat timeout");
+  });
 });
