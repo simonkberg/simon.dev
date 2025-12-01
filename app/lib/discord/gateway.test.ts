@@ -382,7 +382,7 @@ describe("subscribe", () => {
     // Wait for exponential backoff (2^1 * 1000 = 2000ms)
     await vi.advanceTimersByTimeAsync(2000);
 
-    // Should have sent RESUME, not IDENTIFY
+    // Should have sent RESUME (not IDENTIFY)
     expect(resumeMessages).toMatchObject([
       {
         op: GatewayOpcode.RESUME,
@@ -393,9 +393,6 @@ describe("subscribe", () => {
         },
       },
     ]);
-    expect(resumeMessages.map((m) => m.op)).not.toContain(
-      GatewayOpcode.IDENTIFY,
-    );
   });
 
   it("should re-identify after non-resumable INVALID_SESSION", async () => {
@@ -463,9 +460,6 @@ describe("subscribe", () => {
     expect(secondConnectionMessages).toMatchObject([
       { op: GatewayOpcode.IDENTIFY },
     ]);
-    expect(secondConnectionMessages.map((m) => m.op)).not.toContain(
-      GatewayOpcode.RESUME,
-    );
   });
 
   it("should not reconnect on fatal close codes", async () => {
@@ -578,9 +572,6 @@ describe("subscribe", () => {
     expect(secondConnectionMessages).toMatchObject([
       { op: GatewayOpcode.IDENTIFY },
     ]);
-    expect(secondConnectionMessages.map((m) => m.op)).not.toContain(
-      GatewayOpcode.RESUME,
-    );
     expect(connectionCount).toBe(2);
   });
 });
