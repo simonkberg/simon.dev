@@ -468,4 +468,94 @@ describe("subscribe", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(callback).toHaveBeenCalledTimes(1); // Still 1, not 2
   });
+
+  it("should send RESUME instead of IDENTIFY on reconnect", async () => {
+    const { subscribe } = await import("./gateway");
+    const RESUME_URL = "wss://resume.discord.gg/?v=10&encoding=json";
+    const resumeGateway = ws.link(RESUME_URL);
+
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let initialClient: Client | undefined;
+    const resumeMessages: Array<{ op: number; d: unknown }> = [];
+
+    // Initial connection handler
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        initialClient = client;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  // Different URL for resume
+                  resume_gateway_url: "wss://resume.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+        });
+      }),
+    );
+
+    // Resume connection handler
+    server.use(
+      resumeGateway.addEventListener("connection", ({ client }) => {
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+          resumeMessages.push(payload);
+
+          if (payload.op === GatewayOpcode.RESUME) {
+            client.send(
+              createPayload(GatewayOpcode.DISPATCH, null, 1, "RESUMED"),
+            );
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // Trigger reconnect via RECONNECT opcode
+    initialClient?.send(createPayload(GatewayOpcode.RECONNECT, null));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Wait for exponential backoff (2^1 * 1000 = 2000ms)
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Should have sent RESUME, not IDENTIFY
+    expect(resumeMessages).toContainEqual({
+      op: GatewayOpcode.RESUME,
+      d: {
+        token: "test-discord-bot-token",
+        session_id: "test-session-id",
+        seq: 1,
+      },
+    });
+    expect(resumeMessages).not.toContainEqual(
+      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
+    );
+  });
 });
