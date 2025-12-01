@@ -636,4 +636,57 @@ describe("subscribe", () => {
       expect.objectContaining({ op: GatewayOpcode.RESUME }),
     );
   });
+
+  it("should not reconnect on fatal close codes", async () => {
+    const { subscribe } = await import("./gateway");
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let connectedClient: Client | undefined;
+    let connectionCount = 0;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
+        connectedClient = client;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // Close with fatal code after handshake is complete
+    connectedClient?.close(4004, "Authentication failed");
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Advance time past any backoff period
+    await vi.advanceTimersByTimeAsync(60000);
+
+    // Should only have one connection attempt - no reconnect
+    expect(connectionCount).toBe(1);
+  });
 });
