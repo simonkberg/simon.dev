@@ -92,7 +92,7 @@ export default async function RootPage() {
       </section>
 
       <section>
-        <Heading level={2}>Slack</Heading>
+        <Heading level={2}>Chat</Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
             <ChatHistory history={history} />
