@@ -689,4 +689,82 @@ describe("subscribe", () => {
     // Should only have one connection attempt - no reconnect
     expect(connectionCount).toBe(1);
   });
+
+  it("should re-identify after close with re-identify codes", async () => {
+    const { subscribe } = await import("./gateway");
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let initialClient: Client | undefined;
+    let connectionCount = 0;
+    const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (connectionCount === 1) {
+            initialClient = client;
+            if (payload.op === GatewayOpcode.IDENTIFY) {
+              client.send(
+                createPayload(
+                  GatewayOpcode.DISPATCH,
+                  {
+                    session_id: "test-session-id",
+                    resume_gateway_url: "wss://resume.discord.gg",
+                  },
+                  1,
+                  "READY",
+                ),
+              );
+            }
+          } else {
+            // Second connection - record messages
+            secondConnectionMessages.push(payload);
+            if (payload.op === GatewayOpcode.IDENTIFY) {
+              client.send(
+                createPayload(
+                  GatewayOpcode.DISPATCH,
+                  {
+                    session_id: "new-session-id",
+                    resume_gateway_url: "wss://gateway.discord.gg",
+                  },
+                  1,
+                  "READY",
+                ),
+              );
+            }
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // Close with re-identify code 4007 (Invalid seq)
+    initialClient?.close(4007, "Invalid seq");
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Wait for backoff
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Should have sent IDENTIFY (not RESUME) and used default URL
+    expect(secondConnectionMessages).toContainEqual(
+      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
+    );
+    expect(secondConnectionMessages).not.toContainEqual(
+      expect.objectContaining({ op: GatewayOpcode.RESUME }),
+    );
+    expect(connectionCount).toBe(2);
+  });
 });
