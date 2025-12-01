@@ -236,4 +236,52 @@ describe("subscribe", () => {
     expect(closeCode).toBe(4000);
     expect(closeReason).toBe("Heartbeat timeout");
   });
+
+  it("should respond immediately to server-requested heartbeat", async () => {
+    const { subscribe } = await import("./gateway");
+    const receivedMessages: Array<{ op: number; d: unknown }> = [];
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.send(
+          // Use long interval so scheduled heartbeats don't interfere
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+          receivedMessages.push(payload);
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                5, // Use sequence 5 to verify it's included in response
+                "READY",
+              ),
+            );
+
+            // Server requests an immediate heartbeat
+            client.send(createPayload(GatewayOpcode.HEARTBEAT, null));
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // Should have IDENTIFY and immediate HEARTBEAT response
+    expect(receivedMessages).toHaveLength(2);
+    expect(receivedMessages[1]).toEqual({
+      op: GatewayOpcode.HEARTBEAT,
+      d: 5, // sequence number from READY
+    });
+  });
 });
