@@ -130,4 +130,60 @@ describe("subscribe", () => {
       d: 1, // sequence number from READY event
     });
   });
+
+  it("should continue heartbeating when ACK is received", async () => {
+    const { subscribe } = await import("./gateway");
+    let heartbeatCount = 0;
+    let connectionClosed = false;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 1000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+
+          if (payload.op === GatewayOpcode.HEARTBEAT) {
+            heartbeatCount++;
+            // Respond with ACK
+            client.send(createPayload(GatewayOpcode.HEARTBEAT_ACK, null));
+          }
+        });
+
+        client.addEventListener("close", () => {
+          connectionClosed = true;
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // First heartbeat fires immediately (jitter = 0)
+    // Then subsequent heartbeats fire every interval
+    await vi.advanceTimersByTimeAsync(1000); // Second heartbeat
+    await vi.advanceTimersByTimeAsync(1000); // Third heartbeat
+
+    // 1 immediate + 2 interval = 3 total, connection should stay open
+    expect(heartbeatCount).toBe(3);
+    expect(connectionClosed).toBe(false);
+  });
 });
