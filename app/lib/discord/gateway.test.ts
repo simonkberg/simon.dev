@@ -37,6 +37,8 @@ const PayloadSchema = z.preprocess(
   z.object({ op: z.number(), d: z.unknown() }),
 );
 
+type Payload = z.infer<typeof PayloadSchema>;
+
 const DEFAULT_SESSION = {
   session_id: "test-session-id",
   resume_gateway_url: "wss://gateway.discord.gg",
@@ -55,11 +57,10 @@ function getLastClient(clients: WebSocketLink["clients"]) {
   return [...clients].at(-1);
 }
 
+type Client = ReturnType<typeof getLastClient>;
+
 describe("subscribe", () => {
   const gateway = ws.link(GATEWAY_URL);
-
-  type Payload = z.infer<typeof PayloadSchema>;
-  type Client = ReturnType<typeof getLastClient>;
 
   function createHandshakeHandler({
     heartbeatInterval = 60000,
@@ -209,7 +210,7 @@ describe("subscribe", () => {
 
   it("should respond immediately to server-requested heartbeat", async () => {
     const { subscribe } = await import("./gateway");
-    const receivedMessages: Array<{ op: number; d: unknown }> = [];
+    const receivedMessages: Payload[] = [];
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
@@ -399,7 +400,7 @@ describe("subscribe", () => {
   it("should re-identify after non-resumable INVALID_SESSION", async () => {
     const { subscribe } = await import("./gateway");
     let connectionCount = 0;
-    const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
+    const secondConnectionMessages: Payload[] = [];
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
@@ -514,7 +515,7 @@ describe("subscribe", () => {
   it("should re-identify after close with re-identify codes", async () => {
     const { subscribe } = await import("./gateway");
     let connectionCount = 0;
-    const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
+    const secondConnectionMessages: Payload[] = [];
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
