@@ -37,6 +37,11 @@ const PayloadSchema = z.preprocess(
   z.object({ op: z.number(), d: z.unknown() }),
 );
 
+const DEFAULT_SESSION = {
+  session_id: "test-session-id",
+  resume_gateway_url: "wss://gateway.discord.gg",
+} as const;
+
 function createPayload(
   op: number,
   d: unknown,
@@ -52,6 +57,49 @@ function getLastClient(clients: WebSocketLink["clients"]) {
 
 describe("subscribe", () => {
   const gateway = ws.link(GATEWAY_URL);
+
+  type Payload = z.infer<typeof PayloadSchema>;
+  type Client = ReturnType<typeof getLastClient>;
+
+  function createHandshakeHandler(options?: {
+    heartbeatInterval?: number;
+    session?: { session_id: string; resume_gateway_url: string };
+    sequence?: number;
+    onMessage?: (payload: Payload, client: NonNullable<Client>) => void;
+    onClose?: (event: CloseEvent) => void;
+  }) {
+    const {
+      heartbeatInterval = 60000,
+      session = DEFAULT_SESSION,
+      sequence = 1,
+      onMessage,
+      onClose,
+    } = options ?? {};
+
+    return gateway.addEventListener("connection", ({ client }) => {
+      client.send(
+        createPayload(GatewayOpcode.HELLO, {
+          heartbeat_interval: heartbeatInterval,
+        }),
+      );
+
+      client.addEventListener("message", (event) => {
+        const payload = PayloadSchema.parse(event.data);
+
+        if (payload.op === GatewayOpcode.IDENTIFY) {
+          client.send(
+            createPayload(GatewayOpcode.DISPATCH, session, sequence, "READY"),
+          );
+        }
+
+        onMessage?.(payload, client);
+      });
+
+      if (onClose) {
+        client.addEventListener("close", onClose);
+      }
+    });
+  }
 
   // Reset module state between tests to get fresh gateway singleton
   beforeEach(() => {
@@ -71,67 +119,21 @@ describe("subscribe", () => {
 
   it("should complete handshake and resolve", async () => {
     const { subscribe } = await import("./gateway");
+    server.use(createHandshakeHandler());
 
-    server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 45000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
-      }),
-    );
-
-    const callback = vi.fn();
-    const unsubscribe = await subscribe(callback);
+    const unsubscribe = await subscribe(vi.fn());
 
     expect(unsubscribe).toBeTypeOf("function");
   });
 
   it("should send heartbeat after interval", async () => {
     const { subscribe } = await import("./gateway");
-    const receivedMessages: Array<{ op: number; d: unknown }> = [];
+    const receivedMessages: Payload[] = [];
 
     server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 1000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-          receivedMessages.push(payload);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
+      createHandshakeHandler({
+        heartbeatInterval: 1000,
+        onMessage: (payload) => receivedMessages.push(payload),
       }),
     );
 
@@ -155,38 +157,17 @@ describe("subscribe", () => {
     let connectionClosed = false;
 
     server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 1000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-
+      createHandshakeHandler({
+        heartbeatInterval: 1000,
+        onMessage: (payload, client) => {
           if (payload.op === GatewayOpcode.HEARTBEAT) {
             heartbeatCount++;
-            // Respond with ACK
             client.send(createPayload(GatewayOpcode.HEARTBEAT_ACK, null));
           }
-        });
-
-        client.addEventListener("close", () => {
+        },
+        onClose: () => {
           connectionClosed = true;
-        });
+        },
       }),
     );
 
@@ -208,34 +189,13 @@ describe("subscribe", () => {
     let closeReason: string | undefined;
 
     server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 1000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-          // Intentionally NOT responding to HEARTBEAT with ACK
-        });
-
-        client.addEventListener("close", (event) => {
+      createHandshakeHandler({
+        heartbeatInterval: 1000,
+        // Intentionally NOT responding to HEARTBEAT with ACK
+        onClose: (event) => {
           closeCode = event.code;
           closeReason = event.reason;
-        });
+        },
       }),
     );
 
@@ -296,32 +256,7 @@ describe("subscribe", () => {
 
   it("should notify subscribers on MESSAGE_CREATE for matching channel", async () => {
     const { subscribe } = await import("./gateway");
-
-    server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
-      }),
-    );
+    server.use(createHandshakeHandler());
 
     const callback = vi.fn();
     await subscribe(callback);
@@ -346,32 +281,7 @@ describe("subscribe", () => {
 
   it("should ignore messages from other channels", async () => {
     const { subscribe } = await import("./gateway");
-
-    server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
-      }),
-    );
+    server.use(createHandshakeHandler());
 
     const callback = vi.fn();
     await subscribe(callback);
@@ -393,32 +303,7 @@ describe("subscribe", () => {
 
   it("should stop notifying after unsubscribe", async () => {
     const { subscribe } = await import("./gateway");
-
-    server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
-        );
-
-        client.addEventListener("message", (event) => {
-          const payload = PayloadSchema.parse(event.data);
-
-          if (payload.op === GatewayOpcode.IDENTIFY) {
-            client.send(
-              createPayload(
-                GatewayOpcode.DISPATCH,
-                {
-                  session_id: "test-session-id",
-                  resume_gateway_url: "wss://gateway.discord.gg",
-                },
-                1,
-                "READY",
-              ),
-            );
-          }
-        });
-      }),
-    );
+    server.use(createHandshakeHandler());
 
     const callback = vi.fn();
     const unsubscribe = await subscribe(callback);
