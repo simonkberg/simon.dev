@@ -24,11 +24,14 @@ describe("ChatMessage", () => {
     expect(screen.getByText(/TestUser:/)).toBeInTheDocument();
   });
 
-  it("renders the message content", () => {
-    const message = createMessage({ content: "This is a test message" });
+  it("renders the message content as HTML", () => {
+    const message = createMessage({
+      content: "<strong>Bold</strong> and <em>italic</em>",
+    });
     render(<ChatMessage {...message} />);
 
-    expect(screen.getByText("This is a test message")).toBeInTheDocument();
+    expect(screen.getByText("Bold")).toBeInTheDocument();
+    expect(screen.getByText("italic")).toBeInTheDocument();
   });
 
   it("applies user color as CSS variable", () => {
@@ -51,15 +54,5 @@ describe("ChatMessage", () => {
     render(<ChatMessage {...message} />);
 
     expect(screen.queryByText(/\(edited\)/)).not.toBeInTheDocument();
-  });
-
-  it("renders markdown content using simple-markdown", () => {
-    const message = createMessage({
-      content: "**Bold text** and *italic text*",
-    });
-    render(<ChatMessage {...message} />);
-
-    expect(screen.getByText("Bold text")).toBeInTheDocument();
-    expect(screen.getByText("italic text")).toBeInTheDocument();
   });
 });
