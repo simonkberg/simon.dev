@@ -144,10 +144,9 @@ describe("subscribe", () => {
     // Advance time past the heartbeat interval (with 0 jitter)
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(receivedMessages).toContainEqual({
-      op: GatewayOpcode.HEARTBEAT,
-      d: 1, // sequence number from READY event
-    });
+    expect(receivedMessages).toMatchObject([
+      { op: GatewayOpcode.HEARTBEAT, d: 1 },
+    ]);
   });
 
   it("should continue heartbeating when ACK is received", async () => {
@@ -384,16 +383,18 @@ describe("subscribe", () => {
     await vi.advanceTimersByTimeAsync(2000);
 
     // Should have sent RESUME, not IDENTIFY
-    expect(resumeMessages).toContainEqual({
-      op: GatewayOpcode.RESUME,
-      d: {
-        token: "test-discord-bot-token",
-        session_id: "test-session-id",
-        seq: 1,
+    expect(resumeMessages).toMatchObject([
+      {
+        op: GatewayOpcode.RESUME,
+        d: {
+          token: "test-discord-bot-token",
+          session_id: "test-session-id",
+          seq: 1,
+        },
       },
-    });
-    expect(resumeMessages).not.toContainEqual(
-      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
+    ]);
+    expect(resumeMessages.map((m) => m.op)).not.toContain(
+      GatewayOpcode.IDENTIFY,
     );
   });
 
@@ -459,11 +460,11 @@ describe("subscribe", () => {
     await vi.advanceTimersByTimeAsync(2000);
 
     // Should have sent IDENTIFY (not RESUME) on second connection
-    expect(secondConnectionMessages).toContainEqual(
-      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
-    );
-    expect(secondConnectionMessages).not.toContainEqual(
-      expect.objectContaining({ op: GatewayOpcode.RESUME }),
+    expect(secondConnectionMessages).toMatchObject([
+      { op: GatewayOpcode.IDENTIFY },
+    ]);
+    expect(secondConnectionMessages.map((m) => m.op)).not.toContain(
+      GatewayOpcode.RESUME,
     );
   });
 
@@ -574,11 +575,11 @@ describe("subscribe", () => {
     await vi.advanceTimersByTimeAsync(2000);
 
     // Should have sent IDENTIFY (not RESUME) and used default URL
-    expect(secondConnectionMessages).toContainEqual(
-      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
-    );
-    expect(secondConnectionMessages).not.toContainEqual(
-      expect.objectContaining({ op: GatewayOpcode.RESUME }),
+    expect(secondConnectionMessages).toMatchObject([
+      { op: GatewayOpcode.IDENTIFY },
+    ]);
+    expect(secondConnectionMessages.map((m) => m.op)).not.toContain(
+      GatewayOpcode.RESUME,
     );
     expect(connectionCount).toBe(2);
   });
