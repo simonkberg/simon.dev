@@ -343,4 +343,60 @@ describe("subscribe", () => {
 
     expect(callback).toHaveBeenCalledTimes(1);
   });
+
+  it("should ignore messages from other channels", async () => {
+    const { subscribe } = await import("./gateway");
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let connectedClient: Client | undefined;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectedClient = client;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+        });
+      }),
+    );
+
+    const callback = vi.fn();
+    await subscribe(callback);
+
+    // Send MESSAGE_CREATE for a DIFFERENT channel
+    connectedClient?.send(
+      createPayload(
+        GatewayOpcode.DISPATCH,
+        { channel_id: "some-other-channel-id" },
+        2,
+        "MESSAGE_CREATE",
+      ),
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
 });
