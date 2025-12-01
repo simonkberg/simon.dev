@@ -399,4 +399,73 @@ describe("subscribe", () => {
 
     expect(callback).not.toHaveBeenCalled();
   });
+
+  it("should stop notifying after unsubscribe", async () => {
+    const { subscribe } = await import("./gateway");
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let connectedClient: Client | undefined;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectedClient = client;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (payload.op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                {
+                  session_id: "test-session-id",
+                  resume_gateway_url: "wss://gateway.discord.gg",
+                },
+                1,
+                "READY",
+              ),
+            );
+          }
+        });
+      }),
+    );
+
+    const callback = vi.fn();
+    const unsubscribe = await subscribe(callback);
+
+    // First message should trigger callback
+    connectedClient?.send(
+      createPayload(
+        GatewayOpcode.DISPATCH,
+        { channel_id: "test-discord-channel-id" },
+        2,
+        "MESSAGE_CREATE",
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    // Unsubscribe
+    unsubscribe();
+
+    // Second message should NOT trigger callback
+    connectedClient?.send(
+      createPayload(
+        GatewayOpcode.DISPATCH,
+        { channel_id: "test-discord-channel-id" },
+        3,
+        "MESSAGE_CREATE",
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(callback).toHaveBeenCalledTimes(1); // Still 1, not 2
+  });
 });
