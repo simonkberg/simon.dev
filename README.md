@@ -4,7 +4,7 @@ My personal website built with Next.js 16.
 
 ## Features
 
-- Real-time chat powered by Slack
+- Real-time chat powered by Discord
 - Coding stats from WakaTime
 - Recently played music from Last.fm
 - Listening statistics (top tracks, artists, albums) from Last.fm
@@ -43,8 +43,9 @@ Create a `.env.local` file with:
 
 ```
 SESSION_SECRET=your-secret-key
-SLACK_CHANNEL=your-channel-id
-SLACK_TOKEN=your-slack-token
+DISCORD_BOT_TOKEN=your-bot-token
+DISCORD_GUILD_ID=your-guild-id
+DISCORD_CHANNEL_ID=your-channel-id
 UPSTASH_REDIS_REST_URL=your-redis-url
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
 LAST_FM_API_KEY=your-lastfm-api-key

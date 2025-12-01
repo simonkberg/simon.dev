@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Project Overview
 
-This is a personal website built with Next.js 16 (App Router) that integrates with Slack for real-time chat functionality, WakaTime for coding statistics, and Last.fm for recently played music. The site is deployed as a standalone Docker container on Railway.
+This is a personal website built with Next.js 16 (App Router) that integrates with Discord for real-time chat functionality, WakaTime for coding statistics, and Last.fm for recently played music. The site is deployed as a standalone Docker container on Railway.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ MCP servers are configured in `.mcp.json`. Key guidance:
     - `api/` - API routes (e.g., SSE endpoint for real-time chat updates)
     - `components/` - Shared React components (co-located with tests)
     - `lib/` - Utility libraries and core logic
-        - `messageParser/` - Slack message parsing with emoji support
+        - `discord/` - Discord API and Gateway integration
     - `assets/` - Static assets (fonts, images)
     - `listening/[[...period]]/` - Listening stats page (optional catch-all for period filter)
         - `components/` - Route-specific components (PeriodSelector, TopTracksTable, etc.)
@@ -79,21 +79,26 @@ MCP servers are configured in `.mcp.json`. Key guidance:
 Environment validation is handled via custom Zod validation in `app/lib/env.ts`. Required variables:
 
 - `SESSION_SECRET` - Session encryption secret (auto-defaults to "unsafe_dev_secret" in development)
-- `SLACK_CHANNEL` - Slack channel ID
-- `SLACK_TOKEN` - Slack API token
+- `DISCORD_BOT_TOKEN` - Discord bot token for API authentication
+- `DISCORD_GUILD_ID` - Discord guild (server) ID
+- `DISCORD_CHANNEL_ID` - Discord channel ID for chat integration
 - `UPSTASH_REDIS_REST_URL` - Upstash Redis REST API URL
 - `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST API token
 - `LAST_FM_API_KEY` - Last.fm API key for fetching recently played tracks
 
 Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables (used in CI/Docker). Configure development environment variables in `.env.local` (per Next.js convention).
 
-**Slack Integration Architecture:**
+**Discord Integration Architecture:**
 
-- Uses both Slack Web API (for reading/posting messages) and RTM API (for real-time subscriptions)
-- Message parsing pipeline: `textParser` → `emojiParser` converts Slack-formatted messages to React components
-- DataLoader with LRU cache (100 entries) is used to batch and cache user info requests
+- Uses Discord REST API (v10) for reading and posting messages via `app/lib/discord/api.ts`
+- Uses Discord Gateway WebSocket for real-time message notifications via `app/lib/discord/gateway.ts`
+- DataLoader with LRU cache (100 entries) batches and caches user info requests
+- Supports infinitely nested message replies via recursive resolution
+- Messages posted from the site use "username: content" prefix format for attribution
+- Discord markdown is rendered using simple-markdown library
 - Server-Sent Events (SSE) endpoint at `/api/chat/sse` streams chat updates to clients
-- Emoji data is extracted from `emoji-datasource` package at build time
+- Gateway implements automatic reconnection with session resume support
+- Heartbeat mechanism maintains WebSocket connection health
 
 **WakaTime Integration Architecture:**
 
@@ -229,13 +234,10 @@ Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables
     ```
 
 **Server-Only Code:**
-Files that should never run on the client must import `"server-only"` at the top (e.g., `app/lib/slack.ts`, `app/lib/session.ts`).
+Files that should never run on the client must import `"server-only"` at the top (e.g., `app/lib/discord/api.ts`, `app/lib/discord/gateway.ts`, `app/lib/session.ts`).
 
 **Server Actions:**
 All server actions are in `app/actions/` and marked with `"use server"` directive. They return discriminated unions with `status: "ok" | "error"` for type-safe error handling.
 
-**Message Parsing:**
-Slack messages are processed through a two-stage pipeline:
-
-1. `textParser` - Handles text formatting (links, mentions, etc.)
-2. `emojiParser` - Converts emoji codes to React components with skin tone support
+**Message Rendering:**
+Discord messages are rendered using the simple-markdown library to parse Discord's markdown syntax. Nested replies are visualized using box drawing characters (├ └) for thread structure.

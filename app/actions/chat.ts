@@ -2,22 +2,29 @@
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { after, connection } from "next/server";
+import { cacheLife } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
+import {
+  getChannelMessages,
+  type Message,
+  postChannelMessage,
+} from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { getSession } from "@/lib/session";
-import { getHistory, type Message, postMessage } from "@/lib/slack";
 
 export type ChatHistoryResult =
   | { status: "ok"; messages: Message[] }
   | { status: "error"; error: string };
 
 export async function getChatHistory(): Promise<ChatHistoryResult> {
-  await connection();
+  "use cache";
+  cacheLife("seconds");
+
   try {
-    const messages = await getHistory();
+    const messages = await getChannelMessages();
     return { status: "ok", messages };
   } catch (err) {
     log.error({ err, action: "getChatHistory" }, "Error fetching chat history");
@@ -43,7 +50,7 @@ function getRateLimiter() {
 
 export type PostChatMessageResult =
   | { status: "initial" }
-  | { status: "ok"; message: Message }
+  | { status: "ok" }
   | { status: "error"; error: string };
 
 export async function postChatMessage(
@@ -70,11 +77,11 @@ export async function postChatMessage(
       };
     }
 
-    const response = await postMessage(text, username);
+    await postChannelMessage(text, username);
 
     log.info({ username, ip: request.ip, action: "postChatMessage" }, text);
 
-    return { status: "ok", message: response };
+    return { status: "ok" };
   } catch (err) {
     log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };

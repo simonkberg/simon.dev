@@ -1,7 +1,7 @@
 import { connection, type NextRequest, NextResponse } from "next/server";
 
+import { subscribe } from "@/lib/discord/gateway";
 import { log } from "@/lib/log";
-import { subscribe } from "@/lib/slack";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
 const PING_INTERVAL_MS = 30_000;
@@ -23,10 +23,10 @@ export async function GET(request: NextRequest) {
     void writer.write(encoder.encode(PING_MESSAGE)).catch(ignoreWriteErrors);
   }, PING_INTERVAL_MS);
 
-  const unsubscribe = await subscribe((type) => {
+  const unsubscribe = await subscribe(() => {
     if (aborted) return;
     void writer
-      .write(encoder.encode(`data: ${type}\n\n`))
+      .write(encoder.encode(`data: refresh\n\n`))
       .catch(ignoreWriteErrors);
   });
 

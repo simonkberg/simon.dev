@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatHistoryResult } from "@/actions/chat";
-import type { Message } from "@/lib/slack";
+import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
 
@@ -19,32 +19,50 @@ describe("ChatHistory", () => {
     vi.stubGlobal("EventSource", MockEventSource);
   });
 
-  it("renders messages as list with nested replies", async () => {
+  it("renders messages as list with deeply nested replies", async () => {
     const mockMessages: Message[] = [
       {
-        ts: "1234567890.123456",
-        text: "Message without replies",
+        id: "1234567890123456",
+        content: "Message without replies",
         user: { name: "User1", color: "hsl(0 100% 50%)" },
         edited: false,
         replies: [],
       },
       {
-        ts: "1234567890.234567",
-        text: "Message with replies",
+        id: "1234567890234567",
+        content: "Message with replies",
         user: { name: "User2", color: "hsl(120 100% 50%)" },
         edited: false,
         replies: [
           {
-            ts: "1234567890.345678",
-            text: "First reply",
+            id: "1234567890345678",
+            content: "First reply",
             user: { name: "User3", color: "hsl(240 100% 50%)" },
             edited: false,
+            replies: [
+              {
+                id: "1234567890567890",
+                content: "Nested reply to first",
+                user: { name: "User5", color: "hsl(180 100% 50%)" },
+                edited: false,
+                replies: [
+                  {
+                    id: "1234567890678901",
+                    content: "Deeply nested reply",
+                    user: { name: "User6", color: "hsl(300 100% 50%)" },
+                    edited: false,
+                    replies: [],
+                  },
+                ],
+              },
+            ],
           },
           {
-            ts: "1234567890.456789",
-            text: "Second reply",
+            id: "1234567890456789",
+            content: "Second reply",
             user: { name: "User4", color: "hsl(60 100% 50%)" },
             edited: true,
+            replies: [],
           },
         ],
       },
@@ -59,12 +77,14 @@ describe("ChatHistory", () => {
       render(<ChatHistory history={Promise.resolve(successResult)} />),
     );
 
-    const lists = screen.getAllByRole("list");
-    expect(lists.length).toBeGreaterThanOrEqual(2);
+    // 1 content list + 3 nested lists (replies → nested reply → deeply nested)
+    expect(screen.getAllByRole("list")).toHaveLength(4);
 
     expect(screen.getByText("Message without replies")).toBeInTheDocument();
     expect(screen.getByText("Message with replies")).toBeInTheDocument();
     expect(screen.getByText("First reply")).toBeInTheDocument();
+    expect(screen.getByText("Nested reply to first")).toBeInTheDocument();
+    expect(screen.getByText("Deeply nested reply")).toBeInTheDocument();
     expect(screen.getByText("Second reply")).toBeInTheDocument();
   });
 

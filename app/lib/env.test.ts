@@ -34,8 +34,9 @@ describe("env", () => {
 
       expectTypeOf<Env>(env).toEqualTypeOf<{
         SESSION_SECRET: string;
-        SLACK_CHANNEL: string;
-        SLACK_TOKEN: string;
+        DISCORD_BOT_TOKEN: string;
+        DISCORD_GUILD_ID: string;
+        DISCORD_CHANNEL_ID: string;
         UPSTASH_REDIS_REST_URL: string;
         UPSTASH_REDIS_REST_TOKEN: string;
         LAST_FM_API_KEY: string;
@@ -88,8 +89,8 @@ describe("env", () => {
       );
     });
 
-    it("should throw when SLACK_CHANNEL is missing", async () => {
-      vi.stubEnv("SLACK_CHANNEL", undefined);
+    it("should throw when DISCORD_BOT_TOKEN is missing", async () => {
+      vi.stubEnv("DISCORD_BOT_TOKEN", undefined);
 
       await expect(import("./env")).rejects.toThrow(
         "Invalid environment variables",
@@ -98,14 +99,6 @@ describe("env", () => {
 
     it("should throw when UPSTASH_REDIS_REST_URL is not a valid URL", async () => {
       vi.stubEnv("UPSTASH_REDIS_REST_URL", "not-a-url");
-
-      await expect(import("./env")).rejects.toThrow(
-        "Invalid environment variables",
-      );
-    });
-
-    it("should throw when SLACK_TOKEN is empty string", async () => {
-      vi.stubEnv("SLACK_TOKEN", "");
 
       await expect(import("./env")).rejects.toThrow(
         "Invalid environment variables",

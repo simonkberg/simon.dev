@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { randomName } from "@/lib/randomName";
-import { decrypt, encrypt } from "@/lib/session";
+import { decrypt, encrypt, UsernameSchema } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest) {
 
   response.cookies.set(
     "session",
-    await encrypt(session ?? { username: randomName() }),
+    await encrypt(session ?? { username: UsernameSchema.parse(randomName()) }),
     {
       httpOnly: true,
       secure: true,

@@ -13,6 +13,6 @@ export function stringToColor(
   string: string,
   saturation = 0.95,
   lightness = 0.65,
-) {
+): `hsl(${number} ${number}% ${number}%)` {
   return `hsl(${djb2hash(string) % 360} ${saturation * 100}% ${lightness * 100}%)`;
 }

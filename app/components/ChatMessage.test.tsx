@@ -1,18 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { BaseMessage } from "@/lib/slack";
+import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
 
 describe("ChatMessage", () => {
-  const mockUser = { name: "TestUser", color: "hsl(0 100% 50%)" };
+  const mockUser = { name: "TestUser", color: "hsl(0 100% 50%)" } as const;
 
-  const createMessage = (overrides?: Partial<BaseMessage>): BaseMessage => ({
-    ts: "1234567890.123456",
-    text: "Hello, world!",
+  const createMessage = (overrides?: Partial<Message>): Message => ({
+    id: "1234567890123456",
+    content: "Hello, world!",
     user: mockUser,
     edited: false,
+    replies: [],
     ...overrides,
   });
 
@@ -23,8 +24,8 @@ describe("ChatMessage", () => {
     expect(screen.getByText(/TestUser:/)).toBeInTheDocument();
   });
 
-  it("renders the message text", () => {
-    const message = createMessage({ text: "This is a test message" });
+  it("renders the message content", () => {
+    const message = createMessage({ content: "This is a test message" });
     render(<ChatMessage {...message} />);
 
     expect(screen.getByText("This is a test message")).toBeInTheDocument();
@@ -52,9 +53,9 @@ describe("ChatMessage", () => {
     expect(screen.queryByText(/\(edited\)/)).not.toBeInTheDocument();
   });
 
-  it("renders HTML content in text using dangerouslySetInnerHTML", () => {
+  it("renders markdown content using simple-markdown", () => {
     const message = createMessage({
-      text: "<strong>Bold text</strong> and <em>italic text</em>",
+      content: "**Bold text** and *italic text*",
     });
     render(<ChatMessage {...message} />);
 
