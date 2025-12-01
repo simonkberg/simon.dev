@@ -61,21 +61,19 @@ describe("subscribe", () => {
   type Payload = z.infer<typeof PayloadSchema>;
   type Client = ReturnType<typeof getLastClient>;
 
-  function createHandshakeHandler(options?: {
+  function createHandshakeHandler({
+    heartbeatInterval = 60000,
+    session = DEFAULT_SESSION,
+    sequence = 1,
+    onMessage,
+    onClose,
+  }: {
     heartbeatInterval?: number;
     session?: { session_id: string; resume_gateway_url: string };
     sequence?: number;
     onMessage?: (payload: Payload, client: NonNullable<Client>) => void;
     onClose?: (event: CloseEvent) => void;
-  }) {
-    const {
-      heartbeatInterval = 60000,
-      session = DEFAULT_SESSION,
-      sequence = 1,
-      onMessage,
-      onClose,
-    } = options ?? {};
-
+  } = {}) {
     return gateway.addEventListener("connection", ({ client }) => {
       client.send(
         createPayload(GatewayOpcode.HELLO, {
