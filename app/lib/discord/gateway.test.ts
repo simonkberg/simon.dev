@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import type { WebSocketLink } from "msw";
 import { ws } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +21,8 @@ const GatewayOpcode = {
   HEARTBEAT_ACK: 11,
 } as const;
 
+type Client = WebSocketLink["clients"] extends Set<infer T> ? T : never;
+
 function createPayload(
   op: number,
   d: unknown,
@@ -27,6 +30,10 @@ function createPayload(
   t: string | null = null,
 ) {
   return JSON.stringify({ op, d, s, t });
+}
+
+function getLastClient(clients: Set<Client>): Client | undefined {
+  return [...clients].at(-1);
 }
 
 describe("subscribe", () => {
@@ -287,15 +294,9 @@ describe("subscribe", () => {
 
   it("should notify subscribers on MESSAGE_CREATE for matching channel", async () => {
     const { subscribe } = await import("./gateway");
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let connectedClient: Client | undefined;
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
-        connectedClient = client;
-
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
         );
@@ -329,7 +330,7 @@ describe("subscribe", () => {
     expect(callback).not.toHaveBeenCalled();
 
     // Send MESSAGE_CREATE for matching channel
-    connectedClient?.send(
+    getLastClient(gateway.clients)?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
         { channel_id: "test-discord-channel-id" },
@@ -346,15 +347,9 @@ describe("subscribe", () => {
 
   it("should ignore messages from other channels", async () => {
     const { subscribe } = await import("./gateway");
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let connectedClient: Client | undefined;
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
-        connectedClient = client;
-
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
         );
@@ -386,7 +381,7 @@ describe("subscribe", () => {
     await subscribe(callback);
 
     // Send MESSAGE_CREATE for a DIFFERENT channel
-    connectedClient?.send(
+    getLastClient(gateway.clients)?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
         { channel_id: "some-other-channel-id" },
@@ -402,15 +397,9 @@ describe("subscribe", () => {
 
   it("should stop notifying after unsubscribe", async () => {
     const { subscribe } = await import("./gateway");
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let connectedClient: Client | undefined;
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
-        connectedClient = client;
-
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
         );
@@ -440,9 +429,10 @@ describe("subscribe", () => {
 
     const callback = vi.fn();
     const unsubscribe = await subscribe(callback);
+    const client = getLastClient(gateway.clients);
 
     // First message should trigger callback
-    connectedClient?.send(
+    client?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
         { channel_id: "test-discord-channel-id" },
@@ -457,7 +447,7 @@ describe("subscribe", () => {
     unsubscribe();
 
     // Second message should NOT trigger callback
-    connectedClient?.send(
+    client?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
         { channel_id: "test-discord-channel-id" },
@@ -473,18 +463,11 @@ describe("subscribe", () => {
     const { subscribe } = await import("./gateway");
     const RESUME_URL = "wss://resume.discord.gg/?v=10&encoding=json";
     const resumeGateway = ws.link(RESUME_URL);
-
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let initialClient: Client | undefined;
     const resumeMessages: Array<{ op: number; d: unknown }> = [];
 
     // Initial connection handler
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
-        initialClient = client;
-
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
         );
@@ -539,7 +522,9 @@ describe("subscribe", () => {
     await subscribe(vi.fn());
 
     // Trigger reconnect via RECONNECT opcode
-    initialClient?.send(createPayload(GatewayOpcode.RECONNECT, null));
+    getLastClient(gateway.clients)?.send(
+      createPayload(GatewayOpcode.RECONNECT, null),
+    );
     await vi.advanceTimersByTimeAsync(0);
 
     // Wait for exponential backoff (2^1 * 1000 = 2000ms)
@@ -561,11 +546,6 @@ describe("subscribe", () => {
 
   it("should re-identify after non-resumable INVALID_SESSION", async () => {
     const { subscribe } = await import("./gateway");
-
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let initialClient: Client | undefined;
     let connectionCount = 0;
     const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
 
@@ -584,7 +564,6 @@ describe("subscribe", () => {
           };
 
           if (connectionCount === 1) {
-            initialClient = client;
             if (payload.op === GatewayOpcode.IDENTIFY) {
               client.send(
                 createPayload(
@@ -620,6 +599,7 @@ describe("subscribe", () => {
     );
 
     await subscribe(vi.fn());
+    const initialClient = getLastClient(gateway.clients);
 
     // Send INVALID_SESSION with resumable=false
     initialClient?.send(createPayload(GatewayOpcode.INVALID_SESSION, false));
@@ -639,16 +619,11 @@ describe("subscribe", () => {
 
   it("should not reconnect on fatal close codes", async () => {
     const { subscribe } = await import("./gateway");
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let connectedClient: Client | undefined;
     let connectionCount = 0;
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
         connectionCount++;
-        connectedClient = client;
 
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
@@ -680,7 +655,7 @@ describe("subscribe", () => {
     await subscribe(vi.fn());
 
     // Close with fatal code after handshake is complete
-    connectedClient?.close(4004, "Authentication failed");
+    getLastClient(gateway.clients)?.close(4004, "Authentication failed");
     await vi.advanceTimersByTimeAsync(0);
 
     // Advance time past any backoff period
@@ -692,10 +667,6 @@ describe("subscribe", () => {
 
   it("should re-identify after close with re-identify codes", async () => {
     const { subscribe } = await import("./gateway");
-    type Client = Parameters<
-      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
-    >[0]["client"];
-    let initialClient: Client | undefined;
     let connectionCount = 0;
     const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
 
@@ -714,7 +685,6 @@ describe("subscribe", () => {
           };
 
           if (connectionCount === 1) {
-            initialClient = client;
             if (payload.op === GatewayOpcode.IDENTIFY) {
               client.send(
                 createPayload(
@@ -750,6 +720,7 @@ describe("subscribe", () => {
     );
 
     await subscribe(vi.fn());
+    const initialClient = getLastClient(gateway.clients);
 
     // Close with re-identify code 4007 (Invalid seq)
     initialClient?.close(4007, "Invalid seq");
