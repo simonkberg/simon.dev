@@ -558,4 +558,82 @@ describe("subscribe", () => {
       expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
     );
   });
+
+  it("should re-identify after non-resumable INVALID_SESSION", async () => {
+    const { subscribe } = await import("./gateway");
+
+    type Client = Parameters<
+      Parameters<ReturnType<typeof ws.link>["addEventListener"]>[1]
+    >[0]["client"];
+    let initialClient: Client | undefined;
+    let connectionCount = 0;
+    const secondConnectionMessages: Array<{ op: number; d: unknown }> = [];
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
+
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+
+        client.addEventListener("message", (event) => {
+          const payload = JSON.parse(String(event.data)) as {
+            op: number;
+            d: unknown;
+          };
+
+          if (connectionCount === 1) {
+            initialClient = client;
+            if (payload.op === GatewayOpcode.IDENTIFY) {
+              client.send(
+                createPayload(
+                  GatewayOpcode.DISPATCH,
+                  {
+                    session_id: "test-session-id",
+                    resume_gateway_url: "wss://resume.discord.gg",
+                  },
+                  1,
+                  "READY",
+                ),
+              );
+            }
+          } else {
+            // Second connection - record messages to verify IDENTIFY
+            secondConnectionMessages.push(payload);
+            if (payload.op === GatewayOpcode.IDENTIFY) {
+              client.send(
+                createPayload(
+                  GatewayOpcode.DISPATCH,
+                  {
+                    session_id: "new-session-id",
+                    resume_gateway_url: "wss://gateway.discord.gg",
+                  },
+                  1,
+                  "READY",
+                ),
+              );
+            }
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+
+    // Send INVALID_SESSION with resumable=false
+    initialClient?.send(createPayload(GatewayOpcode.INVALID_SESSION, false));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Wait for backoff
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Should have sent IDENTIFY (not RESUME) on second connection
+    expect(secondConnectionMessages).toContainEqual(
+      expect.objectContaining({ op: GatewayOpcode.IDENTIFY }),
+    );
+    expect(secondConnectionMessages).not.toContainEqual(
+      expect.objectContaining({ op: GatewayOpcode.RESUME }),
+    );
+  });
 });
