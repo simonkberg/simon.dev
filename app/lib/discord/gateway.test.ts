@@ -1,8 +1,8 @@
 // @vitest-environment node
 
-import type { WebSocketLink } from "msw";
-import { ws } from "msw";
+import { type WebSocketLink, ws } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { server } from "@/mocks/node";
 
@@ -21,7 +21,21 @@ const GatewayOpcode = {
   HEARTBEAT_ACK: 11,
 } as const;
 
-type Client = WebSocketLink["clients"] extends Set<infer T> ? T : never;
+const PayloadSchema = z.preprocess(
+  (input, ctx) => {
+    if (typeof input === "string") {
+      try {
+        return JSON.parse(input);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Invalid JSON string", input });
+        return z.NEVER;
+      }
+    }
+
+    return input;
+  },
+  z.object({ op: z.number(), d: z.unknown() }),
+);
 
 function createPayload(
   op: number,
@@ -32,7 +46,7 @@ function createPayload(
   return JSON.stringify({ op, d, s, t });
 }
 
-function getLastClient(clients: Set<Client>): Client | undefined {
+function getLastClient(clients: WebSocketLink["clients"]) {
   return [...clients].at(-1);
 }
 
@@ -48,6 +62,9 @@ describe("subscribe", () => {
   });
 
   afterEach(() => {
+    gateway.clients.forEach((client) => {
+      client.close();
+    });
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -62,10 +79,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -101,10 +115,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
           receivedMessages.push(payload);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
@@ -150,10 +161,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -206,10 +214,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -256,10 +261,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
           receivedMessages.push(payload);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
@@ -302,10 +304,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -355,10 +354,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -405,10 +401,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -473,10 +466,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -504,10 +494,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
           resumeMessages.push(payload);
 
           if (payload.op === GatewayOpcode.RESUME) {
@@ -558,10 +545,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (connectionCount === 1) {
             if (payload.op === GatewayOpcode.IDENTIFY) {
@@ -630,10 +614,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (payload.op === GatewayOpcode.IDENTIFY) {
             client.send(
@@ -679,10 +660,7 @@ describe("subscribe", () => {
         );
 
         client.addEventListener("message", (event) => {
-          const payload = JSON.parse(String(event.data)) as {
-            op: number;
-            d: unknown;
-          };
+          const payload = PayloadSchema.parse(event.data);
 
           if (connectionCount === 1) {
             if (payload.op === GatewayOpcode.IDENTIFY) {
