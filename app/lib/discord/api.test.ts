@@ -1,6 +1,8 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
+import { log } from "@/lib/log";
+import type { Username } from "@/lib/session";
 import { server } from "@/mocks/node";
 
 import { getChannelMessages, postChannelMessage } from "./api";
@@ -34,6 +36,28 @@ describe("getChannelMessages", () => {
         edited: false,
         user: { name: "TestUser" },
       },
+    ]);
+  });
+
+  it("should parse markdown to HTML in content", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>
+        HttpResponse.json([
+          {
+            type: 0,
+            id: "1",
+            author: { id: "user1" },
+            content: "TestUser: **Bold** and *italic*",
+            edited_timestamp: null,
+          },
+        ]),
+      ),
+    );
+
+    const messages = await getChannelMessages();
+
+    expect(messages).toMatchObject([
+      { content: "<strong>Bold</strong> and <em>italic</em>" },
     ]);
   });
 
@@ -323,6 +347,8 @@ describe("getChannelMessages", () => {
     { status: 404, statusText: "Not Found" },
     { status: 500, statusText: "Internal Server Error" },
   ])("should handle HTTP $status error", async ({ status, statusText }) => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+
     server.use(
       http.get(
         `${DISCORD_BASE_URL}/channels/:channelId/messages`,
@@ -362,10 +388,7 @@ describe("postChannelMessage", () => {
       ),
     );
 
-    await postChannelMessage(
-      "Hello world",
-      "TestUser" as import("../session").Username,
-    );
+    await postChannelMessage("Hello world", "TestUser" as Username);
   });
 
   it.each([
@@ -373,6 +396,8 @@ describe("postChannelMessage", () => {
     { status: 403, statusText: "Forbidden" },
     { status: 500, statusText: "Internal Server Error" },
   ])("should handle HTTP $status error", async ({ status, statusText }) => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+
     server.use(
       http.post(
         `${DISCORD_BASE_URL}/channels/:channelId/messages`,
@@ -381,7 +406,7 @@ describe("postChannelMessage", () => {
     );
 
     await expect(
-      postChannelMessage("Hello", "TestUser" as import("../session").Username),
+      postChannelMessage("Hello", "TestUser" as Username),
     ).rejects.toThrow(`Discord API error: ${status} ${statusText}`);
   });
 });

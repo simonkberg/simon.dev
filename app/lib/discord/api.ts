@@ -1,5 +1,6 @@
 import "server-only";
 
+import SimpleMarkdown from "@khanacademy/simple-markdown";
 import { comparing, stringComparator } from "comparator.ts";
 import DataLoader from "dataloader";
 import { z } from "zod";
@@ -84,6 +85,12 @@ function toUser(name: string): User {
   return UserSchema.decode({ name, color: stringToColor(name) });
 }
 
+function parseMarkdown(content: string): string {
+  return SimpleMarkdown.defaultHtmlOutput(
+    SimpleMarkdown.defaultInlineParse(content),
+  );
+}
+
 const userLoader = new DataLoader<string, User>(
   (keys) =>
     Promise.allSettled(
@@ -165,7 +172,7 @@ export async function getChannelMessages(): Promise<Message[]> {
       return MessageSchema.decode({
         id: discordMessage.id,
         user,
-        content,
+        content: parseMarkdown(content),
         edited: discordMessage.edited_timestamp !== null,
         replies: [],
       });
