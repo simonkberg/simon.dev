@@ -6,16 +6,30 @@ FROM node:24.11.1-alpine@sha256:2867d550cf9d8bb50059a0fff528741f11a84d985c732e60
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Enable pnpm
+RUN corepack enable pnpm
+
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
+
+# Use cache mount for pnpm store
+RUN --mount=type=cache,id=s/simon.dev-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
+    pnpm i --frozen-lockfile
 
 # Build the app
 FROM base AS builder
 WORKDIR /app
 ENV SKIP_ENV_VALIDATION=true
+
+# Enable pnpm
+RUN corepack enable pnpm
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN corepack enable pnpm && pnpm run build
+
+# Use cache mount for Next.js build cache
+RUN --mount=type=cache,id=s/simon.dev-/root/.next/cache,target=/root/.next/cache \
+    pnpm run build
 
 # Production server
 FROM base AS runner
