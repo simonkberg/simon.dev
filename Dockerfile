@@ -7,10 +7,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Enable pnpm
-RUN corepack enable pnpm
-
 COPY package.json pnpm-lock.yaml ./
+
+# Enable pnpm (after copying package.json so corepack can read packageManager field)
+RUN corepack enable pnpm
 
 # Use cache mount for pnpm store
 RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-pnpm-store,target=/root/.local/share/pnpm/store \
@@ -21,11 +21,11 @@ FROM base AS builder
 WORKDIR /app
 ENV SKIP_ENV_VALIDATION=true
 
-# Enable pnpm
-RUN corepack enable pnpm
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Enable pnpm (after copying package.json so corepack can read packageManager field)
+RUN corepack enable pnpm
 
 # Use cache mount for Next.js build cache
 RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-nextjs-cache,target=/root/.next/cache \
