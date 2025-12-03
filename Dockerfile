@@ -8,8 +8,6 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-
-# Enable pnpm (after copying package.json so corepack can read packageManager field)
 RUN corepack enable pnpm
 
 # Use cache mount for pnpm store
@@ -23,8 +21,6 @@ ENV SKIP_ENV_VALIDATION=true
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Enable pnpm (after copying package.json so corepack can read packageManager field)
 RUN corepack enable pnpm
 
 # Use cache mount for Next.js build cache
