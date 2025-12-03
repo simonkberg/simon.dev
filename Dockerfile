@@ -13,7 +13,7 @@ RUN corepack enable pnpm
 COPY package.json pnpm-lock.yaml ./
 
 # Use cache mount for pnpm store
-RUN --mount=type=cache,id=s/simon.dev-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
+RUN --mount=type=cache,id=s/simon.dev-pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm i --frozen-lockfile
 
 # Build the app
@@ -28,7 +28,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Use cache mount for Next.js build cache
-RUN --mount=type=cache,id=s/simon.dev-/root/.next/cache,target=/root/.next/cache \
+RUN --mount=type=cache,id=s/simon.dev-nextjs-cache,target=/root/.next/cache \
     pnpm run build
 
 # Production server
