@@ -6,8 +6,8 @@
       "Bash(pnpm install:*)",
       "Bash(pnpm lint:*)",
       "Bash(pnpm test:*)",
-      "mcp__eslint__*",
-      "mcp__next-devtools__*"
+      "mcp__eslint",
+      "mcp__next-devtools"
     ],
     "deny": ["Read(./.env.local)"]
   },
