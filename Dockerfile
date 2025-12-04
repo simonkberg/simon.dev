@@ -17,7 +17,6 @@ RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.local/sh
 # Build the app
 FROM base AS builder
 WORKDIR /app
-ENV SKIP_ENV_VALIDATION=true
 ARG SESSION_SECRET
 ARG DISCORD_BOT_TOKEN
 ARG DISCORD_GUILD_ID
