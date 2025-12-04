@@ -47,6 +47,12 @@ MCP servers are configured in `.mcp.json`. Key guidance:
 
 - Build: `docker build -t simon.dev .`
 - Run: `docker run -p 3000:3000 simon.dev`
+- Force clean build: `docker build --no-cache -t simon.dev .`
+
+**Notes:**
+
+- BuildKit cache mounts are used for the pnpm store and Next.js build cache to speed up subsequent builds
+- Build args are used for build-time secrets since Railway doesn't support secret mounts
 
 ## Architecture
 

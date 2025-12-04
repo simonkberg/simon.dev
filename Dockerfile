@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1
+# check=skip=SecretsUsedInArgOrEnv;error=true
 
 FROM node:24.11.1-alpine@sha256:2867d550cf9d8bb50059a0fff528741f11a84d985c732e60e19e8e75c7239c43 AS base
 
@@ -16,7 +17,13 @@ RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.local/sh
 # Build the app
 FROM base AS builder
 WORKDIR /app
-ENV SKIP_ENV_VALIDATION=true
+ARG SESSION_SECRET
+ARG DISCORD_BOT_TOKEN
+ARG DISCORD_GUILD_ID
+ARG DISCORD_CHANNEL_ID
+ARG UPSTASH_REDIS_REST_URL
+ARG UPSTASH_REDIS_REST_TOKEN
+ARG LAST_FM_API_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
