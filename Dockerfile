@@ -7,7 +7,11 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
+RUN corepack enable pnpm
+
+# Use cache mount for pnpm store
+RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
+    pnpm i --frozen-lockfile
 
 # Build the app
 FROM base AS builder
@@ -15,7 +19,10 @@ WORKDIR /app
 ENV SKIP_ENV_VALIDATION=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN corepack enable pnpm && pnpm run build
+
+# Use cache mount for Next.js build cache
+RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/app/.next/cache,target=/app/.next/cache \
+    node --run build
 
 # Production server
 FROM base AS runner
