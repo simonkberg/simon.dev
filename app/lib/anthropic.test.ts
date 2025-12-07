@@ -13,31 +13,18 @@ describe("createMessage", () => {
   it("should create message and return text content", async () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
-        const body = (await request.json()) as {
-          model: string;
-          max_tokens: number;
-          system: string;
-          messages: Array<{ role: string; content: string }>;
-        };
-
-        expect(body.model).toBe("claude-haiku-4-5");
-        expect(body.max_tokens).toBe(300);
-        expect(body.system).toContain("simon-bot");
-        expect(body.messages).toEqual([
-          { role: "user", content: "Hello, bot!" },
-        ]);
+        expect(await request.json()).toEqual({
+          model: "claude-haiku-4-5",
+          max_tokens: 300,
+          system: expect.stringContaining("simon-bot"),
+          messages: [{ role: "user", content: "Hello, bot!" }],
+          tool_choice: { type: "none" },
+        });
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
         expect(request.headers.get("anthropic-version")).toBe("2023-06-01");
 
         return HttpResponse.json({
-          id: "msg_123",
-          type: "message",
-          role: "assistant",
-          model: "claude-haiku-4-5",
           content: [{ type: "text", text: "Hello! How can I help you?" }],
-          stop_reason: "end_turn",
-          stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 20 },
         });
       }),
     );
@@ -52,16 +39,7 @@ describe("createMessage", () => {
 
     server.use(
       http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
-          id: "msg_123",
-          type: "message",
-          role: "assistant",
-          model: "claude-haiku-4-5",
-          content: [{ type: "text", text: "Response" }],
-          stop_reason: "end_turn",
-          stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 5 },
-        }),
+        HttpResponse.json({ content: [{ type: "text", text: "Response" }] }),
       ),
     );
 
@@ -101,18 +79,7 @@ describe("createMessage", () => {
 
   it("should handle response with no content blocks", async () => {
     server.use(
-      http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
-          id: "msg_123",
-          type: "message",
-          role: "assistant",
-          model: "claude-haiku-4-5",
-          content: [],
-          stop_reason: "end_turn",
-          stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 0 },
-        }),
-      ),
+      http.post(ANTHROPIC_BASE_URL, () => HttpResponse.json({ content: [] })),
     );
 
     await expect(createMessage("Test")).rejects.toThrow(
@@ -124,14 +91,7 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, () =>
         HttpResponse.json({
-          id: "msg_123",
-          type: "message",
-          role: "assistant",
-          model: "claude-haiku-4-5",
           content: [{ type: "tool_use", id: "123", name: "test", input: {} }],
-          stop_reason: "tool_use",
-          stop_sequence: null,
-          usage: { input_tokens: 10, output_tokens: 5 },
         }),
       ),
     );
