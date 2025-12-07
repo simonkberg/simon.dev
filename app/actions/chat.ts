@@ -34,7 +34,7 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
 }
 
 const BOT_USERNAME = "simon-bot" as Username;
-const SIMON_BOT_TRIGGER = new RegExp(`\\b${BOT_USERNAME}\\b`, "i");
+const SIMON_BOT_TRIGGER = /\bsimon[- ]?bot\b/i;
 
 let rateLimiter: Ratelimit | undefined;
 
