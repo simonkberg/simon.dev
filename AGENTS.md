@@ -91,6 +91,7 @@ Environment validation is handled via custom Zod validation in `app/lib/env.ts`.
 - `UPSTASH_REDIS_REST_URL` - Upstash Redis REST API URL
 - `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST API token
 - `LAST_FM_API_KEY` - Last.fm API key for fetching recently played tracks
+- `ANTHROPIC_API_KEY` - Anthropic API key for simon-bot chat responses
 
 Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables (used in CI/Docker). Configure development environment variables in `.env.local` (per Next.js convention).
 
@@ -124,6 +125,17 @@ Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables
 - 3 second timeout on API requests
 - Track data includes artist, album, play time, and MusicBrainz IDs
 - Period filtering for top stats: `7day`, `1month`, `3month`, `6month`, `12month`, `overall`
+
+**Anthropic Integration Architecture (simon-bot):**
+
+- Simple fetch-based client in `app/lib/anthropic.ts` wraps Anthropic Messages API
+- Uses Claude Haiku 4.5 model for fast, lightweight responses
+- Triggered when chat messages contain "simon-bot" (case-insensitive, word boundary match)
+- Bot responses are posted as threaded Discord replies
+- Executed asynchronously via Next.js `after()` to avoid blocking user messages
+- 5 second timeout on API requests
+- System prompt constrains responses to single sentences with inline markdown only
+- Error handling posts user-friendly fallback message on failure
 
 **Caching with `"use cache"`:**
 

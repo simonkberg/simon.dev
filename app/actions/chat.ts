@@ -6,6 +6,7 @@ import { cacheLife } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { createMessage } from "@/lib/anthropic";
 import {
   getChannelMessages,
   type Message,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { getSession } from "@/lib/session";
+import { getSession, type Username } from "@/lib/session";
 
 export type ChatHistoryResult =
   | { status: "ok"; messages: Message[] }
@@ -31,6 +32,9 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
     return { status: "error", error: "Failed to fetch chat history" };
   }
 }
+
+const BOT_USERNAME = "simon-bot" as Username;
+const SIMON_BOT_TRIGGER = new RegExp(`\\b${BOT_USERNAME}\\b`, "i");
 
 let rateLimiter: Ratelimit | undefined;
 
@@ -77,13 +81,46 @@ export async function postChatMessage(
       };
     }
 
-    await postChannelMessage(text, username);
+    const messageId = await postChannelMessage(text, username);
 
-    log.info({ username, ip: request.ip, action: "postChatMessage" }, text);
+    log.info(
+      { username, messageId, ip: request.ip, action: "postChatMessage" },
+      text,
+    );
+
+    if (SIMON_BOT_TRIGGER.test(text)) {
+      after(botResponse(text, username, messageId));
+    }
 
     return { status: "ok" };
   } catch (err) {
     log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };
+  }
+}
+
+async function botResponse(text: string, username: string, messageId: string) {
+  try {
+    const botResponse = await createMessage(text);
+    await postChannelMessage(botResponse, BOT_USERNAME, messageId);
+    log.info(
+      { username, trigger: "simon-bot", action: "botResponse" },
+      botResponse,
+    );
+  } catch (err) {
+    log.error({ err, username, action: "botResponse" }, "Bot error");
+
+    try {
+      await postChannelMessage(
+        "Sorry, I couldn't process that right now.",
+        BOT_USERNAME,
+        messageId,
+      );
+    } catch (postErr) {
+      log.error(
+        { err: postErr, action: "botErrorReply" },
+        "Failed to post error reply",
+      );
+    }
   }
 }

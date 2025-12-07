@@ -38,6 +38,7 @@
     "react-dom": "19.3.0-canary-fd524fe0-20251121",
     "sanitize.css": "13.0.0",
     "server-only": "0.0.1",
+    "string-dedent": "3.0.2",
     "ts-extras": "0.16.0"
   },
   "devDependencies": {

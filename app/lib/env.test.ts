@@ -40,6 +40,7 @@ describe("env", () => {
         UPSTASH_REDIS_REST_URL: string;
         UPSTASH_REDIS_REST_TOKEN: string;
         LAST_FM_API_KEY: string;
+        ANTHROPIC_API_KEY: string;
       }>();
     });
 
@@ -107,6 +108,22 @@ describe("env", () => {
 
     it("should throw when LAST_FM_API_KEY is missing", async () => {
       vi.stubEnv("LAST_FM_API_KEY", undefined);
+
+      await expect(import("./env")).rejects.toThrow(
+        "Invalid environment variables",
+      );
+    });
+
+    it("should throw when ANTHROPIC_API_KEY is missing", async () => {
+      vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+
+      await expect(import("./env")).rejects.toThrow(
+        "Invalid environment variables",
+      );
+    });
+
+    it("should throw when ANTHROPIC_API_KEY is empty", async () => {
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
 
       await expect(import("./env")).rejects.toThrow(
         "Invalid environment variables",

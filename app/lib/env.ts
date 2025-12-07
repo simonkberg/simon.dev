@@ -16,6 +16,7 @@ export const env = parseAndValidateEnv({
     .string()
     .min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
   LAST_FM_API_KEY: z.string().min(1, "LAST_FM_API_KEY is required"),
+  ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
 });
 
 export type Env = typeof env;

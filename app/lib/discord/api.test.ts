@@ -391,6 +391,68 @@ describe("postChannelMessage", () => {
     await postChannelMessage("Hello world", "TestUser" as Username);
   });
 
+  it("should return the message ID from Discord", async () => {
+    server.use(
+      http.post(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages`,
+        async ({ request }) => {
+          const body = (await request.json()) as { content: string };
+          expect(body.content).toBe("TestUser: Hello");
+          return HttpResponse.json({ id: "message-123" });
+        },
+      ),
+    );
+
+    const messageId = await postChannelMessage("Hello", "TestUser" as Username);
+
+    expect(messageId).toBe("message-123");
+  });
+
+  it("should include message_reference when replyToMessageId is provided", async () => {
+    server.use(
+      http.post(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages`,
+        async ({ request }) => {
+          const body = (await request.json()) as {
+            content: string;
+            message_reference?: { message_id: string };
+          };
+          expect(body.content).toBe("simon-bot: This is a reply");
+          expect(body.message_reference).toEqual({
+            message_id: "original-123",
+          });
+          return HttpResponse.json({ id: "reply-456" });
+        },
+      ),
+    );
+
+    const messageId = await postChannelMessage(
+      "This is a reply",
+      "simon-bot" as Username,
+      "original-123",
+    );
+
+    expect(messageId).toBe("reply-456");
+  });
+
+  it("should not include message_reference when replyToMessageId is undefined", async () => {
+    server.use(
+      http.post(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages`,
+        async ({ request }) => {
+          const body = (await request.json()) as {
+            content: string;
+            message_reference?: { message_id: string };
+          };
+          expect(body.message_reference).toBeUndefined();
+          return HttpResponse.json({ id: "msg-789" });
+        },
+      ),
+    );
+
+    await postChannelMessage("No reply", "TestUser" as Username);
+  });
+
   it.each([
     { status: 401, statusText: "Unauthorized" },
     { status: 403, statusText: "Forbidden" },
