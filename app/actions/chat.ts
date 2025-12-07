@@ -6,6 +6,7 @@ import { cacheLife } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { createMessage } from "@/lib/anthropic";
 import {
   getChannelMessages,
   type Message,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { getSession } from "@/lib/session";
+import { getSession, type Username } from "@/lib/session";
 
 export type ChatHistoryResult =
   | { status: "ok"; messages: Message[] }
@@ -31,6 +32,8 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
     return { status: "error", error: "Failed to fetch chat history" };
   }
 }
+
+const SIMON_BOT_TRIGGER = /\bsimon-bot\b/i;
 
 let rateLimiter: Ratelimit | undefined;
 
@@ -77,9 +80,39 @@ export async function postChatMessage(
       };
     }
 
-    await postChannelMessage(text, username);
+    const messageId = await postChannelMessage(text, username);
 
     log.info({ username, ip: request.ip, action: "postChatMessage" }, text);
+
+    // Check if bot should respond
+    if (SIMON_BOT_TRIGGER.test(text)) {
+      after(async () => {
+        try {
+          const botResponse = await createMessage(text);
+          await postChannelMessage(
+            botResponse,
+            "simon-bot" as Username,
+            messageId,
+          );
+          log.info(
+            { username, trigger: "simon-bot", action: "botResponse" },
+            botResponse,
+          );
+        } catch (err) {
+          log.error({ err, username, action: "botResponse" }, "Bot error");
+          await postChannelMessage(
+            "Sorry, I couldn't process that right now.",
+            "simon-bot" as Username,
+            messageId,
+          ).catch((postErr) => {
+            log.error(
+              { err: postErr, action: "botErrorReply" },
+              "Failed to post error reply",
+            );
+          });
+        }
+      });
+    }
 
     return { status: "ok" };
   } catch (err) {
