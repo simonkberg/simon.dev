@@ -121,5 +121,13 @@ describe("env", () => {
         "Invalid environment variables",
       );
     });
+
+    it("should throw when ANTHROPIC_API_KEY is empty", async () => {
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
+
+      await expect(import("./env")).rejects.toThrow(
+        "Invalid environment variables",
+      );
+    });
   });
 });
