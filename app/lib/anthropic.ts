@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = md`
 
   Respond in exactly one sentence using only simple inline markdown (bold,
   italic, code spans, links - no headings, lists, code blocks, or line breaks).
-  Do not capitalize you messages. Keep your responses light-hearted and fun.
+  Do not capitalize your messages. Keep your responses light-hearted and fun.
 `;
 
 const textContentBlockSchema = z.object({
