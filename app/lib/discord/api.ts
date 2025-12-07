@@ -210,12 +210,12 @@ export async function postChannelMessage(
   username: Username,
   replyToMessageId?: string,
 ): Promise<string> {
-  const body: { content: string; message_reference?: { message_id: string } } =
-    { content: `${username}: ${text}` };
-
-  if (replyToMessageId) {
-    body.message_reference = { message_id: replyToMessageId };
-  }
+  const body = {
+    content: `${username}: ${text}`,
+    message_reference: replyToMessageId
+      ? { message_id: replyToMessageId }
+      : undefined,
+  };
 
   const response = await call(
     "POST",

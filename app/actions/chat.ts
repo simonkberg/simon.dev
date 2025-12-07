@@ -33,7 +33,8 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
   }
 }
 
-const SIMON_BOT_TRIGGER = /\bsimon-bot\b/i;
+const BOT_USERNAME = "simon-bot" as Username;
+const SIMON_BOT_TRIGGER = new RegExp(`\\b${BOT_USERNAME}\\b`, "i");
 
 let rateLimiter: Ratelimit | undefined;
 
@@ -82,41 +83,44 @@ export async function postChatMessage(
 
     const messageId = await postChannelMessage(text, username);
 
-    log.info({ username, ip: request.ip, action: "postChatMessage" }, text);
+    log.info(
+      { username, messageId, ip: request.ip, action: "postChatMessage" },
+      text,
+    );
 
-    // Check if bot should respond
     if (SIMON_BOT_TRIGGER.test(text)) {
-      after(async () => {
-        try {
-          const botResponse = await createMessage(text);
-          await postChannelMessage(
-            botResponse,
-            "simon-bot" as Username,
-            messageId,
-          );
-          log.info(
-            { username, trigger: "simon-bot", action: "botResponse" },
-            botResponse,
-          );
-        } catch (err) {
-          log.error({ err, username, action: "botResponse" }, "Bot error");
-          await postChannelMessage(
-            "Sorry, I couldn't process that right now.",
-            "simon-bot" as Username,
-            messageId,
-          ).catch((postErr) => {
-            log.error(
-              { err: postErr, action: "botErrorReply" },
-              "Failed to post error reply",
-            );
-          });
-        }
-      });
+      after(botResponse(text, username, messageId));
     }
 
     return { status: "ok" };
   } catch (err) {
     log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };
+  }
+}
+
+async function botResponse(text: string, username: string, messageId: string) {
+  try {
+    const botResponse = await createMessage(text);
+    await postChannelMessage(botResponse, BOT_USERNAME, messageId);
+    log.info(
+      { username, trigger: "simon-bot", action: "botResponse" },
+      botResponse,
+    );
+  } catch (err) {
+    log.error({ err, username, action: "botResponse" }, "Bot error");
+
+    try {
+      await postChannelMessage(
+        "Sorry, I couldn't process that right now.",
+        BOT_USERNAME,
+        messageId,
+      );
+    } catch (postErr) {
+      log.error(
+        { err: postErr, action: "botErrorReply" },
+        "Failed to post error reply",
+      );
+    }
   }
 }
