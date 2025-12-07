@@ -203,14 +203,26 @@ export async function getChannelMessages(): Promise<Message[]> {
   return resolveReplies(messages);
 }
 
+const PostChannelMessageResponseSchema = z.object({ id: z.string() });
+
 export async function postChannelMessage(
   text: string,
   username: Username,
-): Promise<void> {
-  await call(
+  replyToMessageId?: string,
+): Promise<string> {
+  const body: { content: string; message_reference?: { message_id: string } } =
+    { content: `${username}: ${text}` };
+
+  if (replyToMessageId) {
+    body.message_reference = { message_id: replyToMessageId };
+  }
+
+  const response = await call(
     "POST",
     `channels/${env.DISCORD_CHANNEL_ID}/messages`,
-    z.unknown(),
-    { content: `${username}: ${text}` },
+    PostChannelMessageResponseSchema,
+    body,
   );
+
+  return response.id;
 }
