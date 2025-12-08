@@ -1,11 +1,32 @@
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 
+import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
 
 import { createMessage } from "./anthropic";
 
 vi.mock(import("server-only"), () => ({}));
+vi.mock(import("@/lib/discord/api"), () => ({ getChannelMessages: vi.fn() }));
+vi.mock(import("@/lib/wakaTime"), () => ({ getStats: vi.fn() }));
+vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    userGetRecentTracks: vi.fn(),
+    userGetTopTracks: vi.fn(),
+    userGetTopArtists: vi.fn(),
+    userGetTopAlbums: vi.fn(),
+  };
+});
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 
@@ -20,6 +41,16 @@ async function collectResponses(
 }
 
 describe("createMessage", () => {
+  let logDebugSpy: Mock<typeof log.debug>;
+
+  beforeEach(() => {
+    logDebugSpy = vi.spyOn(log, "debug");
+  });
+
+  afterEach(() => {
+    logDebugSpy.mockRestore();
+  });
+
   it("should create message and yield text content", async () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
