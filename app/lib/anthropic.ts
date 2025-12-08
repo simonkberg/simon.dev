@@ -4,6 +4,14 @@ import md from "string-dedent";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import {
+  type Period,
+  userGetRecentTracks,
+  userGetTopAlbums,
+  userGetTopArtists,
+  userGetTopTracks,
+} from "@/lib/lastfm";
+import { getStats } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5" as const;
@@ -111,6 +119,74 @@ const TOOLS = [
     },
   },
 ] as const;
+
+const LASTFM_USER = "magijo";
+const DEFAULT_LIMIT = 5;
+const MAX_LIMIT = 10;
+const DEFAULT_PERIOD: Period = "1month";
+
+function clampLimit(limit: unknown): number {
+  if (typeof limit !== "number") return DEFAULT_LIMIT;
+  return Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT);
+}
+
+function parsePeriod(period: unknown): Period {
+  const validPeriods: Period[] = [
+    "7day",
+    "1month",
+    "3month",
+    "6month",
+    "12month",
+    "overall",
+  ];
+  if (typeof period === "string" && validPeriods.includes(period as Period)) {
+    return period as Period;
+  }
+  return DEFAULT_PERIOD;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in Task 6
+async function executeTool(
+  name: string,
+  input: Record<string, unknown>,
+): Promise<string> {
+  try {
+    switch (name) {
+      case "get_wakatime_stats": {
+        const stats = await getStats();
+        return JSON.stringify(stats);
+      }
+      case "get_recent_tracks": {
+        const limit = clampLimit(input.limit);
+        const tracks = await userGetRecentTracks(LASTFM_USER, { limit });
+        return JSON.stringify(tracks);
+      }
+      case "get_top_tracks": {
+        const limit = clampLimit(input.limit);
+        const period = parsePeriod(input.period);
+        const tracks = await userGetTopTracks(LASTFM_USER, { period, limit });
+        return JSON.stringify(tracks);
+      }
+      case "get_top_artists": {
+        const limit = clampLimit(input.limit);
+        const period = parsePeriod(input.period);
+        const artists = await userGetTopArtists(LASTFM_USER, { period, limit });
+        return JSON.stringify(artists);
+      }
+      case "get_top_albums": {
+        const limit = clampLimit(input.limit);
+        const period = parsePeriod(input.period);
+        const albums = await userGetTopAlbums(LASTFM_USER, { period, limit });
+        return JSON.stringify(albums);
+      }
+      default:
+        return JSON.stringify({ error: `Unknown tool: ${name}` });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return JSON.stringify({ error: message });
+  }
+}
 
 export async function createMessage(userMessage: string): Promise<string> {
   const response = await fetch(BASE_URL, {
