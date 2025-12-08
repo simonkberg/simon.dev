@@ -63,14 +63,12 @@ const limitSchema = z
   .min(1)
   .max(MAX_LIMIT)
   .default(DEFAULT_LIMIT)
-  .describe(
-    `Number of items to return (1-${MAX_LIMIT}, default ${DEFAULT_LIMIT})`,
-  );
+  .describe("Number of items to return");
 
 const periodSchema = z
   .enum(periods)
   .default(DEFAULT_PERIOD)
-  .describe(`Time period (default: ${DEFAULT_PERIOD})`);
+  .describe("Time period");
 
 // Tool input schemas
 const wakatimeInputSchema = z.object({});
@@ -79,8 +77,14 @@ const topItemsInputSchema = z.object({
   period: periodSchema,
   limit: limitSchema,
 });
-
-const chatHistoryInputSchema = z.object({ limit: limitSchema });
+const chatHistoryInputSchema = z.object({
+  limit: z
+    .number()
+    .min(1)
+    .max(20)
+    .default(10)
+    .describe("Number of recent messages to retrieve from the chat"),
+});
 
 const TOOLS = [
   {
