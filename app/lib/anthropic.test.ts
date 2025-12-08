@@ -1,13 +1,5 @@
 import { http, HttpResponse } from "msw";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type Mock,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
@@ -41,14 +33,12 @@ async function collectResponses(
 }
 
 describe("createMessage", () => {
-  let logDebugSpy: Mock<typeof log.debug>;
-
   beforeEach(() => {
-    logDebugSpy = vi.spyOn(log, "debug");
+    vi.spyOn(log, "debug").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    logDebugSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it("should create message and yield text content", async () => {
