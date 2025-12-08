@@ -160,7 +160,9 @@ describe("createMessage", () => {
 
         if (callCount === 1) {
           // First call: Claude requests a tool
-          expect(body.messages).toHaveLength(1);
+          expect(body.messages).toMatchObject([
+            { role: "user", content: "what languages has simon been using?" },
+          ]);
           return HttpResponse.json({
             content: [
               { type: "text", text: "let me check..." },
@@ -176,17 +178,20 @@ describe("createMessage", () => {
         }
 
         // Second call: Claude receives tool result and responds
-        expect(body.messages).toHaveLength(3);
-        expect(body.messages[1]?.role).toBe("assistant");
-        expect(body.messages[2]?.role).toBe("user");
-
-        const toolResultMessage = body.messages[2]?.content as Array<{
-          type: string;
-          tool_use_id: string;
-          content: string;
-        }>;
-        expect(toolResultMessage[0]?.type).toBe("tool_result");
-        expect(toolResultMessage[0]?.tool_use_id).toBe("tool_123");
+        expect(body.messages).toMatchObject([
+          { role: "user", content: "what languages has simon been using?" },
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "let me check..." },
+              { type: "tool_use", id: "tool_123", name: "get_wakatime_stats" },
+            ],
+          },
+          {
+            role: "user",
+            content: [{ type: "tool_result", tool_use_id: "tool_123" }],
+          },
+        ]);
 
         return HttpResponse.json({
           content: [
