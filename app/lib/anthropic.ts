@@ -127,17 +127,7 @@ async function executeTool(
     switch (name) {
       case "get_chat_history": {
         const { limit } = chatHistoryInputSchema.parse(input);
-        const messages = await getChannelMessages(limit);
-        return JSON.stringify(
-          messages.map((msg) => ({
-            user: msg.user.name,
-            content: msg.content,
-            replies: msg.replies.map((r) => ({
-              user: r.user.name,
-              content: r.content,
-            })),
-          })),
-        );
+        return JSON.stringify(await getChannelMessages(limit));
       }
       case "get_wakatime_stats": {
         return JSON.stringify(await getStats());
