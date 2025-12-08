@@ -20,7 +20,8 @@ const SYSTEM_PROMPT = md`
   You are simon-bot, a friendly bot in the chat on simon.dev. You can answer
   questions about Simon using the tools available to you:
 
-  - Coding activity from WakaTime (languages and frameworks used in the last 7 days)
+  - Coding activity from WakaTime (languages and frameworks used in the last 7
+    days)
   - Music listening from Last.fm (recent tracks, top tracks/artists/albums)
 
   Respond in exactly one sentence using only simple inline markdown (bold,
@@ -37,7 +38,7 @@ const contentBlockSchema = z.discriminatedUnion("type", [
     type: z.literal("tool_use"),
     id: z.string(),
     name: z.string(),
-    input: z.record(z.unknown()),
+    input: z.record(z.string(), z.unknown()),
   }),
 ]);
 
@@ -46,7 +47,6 @@ const createMessageResponseSchema = z.object({
   stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in Task 6
 const TOOLS = [
   {
     name: "get_wakatime_stats",
@@ -150,7 +150,6 @@ function parsePeriod(period: unknown): Period {
   return DEFAULT_PERIOD;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in Task 6
 async function executeTool(
   name: string,
   input: Record<string, unknown>,
@@ -162,25 +161,25 @@ async function executeTool(
         return JSON.stringify(stats);
       }
       case "get_recent_tracks": {
-        const limit = clampLimit(input.limit);
+        const limit = clampLimit(input["limit"]);
         const tracks = await userGetRecentTracks(LASTFM_USER, { limit });
         return JSON.stringify(tracks);
       }
       case "get_top_tracks": {
-        const limit = clampLimit(input.limit);
-        const period = parsePeriod(input.period);
+        const limit = clampLimit(input["limit"]);
+        const period = parsePeriod(input["period"]);
         const tracks = await userGetTopTracks(LASTFM_USER, { period, limit });
         return JSON.stringify(tracks);
       }
       case "get_top_artists": {
-        const limit = clampLimit(input.limit);
-        const period = parsePeriod(input.period);
+        const limit = clampLimit(input["limit"]);
+        const period = parsePeriod(input["period"]);
         const artists = await userGetTopArtists(LASTFM_USER, { period, limit });
         return JSON.stringify(artists);
       }
       case "get_top_albums": {
-        const limit = clampLimit(input.limit);
-        const period = parsePeriod(input.period);
+        const limit = clampLimit(input["limit"]);
+        const period = parsePeriod(input["period"]);
         const albums = await userGetTopAlbums(LASTFM_USER, { period, limit });
         return JSON.stringify(albums);
       }
@@ -193,36 +192,84 @@ async function executeTool(
   }
 }
 
-export async function createMessage(userMessage: string): Promise<string> {
-  const response = await fetch(BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
-      tool_choice: { type: "none" },
-    }),
-    signal: AbortSignal.timeout(5000),
-  });
+type Message = {
+  role: "user" | "assistant";
+  content:
+    | string
+    | Array<
+        | { type: "text"; text: string }
+        | {
+            type: "tool_use";
+            id: string;
+            name: string;
+            input: Record<string, unknown>;
+          }
+        | { type: "tool_result"; tool_use_id: string; content: string }
+      >;
+};
 
-  if (!response.ok) {
-    throw new Error(
-      `Anthropic API error: ${response.status} ${response.statusText}`,
+export async function* createMessage(
+  userMessage: string,
+): AsyncGenerator<string, void, unknown> {
+  const messages: Message[] = [{ role: "user", content: userMessage }];
+
+  while (true) {
+    const response = await fetch(BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        system: SYSTEM_PROMPT,
+        messages,
+        tools: TOOLS,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Anthropic API error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const result = createMessageResponseSchema.parse(await response.json());
+
+    // Yield any text blocks
+    for (const block of result.content) {
+      if (block.type === "text") {
+        yield block.text;
+      }
+    }
+
+    // If not a tool use, we're done
+    if (result.stop_reason !== "tool_use") {
+      return;
+    }
+
+    // Extract tool use blocks and execute them
+    const toolUseBlocks = result.content.filter(
+      (block): block is Extract<typeof block, { type: "tool_use" }> =>
+        block.type === "tool_use",
     );
+
+    // Add assistant message with tool use
+    messages.push({ role: "assistant", content: result.content });
+
+    // Execute tools in parallel and collect results
+    const toolResults = await Promise.all(
+      toolUseBlocks.map(async (toolUse) => ({
+        type: "tool_result" as const,
+        tool_use_id: toolUse.id,
+        content: await executeTool(toolUse.name, toolUse.input),
+      })),
+    );
+
+    // Add tool results as user message
+    messages.push({ role: "user", content: toolResults });
   }
-
-  const { content } = createMessageResponseSchema.parse(await response.json());
-
-  const textBlock = content.find((block) => block.type === "text");
-  if (!textBlock?.text) {
-    throw new Error("No text content in response");
-  }
-
-  return textBlock.text;
 }
