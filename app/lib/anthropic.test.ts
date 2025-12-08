@@ -103,6 +103,51 @@ describe("createMessage", () => {
     expect(responses).toEqual([]);
   });
 
+  it("should filter out thinking blocks from assistant content", async () => {
+    let callCount = 0;
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        callCount++;
+        const body = (await request.json()) as {
+          messages: Array<{ role: string; content: unknown }>;
+        };
+
+        if (callCount === 1) {
+          return HttpResponse.json({
+            content: [
+              { type: "thinking" },
+              { type: "text", text: "let me check..." },
+              {
+                type: "tool_use",
+                id: "tool_123",
+                name: "get_wakatime_stats",
+                input: {},
+              },
+            ],
+            stop_reason: "tool_use",
+          });
+        }
+
+        // Verify thinking block was filtered from assistant message
+        expect(body.messages[1]?.content).toMatchObject([
+          { type: "text", text: "let me check..." },
+          { type: "tool_use", id: "tool_123", name: "get_wakatime_stats" },
+        ]);
+
+        return HttpResponse.json({
+          content: [{ type: "text", text: "done!" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(createMessage("Test"));
+
+    expect(responses).toEqual(["let me check...", "done!"]);
+    expect(callCount).toBe(2);
+  });
+
   it("should execute tools and yield results", async () => {
     let callCount = 0;
 
