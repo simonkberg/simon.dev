@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { env } from "@/lib/env";
 import {
-  type Period,
   periods,
   userGetRecentTracks,
   userGetTopAlbums,
@@ -51,7 +50,7 @@ const createMessageResponseSchema = z.object({
 const LASTFM_USER = "magijo";
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 10;
-const DEFAULT_PERIOD: Period = "1month";
+const DEFAULT_PERIOD = "1month" as const;
 
 // Shared tool input schemas
 const limitSchema = z
@@ -59,12 +58,14 @@ const limitSchema = z
   .min(1)
   .max(MAX_LIMIT)
   .default(DEFAULT_LIMIT)
-  .describe("Number of items to return (1-10, default 5)");
+  .describe(
+    `Number of items to return (1-${MAX_LIMIT}, default ${DEFAULT_LIMIT})`,
+  );
 
 const periodSchema = z
   .enum(periods)
   .default(DEFAULT_PERIOD)
-  .describe("Time period (default: 1month)");
+  .describe(`Time period (default: ${DEFAULT_PERIOD})`);
 
 // Tool input schemas
 const wakatimeInputSchema = z.object({});
@@ -112,35 +113,46 @@ async function executeTool(
   try {
     switch (name) {
       case "get_wakatime_stats": {
-        const stats = await getStats();
-        return JSON.stringify(stats);
+        return JSON.stringify(await getStats());
       }
       case "get_recent_tracks": {
-        const { limit } = recentTracksInputSchema.parse(input);
-        const tracks = await userGetRecentTracks(LASTFM_USER, { limit });
-        return JSON.stringify(tracks);
+        return JSON.stringify(
+          await userGetRecentTracks(
+            LASTFM_USER,
+            recentTracksInputSchema.parse(input),
+          ),
+        );
       }
       case "get_top_tracks": {
-        const { period, limit } = topItemsInputSchema.parse(input);
-        const tracks = await userGetTopTracks(LASTFM_USER, { period, limit });
-        return JSON.stringify(tracks);
+        return JSON.stringify(
+          await userGetTopTracks(LASTFM_USER, topItemsInputSchema.parse(input)),
+        );
       }
       case "get_top_artists": {
-        const { period, limit } = topItemsInputSchema.parse(input);
-        const artists = await userGetTopArtists(LASTFM_USER, { period, limit });
-        return JSON.stringify(artists);
+        return JSON.stringify(
+          await userGetTopArtists(
+            LASTFM_USER,
+            topItemsInputSchema.parse(input),
+          ),
+        );
       }
       case "get_top_albums": {
-        const { period, limit } = topItemsInputSchema.parse(input);
-        const albums = await userGetTopAlbums(LASTFM_USER, { period, limit });
-        return JSON.stringify(albums);
+        return JSON.stringify(
+          await userGetTopAlbums(LASTFM_USER, topItemsInputSchema.parse(input)),
+        );
       }
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return JSON.stringify({ error: message });
+    return JSON.stringify({
+      error:
+        err instanceof z.ZodError
+          ? z.prettifyError(err)
+          : err instanceof Error
+            ? err.message
+            : "Unknown error",
+    });
   }
 }
 
@@ -205,8 +217,7 @@ export async function* createMessage(
 
     // Extract tool use blocks and execute them
     const toolUseBlocks = result.content.filter(
-      (block): block is Extract<typeof block, { type: "tool_use" }> =>
-        block.type === "tool_use",
+      (block) => block.type === "tool_use",
     );
 
     // Add assistant message with tool use
