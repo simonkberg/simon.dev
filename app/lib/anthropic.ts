@@ -26,7 +26,7 @@ const SYSTEM_PROMPT = md`
   You have access to tools that can look up Simon's coding stats and music
   listening history, but honestly this is all information that's already on the
   site anyway, so you're still pretty useless. Use the tools when asked about
-  what Simon is coding or listening to.
+  what Simon is up to.
 
   Respond in exactly one sentence using only simple inline markdown (bold,
   italic, code spans, links - no headings, lists, code blocks, or line breaks).
@@ -53,103 +53,57 @@ const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 10;
 const DEFAULT_PERIOD: Period = "1month";
 
+// Shared tool input schemas
+const limitSchema = z
+  .number()
+  .min(1)
+  .max(MAX_LIMIT)
+  .default(DEFAULT_LIMIT)
+  .describe("Number of items to return (1-10, default 5)");
+
+const periodSchema = z
+  .enum(periods)
+  .default(DEFAULT_PERIOD)
+  .describe("Time period (default: 1month)");
+
+// Tool input schemas
+const wakatimeInputSchema = z.object({});
+const recentTracksInputSchema = z.object({ limit: limitSchema });
+const topItemsInputSchema = z.object({
+  period: periodSchema,
+  limit: limitSchema,
+});
+
 const TOOLS = [
   {
     name: "get_wakatime_stats",
     description:
       "Get Simon's coding activity for the last 7 days. Returns languages/frameworks with usage percentages.",
-    input_schema: { type: "object" as const, properties: {} },
+    input_schema: z.toJSONSchema(wakatimeInputSchema),
   },
   {
     name: "get_recent_tracks",
     description:
       "Get tracks Simon recently listened to on Last.fm. Includes now-playing status.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        limit: {
-          type: "number",
-          description: "Number of tracks to return (1-10, default 5)",
-        },
-      },
-    },
+    input_schema: z.toJSONSchema(recentTracksInputSchema),
   },
   {
     name: "get_top_tracks",
     description: "Get Simon's most played tracks on Last.fm for a time period.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        period: {
-          type: "string",
-          enum: periods,
-          description: "Time period (default: 1month)",
-        },
-        limit: {
-          type: "number",
-          description: "Number of tracks to return (1-10, default 5)",
-        },
-      },
-    },
+    input_schema: z.toJSONSchema(topItemsInputSchema),
   },
   {
     name: "get_top_artists",
     description:
       "Get Simon's most played artists on Last.fm for a time period.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        period: {
-          type: "string",
-          enum: periods,
-          description: "Time period (default: 1month)",
-        },
-        limit: {
-          type: "number",
-          description: "Number of artists to return (1-10, default 5)",
-        },
-      },
-    },
+    input_schema: z.toJSONSchema(topItemsInputSchema),
   },
   {
     name: "get_top_albums",
     description: "Get Simon's most played albums on Last.fm for a time period.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        period: {
-          type: "string",
-          enum: periods,
-          description: "Time period (default: 1month)",
-        },
-        limit: {
-          type: "number",
-          description: "Number of albums to return (1-10, default 5)",
-        },
-      },
-    },
+    input_schema: z.toJSONSchema(topItemsInputSchema),
   },
-] as const;
-
-function clampLimit(limit: unknown): number {
-  if (typeof limit !== "number") return DEFAULT_LIMIT;
-  return Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT);
-}
-
-function parsePeriod(period: unknown): Period {
-  const validPeriods: Period[] = [
-    "7day",
-    "1month",
-    "3month",
-    "6month",
-    "12month",
-    "overall",
-  ];
-  if (typeof period === "string" && validPeriods.includes(period as Period)) {
-    return period as Period;
-  }
-  return DEFAULT_PERIOD;
-}
+];
 
 async function executeTool(
   name: string,
@@ -162,25 +116,22 @@ async function executeTool(
         return JSON.stringify(stats);
       }
       case "get_recent_tracks": {
-        const limit = clampLimit(input["limit"]);
+        const { limit } = recentTracksInputSchema.parse(input);
         const tracks = await userGetRecentTracks(LASTFM_USER, { limit });
         return JSON.stringify(tracks);
       }
       case "get_top_tracks": {
-        const limit = clampLimit(input["limit"]);
-        const period = parsePeriod(input["period"]);
+        const { period, limit } = topItemsInputSchema.parse(input);
         const tracks = await userGetTopTracks(LASTFM_USER, { period, limit });
         return JSON.stringify(tracks);
       }
       case "get_top_artists": {
-        const limit = clampLimit(input["limit"]);
-        const period = parsePeriod(input["period"]);
+        const { period, limit } = topItemsInputSchema.parse(input);
         const artists = await userGetTopArtists(LASTFM_USER, { period, limit });
         return JSON.stringify(artists);
       }
       case "get_top_albums": {
-        const limit = clampLimit(input["limit"]);
-        const period = parsePeriod(input["period"]);
+        const { period, limit } = topItemsInputSchema.parse(input);
         const albums = await userGetTopAlbums(LASTFM_USER, { period, limit });
         return JSON.stringify(albums);
       }
