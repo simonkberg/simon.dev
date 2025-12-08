@@ -34,12 +34,16 @@ const SYSTEM_PROMPT = md`
 
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({ type: z.literal("thinking") }),
+  z.object({ type: z.literal("redacted_thinking") }),
   z.object({
     type: z.literal("tool_use"),
     id: z.string(),
     name: z.string(),
     input: z.record(z.string(), z.unknown()),
   }),
+  z.object({ type: z.literal("server_tool_use") }),
+  z.object({ type: z.literal("web_search_tool_result") }),
 ]);
 
 const createMessageResponseSchema = z.object({
@@ -215,13 +219,18 @@ export async function* createMessage(
       return;
     }
 
-    // Extract tool use blocks and execute them
-    const toolUseBlocks = result.content.filter(
+    // Extract text and tool_use blocks (filter out thinking, server_tool_use, etc.)
+    const assistantContent = result.content.filter(
+      (block) => block.type === "text" || block.type === "tool_use",
+    );
+
+    // Extract tool use blocks for execution
+    const toolUseBlocks = assistantContent.filter(
       (block) => block.type === "tool_use",
     );
 
-    // Add assistant message with tool use
-    messages.push({ role: "assistant", content: result.content });
+    // Add assistant message with filtered content
+    messages.push({ role: "assistant", content: assistantContent });
 
     // Execute tools in parallel and collect results
     const toolResults = await Promise.all(
