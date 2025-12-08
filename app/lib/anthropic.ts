@@ -3,6 +3,7 @@ import "server-only";
 import md from "string-dedent";
 import { z } from "zod";
 
+import { getChannelMessages } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
   periods,
@@ -79,7 +80,15 @@ const topItemsInputSchema = z.object({
   limit: limitSchema,
 });
 
+const chatHistoryInputSchema = z.object({ limit: limitSchema });
+
 const TOOLS = [
+  {
+    name: "get_chat_history",
+    description:
+      "Get recent messages from the chat. Use this to understand context from the conversation.",
+    input_schema: z.toJSONSchema(chatHistoryInputSchema),
+  },
   {
     name: "get_wakatime_stats",
     description:
@@ -116,6 +125,19 @@ async function executeTool(
 ): Promise<string> {
   try {
     switch (name) {
+      case "get_chat_history": {
+        const { limit } = chatHistoryInputSchema.parse(input);
+        const messages = await getChannelMessages();
+        const simplified = messages.slice(0, limit).map((msg) => ({
+          user: msg.user.name,
+          content: msg.content.replace(/<[^>]*>/g, ""), // Strip HTML
+          replies: msg.replies.map((r) => ({
+            user: r.user.name,
+            content: r.content.replace(/<[^>]*>/g, ""),
+          })),
+        }));
+        return JSON.stringify(simplified);
+      }
       case "get_wakatime_stats": {
         return JSON.stringify(await getStats());
       }
