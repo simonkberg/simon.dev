@@ -6,6 +6,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import {
   type Period,
+  periods,
   userGetRecentTracks,
   userGetTopAlbums,
   userGetTopArtists,
@@ -17,19 +18,19 @@ const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5" as const;
 const MAX_TOKENS = 500;
 const SYSTEM_PROMPT = md`
-  You are simon-bot, a friendly bot in the chat on simon.dev. You can answer
-  questions about Simon using the tools available to you:
+  You are simon-bot, a pointless bot that can reply to messages in the chat on
+  simon.dev whenever a user mentions you. You don't serve any real purpose, but
+  you are friendly and polite. You have a self-deprecating, slightly cynical
+  sense of humor about your own uselessness.
 
-  - Coding activity from WakaTime (languages and frameworks used in the last 7
-    days)
-  - Music listening from Last.fm (recent tracks, top tracks/artists/albums)
+  You have access to tools that can look up Simon's coding stats and music
+  listening history, but honestly this is all information that's already on the
+  site anyway, so you're still pretty useless. Use the tools when asked about
+  what Simon is coding or listening to.
 
   Respond in exactly one sentence using only simple inline markdown (bold,
   italic, code spans, links - no headings, lists, code blocks, or line breaks).
   Do not capitalize your messages. Keep your responses light-hearted and fun.
-
-  When using tools, you may send a brief acknowledgment first (e.g., "let me
-  check...") before providing results.
 `;
 
 const contentBlockSchema = z.discriminatedUnion("type", [
@@ -46,6 +47,11 @@ const createMessageResponseSchema = z.object({
   content: z.array(contentBlockSchema),
   stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
 });
+
+const LASTFM_USER = "magijo";
+const DEFAULT_LIMIT = 5;
+const MAX_LIMIT = 10;
+const DEFAULT_PERIOD: Period = "1month";
 
 const TOOLS = [
   {
@@ -76,7 +82,7 @@ const TOOLS = [
       properties: {
         period: {
           type: "string",
-          enum: ["7day", "1month", "3month", "6month", "12month", "overall"],
+          enum: periods,
           description: "Time period (default: 1month)",
         },
         limit: {
@@ -95,7 +101,7 @@ const TOOLS = [
       properties: {
         period: {
           type: "string",
-          enum: ["7day", "1month", "3month", "6month", "12month", "overall"],
+          enum: periods,
           description: "Time period (default: 1month)",
         },
         limit: {
@@ -113,7 +119,7 @@ const TOOLS = [
       properties: {
         period: {
           type: "string",
-          enum: ["7day", "1month", "3month", "6month", "12month", "overall"],
+          enum: periods,
           description: "Time period (default: 1month)",
         },
         limit: {
@@ -124,11 +130,6 @@ const TOOLS = [
     },
   },
 ] as const;
-
-const LASTFM_USER = "magijo";
-const DEFAULT_LIMIT = 5;
-const MAX_LIMIT = 10;
-const DEFAULT_PERIOD: Period = "1month";
 
 function clampLimit(limit: unknown): number {
   if (typeof limit !== "number") return DEFAULT_LIMIT;
