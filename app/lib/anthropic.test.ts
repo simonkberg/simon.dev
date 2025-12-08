@@ -9,29 +9,41 @@ vi.mock(import("server-only"), () => ({}));
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 
+async function collectResponses(
+  generator: AsyncGenerator<string, void, unknown>,
+): Promise<string[]> {
+  const results: string[] = [];
+  for await (const text of generator) {
+    results.push(text);
+  }
+  return results;
+}
+
 describe("createMessage", () => {
-  it("should create message and return text content", async () => {
+  it("should create message and yield text content", async () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
-        expect(await request.json()).toEqual({
+        const body = await request.json();
+        expect(body).toMatchObject({
           model: "claude-haiku-4-5",
-          max_tokens: 300,
+          max_tokens: 500,
           system: expect.stringContaining("simon-bot"),
           messages: [{ role: "user", content: "Hello, bot!" }],
-          tool_choice: { type: "none" },
         });
+        expect(body).toHaveProperty("tools");
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
         expect(request.headers.get("anthropic-version")).toBe("2023-06-01");
 
         return HttpResponse.json({
           content: [{ type: "text", text: "Hello! How can I help you?" }],
+          stop_reason: "end_turn",
         });
       }),
     );
 
-    const response = await createMessage("Hello, bot!");
+    const responses = await collectResponses(createMessage("Hello, bot!"));
 
-    expect(response).toBe("Hello! How can I help you?");
+    expect(responses).toEqual(["Hello! How can I help you?"]);
   });
 
   it("should configure fetch with 5 second timeout", async () => {
@@ -39,11 +51,14 @@ describe("createMessage", () => {
 
     server.use(
       http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({ content: [{ type: "text", text: "Response" }] }),
+        HttpResponse.json({
+          content: [{ type: "text", text: "Response" }],
+          stop_reason: "end_turn",
+        }),
       ),
     );
 
-    await createMessage("Test");
+    await collectResponses(createMessage("Test"));
 
     expect(timeoutSpy).toHaveBeenCalledWith(5000);
     timeoutSpy.mockRestore();
@@ -62,7 +77,7 @@ describe("createMessage", () => {
       ),
     );
 
-    await expect(createMessage("Test")).rejects.toThrow(
+    await expect(collectResponses(createMessage("Test"))).rejects.toThrow(
       `Anthropic API error: ${status} ${statusText}`,
     );
   });
@@ -74,30 +89,17 @@ describe("createMessage", () => {
       ),
     );
 
-    await expect(createMessage("Test")).rejects.toThrow();
+    await expect(collectResponses(createMessage("Test"))).rejects.toThrow();
   });
 
   it("should handle response with no content blocks", async () => {
     server.use(
-      http.post(ANTHROPIC_BASE_URL, () => HttpResponse.json({ content: [] })),
-    );
-
-    await expect(createMessage("Test")).rejects.toThrow(
-      "No text content in response",
-    );
-  });
-
-  it("should handle response with non-text content block", async () => {
-    server.use(
       http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
-          content: [{ type: "tool_use", id: "123", name: "test", input: {} }],
-        }),
+        HttpResponse.json({ content: [], stop_reason: "end_turn" }),
       ),
     );
 
-    await expect(createMessage("Test")).rejects.toThrow(
-      "No text content in response",
-    );
+    const responses = await collectResponses(createMessage("Test"));
+    expect(responses).toEqual([]);
   });
 });
