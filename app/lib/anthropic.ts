@@ -18,8 +18,19 @@ const SYSTEM_PROMPT = md`
   Do not capitalize your messages. Keep your responses light-hearted and fun.
 `;
 
+const contentBlockSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string() }),
+  z.object({
+    type: z.literal("tool_use"),
+    id: z.string(),
+    name: z.string(),
+    input: z.record(z.unknown()),
+  }),
+]);
+
 const createMessageResponseSchema = z.object({
-  content: z.array(z.object({ type: z.string(), text: z.string().optional() })),
+  content: z.array(contentBlockSchema),
+  stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
 });
 
 export async function createMessage(userMessage: string): Promise<string> {
