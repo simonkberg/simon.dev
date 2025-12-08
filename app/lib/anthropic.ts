@@ -12,6 +12,7 @@ import {
   userGetTopArtists,
   userGetTopTracks,
 } from "@/lib/lastfm";
+import { log } from "@/lib/log";
 import { getStats } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
@@ -198,8 +199,14 @@ export async function* createMessage(
   userMessage: string,
 ): AsyncGenerator<string, void, unknown> {
   const messages: Message[] = [{ role: "user", content: userMessage }];
+  let iteration = 0;
+
+  log.debug({ userMessage }, "simon-bot: starting message");
 
   while (true) {
+    iteration++;
+    log.debug({ iteration }, "simon-bot: API call");
+
     const response = await fetch(BASE_URL, {
       method: "POST",
       headers: {
@@ -225,6 +232,11 @@ export async function* createMessage(
 
     const result = createMessageResponseSchema.parse(await response.json());
 
+    log.debug(
+      { stopReason: result.stop_reason, blocks: result.content.length },
+      "simon-bot: response received",
+    );
+
     // Yield any text blocks
     for (const block of result.content) {
       if (block.type === "text") {
@@ -234,6 +246,7 @@ export async function* createMessage(
 
     // If not a tool use, we're done
     if (result.stop_reason !== "tool_use") {
+      log.debug({ iteration }, "simon-bot: completed");
       return;
     }
 
@@ -251,12 +264,22 @@ export async function* createMessage(
     messages.push({ role: "assistant", content: assistantContent });
 
     // Execute tools in parallel and collect results
+    const toolNames = toolUseBlocks.map((t) => t.name);
+    log.debug({ tools: toolNames }, "simon-bot: executing tools");
+
     const toolResults = await Promise.all(
-      toolUseBlocks.map(async (toolUse) => ({
-        type: "tool_result" as const,
-        tool_use_id: toolUse.id,
-        content: await executeTool(toolUse.name, toolUse.input),
-      })),
+      toolUseBlocks.map(async (toolUse) => {
+        const content = await executeTool(toolUse.name, toolUse.input);
+        log.debug(
+          { tool: toolUse.name, resultLength: content.length },
+          "simon-bot: tool executed",
+        );
+        return {
+          type: "tool_result" as const,
+          tool_use_id: toolUse.id,
+          content,
+        };
+      }),
     );
 
     // Add tool results as user message
