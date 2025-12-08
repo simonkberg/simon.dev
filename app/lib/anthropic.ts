@@ -127,16 +127,17 @@ async function executeTool(
     switch (name) {
       case "get_chat_history": {
         const { limit } = chatHistoryInputSchema.parse(input);
-        const messages = await getChannelMessages();
-        const simplified = messages.slice(0, limit).map((msg) => ({
-          user: msg.user.name,
-          content: msg.content.replace(/<[^>]*>/g, ""), // Strip HTML
-          replies: msg.replies.map((r) => ({
-            user: r.user.name,
-            content: r.content.replace(/<[^>]*>/g, ""),
+        const messages = await getChannelMessages(limit);
+        return JSON.stringify(
+          messages.map((msg) => ({
+            user: msg.user.name,
+            content: msg.content,
+            replies: msg.replies.map((r) => ({
+              user: r.user.name,
+              content: r.content,
+            })),
           })),
-        }));
-        return JSON.stringify(simplified);
+        );
       }
       case "get_wakatime_stats": {
         return JSON.stringify(await getStats());
