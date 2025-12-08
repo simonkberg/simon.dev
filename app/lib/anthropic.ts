@@ -96,7 +96,7 @@ const TOOLS = [
   {
     name: "get_wakatime_stats",
     description:
-      "Get Simon's coding activity for the last 7 days. Returns languages/frameworks with usage percentages.",
+      "Get Simon's coding activity for the last week. Returns languages with usage percentages.",
     input_schema: z.toJSONSchema(wakatimeInputSchema),
   },
   {
