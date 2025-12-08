@@ -103,7 +103,7 @@ describe("createMessage", () => {
     expect(responses).toEqual([]);
   });
 
-  it("should filter out thinking blocks from assistant content", async () => {
+  it("should preserve all content blocks in assistant message history", async () => {
     let callCount = 0;
 
     server.use(
@@ -129,8 +129,9 @@ describe("createMessage", () => {
           });
         }
 
-        // Verify thinking block was filtered from assistant message
+        // Verify all blocks are preserved in assistant message
         expect(body.messages[1]?.content).toMatchObject([
+          { type: "thinking" },
           { type: "text", text: "let me check..." },
           { type: "tool_use", id: "tool_123", name: "get_wakatime_stats" },
         ]);

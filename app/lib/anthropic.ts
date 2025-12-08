@@ -183,30 +183,18 @@ type Message = {
   role: "user" | "assistant";
   content:
     | string
-    | Array<
-        | { type: "text"; text: string }
-        | {
-            type: "tool_use";
-            id: string;
-            name: string;
-            input: Record<string, unknown>;
-          }
-        | { type: "tool_result"; tool_use_id: string; content: string }
-      >;
+    | Array<z.infer<typeof contentBlockSchema>>
+    | Array<{ type: "tool_result"; tool_use_id: string; content: string }>;
 };
 
 export async function* createMessage(
   userMessage: string,
 ): AsyncGenerator<string, void, unknown> {
   const messages: Message[] = [{ role: "user", content: userMessage }];
-  let iteration = 0;
 
-  log.debug({ userMessage }, "simon-bot: starting message");
+  log.debug({ message: userMessage }, "simon-bot received message");
 
   while (true) {
-    iteration++;
-    log.debug({ iteration }, "simon-bot: API call");
-
     const response = await fetch(BASE_URL, {
       method: "POST",
       headers: {
@@ -232,47 +220,38 @@ export async function* createMessage(
 
     const result = createMessageResponseSchema.parse(await response.json());
 
-    log.debug(
-      { stopReason: result.stop_reason, blocks: result.content.length },
-      "simon-bot: response received",
-    );
-
-    // Yield any text blocks
+    // Log and yield text blocks
     for (const block of result.content) {
       if (block.type === "text") {
+        log.debug({ text: block.text }, "simon-bot response");
         yield block.text;
       }
     }
 
     // If not a tool use, we're done
     if (result.stop_reason !== "tool_use") {
-      log.debug({ iteration }, "simon-bot: completed");
       return;
     }
 
-    // Extract text and tool_use blocks (filter out thinking, server_tool_use, etc.)
-    const assistantContent = result.content.filter(
-      (block) => block.type === "text" || block.type === "tool_use",
-    );
-
     // Extract tool use blocks for execution
-    const toolUseBlocks = assistantContent.filter(
+    const toolUseBlocks = result.content.filter(
       (block) => block.type === "tool_use",
     );
 
-    // Add assistant message with filtered content
-    messages.push({ role: "assistant", content: assistantContent });
+    // Add assistant message to history
+    messages.push({ role: "assistant", content: result.content });
 
     // Execute tools in parallel and collect results
-    const toolNames = toolUseBlocks.map((t) => t.name);
-    log.debug({ tools: toolNames }, "simon-bot: executing tools");
-
     const toolResults = await Promise.all(
       toolUseBlocks.map(async (toolUse) => {
+        log.debug(
+          { tool: toolUse.name, input: toolUse.input },
+          "simon-bot tool call",
+        );
         const content = await executeTool(toolUse.name, toolUse.input);
         log.debug(
-          { tool: toolUse.name, resultLength: content.length },
-          "simon-bot: tool executed",
+          { tool: toolUse.name, result: content },
+          "simon-bot tool result",
         );
         return {
           type: "tool_result" as const,
