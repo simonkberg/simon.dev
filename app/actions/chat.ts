@@ -101,26 +101,22 @@ export async function postChatMessage(
 
 async function botResponse(text: string, username: string, messageId: string) {
   try {
-    const botResponse = await createMessage(text);
-    await postChannelMessage(botResponse, BOT_USERNAME, messageId);
+    for await (const response of createMessage(text)) {
+      await postChannelMessage(response, BOT_USERNAME, messageId);
+    }
     log.info(
       { username, trigger: "simon-bot", action: "botResponse" },
-      botResponse,
+      "completed",
     );
   } catch (err) {
-    log.error({ err, username, action: "botResponse" }, "Bot error");
-
-    try {
-      await postChannelMessage(
-        "Sorry, I couldn't process that right now.",
-        BOT_USERNAME,
-        messageId,
-      );
-    } catch (postErr) {
-      log.error(
-        { err: postErr, action: "botErrorReply" },
-        "Failed to post error reply",
-      );
-    }
+    log.error(
+      { err, username, trigger: "simon-bot", action: "botResponse" },
+      "Failed to generate bot response",
+    );
+    await postChannelMessage(
+      "oops, something went wrong... try again later!",
+      BOT_USERNAME,
+      messageId,
+    );
   }
 }

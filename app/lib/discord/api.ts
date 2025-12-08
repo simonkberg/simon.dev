@@ -143,12 +143,12 @@ const messageIdComparator = comparing(
   stringComparator,
 );
 
-export async function getChannelMessages(): Promise<Message[]> {
+export async function getChannelMessages(limit = 50): Promise<Message[]> {
   const response = await call(
     "GET",
     `channels/${env.DISCORD_CHANNEL_ID}/messages`,
     GetMessagesResponseSchema,
-    { limit: 50 },
+    { limit },
   );
 
   const messages: Promise<Message>[] = [];
