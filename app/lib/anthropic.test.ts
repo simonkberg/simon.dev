@@ -102,4 +102,67 @@ describe("createMessage", () => {
     const responses = await collectResponses(createMessage("Test"));
     expect(responses).toEqual([]);
   });
+
+  it("should execute tools and yield results", async () => {
+    let callCount = 0;
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        callCount++;
+        const body = (await request.json()) as {
+          messages: Array<{ role: string; content: unknown }>;
+        };
+
+        if (callCount === 1) {
+          // First call: Claude requests a tool
+          expect(body.messages).toHaveLength(1);
+          return HttpResponse.json({
+            content: [
+              { type: "text", text: "let me check..." },
+              {
+                type: "tool_use",
+                id: "tool_123",
+                name: "get_wakatime_stats",
+                input: {},
+              },
+            ],
+            stop_reason: "tool_use",
+          });
+        }
+
+        // Second call: Claude receives tool result and responds
+        expect(body.messages).toHaveLength(3);
+        expect(body.messages[1]?.role).toBe("assistant");
+        expect(body.messages[2]?.role).toBe("user");
+
+        const toolResultMessage = body.messages[2]?.content as Array<{
+          type: string;
+          tool_use_id: string;
+          content: string;
+        }>;
+        expect(toolResultMessage[0]?.type).toBe("tool_result");
+        expect(toolResultMessage[0]?.tool_use_id).toBe("tool_123");
+
+        return HttpResponse.json({
+          content: [
+            {
+              type: "text",
+              text: "simon has been coding mostly in typescript!",
+            },
+          ],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(
+      createMessage("what languages has simon been using?"),
+    );
+
+    expect(responses).toEqual([
+      "let me check...",
+      "simon has been coding mostly in typescript!",
+    ]);
+    expect(callCount).toBe(2);
+  });
 });
