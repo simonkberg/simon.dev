@@ -18,6 +18,7 @@ import { getStats } from "@/lib/wakaTime";
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5" as const;
 const MAX_TOKENS = 500;
+const MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
   You are simon-bot, a pointless bot that can reply to messages in the chat on
   simon.dev whenever a user mentions you. You don't serve any real purpose, but
@@ -194,7 +195,7 @@ export async function* createMessage(
 
   log.debug({ message: userMessage }, "simon-bot received message");
 
-  while (true) {
+  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const response = await fetch(BASE_URL, {
       method: "POST",
       headers: {
@@ -264,4 +265,9 @@ export async function* createMessage(
     // Add tool results as user message
     messages.push({ role: "user", content: toolResults });
   }
+
+  log.warn(
+    { iterations: MAX_TOOL_ITERATIONS },
+    "simon-bot reached max tool iterations",
+  );
 }
