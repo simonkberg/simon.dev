@@ -269,7 +269,9 @@ describe("createMessage", () => {
 
     const responses = await collectResponses(createMessage("Test"));
 
-    expect(responses).toEqual([]);
+    expect(responses).toEqual([
+      "sorry, I got stuck in a loop and couldn't finish my thought...",
+    ]);
     expect(callCount).toBe(5);
     expect(warnSpy).toHaveBeenCalledWith(
       { iterations: 5 },
