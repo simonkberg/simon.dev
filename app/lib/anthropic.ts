@@ -270,4 +270,5 @@ export async function* createMessage(
     { iterations: MAX_TOOL_ITERATIONS },
     "simon-bot reached max tool iterations",
   );
+  yield "sorry, I got stuck in a loop and couldn't finish my thought...";
 }
