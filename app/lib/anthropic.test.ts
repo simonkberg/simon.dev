@@ -350,10 +350,11 @@ describe("createMessage", () => {
           }>;
         };
         const toolResult = body.messages[2]?.content[0];
-        const parsed = JSON.parse(toolResult?.content ?? "{}") as {
-          error: string;
-        };
-        expect(parsed.error).toContain("limit");
+        const parsed: unknown = JSON.parse(toolResult?.content ?? "{}");
+        expect(parsed).toHaveProperty("error");
+        expect(parsed).toMatchObject({
+          error: expect.stringContaining("limit"),
+        });
 
         return HttpResponse.json({
           content: [{ type: "text", text: "validation failed" }],
