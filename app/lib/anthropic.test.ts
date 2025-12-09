@@ -52,14 +52,20 @@ describe("createMessage", () => {
   it("should create message and yield text content", async () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
-        const body = await request.json();
-        expect(body).toMatchObject({
+        expect(await request.json()).toMatchObject({
           model: "claude-haiku-4-5",
           max_tokens: 500,
           system: expect.stringContaining("simon-bot"),
           messages: [{ role: "user", content: "Hello, bot!" }],
+          tools: [
+            { name: "get_chat_history" },
+            { name: "get_wakatime_stats" },
+            { name: "get_recent_tracks" },
+            { name: "get_top_tracks" },
+            { name: "get_top_artists" },
+            { name: "get_top_albums" },
+          ],
         });
-        expect(body).toHaveProperty("tools");
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
         expect(request.headers.get("anthropic-version")).toBe("2023-06-01");
 
@@ -138,32 +144,33 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
-        const body = (await request.json()) as {
-          messages: Array<{ role: string; content: unknown }>;
+
+        const thinkingBlock = { type: "thinking" };
+        const textBlock = { type: "text", text: "let me check..." };
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_123",
+          name: "get_wakatime_stats",
+          input: {},
         };
 
         if (callCount === 1) {
           return HttpResponse.json({
-            content: [
-              { type: "thinking" },
-              { type: "text", text: "let me check..." },
-              {
-                type: "tool_use",
-                id: "tool_123",
-                name: "get_wakatime_stats",
-                input: {},
-              },
-            ],
+            content: [thinkingBlock, textBlock, toolUse],
             stop_reason: "tool_use",
           });
         }
 
-        // Verify all blocks are preserved in assistant message
-        expect(body.messages[1]?.content).toMatchObject([
-          { type: "thinking" },
-          { type: "text", text: "let me check..." },
-          { type: "tool_use", id: "tool_123", name: "get_wakatime_stats" },
-        ]);
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            { role: "assistant", content: [thinkingBlock, textBlock, toolUse] },
+            {
+              role: "user",
+              content: [{ type: "tool_result", tool_use_id: toolUse.id }],
+            },
+          ],
+        });
 
         return HttpResponse.json({
           content: [{ type: "text", text: "done!" }],
@@ -184,44 +191,37 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
-        const body = (await request.json()) as {
-          messages: Array<{ role: string; content: unknown }>;
+
+        const textBlock = { type: "text", text: "let me check..." };
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_123",
+          name: "get_wakatime_stats",
+          input: {},
         };
 
         if (callCount === 1) {
-          // First call: Claude requests a tool
-          expect(body.messages).toMatchObject([
-            { role: "user", content: "what languages has simon been using?" },
-          ]);
-          return HttpResponse.json({
-            content: [
-              { type: "text", text: "let me check..." },
-              {
-                type: "tool_use",
-                id: "tool_123",
-                name: "get_wakatime_stats",
-                input: {},
-              },
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "what languages has simon been using?" },
             ],
+          });
+          return HttpResponse.json({
+            content: [textBlock, toolUse],
             stop_reason: "tool_use",
           });
         }
 
-        // Second call: Claude receives tool result and responds
-        expect(body.messages).toMatchObject([
-          { role: "user", content: "what languages has simon been using?" },
-          {
-            role: "assistant",
-            content: [
-              { type: "text", text: "let me check..." },
-              { type: "tool_use", id: "tool_123", name: "get_wakatime_stats" },
-            ],
-          },
-          {
-            role: "user",
-            content: [{ type: "tool_result", tool_use_id: "tool_123" }],
-          },
-        ]);
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "what languages has simon been using?" },
+            { role: "assistant", content: [textBlock, toolUse] },
+            {
+              role: "user",
+              content: [{ type: "tool_result", tool_use_id: toolUse.id }],
+            },
+          ],
+        });
 
         return HttpResponse.json({
           content: [
@@ -284,29 +284,37 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
 
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_1",
+          name: "unknown_tool",
+          input: {},
+        };
+
         if (callCount === 1) {
           return HttpResponse.json({
-            content: [
-              {
-                type: "tool_use",
-                id: "tool_1",
-                name: "unknown_tool",
-                input: {},
-              },
-            ],
+            content: [toolUse],
             stop_reason: "tool_use",
           });
         }
 
-        const body = (await request.json()) as {
-          messages: Array<{
-            role: string;
-            content: Array<{ type: string; content: string }>;
-          }>;
-        };
-        const toolResult = body.messages[2]?.content[0];
-        expect(JSON.parse(toolResult?.content ?? "{}")).toEqual({
-          error: "Unknown tool: unknown_tool",
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            { role: "assistant", content: [toolUse] },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: toolUse.id,
+                  content: JSON.stringify({
+                    error: "Unknown tool: unknown_tool",
+                  }),
+                },
+              ],
+            },
+          ],
         });
 
         return HttpResponse.json({
@@ -329,31 +337,35 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
 
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_1",
+          name: "get_recent_tracks",
+          input: { limit: 999 },
+        };
+
         if (callCount === 1) {
           return HttpResponse.json({
-            content: [
-              {
-                type: "tool_use",
-                id: "tool_1",
-                name: "get_recent_tracks",
-                input: { limit: 999 },
-              },
-            ],
+            content: [toolUse],
             stop_reason: "tool_use",
           });
         }
 
-        const body = (await request.json()) as {
-          messages: Array<{
-            role: string;
-            content: Array<{ type: string; content: string }>;
-          }>;
-        };
-        const toolResult = body.messages[2]?.content[0];
-        const parsed: unknown = JSON.parse(toolResult?.content ?? "{}");
-        expect(parsed).toHaveProperty("error");
-        expect(parsed).toMatchObject({
-          error: expect.stringContaining("limit"),
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            { role: "assistant", content: [toolUse] },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: toolUse.id,
+                  content: expect.stringContaining("limit"),
+                },
+              ],
+            },
+          ],
         });
 
         return HttpResponse.json({
@@ -370,8 +382,19 @@ describe("createMessage", () => {
   });
 
   it("should execute multiple tools in parallel", async () => {
-    vi.mocked(getStats).mockResolvedValue([]);
-    vi.mocked(userGetRecentTracks).mockResolvedValue([]);
+    const mockStats = [{ name: "TypeScript", percent: 80 }];
+    const mockTracks = [
+      {
+        name: "Track 1",
+        artist: "Artist 1",
+        album: "Album 1",
+        playedAt: undefined,
+        nowPlaying: false,
+        loved: false,
+      },
+    ];
+    vi.mocked(getStats).mockResolvedValue(mockStats);
+    vi.mocked(userGetRecentTracks).mockResolvedValue(mockTracks);
 
     let callCount = 0;
 
@@ -379,36 +402,50 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
 
+        const wakatimeToolUse = {
+          type: "tool_use",
+          id: "tool_1",
+          name: "get_wakatime_stats",
+          input: {},
+        };
+        const recentTracksToolUse = {
+          type: "tool_use",
+          id: "tool_2",
+          name: "get_recent_tracks",
+          input: { limit: 5 },
+        };
+
         if (callCount === 1) {
           return HttpResponse.json({
-            content: [
-              {
-                type: "tool_use",
-                id: "tool_1",
-                name: "get_wakatime_stats",
-                input: {},
-              },
-              {
-                type: "tool_use",
-                id: "tool_2",
-                name: "get_recent_tracks",
-                input: { limit: 5 },
-              },
-            ],
+            content: [wakatimeToolUse, recentTracksToolUse],
             stop_reason: "tool_use",
           });
         }
 
-        const body = (await request.json()) as {
-          messages: Array<{
-            role: string;
-            content: Array<{ type: string; tool_use_id: string }>;
-          }>;
-        };
-        const toolResults = body.messages[2]?.content;
-        expect(toolResults).toHaveLength(2);
-        expect(toolResults?.[0]?.tool_use_id).toBe("tool_1");
-        expect(toolResults?.[1]?.tool_use_id).toBe("tool_2");
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            {
+              role: "assistant",
+              content: [wakatimeToolUse, recentTracksToolUse],
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: wakatimeToolUse.id,
+                  content: JSON.stringify(mockStats),
+                },
+                {
+                  type: "tool_result",
+                  tool_use_id: recentTracksToolUse.id,
+                  content: JSON.stringify(mockTracks),
+                },
+              ],
+            },
+          ],
+        });
 
         return HttpResponse.json({
           content: [{ type: "text", text: "got both results" }],
@@ -451,29 +488,35 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
 
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_1",
+          name: "get_wakatime_stats",
+          input: {},
+        };
+
         if (callCount === 1) {
           return HttpResponse.json({
-            content: [
-              {
-                type: "tool_use",
-                id: "tool_1",
-                name: "get_wakatime_stats",
-                input: {},
-              },
-            ],
+            content: [toolUse],
             stop_reason: "tool_use",
           });
         }
 
-        const body = (await request.json()) as {
-          messages: Array<{
-            role: string;
-            content: Array<{ type: string; content: string }>;
-          }>;
-        };
-        const toolResult = body.messages[2]?.content[0];
-        expect(JSON.parse(toolResult?.content ?? "{}")).toEqual({
-          error: "Network failure",
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            { role: "assistant", content: [toolUse] },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: toolUse.id,
+                  content: JSON.stringify({ error: "Network failure" }),
+                },
+              ],
+            },
+          ],
         });
 
         return HttpResponse.json({
@@ -490,27 +533,60 @@ describe("createMessage", () => {
 
   describe("tool execution", () => {
     it("should call getChannelMessages for get_chat_history tool", async () => {
-      vi.mocked(getChannelMessages).mockResolvedValue([]);
+      const mockMessages = [
+        {
+          id: "1",
+          user: { name: "User1", color: "hsl(0 50% 50%)" as const },
+          content: "Hello",
+          edited: false,
+          replies: [],
+        },
+        {
+          id: "2",
+          user: { name: "User2", color: "hsl(120 50% 50%)" as const },
+          content: "World",
+          edited: false,
+          replies: [],
+        },
+      ];
+      vi.mocked(getChannelMessages).mockResolvedValue(mockMessages);
 
       let callCount = 0;
 
       server.use(
-        http.post(ANTHROPIC_BASE_URL, () => {
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
           callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_chat_history",
+            input: { limit: 5 },
+          };
 
           if (callCount === 1) {
             return HttpResponse.json({
-              content: [
-                {
-                  type: "tool_use",
-                  id: "tool_1",
-                  name: "get_chat_history",
-                  input: { limit: 5 },
-                },
-              ],
+              content: [toolUse],
               stop_reason: "tool_use",
             });
           }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockMessages),
+                  },
+                ],
+              },
+            ],
+          });
 
           return HttpResponse.json({
             content: [{ type: "text", text: "done" }],
@@ -525,27 +601,48 @@ describe("createMessage", () => {
     });
 
     it("should call userGetTopTracks for get_top_tracks tool", async () => {
-      vi.mocked(userGetTopTracks).mockResolvedValue([]);
+      const mockTracks = [
+        { name: "Track 1", artist: "Artist 1", playcount: 100, rank: 1 },
+        { name: "Track 2", artist: "Artist 2", playcount: 50, rank: 2 },
+      ];
+      vi.mocked(userGetTopTracks).mockResolvedValue(mockTracks);
 
       let callCount = 0;
 
       server.use(
-        http.post(ANTHROPIC_BASE_URL, () => {
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
           callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_top_tracks",
+            input: { period: "3month", limit: 10 },
+          };
 
           if (callCount === 1) {
             return HttpResponse.json({
-              content: [
-                {
-                  type: "tool_use",
-                  id: "tool_1",
-                  name: "get_top_tracks",
-                  input: { period: "3month", limit: 10 },
-                },
-              ],
+              content: [toolUse],
               stop_reason: "tool_use",
             });
           }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockTracks),
+                  },
+                ],
+              },
+            ],
+          });
 
           return HttpResponse.json({
             content: [{ type: "text", text: "done" }],
@@ -563,27 +660,48 @@ describe("createMessage", () => {
     });
 
     it("should call userGetTopArtists for get_top_artists tool", async () => {
-      vi.mocked(userGetTopArtists).mockResolvedValue([]);
+      const mockArtists = [
+        { name: "Artist 1", playcount: 200, rank: 1 },
+        { name: "Artist 2", playcount: 150, rank: 2 },
+      ];
+      vi.mocked(userGetTopArtists).mockResolvedValue(mockArtists);
 
       let callCount = 0;
 
       server.use(
-        http.post(ANTHROPIC_BASE_URL, () => {
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
           callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_top_artists",
+            input: { period: "6month", limit: 3 },
+          };
 
           if (callCount === 1) {
             return HttpResponse.json({
-              content: [
-                {
-                  type: "tool_use",
-                  id: "tool_1",
-                  name: "get_top_artists",
-                  input: { period: "6month", limit: 3 },
-                },
-              ],
+              content: [toolUse],
               stop_reason: "tool_use",
             });
           }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockArtists),
+                  },
+                ],
+              },
+            ],
+          });
 
           return HttpResponse.json({
             content: [{ type: "text", text: "done" }],
@@ -601,27 +719,48 @@ describe("createMessage", () => {
     });
 
     it("should call userGetTopAlbums for get_top_albums tool", async () => {
-      vi.mocked(userGetTopAlbums).mockResolvedValue([]);
+      const mockAlbums = [
+        { name: "Album 1", artist: "Artist 1", playcount: 80, rank: 1 },
+        { name: "Album 2", artist: "Artist 2", playcount: 60, rank: 2 },
+      ];
+      vi.mocked(userGetTopAlbums).mockResolvedValue(mockAlbums);
 
       let callCount = 0;
 
       server.use(
-        http.post(ANTHROPIC_BASE_URL, () => {
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
           callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_top_albums",
+            input: { period: "12month", limit: 7 },
+          };
 
           if (callCount === 1) {
             return HttpResponse.json({
-              content: [
-                {
-                  type: "tool_use",
-                  id: "tool_1",
-                  name: "get_top_albums",
-                  input: { period: "12month", limit: 7 },
-                },
-              ],
+              content: [toolUse],
               stop_reason: "tool_use",
             });
           }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockAlbums),
+                  },
+                ],
+              },
+            ],
+          });
 
           return HttpResponse.json({
             content: [{ type: "text", text: "done" }],
