@@ -779,8 +779,130 @@ describe("createMessage", () => {
       });
     });
 
-    it("should use default values when tool input is empty", async () => {
+    it("should call getStats for get_wakatime_stats tool", async () => {
+      const mockStats = [
+        { name: "TypeScript", percent: 80 },
+        { name: "JavaScript", percent: 15 },
+      ];
+      vi.mocked(getStats).mockResolvedValue(mockStats);
+
+      let callCount = 0;
+
+      server.use(
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+          callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_wakatime_stats",
+            input: {},
+          };
+
+          if (callCount === 1) {
+            return HttpResponse.json({
+              content: [toolUse],
+              stop_reason: "tool_use",
+            });
+          }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockStats),
+                  },
+                ],
+              },
+            ],
+          });
+
+          return HttpResponse.json({
+            content: [{ type: "text", text: "done" }],
+            stop_reason: "end_turn",
+          });
+        }),
+      );
+
+      await collectResponses(createMessage("Test"));
+
+      expect(getStats).toHaveBeenCalled();
+    });
+
+    it("should call userGetRecentTracks for get_recent_tracks tool", async () => {
+      const mockTracks = [
+        {
+          name: "Track 1",
+          artist: "Artist 1",
+          album: "Album 1",
+          playedAt: new Date("2025-01-01"),
+          nowPlaying: false,
+          loved: true,
+        },
+      ];
+      vi.mocked(userGetRecentTracks).mockResolvedValue(mockTracks);
+
+      let callCount = 0;
+
+      server.use(
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+          callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "get_recent_tracks",
+            input: { limit: 10 },
+          };
+
+          if (callCount === 1) {
+            return HttpResponse.json({
+              content: [toolUse],
+              stop_reason: "tool_use",
+            });
+          }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: "Test" },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockTracks),
+                  },
+                ],
+              },
+            ],
+          });
+
+          return HttpResponse.json({
+            content: [{ type: "text", text: "done" }],
+            stop_reason: "end_turn",
+          });
+        }),
+      );
+
+      await collectResponses(createMessage("Test"));
+
+      expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 10 });
+    });
+
+    it("should use default values when tool inputs are empty", async () => {
+      vi.mocked(getChannelMessages).mockResolvedValue([]);
+      vi.mocked(userGetRecentTracks).mockResolvedValue([]);
       vi.mocked(userGetTopTracks).mockResolvedValue([]);
+      vi.mocked(userGetTopArtists).mockResolvedValue([]);
+      vi.mocked(userGetTopAlbums).mockResolvedValue([]);
 
       let callCount = 0;
 
@@ -794,7 +916,31 @@ describe("createMessage", () => {
                 {
                   type: "tool_use",
                   id: "tool_1",
+                  name: "get_chat_history",
+                  input: {},
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_2",
+                  name: "get_recent_tracks",
+                  input: {},
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_3",
                   name: "get_top_tracks",
+                  input: {},
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_4",
+                  name: "get_top_artists",
+                  input: {},
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_5",
+                  name: "get_top_albums",
                   input: {},
                 },
               ],
@@ -811,7 +957,17 @@ describe("createMessage", () => {
 
       await collectResponses(createMessage("Test"));
 
+      expect(getChannelMessages).toHaveBeenCalledWith(10);
+      expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
       expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
+        period: "1month",
+        limit: 5,
+      });
+      expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
+        period: "1month",
+        limit: 5,
+      });
+      expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
         period: "1month",
         limit: 5,
       });
