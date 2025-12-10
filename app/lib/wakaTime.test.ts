@@ -25,6 +25,13 @@ describe("periods", () => {
 });
 
 describe("getStats", () => {
+  it("should throw for invalid period", async () => {
+    // @ts-expect-error - testing runtime validation
+    await expect(getStats("invalid_period")).rejects.toThrow(
+      "Invalid period: invalid_period",
+    );
+  });
+
   it("should fetch and parse WakaTime stats successfully", async () => {
     server.use(
       http.get(`${WAKATIME_BASE_URL}/${STATS_URLS.last_7_days}`, () =>

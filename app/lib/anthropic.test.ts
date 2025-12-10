@@ -536,6 +536,58 @@ describe("createMessage", () => {
     expect(responses).toEqual(["handled error"]);
   });
 
+  it("should handle tool throwing non-Error value", async () => {
+    vi.mocked(getStats).mockRejectedValue("string error");
+
+    let callCount = 0;
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        callCount++;
+
+        const toolUse = {
+          type: "tool_use",
+          id: "tool_1",
+          name: "get_wakatime_stats",
+          input: {},
+        };
+
+        if (callCount === 1) {
+          return HttpResponse.json({
+            content: [toolUse],
+            stop_reason: "tool_use",
+          });
+        }
+
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "Test" },
+            { role: "assistant", content: [toolUse] },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: toolUse.id,
+                  content: JSON.stringify({ error: "Unknown error" }),
+                },
+              ],
+            },
+          ],
+        });
+
+        return HttpResponse.json({
+          content: [{ type: "text", text: "handled unknown error" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(createMessage("Test"));
+
+    expect(responses).toEqual(["handled unknown error"]);
+  });
+
   describe("tool execution", () => {
     it("should call getChannelMessages for get_chat_history tool", async () => {
       const mockMessages = [
