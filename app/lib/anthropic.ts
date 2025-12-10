@@ -6,14 +6,14 @@ import { z } from "zod";
 import { getChannelMessages } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
-  periods,
+  periods as lastfmPeriods,
   userGetRecentTracks,
   userGetTopAlbums,
   userGetTopArtists,
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { getStats } from "@/lib/wakaTime";
+import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5" as const;
@@ -56,37 +56,24 @@ const createMessageResponseSchema = z.object({
 });
 
 const LASTFM_USER = "magijo";
-const DEFAULT_LIMIT = 5;
-const MAX_LIMIT = 10;
-const DEFAULT_PERIOD = "1month" as const;
-
-// Shared tool input schemas
-const limitSchema = z
-  .number()
-  .min(1)
-  .max(MAX_LIMIT)
-  .default(DEFAULT_LIMIT)
-  .describe("Number of items to return");
-
-const periodSchema = z
-  .enum(periods)
-  .default(DEFAULT_PERIOD)
-  .describe("Time period");
 
 // Tool input schemas
-const wakatimeInputSchema = z.object({});
-const recentTracksInputSchema = z.object({ limit: limitSchema });
-const topItemsInputSchema = z.object({
-  period: periodSchema,
-  limit: limitSchema,
-});
 const chatHistoryInputSchema = z.object({
-  limit: z
-    .number()
-    .min(1)
-    .max(20)
-    .default(10)
-    .describe("Number of recent messages to retrieve from the chat"),
+  limit: z.number().min(1).max(20).default(10).describe("Number of messages"),
+});
+const wakatimeInputSchema = z.object({
+  period: z
+    .enum(wakatimePeriods)
+    .default("last_30_days")
+    .describe("Time period"),
+  limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
+});
+const recentTracksInputSchema = z.object({
+  limit: z.number().min(1).max(20).default(5).describe("Number of tracks"),
+});
+const topItemsInputSchema = z.object({
+  period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
+  limit: z.number().min(1).max(20).default(10).describe("Number of items"),
 });
 
 const TOOLS = [
@@ -99,7 +86,7 @@ const TOOLS = [
   {
     name: "get_wakatime_stats",
     description:
-      "Get Simon's coding activity for the last week. Returns languages with usage percentages.",
+      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
     input_schema: z.toJSONSchema(wakatimeInputSchema),
   },
   {
@@ -137,7 +124,8 @@ async function executeTool(
         return JSON.stringify(await getChannelMessages(limit));
       }
       case "get_wakatime_stats": {
-        return JSON.stringify(await getStats());
+        const { period, limit } = wakatimeInputSchema.parse(input);
+        return JSON.stringify(await getStats(period, limit));
       }
       case "get_recent_tracks": {
         return JSON.stringify(
