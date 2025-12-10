@@ -64,7 +64,7 @@ const chatHistoryInputSchema = z.object({
 const wakatimeInputSchema = z.object({
   period: z
     .enum(wakatimePeriods)
-    .default("last_7_days")
+    .default("last_30_days")
     .describe("Time period"),
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });

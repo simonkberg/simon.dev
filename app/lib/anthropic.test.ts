@@ -1020,7 +1020,7 @@ describe("createMessage", () => {
       await collectResponses(createMessage("Test"));
 
       expect(getChannelMessages).toHaveBeenCalledWith(10);
-      expect(getStats).toHaveBeenCalledWith("last_7_days", 10);
+      expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
       expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
       expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
         period: "1month",
