@@ -32,9 +32,6 @@ export async function getStats(
   period: Period = DEFAULT_PERIOD,
   limit = 15,
 ): Promise<WakaTimeStats> {
-  if (!(period in STATS_URLS)) {
-    throw new Error(`Invalid period: ${period}`);
-  }
   const res = await fetch(`${BASE_URL}/${STATS_URLS[period]}`, {
     signal: AbortSignal.timeout(3000),
   });
