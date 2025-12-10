@@ -6,14 +6,14 @@ import { z } from "zod";
 import { getChannelMessages } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
-  periods,
+  periods as lastfmPeriods,
   userGetRecentTracks,
   userGetTopAlbums,
   userGetTopArtists,
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { getStats } from "@/lib/wakaTime";
+import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5" as const;
@@ -58,7 +58,8 @@ const createMessageResponseSchema = z.object({
 const LASTFM_USER = "magijo";
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 10;
-const DEFAULT_PERIOD = "1month" as const;
+const DEFAULT_LASTFM_PERIOD = "1month" as const;
+const DEFAULT_WAKATIME_PERIOD = "last_7_days" as const;
 
 // Shared tool input schemas
 const limitSchema = z
@@ -68,16 +69,24 @@ const limitSchema = z
   .default(DEFAULT_LIMIT)
   .describe("Number of items to return");
 
-const periodSchema = z
-  .enum(periods)
-  .default(DEFAULT_PERIOD)
+const lastfmPeriodSchema = z
+  .enum(lastfmPeriods)
+  .default(DEFAULT_LASTFM_PERIOD)
+  .describe("Time period");
+
+const wakatimePeriodSchema = z
+  .enum(wakatimePeriods)
+  .default(DEFAULT_WAKATIME_PERIOD)
   .describe("Time period");
 
 // Tool input schemas
-const wakatimeInputSchema = z.object({});
+const wakatimeInputSchema = z.object({
+  period: wakatimePeriodSchema,
+  limit: limitSchema,
+});
 const recentTracksInputSchema = z.object({ limit: limitSchema });
 const topItemsInputSchema = z.object({
-  period: periodSchema,
+  period: lastfmPeriodSchema,
   limit: limitSchema,
 });
 const chatHistoryInputSchema = z.object({
@@ -99,7 +108,7 @@ const TOOLS = [
   {
     name: "get_wakatime_stats",
     description:
-      "Get Simon's coding activity for the last week. Returns languages with usage percentages.",
+      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
     input_schema: z.toJSONSchema(wakatimeInputSchema),
   },
   {
@@ -137,7 +146,8 @@ async function executeTool(
         return JSON.stringify(await getChannelMessages(limit));
       }
       case "get_wakatime_stats": {
-        return JSON.stringify(await getStats());
+        const { period, limit } = wakatimeInputSchema.parse(input);
+        return JSON.stringify(await getStats(period, limit));
       }
       case "get_recent_tracks": {
         return JSON.stringify(
