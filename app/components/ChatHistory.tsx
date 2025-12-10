@@ -63,9 +63,6 @@ export const ChatHistory = ({ history }: ChatHistoryProps) => {
     const MAX_BACKOFF = 30000;
 
     const connect = () => {
-      if (eventSource) {
-        eventSource.close();
-      }
       eventSource = new EventSource("/api/chat/sse");
       eventSource.onopen = () => {
         reconnectAttempts = 0;
