@@ -56,46 +56,24 @@ const createMessageResponseSchema = z.object({
 });
 
 const LASTFM_USER = "magijo";
-const DEFAULT_LIMIT = 5;
-const MAX_LIMIT = 10;
-const DEFAULT_LASTFM_PERIOD = "1month" as const;
-const DEFAULT_WAKATIME_PERIOD = "last_7_days" as const;
-
-// Shared tool input schemas
-const limitSchema = z
-  .number()
-  .min(1)
-  .max(MAX_LIMIT)
-  .default(DEFAULT_LIMIT)
-  .describe("Number of items to return");
-
-const lastfmPeriodSchema = z
-  .enum(lastfmPeriods)
-  .default(DEFAULT_LASTFM_PERIOD)
-  .describe("Time period");
-
-const wakatimePeriodSchema = z
-  .enum(wakatimePeriods)
-  .default(DEFAULT_WAKATIME_PERIOD)
-  .describe("Time period");
 
 // Tool input schemas
-const wakatimeInputSchema = z.object({
-  period: wakatimePeriodSchema,
-  limit: limitSchema,
-});
-const recentTracksInputSchema = z.object({ limit: limitSchema });
-const topItemsInputSchema = z.object({
-  period: lastfmPeriodSchema,
-  limit: limitSchema,
-});
 const chatHistoryInputSchema = z.object({
-  limit: z
-    .number()
-    .min(1)
-    .max(20)
-    .default(10)
-    .describe("Number of recent messages to retrieve from the chat"),
+  limit: z.number().min(1).max(20).default(10).describe("Number of messages"),
+});
+const wakatimeInputSchema = z.object({
+  period: z
+    .enum(wakatimePeriods)
+    .default("last_7_days")
+    .describe("Time period"),
+  limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
+});
+const recentTracksInputSchema = z.object({
+  limit: z.number().min(1).max(20).default(5).describe("Number of tracks"),
+});
+const topItemsInputSchema = z.object({
+  period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
+  limit: z.number().min(1).max(20).default(10).describe("Number of items"),
 });
 
 const TOOLS = [

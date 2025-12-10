@@ -968,19 +968,19 @@ describe("createMessage", () => {
       await collectResponses(createMessage("Test"));
 
       expect(getChannelMessages).toHaveBeenCalledWith(10);
-      expect(getStats).toHaveBeenCalledWith("last_7_days", 5);
+      expect(getStats).toHaveBeenCalledWith("last_7_days", 10);
       expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
       expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
         period: "1month",
-        limit: 5,
+        limit: 10,
       });
       expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
         period: "1month",
-        limit: 5,
+        limit: 10,
       });
       expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
         period: "1month",
-        limit: 5,
+        limit: 10,
       });
     });
   });
