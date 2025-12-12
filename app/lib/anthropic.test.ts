@@ -32,6 +32,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 });
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
+const TEST_USERNAME = "test-user";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -59,7 +60,9 @@ describe("createMessage", () => {
           model: "claude-haiku-4-5",
           max_tokens: 500,
           system: expect.stringContaining("simon-bot"),
-          messages: [{ role: "user", content: "Hello, bot!" }],
+          messages: [
+            { role: "user", content: `${TEST_USERNAME}: Hello, bot!` },
+          ],
           tools: [
             { name: "get_chat_history" },
             { name: "get_wakatime_stats" },
@@ -79,7 +82,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Hello, bot!"));
+    const responses = await collectResponses(
+      createMessage("Hello, bot!", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["Hello! How can I help you?"]);
   });
@@ -96,7 +101,7 @@ describe("createMessage", () => {
       ),
     );
 
-    await collectResponses(createMessage("Test"));
+    await collectResponses(createMessage("Test", TEST_USERNAME));
 
     expect(timeoutSpy).toHaveBeenCalledWith(5000);
     timeoutSpy.mockRestore();
@@ -115,9 +120,9 @@ describe("createMessage", () => {
       ),
     );
 
-    await expect(collectResponses(createMessage("Test"))).rejects.toThrow(
-      `Anthropic API error: ${status} ${statusText}`,
-    );
+    await expect(
+      collectResponses(createMessage("Test", TEST_USERNAME)),
+    ).rejects.toThrow(`Anthropic API error: ${status} ${statusText}`);
   });
 
   it("should handle invalid response schema", async () => {
@@ -127,7 +132,9 @@ describe("createMessage", () => {
       ),
     );
 
-    await expect(collectResponses(createMessage("Test"))).rejects.toThrow();
+    await expect(
+      collectResponses(createMessage("Test", TEST_USERNAME)),
+    ).rejects.toThrow();
   });
 
   it("should handle response with no content blocks", async () => {
@@ -137,7 +144,9 @@ describe("createMessage", () => {
       ),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
     expect(responses).toEqual([]);
   });
 
@@ -166,7 +175,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             { role: "assistant", content: [thinkingBlock, textBlock, toolUse] },
             {
               role: "user",
@@ -182,7 +191,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["let me check...", "done!"]);
     expect(callCount).toBe(2);
@@ -206,7 +217,10 @@ describe("createMessage", () => {
         if (callCount === 1) {
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "what languages has simon been using?" },
+              {
+                role: "user",
+                content: `${TEST_USERNAME}: what languages has simon been using?`,
+              },
             ],
           });
           return HttpResponse.json({
@@ -217,7 +231,10 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "what languages has simon been using?" },
+            {
+              role: "user",
+              content: `${TEST_USERNAME}: what languages has simon been using?`,
+            },
             { role: "assistant", content: [textBlock, toolUse] },
             {
               role: "user",
@@ -239,7 +256,7 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("what languages has simon been using?"),
+      createMessage("what languages has simon been using?", TEST_USERNAME),
     );
 
     expect(responses).toEqual([
@@ -270,7 +287,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual([
       "sorry, I got stuck in a loop and couldn't finish my thought...",
@@ -305,7 +324,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             { role: "assistant", content: [toolUse] },
             {
               role: "user",
@@ -329,7 +348,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["handled unknown tool"]);
     expect(callCount).toBe(2);
@@ -358,7 +379,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             { role: "assistant", content: [toolUse] },
             {
               role: "user",
@@ -380,7 +401,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["validation failed"]);
     expect(callCount).toBe(2);
@@ -429,7 +452,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             {
               role: "assistant",
               content: [wakatimeToolUse, recentTracksToolUse],
@@ -459,7 +482,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["got both results"]);
     expect(getStats).toHaveBeenCalled();
@@ -479,7 +504,9 @@ describe("createMessage", () => {
       ),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["First part. ", "Second part."]);
   });
@@ -509,7 +536,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             { role: "assistant", content: [toolUse] },
             {
               role: "user",
@@ -531,7 +558,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["handled error"]);
   });
@@ -561,7 +590,7 @@ describe("createMessage", () => {
 
         expect(await request.json()).toMatchObject({
           messages: [
-            { role: "user", content: "Test" },
+            { role: "user", content: `${TEST_USERNAME}: Test` },
             { role: "assistant", content: [toolUse] },
             {
               role: "user",
@@ -583,7 +612,9 @@ describe("createMessage", () => {
       }),
     );
 
-    const responses = await collectResponses(createMessage("Test"));
+    const responses = await collectResponses(
+      createMessage("Test", TEST_USERNAME),
+    );
 
     expect(responses).toEqual(["handled unknown error"]);
   });
@@ -630,7 +661,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -652,7 +683,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(getChannelMessages).toHaveBeenCalledWith(5);
     });
@@ -686,7 +717,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -708,7 +739,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
         period: "3month",
@@ -745,7 +776,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -767,7 +798,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
         period: "6month",
@@ -804,7 +835,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -826,7 +857,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
         period: "12month",
@@ -863,7 +894,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -885,7 +916,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
     });
@@ -925,7 +956,7 @@ describe("createMessage", () => {
 
           expect(await request.json()).toMatchObject({
             messages: [
-              { role: "user", content: "Test" },
+              { role: "user", content: `${TEST_USERNAME}: Test` },
               { role: "assistant", content: [toolUse] },
               {
                 role: "user",
@@ -947,7 +978,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 10 });
     });
@@ -1017,7 +1048,7 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test"));
+      await collectResponses(createMessage("Test", TEST_USERNAME));
 
       expect(getChannelMessages).toHaveBeenCalledWith(10);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);

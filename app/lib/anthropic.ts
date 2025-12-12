@@ -181,8 +181,11 @@ type Message = {
 
 export async function* createMessage(
   userMessage: string,
+  username: string,
 ): AsyncGenerator<string, void, unknown> {
-  const messages: Message[] = [{ role: "user", content: userMessage }];
+  const messages: Message[] = [
+    { role: "user", content: `${username}: ${userMessage}` },
+  ];
 
   log.debug({ message: userMessage }, "simon-bot received message");
 
