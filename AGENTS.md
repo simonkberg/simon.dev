@@ -171,13 +171,13 @@ const DataTable = ({ data }: { data: Promise<Data> }) => {
 
 ### Server-Only Code
 
-Files that must not run on client import `"server-only"` at top (e.g., `discord/api.ts`, `discord/gateway.ts`, `session.ts`).
+Files that must not run on client import `"server-only"` at top (e.g., `app/lib/discord/api.ts`, `app/lib/discord/gateway.ts`, `app/lib/session.ts`).
 
 ## Testing
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts`, env vars in `mocks/env.ts`
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`
 
 ### Best Practices
 
