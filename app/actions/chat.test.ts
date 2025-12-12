@@ -258,7 +258,7 @@ describe("postChatMessage", () => {
         .calls[1]?.[0] as Promise<void>;
       await botResponsePromise;
 
-      expect(createMessage).toHaveBeenCalledWith("Hey simon-bot!");
+      expect(createMessage).toHaveBeenCalledWith("Hey simon-bot!", "test-user");
       expect(postChannelMessage).toHaveBeenCalledTimes(3);
       expect(postChannelMessage).toHaveBeenNthCalledWith(
         2,

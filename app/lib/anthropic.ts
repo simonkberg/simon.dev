@@ -32,6 +32,9 @@ const SYSTEM_PROMPT = md`
   already on the site anyway, so you're still pretty useless. Use the tools when
   asked about what Simon is up to.
 
+  Messages are formatted as "username: message" so you know who you're talking
+  to. Address users by their username when it feels natural.
+
   Respond in exactly one sentence. You can use simple inline markdown if it
   helps (bold, italic, code spans, links), but plain text is perfectly fine too.
   Do not use headings, lists, code blocks, or line breaks. Do not capitalize
@@ -181,8 +184,11 @@ type Message = {
 
 export async function* createMessage(
   userMessage: string,
+  username: string,
 ): AsyncGenerator<string, void, unknown> {
-  const messages: Message[] = [{ role: "user", content: userMessage }];
+  const messages: Message[] = [
+    { role: "user", content: `${username}: ${userMessage}` },
+  ];
 
   log.debug({ message: userMessage }, "simon-bot received message");
 
