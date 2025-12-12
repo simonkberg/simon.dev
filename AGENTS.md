@@ -15,33 +15,20 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 
 ## Development Commands
 
-### Essential Commands
-
 - `pnpm dev` - Start Next.js development server with Turbopack
-- `pnpm build` - Build production bundle (requires all environment variables to be set)
+- `pnpm build` - Build production bundle (requires all environment variables)
 - `pnpm start` - Start production server
-- `pnpm lint` - Run TypeScript, ESLint, and Prettier checks in parallel
+- `pnpm lint` - Run TypeScript, ESLint, and Prettier checks
 - `pnpm lint:fix` - Auto-fix ESLint and Prettier issues
-- `pnpm lint:eslint` - Run ESLint only
-- `pnpm lint:prettier` - Run Prettier check only
-- `pnpm lint:tsc` - Run TypeScript type checking (runs typegen first)
-- `pnpm test` - Run tests (watch mode only in interactive terminals; runs once and exits in non-TTY environments)
+- `pnpm test` - Run tests (auto-detects TTY; no `CI=true` prefix needed)
 - `pnpm test --coverage` - Run tests with coverage report
-
-### Testing
-
-- Tests are located alongside source files with `.test.ts` or `.test.tsx` extensions
-- Test files must be in the `app/` directory to be discovered
-- Uses happy-dom as the test environment
-
-**Note for AI agents:** Do not prefix test commands with `CI=true`. Vitest automatically detects non-TTY environments and runs once.
 
 ### MCP Tools
 
-MCP servers are configured in `.mcp.json`. Key guidance:
+MCP servers are configured in `.mcp.json`:
 
-- Use the ESLint MCP tools for linting instead of running `pnpm lint` directly
-- For Next.js questions or features, always consult the Next.js documentation via the `nextjs_docs` MCP tool
+- Use ESLint MCP tools for linting instead of `pnpm lint` directly
+- Consult Next.js documentation via the `nextjs_docs` MCP tool for Next.js questions
 
 ### Docker
 
@@ -49,213 +36,171 @@ MCP servers are configured in `.mcp.json`. Key guidance:
 - Run: `docker run -p 3000:3000 simon.dev`
 - Force clean build: `docker build --no-cache -t simon.dev .`
 
-**Notes:**
+BuildKit cache mounts are used for pnpm store and Next.js build cache. Build args are used for secrets since Railway doesn't support secret mounts.
 
-- BuildKit cache mounts are used for the pnpm store and Next.js build cache to speed up subsequent builds
-- Build args are used for build-time secrets since Railway doesn't support secret mounts
+## Directory Structure
+
+```
+app/                          # Next.js App Router (all source code)
+├── actions/                  # Server actions (chat, WakaTime, Last.fm)
+├── api/chat/sse/             # SSE endpoint for real-time chat updates
+├── assets/                   # Static assets (fonts, images)
+├── components/               # Shared React components (with co-located tests)
+├── health/                   # Health check endpoint for monitoring
+├── lib/                      # Utility libraries and core logic
+│   └── discord/              # Discord API and Gateway integration
+├── listening/[[...period]]/  # Listening stats page (optional catch-all)
+│   └── components/           # Route-specific components
+├── layout.tsx                # Root layout
+├── page.tsx                  # Home page
+├── global-error.tsx          # Global error boundary
+└── global-not-found.tsx      # Global 404 page
+
+mocks/                        # Test mocks (MSW handlers, env vars)
+```
+
+**Convention:** Route-specific components live in `{route}/components/` rather than `app/components/`.
+
+## Configuration
+
+### Path Aliases
+
+- `@/*` → `app/*`
+- `@/mocks/*` → `mocks/*`
+
+### Typed Routes
+
+`typedRoutes` is enabled for type-safe `<Link>` hrefs. For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
+
+### Environment Variables
+
+Validation via Zod in `app/lib/env.ts`. Required variables:
+
+| Variable                   | Description                                                      |
+| -------------------------- | ---------------------------------------------------------------- |
+| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev) |
+| `DISCORD_BOT_TOKEN`        | Discord bot token                                                |
+| `DISCORD_GUILD_ID`         | Discord guild ID                                                 |
+| `DISCORD_CHANNEL_ID`       | Discord channel ID                                               |
+| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                              |
+| `LAST_FM_API_KEY`          | Last.fm API key                                                  |
+| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                  |
+
+Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ## Architecture
 
-### Directory Structure
+### Discord Integration
 
-- `app/` - Next.js App Router structure (all source code lives here)
-    - `actions/` - Server actions for chat, WakaTime, and Last.fm integration
-    - `api/` - API routes (e.g., SSE endpoint for real-time chat updates)
-    - `components/` - Shared React components (co-located with tests)
-    - `lib/` - Utility libraries and core logic
-        - `discord/` - Discord API and Gateway integration
-    - `assets/` - Static assets (fonts, images)
-    - `listening/[[...period]]/` - Listening stats page (optional catch-all for period filter)
-        - `components/` - Route-specific components (PeriodSelector, TopTracksTable, etc.)
+- **REST API** (`app/lib/discord/api.ts`): Discord API v10 for reading/posting messages
+- **Gateway** (`app/lib/discord/gateway.ts`): WebSocket for real-time notifications with auto-reconnect and heartbeat
+- **SSE** (`app/api/chat/sse/route.ts`): Streams chat updates to clients
+- DataLoader with LRU cache (100 entries) batches user info requests
+- Messages from site use "username: content" prefix format for attribution
 
-**Note:** Route-specific components live in `{route}/components/` rather than the shared `app/components/` directory. This keeps related code colocated and makes it clear which components are page-specific vs shared.
+### WakaTime Integration
 
-### Key Technical Details
+- `app/lib/wakaTime.ts`: Fetches coding stats from public share URL (no API key)
+- 3-second timeout, period filtering (`last_7_days`, `last_30_days`, `last_year`, `all_time`)
 
-**Path Aliases:**
+### Last.fm Integration
 
-- `@/*` maps to `app/*` (configured in tsconfig.json)
+- `app/lib/lastfm.ts`: Wraps Last.fm Web Services API
+- Methods: `user.getRecentTracks`, `user.getTopTracks`, `user.getTopArtists`, `user.getTopAlbums`
+- 3-second timeout, period filtering (`7day`, `1month`, `3month`, `6month`, `12month`, `overall`)
 
-**Typed Routes:**
+### Anthropic Integration (simon-bot)
 
-- `typedRoutes` is enabled in `next.config.ts` for type-safe `<Link>` hrefs
-- For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`)
+- `app/lib/anthropic.ts`: Claude Haiku 4.5 for chat responses
+- Triggered by "simon-bot" mention (case-insensitive, word boundary: `/\bsimon[- ]?bot\b/i`)
+- 5-second timeout, runs async via Next.js `after()` to avoid blocking
+- Responses posted as threaded Discord replies
 
-**Environment Variables:**
-Environment validation is handled via custom Zod validation in `app/lib/env.ts`. Required variables:
+## Patterns
 
-- `SESSION_SECRET` - Session encryption secret (auto-defaults to "unsafe_dev_secret" in development)
-- `DISCORD_BOT_TOKEN` - Discord bot token for API authentication
-- `DISCORD_GUILD_ID` - Discord guild (server) ID
-- `DISCORD_CHANNEL_ID` - Discord channel ID for chat integration
-- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST API URL
-- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST API token
-- `LAST_FM_API_KEY` - Last.fm API key for fetching recently played tracks
-- `ANTHROPIC_API_KEY` - Anthropic API key for simon-bot chat responses
+### Server Actions
 
-Set `SKIP_ENV_VALIDATION=true` to allow builds without all environment variables (used in CI/Docker). Configure development environment variables in `.env.local` (per Next.js convention).
+All in `app/actions/`, marked with `"use server"`. Return discriminated unions:
 
-**Discord Integration Architecture:**
+```typescript
+type Result = { status: "ok"; data: T } | { status: "error"; error: string };
+```
 
-- Uses Discord REST API (v10) for reading and posting messages via `app/lib/discord/api.ts`
-- Uses Discord Gateway WebSocket for real-time message notifications via `app/lib/discord/gateway.ts`
-- DataLoader with LRU cache (100 entries) batches and caches user info requests
-- Supports infinitely nested message replies via recursive resolution
-- Messages posted from the site use "username: content" prefix format for attribution
-- Discord markdown is rendered using simple-markdown library
-- Server-Sent Events (SSE) endpoint at `/api/chat/sse` streams chat updates to clients
-- Gateway implements automatic reconnection with session resume support
-- Heartbeat mechanism maintains WebSocket connection health
+### Caching with `"use cache"`
 
-**WakaTime Integration Architecture:**
+Place `cacheLife()` conditionally—only one should execute per invocation:
 
-- Simple fetch function in `app/lib/wakaTime.ts` retrieves coding statistics
-- Uses public share URL (no API key required)
-- 3 second timeout on API requests
-- Returns language/framework usage percentages
-- Zod schema validation for response data
-
-**Last.fm Integration Architecture:**
-
-- Client implementation in `app/lib/lastfm.ts` wraps Last.fm Web Services API
-- Fetches recently played tracks via `user.getRecentTracks` method
-- Fetches top tracks/artists/albums via `user.getTopTracks`, `user.getTopArtists`, `user.getTopAlbums`
-- Supports pagination with `limit` and `page` parameters
-- Includes now playing status and loved track indicators
-- 3 second timeout on API requests
-- Track data includes artist, album, play time, and MusicBrainz IDs
-- Period filtering for top stats: `7day`, `1month`, `3month`, `6month`, `12month`, `overall`
-
-**Anthropic Integration Architecture (simon-bot):**
-
-- Simple fetch-based client in `app/lib/anthropic.ts` wraps Anthropic Messages API
-- Uses Claude Haiku 4.5 model for fast, lightweight responses
-- Triggered when chat messages contain "simon-bot" (case-insensitive, word boundary match)
-- Bot responses are posted as threaded Discord replies
-- Executed asynchronously via Next.js `after()` to avoid blocking user messages
-- 5 second timeout on API requests
-- System prompt constrains responses to single sentences with inline markdown only
-- Error handling posts user-friendly fallback message on failure
-
-**Caching with `"use cache"`:**
-
-- Server actions in `app/actions/lastfm.ts` use the `"use cache"` directive for data caching
-- Only one `cacheLife` call should execute per function invocation - use conditional placement
-- Cache duration should match data freshness requirements:
-    - `cacheLife("minutes")` for time-sensitive data (e.g., recent tracks that change frequently)
-    - `cacheLife("hours")` for aggregated or less time-sensitive data (e.g., top tracks/artists over a period)
-- Use `cacheLife("seconds")` in catch blocks to avoid caching errors for long periods
-- Example pattern:
-
-    ```typescript
-    export async function getData(): Promise<Result> {
-        "use cache";
-
-        try {
-            const data = await fetchData();
-            cacheLife("hours"); // Only executes on success
-            return { status: "ok", data };
-        } catch (error) {
-            cacheLife("seconds"); // Only executes on error
-            return { status: "error", error: "Failed to fetch" };
-        }
+```typescript
+export async function getData(): Promise<Result> {
+    "use cache";
+    try {
+        const data = await fetchData();
+        cacheLife("hours"); // Success: cache longer
+        return { status: "ok", data };
+    } catch {
+        cacheLife("seconds"); // Error: cache briefly
+        return { status: "error", error: "Failed" };
     }
-    ```
+}
+```
 
-**Session Management:**
+Use `"minutes"` for frequently-changing data (recent tracks), `"hours"` for aggregated data (top tracks).
 
-- Sessions use encrypted cookies via `app/lib/session.ts`
-- Random usernames are generated using `app/lib/randomName.ts`
-- Username-to-color mapping via `app/lib/stringToColor.ts` for consistent UI coloring
+### Promise Props with `use()` Hook
 
-**Rate Limiting:**
+Components accept `Promise<T>` props and unwrap with `use()`. Always wrap in `<Suspense>`:
 
-- Chat messages are rate-limited using Upstash Redis (5 messages per 30 seconds per IP)
-- Uses sliding window algorithm for accurate rate limiting
-- Lazy initialization pattern for the rate limiter singleton
-- Analytics and protection features enabled
-- Identifier extraction via `app/lib/identifiers.ts` (IP address and user agent)
+```tsx
+<Suspense fallback={<Loader />}>
+    <DataTable data={fetchData()} />
+</Suspense>;
 
-**React Compiler:**
+// Component
+const DataTable = ({ data }: { data: Promise<Data> }) => {
+    const result = use(data);
+    return <table>...</table>;
+};
+```
 
-- Enabled via `babel-plugin-react-compiler` in Next.js config
-- Components are automatically optimized at build time
+### Page Metadata
 
-**TypeScript Configuration:**
+- Root layout template: `%s - Simon Kjellberg`
+- Subpages only set `title: "PageName"`
+- `global-error.tsx` and `global-not-found.tsx` must set full titles manually (don't inherit template)
 
-- Extremely strict mode enabled (see tsconfig.json)
-- Notable strictness: `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`
-- `exactOptionalPropertyTypes` is disabled for better compatibility with optional fields and external libraries
-- Always use optional chaining and nullish coalescing when accessing arrays/objects
+### Server-Only Code
 
-**Testing Strategy:**
+Files that must not run on client import `"server-only"` at top (e.g., `discord/api.ts`, `discord/gateway.ts`, `session.ts`).
 
-- Tests are co-located with source files
-- Uses @testing-library/react for component tests
-- Snapshot tests are used for emoji parsing validation
-- happy-dom provides a lightweight DOM environment
-- MSW (Mock Service Worker) is used for mocking HTTP requests in tests
-    - MSW server is set up in `mocks/node.ts` and configured in `vitest.setup.ts`
-    - Handlers are automatically reset between tests
-    - Import server from `@/mocks/node` to add request handlers in tests
-    - Environment variables are mocked in `vitest.config.ts` using a `mockEnv` object
+## Testing
 
-**Testing Best Practices:**
+- **Environment:** happy-dom
+- **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
+- **Mocking:** MSW in `mocks/node.ts`, env vars in `mocks/env.ts`
 
-- **Type-safe mocks**: Always use `vi.mock(import("module"), ...)` syntax, never string-based mocks
-- **Type imports**: Use `import type { TypeName }` for types, avoid React UMD globals
-- **Avoid redundant tests**: Don't test element existence separately if interaction tests already verify it (e.g., a click test inherently verifies the button exists)
-- **Separate concerns**: Use separate `describe` blocks for different exports (e.g., metadata vs component)
-- **Testing async components with `use()` hook**: Wrap render in `await act(async () => render(...))` to ensure promises resolve before assertions:
-    ```typescript
-    it("should render data", async () => {
-      const result = { status: "ok", data: [...] };
-      await act(async () =>
-        render(<MyComponent data={Promise.resolve(result)} />),
-      );
-      expect(screen.getByRole("table")).toBeInTheDocument();
-    });
-    ```
-- **Testing components that import from `server-only` modules**: Mock the `server-only` package:
-    ```typescript
-    vi.mock("server-only", () => ({}));
-    ```
+### Best Practices
 
-## Common Patterns
+- **Type-safe mocks:** Use `vi.mock(import("module"), ...)`, never string-based
+- **Async components with `use()`:** Wrap render in `await act(async () => render(...))`
+- **Server-only modules:** Mock with `vi.mock("server-only", () => ({}))`
 
-**Page Layout and Metadata:**
+## TypeScript
 
-- Root layout (`app/layout.tsx`) defines metadata template: `%s - Simon Kjellberg`
-- Subpages only need to set `title: "PageName"` and the template adds the suffix
-- `Page` component accepts optional `section` prop for header display (`#!/Simon Kjellberg/Section`)
-- `global-error.tsx` and `global-not-found.tsx` don't inherit the layout template, so they must include the full title
+Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromIndexSignature`. Always use optional chaining when accessing arrays/objects.
 
-**Promise Props with `use()` Hook (React 19):**
+## Non-Obvious Patterns
 
-- Components can accept Promise props and unwrap them with the `use()` hook
-- This enables streaming: parent passes promise, child renders when resolved
-- Works in both Server and Client Components (only `async/await` is Server Component only)
-- Wrap in Suspense for loading states:
+### Zod v4 API
 
-    ```typescript
-    // Page passes promise
-    <Suspense fallback={<Loader />}>
-      <DataTable data={fetchData()} />
-    </Suspense>
+- **`.decode()` vs `.parse()`**: Use `.parse()` for untyped data, `.decode()` for typed inputs (compile-time checking)
+- **`z.templateLiteral()`**: Precise string format validation (e.g., HSL colors)
+- **`z.stringbool()`**: Env-style boolean coercion ("true"/"false"/"1"/"0")
 
-    // Component unwraps with use()
-    "use client";
-    const DataTable = ({ data }: { data: Promise<Data> }) => {
-      const result = use(data);
-      return <table>...</table>;
-    };
-    ```
+### `useTransition` Naming Collision
 
-**Server-Only Code:**
-Files that should never run on the client must import `"server-only"` at the top (e.g., `app/lib/discord/api.ts`, `app/lib/discord/gateway.ts`, `app/lib/session.ts`).
+`useTransition` in this codebase is from `@react-spring/web` for animations, NOT React's async transition hook. Check imports carefully.
 
-**Server Actions:**
-All server actions are in `app/actions/` and marked with `"use server"` directive. They return discriminated unions with `status: "ok" | "error"` for type-safe error handling.
+### Private Fields
 
-**Message Rendering:**
-Discord messages are rendered using the simple-markdown library to parse Discord's markdown syntax. Nested replies are visualized using box drawing characters (├ └) for thread structure.
+Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. Use `#` for new private fields.
