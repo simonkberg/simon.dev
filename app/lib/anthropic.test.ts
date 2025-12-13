@@ -83,10 +83,74 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Hello, bot!", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Hello, bot!" },
+      ]),
     );
 
     expect(responses).toEqual(["Hello! How can I help you?"]);
+  });
+
+  it("should accept array of chat messages", async () => {
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        const body = (await request.json()) as {
+          messages: Array<{ role: string; content: string }>;
+        };
+        expect(body).toMatchObject({
+          messages: [
+            { role: "user", content: "Alice: Hello" },
+            { role: "assistant", content: "Hi there!" },
+            { role: "user", content: "Bob: How are you?" },
+          ],
+        });
+        return HttpResponse.json({
+          content: [{ type: "text", text: "I'm good!" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: "Alice", content: "Hello" },
+        { role: "assistant", username: "simon-bot", content: "Hi there!" },
+        { role: "user", username: "Bob", content: "How are you?" },
+      ]),
+    );
+
+    expect(responses).toEqual(["I'm good!"]);
+  });
+
+  it("should not add prefix to assistant messages", async () => {
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        const body = (await request.json()) as {
+          messages: Array<{ role: string; content: string }>;
+        };
+        // Assistant message should NOT have "simon-bot: " prefix
+        expect(body.messages[1]).toEqual({
+          role: "assistant",
+          content: "Previous bot response",
+        });
+        return HttpResponse.json({
+          content: [{ type: "text", text: "Response" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    await collectResponses(
+      createMessage([
+        { role: "user", username: "User", content: "First" },
+        {
+          role: "assistant",
+          username: "simon-bot",
+          content: "Previous bot response",
+        },
+        { role: "user", username: "User", content: "Second" },
+      ]),
+    );
   });
 
   it("should configure fetch with 5 second timeout", async () => {
@@ -101,7 +165,11 @@ describe("createMessage", () => {
       ),
     );
 
-    await collectResponses(createMessage("Test", TEST_USERNAME));
+    await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
+    );
 
     expect(timeoutSpy).toHaveBeenCalledWith(5000);
     timeoutSpy.mockRestore();
@@ -121,7 +189,11 @@ describe("createMessage", () => {
     );
 
     await expect(
-      collectResponses(createMessage("Test", TEST_USERNAME)),
+      collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      ),
     ).rejects.toThrow(`Anthropic API error: ${status} ${statusText}`);
   });
 
@@ -133,7 +205,11 @@ describe("createMessage", () => {
     );
 
     await expect(
-      collectResponses(createMessage("Test", TEST_USERNAME)),
+      collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      ),
     ).rejects.toThrow();
   });
 
@@ -145,7 +221,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
     expect(responses).toEqual([]);
   });
@@ -192,7 +270,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["let me check...", "done!"]);
@@ -256,7 +336,13 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("what languages has simon been using?", TEST_USERNAME),
+      createMessage([
+        {
+          role: "user",
+          username: TEST_USERNAME,
+          content: "what languages has simon been using?",
+        },
+      ]),
     );
 
     expect(responses).toEqual([
@@ -288,7 +374,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual([
@@ -349,7 +437,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["handled unknown tool"]);
@@ -402,7 +492,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["validation failed"]);
@@ -483,7 +575,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["got both results"]);
@@ -505,7 +599,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["First part. ", "Second part."]);
@@ -559,7 +655,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["handled error"]);
@@ -613,7 +711,9 @@ describe("createMessage", () => {
     );
 
     const responses = await collectResponses(
-      createMessage("Test", TEST_USERNAME),
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
     );
 
     expect(responses).toEqual(["handled unknown error"]);
@@ -683,7 +783,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(getChannelMessages).toHaveBeenCalledWith(5);
     });
@@ -739,7 +843,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
         period: "3month",
@@ -798,7 +906,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
         period: "6month",
@@ -857,7 +969,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
         period: "12month",
@@ -916,7 +1032,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
     });
@@ -978,7 +1098,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 10 });
     });
@@ -1048,7 +1172,11 @@ describe("createMessage", () => {
         }),
       );
 
-      await collectResponses(createMessage("Test", TEST_USERNAME));
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
 
       expect(getChannelMessages).toHaveBeenCalledWith(10);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);

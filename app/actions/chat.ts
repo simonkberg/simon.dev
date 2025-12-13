@@ -101,7 +101,9 @@ export async function postChatMessage(
 
 async function botResponse(text: string, username: string, messageId: string) {
   try {
-    for await (const response of createMessage(text, username)) {
+    for await (const response of createMessage([
+      { role: "user", username, content: text },
+    ])) {
       await postChannelMessage(response, BOT_USERNAME, messageId);
     }
     log.info(
