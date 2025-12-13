@@ -24,15 +24,15 @@ export const viewport: Viewport = {
   themeColor: "black",
 };
 
-export default async function RootPage() {
+export default function RootPage() {
   const stats = getWakaTimeStats();
   const history = getChatHistory();
   const recentTracks = getRecentTracks();
 
   return (
     <Page>
-      <section>
-        <Heading level={2}>
+      <section aria-labelledby="about-heading">
+        <Heading level={2} id="about-heading">
           About <Subtitle>(Location: Stockholm, Sweden)</Subtitle>
         </Heading>
         <p>{config.description}</p>
@@ -45,8 +45,8 @@ export default async function RootPage() {
         </p>
       </section>
 
-      <section>
-        <Heading level={2}>
+      <section aria-labelledby="writing-heading">
+        <Heading level={2} id="writing-heading">
           Currently writing{" "}
           <Subtitle>
             (Via{" "}
@@ -61,8 +61,8 @@ export default async function RootPage() {
         </Suspense>
       </section>
 
-      <section>
-        <Heading level={2}>
+      <section aria-labelledby="listening-heading">
+        <Heading level={2} id="listening-heading">
           Currently listening to{" "}
           <Subtitle>
             (Via{" "}
@@ -80,8 +80,10 @@ export default async function RootPage() {
         </p>
       </section>
 
-      <section>
-        <Heading level={2}>Links</Heading>
+      <section aria-labelledby="links-heading">
+        <Heading level={2} id="links-heading">
+          Links
+        </Heading>
         <ul>
           {config.links.map((link) => (
             <li key={link.url}>
@@ -91,8 +93,10 @@ export default async function RootPage() {
         </ul>
       </section>
 
-      <section>
-        <Heading level={2}>Chat</Heading>
+      <section aria-labelledby="chat-heading">
+        <Heading level={2} id="chat-heading">
+          Chat
+        </Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
             <ChatHistory history={history} />

@@ -20,4 +20,13 @@ describe("Heading", () => {
     render(<Heading level={2}>Test Heading</Heading>);
     expect(screen.getByText("Test Heading")).toBeInTheDocument();
   });
+
+  it("renders with id when provided", () => {
+    render(
+      <Heading level={2} id="test-heading">
+        Test Heading
+      </Heading>,
+    );
+    expect(screen.getByRole("heading")).toHaveAttribute("id", "test-heading");
+  });
 });
