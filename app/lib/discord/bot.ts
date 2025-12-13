@@ -5,15 +5,23 @@ import { createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
 
-import {
-  BOT_USERNAME,
-  getMessageChain,
-  isBotMessage,
-  mentionsBot,
-  postChannelMessage,
-} from "./api";
+import type { Username } from "../session";
+import { getMessageChain, postChannelMessage } from "./api";
 import { subscribeToMessages } from "./gateway";
 import type { DiscordMessage } from "./schemas";
+
+// Bot identity
+const BOT_USERNAME = "simon-bot" as Username;
+const BOT_PREFIX = `${BOT_USERNAME}: `;
+const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
+
+function isBotMessage(content: string): boolean {
+  return content.startsWith(BOT_PREFIX);
+}
+
+function mentionsBot(content: string): boolean {
+  return BOT_MENTION_PATTERN.test(content);
+}
 
 const SEEN_PREFIX = "discord:seen:";
 const SEEN_TTL = 60;
@@ -46,7 +54,10 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     // Build conversation for Anthropic
     const messages = chain.map((m) => ({
-      role: m.isBot ? ("assistant" as const) : ("user" as const),
+      role:
+        m.username === BOT_USERNAME
+          ? ("assistant" as const)
+          : ("user" as const),
       username: m.username,
       content: m.content,
     }));

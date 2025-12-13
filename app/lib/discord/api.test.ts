@@ -5,15 +5,7 @@ import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { server } from "@/mocks/node";
 
-import {
-  BOT_PREFIX,
-  BOT_USERNAME,
-  getChannelMessages,
-  getMessageChain,
-  isBotMessage,
-  mentionsBot,
-  postChannelMessage,
-} from "./api";
+import { getChannelMessages, getMessageChain, postChannelMessage } from "./api";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -380,41 +372,6 @@ describe("getChannelMessages", () => {
   });
 });
 
-describe("bot constants", () => {
-  it("should export BOT_USERNAME", () => {
-    expect(BOT_USERNAME).toBe("simon-bot");
-  });
-
-  it("should export BOT_PREFIX", () => {
-    expect(BOT_PREFIX).toBe("simon-bot: ");
-  });
-
-  it("isBotMessage should return true for bot messages", () => {
-    expect(isBotMessage("simon-bot: hello")).toBe(true);
-    expect(isBotMessage("simon-bot: ")).toBe(true);
-  });
-
-  it("isBotMessage should return false for non-bot messages", () => {
-    expect(isBotMessage("hello simon-bot")).toBe(false);
-    expect(isBotMessage("user: hello")).toBe(false);
-    expect(isBotMessage("")).toBe(false);
-  });
-
-  it("mentionsBot should match various formats", () => {
-    expect(mentionsBot("hey simon-bot")).toBe(true);
-    expect(mentionsBot("hey simon bot")).toBe(true);
-    expect(mentionsBot("hey simonbot")).toBe(true);
-    expect(mentionsBot("SIMON-BOT help")).toBe(true);
-    expect(mentionsBot("Simon-Bot")).toBe(true);
-  });
-
-  it("mentionsBot should not match partial words", () => {
-    expect(mentionsBot("simonbotx")).toBe(false);
-    expect(mentionsBot("xsimon-bot")).toBe(false);
-    expect(mentionsBot("hello world")).toBe(false);
-  });
-});
-
 describe("getMessageChain", () => {
   it("should return single message when no parent", async () => {
     server.use(
@@ -481,7 +438,7 @@ describe("getMessageChain", () => {
     expect(chain.map((m) => m.content)).toEqual(["First", "Second", "Third"]);
   });
 
-  it("should handle bot messages in chain", async () => {
+  it("should parse bot messages like any other prefixed message", async () => {
     server.use(
       http.get(
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
@@ -513,10 +470,14 @@ describe("getMessageChain", () => {
     expect(chain).toHaveLength(2);
     expect(chain[0]).toMatchObject({
       id: "msg-1",
-      isBot: true,
       username: "simon-bot",
+      content: "Hello human",
     });
-    expect(chain[1]).toMatchObject({ id: "msg-2", isBot: false });
+    expect(chain[1]).toMatchObject({
+      id: "msg-2",
+      username: "User2",
+      content: "Thanks bot!",
+    });
   });
 
   it("should lookup username via API when no prefix", async () => {

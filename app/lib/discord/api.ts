@@ -13,19 +13,6 @@ import { stringToColor } from "@/lib/stringToColor";
 import type { Username } from "../session";
 import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
-// Bot constants
-export const BOT_USERNAME = "simon-bot" as Username;
-export const BOT_PREFIX = `${BOT_USERNAME}: `;
-const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
-
-export function isBotMessage(content: string): boolean {
-  return content.startsWith(BOT_PREFIX);
-}
-
-export function mentionsBot(content: string): boolean {
-  return BOT_MENTION_PATTERN.test(content);
-}
-
 const BASE_URL = "https://discord.com/api/v10";
 
 async function call<T extends z.ZodType>(
@@ -210,7 +197,6 @@ export type ChainMessage = {
   type: number;
   username: string;
   content: string;
-  isBot: boolean;
 };
 
 export async function getMessageChain(
@@ -226,35 +212,21 @@ export async function getMessageChain(
       DiscordMessageSchema,
     );
 
-    const isBot = isBotMessage(response.content);
-
     // Parse username from content prefix or lookup via API
     let username: string;
     let content: string;
 
-    if (isBot) {
-      username = BOT_USERNAME;
-      content = response.content.slice(BOT_PREFIX.length);
+    const match = response.content.match(/^(.+?): (.*)$/s);
+    if (match) {
+      username = match[1]!;
+      content = match[2]!.trim();
     } else {
-      const match = response.content.match(/^(.+?): (.*)$/s);
-      if (match) {
-        username = match[1]!;
-        content = match[2]!.trim();
-      } else {
-        const member = await getGuildMember(response.author.id);
-        username =
-          member.nick ?? member.user.global_name ?? member.user.username;
-        content = response.content.trim();
-      }
+      const member = await getGuildMember(response.author.id);
+      username = member.nick ?? member.user.global_name ?? member.user.username;
+      content = response.content.trim();
     }
 
-    chain.unshift({
-      id: response.id,
-      type: response.type,
-      username,
-      content,
-      isBot,
-    });
+    chain.unshift({ id: response.id, type: response.type, username, content });
 
     currentId = response.message_reference?.message_id;
   }
