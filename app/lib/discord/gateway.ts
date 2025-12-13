@@ -5,7 +5,7 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 
-import { isBotMessage } from "./api";
+import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
 const GatewayOpcode = {
   DISPATCH: 0,
@@ -42,16 +42,12 @@ const ReadyDataSchema = z.object({
 
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
 
-const MessageCreateEventDataSchema = z.object({
-  id: z.string(),
-  channel_id: z.string(),
-  content: z.string(),
-});
+export type MessageSubscriber = (message: DiscordMessage) => void;
 
 class DiscordGateway {
   #ws: WebSocket | null = null;
   #subscribers = new Set<() => void>();
-  #messageSubscribers = new Set<(messageId: string) => void>();
+  #messageSubscribers = new Set<MessageSubscriber>();
 
   // Session state (for resume)
   #sessionId: string | null = null;
@@ -89,18 +85,18 @@ class DiscordGateway {
     }
   }
 
-  addMessageSubscriber(callback: (messageId: string) => void): void {
+  addMessageSubscriber(callback: MessageSubscriber): void {
     this.#messageSubscribers.add(callback);
   }
 
-  removeMessageSubscriber(callback: (messageId: string) => void): void {
+  removeMessageSubscriber(callback: MessageSubscriber): void {
     this.#messageSubscribers.delete(callback);
   }
 
-  #notifyMessageSubscribers(messageId: string): void {
+  #notifyMessageSubscribers(message: DiscordMessage): void {
     for (const callback of this.#messageSubscribers) {
       try {
-        callback(messageId);
+        callback(message);
       } catch (err) {
         log.error({ err }, "Message subscriber callback error");
       }
@@ -284,18 +280,14 @@ class DiscordGateway {
         break;
 
       case "MESSAGE_CREATE": {
-        const parsed = MessageCreateEventDataSchema.safeParse(data);
+        const parsed = DiscordMessageSchema.safeParse(data);
         if (
           parsed.success &&
           parsed.data.channel_id === env.DISCORD_CHANNEL_ID
         ) {
           log.debug({ event: eventName }, "Message event for our channel");
           this.#notifySubscribers();
-
-          // Notify message subscribers (skip bot's own messages)
-          if (!isBotMessage(parsed.data.content)) {
-            this.#notifyMessageSubscribers(parsed.data.id);
-          }
+          this.#notifyMessageSubscribers(parsed.data);
         }
         break;
       }
@@ -371,7 +363,7 @@ export async function subscribe(callback: () => void): Promise<() => void> {
 }
 
 export async function subscribeToMessages(
-  callback: (messageId: string) => void,
+  callback: MessageSubscriber,
 ): Promise<() => void> {
   const gw = getGateway();
   gw.addMessageSubscriber(callback);

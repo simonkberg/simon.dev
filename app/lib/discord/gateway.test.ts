@@ -278,9 +278,12 @@ describe("subscribe", () => {
       createPayload(
         GatewayOpcode.DISPATCH,
         {
+          type: 0,
           id: "msg-test",
           channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
           content: "test message",
+          edited_timestamp: null,
         },
         2,
         "MESSAGE_CREATE",
@@ -328,9 +331,12 @@ describe("subscribe", () => {
       createPayload(
         GatewayOpcode.DISPATCH,
         {
+          type: 0,
           id: "msg-1",
           channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
           content: "first",
+          edited_timestamp: null,
         },
         2,
         "MESSAGE_CREATE",
@@ -347,9 +353,12 @@ describe("subscribe", () => {
       createPayload(
         GatewayOpcode.DISPATCH,
         {
+          type: 0,
           id: "msg-2",
           channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
           content: "second",
+          edited_timestamp: null,
         },
         3,
         "MESSAGE_CREATE",
@@ -600,7 +609,7 @@ describe("subscribe", () => {
   });
 
   describe("subscribeToMessages", () => {
-    it("should notify message subscribers with message ID on MESSAGE_CREATE", async () => {
+    it("should notify message subscribers with full message on MESSAGE_CREATE", async () => {
       const { subscribeToMessages } = await import("./gateway");
       server.use(createHandshakeHandler());
 
@@ -614,9 +623,12 @@ describe("subscribe", () => {
         createPayload(
           GatewayOpcode.DISPATCH,
           {
+            type: 0,
             id: "msg-123",
             channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
             content: "hello world",
+            edited_timestamp: null,
           },
           2,
           "MESSAGE_CREATE",
@@ -626,36 +638,16 @@ describe("subscribe", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith("msg-123");
-    });
-
-    it("should not notify message subscribers for bot's own messages", async () => {
-      const { subscribeToMessages } = await import("./gateway");
-      server.use(createHandshakeHandler());
-
-      const callback = vi.fn();
-      await subscribeToMessages(callback);
-
-      // Send MESSAGE_CREATE from the bot itself
-      getLastClient(gateway.clients)?.send(
-        createPayload(
-          GatewayOpcode.DISPATCH,
-          {
-            id: "msg-456",
-            channel_id: "test-discord-channel-id",
-            content: "simon-bot: I am the bot",
-          },
-          2,
-          "MESSAGE_CREATE",
-        ),
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "msg-123",
+          type: 0,
+          content: "hello world",
+        }),
       );
-
-      await vi.advanceTimersByTimeAsync(0);
-
-      expect(callback).not.toHaveBeenCalled();
     });
 
-    it("should still notify refresh subscribers (without message ID)", async () => {
+    it("should notify both refresh and message subscribers", async () => {
       const { subscribe, subscribeToMessages } = await import("./gateway");
       server.use(createHandshakeHandler());
 
@@ -669,9 +661,12 @@ describe("subscribe", () => {
         createPayload(
           GatewayOpcode.DISPATCH,
           {
+            type: 0,
             id: "msg-789",
             channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
             content: "hello",
+            edited_timestamp: null,
           },
           2,
           "MESSAGE_CREATE",
@@ -684,9 +679,11 @@ describe("subscribe", () => {
       expect(refreshCallback).toHaveBeenCalledTimes(1);
       expect(refreshCallback).toHaveBeenCalledWith();
 
-      // Message callback called with ID
+      // Message callback called with full message
       expect(messageCallback).toHaveBeenCalledTimes(1);
-      expect(messageCallback).toHaveBeenCalledWith("msg-789");
+      expect(messageCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "msg-789" }),
+      );
     });
 
     it("should stop notifying after unsubscribe", async () => {
@@ -701,9 +698,12 @@ describe("subscribe", () => {
         createPayload(
           GatewayOpcode.DISPATCH,
           {
+            type: 0,
             id: "msg-1",
             channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
             content: "first",
+            edited_timestamp: null,
           },
           2,
           "MESSAGE_CREATE",
@@ -718,9 +718,12 @@ describe("subscribe", () => {
         createPayload(
           GatewayOpcode.DISPATCH,
           {
+            type: 0,
             id: "msg-2",
             channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
             content: "second",
+            edited_timestamp: null,
           },
           3,
           "MESSAGE_CREATE",

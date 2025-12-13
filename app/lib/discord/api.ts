@@ -11,6 +11,7 @@ import { LruMap } from "@/lib/LruMap";
 import { stringToColor } from "@/lib/stringToColor";
 
 import type { Username } from "../session";
+import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
 // Bot constants
 export const BOT_USERNAME = "simon-bot" as Username;
@@ -124,17 +125,6 @@ const userLoader = new DataLoader<string, User>(
     ),
   { cacheMap: new LruMap(100) },
 );
-
-const DiscordMessageSchema = z.object({
-  type: z.number(),
-  id: z.string(),
-  author: z.object({ id: z.string() }),
-  content: z.string(),
-  edited_timestamp: z.string().nullable(),
-  message_reference: z.object({ message_id: z.string().optional() }).optional(),
-});
-
-type DiscordMessage = z.infer<typeof DiscordMessageSchema>;
 
 const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/mocks/node";
 
+import type { DiscordMessage } from "./schemas";
+
 const setMock = vi.fn();
 
 vi.mock(import("server-only"), () => ({}));
@@ -29,6 +31,20 @@ vi.mock(import("@/lib/log"), async (importOriginal) => {
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 
+function createMessage(
+  overrides: Partial<DiscordMessage> = {},
+): DiscordMessage {
+  return {
+    type: 0,
+    id: "msg-1",
+    channel_id: "test-channel",
+    author: { id: "user1" },
+    content: "User1: hello",
+    edited_timestamp: null,
+    ...overrides,
+  };
+}
+
 describe("handleMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +59,7 @@ describe("handleMessage", () => {
     let postCalled = false;
 
     server.use(
-      // getMessage for msg-1
+      // getMessageChain fetches the message
       http.get(
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
@@ -75,7 +91,7 @@ describe("handleMessage", () => {
     );
 
     const { handleMessage } = await import("./bot");
-    await handleMessage("msg-1");
+    await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
 
     expect(postCalled).toBe(true);
   });
@@ -103,7 +119,7 @@ describe("handleMessage", () => {
     );
 
     const { handleMessage } = await import("./bot");
-    await handleMessage("msg-1");
+    await handleMessage(createMessage({ content: "User1: hello world" }));
 
     expect(postCalled).toBe(false);
   });
@@ -149,7 +165,15 @@ describe("handleMessage", () => {
     );
 
     const { handleMessage } = await import("./bot");
-    await handleMessage("msg-2");
+    await handleMessage(
+      createMessage({
+        type: 19,
+        id: "msg-2",
+        author: { id: "user2" },
+        content: "User2: thanks!",
+        message_reference: { message_id: "msg-1" },
+      }),
+    );
 
     expect(postCalled).toBe(true);
   });
@@ -175,38 +199,31 @@ describe("handleMessage", () => {
     );
 
     const { handleMessage } = await import("./bot");
-    await handleMessage("msg-1");
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(getMessageCalled).toBe(false);
   });
 
   it("should ignore non-standard message types", async () => {
-    setMock.mockResolvedValue("OK");
-    let postCalled = false;
-
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          // type 7 = guild member join
-          HttpResponse.json({
-            type: 7,
-            id: "msg-1",
-            author: { id: "user1" },
-            content: "User1: hey simon-bot!",
-            edited_timestamp: null,
-          }),
-      ),
-      http.post(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
-        postCalled = true;
-        return HttpResponse.json({ id: "x" });
+    // Type check happens FIRST, before dedup or API calls
+    const { handleMessage } = await import("./bot");
+    await handleMessage(
+      createMessage({
+        type: 7, // guild member join
+        content: "User1: hey simon-bot!",
       }),
     );
 
-    const { handleMessage } = await import("./bot");
-    await handleMessage("msg-1");
+    // setMock should NOT be called - we exit early on type check
+    expect(setMock).not.toHaveBeenCalled();
+  });
 
-    expect(postCalled).toBe(false);
+  it("should skip bot's own messages", async () => {
+    const { handleMessage } = await import("./bot");
+    await handleMessage(createMessage({ content: "simon-bot: hello there!" }));
+
+    // setMock should NOT be called - we exit early on bot message check
+    expect(setMock).not.toHaveBeenCalled();
   });
 
   it("should log error and not post on failure", async () => {
@@ -221,7 +238,7 @@ describe("handleMessage", () => {
     );
 
     const { handleMessage } = await import("./bot");
-    await handleMessage("msg-1");
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(log.error).toHaveBeenCalled();
   });

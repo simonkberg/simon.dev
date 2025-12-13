@@ -8,10 +8,12 @@ import { getRedis } from "@/lib/redis";
 import {
   BOT_USERNAME,
   getMessageChain,
+  isBotMessage,
   mentionsBot,
   postChannelMessage,
 } from "./api";
 import { subscribeToMessages } from "./gateway";
+import type { DiscordMessage } from "./schemas";
 
 const SEEN_PREFIX = "discord:seen:";
 const SEEN_TTL = 60;
@@ -24,21 +26,20 @@ async function markSeen(messageId: string): Promise<boolean> {
   return result === "OK";
 }
 
-export async function handleMessage(messageId: string): Promise<void> {
+export async function handleMessage(message: DiscordMessage): Promise<void> {
   try {
+    // Only respond to default messages (0) and replies (19)
+    if (message.type !== 0 && message.type !== 19) return;
+
+    // Skip our own messages
+    if (isBotMessage(message.content)) return;
+
     // Dedup across instances
-    const isNew = await markSeen(messageId);
+    const isNew = await markSeen(message.id);
     if (!isNew) return;
 
     // Fetch the reply chain
-    const chain = await getMessageChain(messageId);
-
-    // Get the triggering message (last in chain)
-    const triggeringMessage = chain.at(-1);
-    if (!triggeringMessage) return;
-
-    // Only respond to default messages (0) and replies (19)
-    if (triggeringMessage.type !== 0 && triggeringMessage.type !== 19) return;
+    const chain = await getMessageChain(message.id);
 
     // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
@@ -52,12 +53,12 @@ export async function handleMessage(messageId: string): Promise<void> {
 
     // Generate and post response
     for await (const response of createMessage(messages)) {
-      await postChannelMessage(response, BOT_USERNAME, messageId);
+      await postChannelMessage(response, BOT_USERNAME, message.id);
     }
 
-    log.info({ messageId }, "Bot responded to message");
+    log.info({ messageId: message.id }, "Bot responded to message");
   } catch (err) {
-    log.error({ err, messageId }, "Bot message handling failed");
+    log.error({ err, messageId: message.id }, "Bot message handling failed");
     // Silent failure - no error message posted
   }
 }
