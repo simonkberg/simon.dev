@@ -5,7 +5,16 @@ import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { server } from "@/mocks/node";
 
-import { getChannelMessages, postChannelMessage } from "./api";
+import {
+  BOT_PREFIX,
+  BOT_USERNAME,
+  getChannelMessages,
+  getMessage,
+  getMessageChain,
+  isBotMessage,
+  mentionsBot,
+  postChannelMessage,
+} from "./api";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -373,31 +382,26 @@ describe("getChannelMessages", () => {
 });
 
 describe("bot constants", () => {
-  it("should export BOT_USERNAME", async () => {
-    const { BOT_USERNAME } = await import("./api");
+  it("should export BOT_USERNAME", () => {
     expect(BOT_USERNAME).toBe("simon-bot");
   });
 
-  it("should export BOT_PREFIX", async () => {
-    const { BOT_PREFIX } = await import("./api");
+  it("should export BOT_PREFIX", () => {
     expect(BOT_PREFIX).toBe("simon-bot: ");
   });
 
-  it("isBotMessage should return true for bot messages", async () => {
-    const { isBotMessage } = await import("./api");
+  it("isBotMessage should return true for bot messages", () => {
     expect(isBotMessage("simon-bot: hello")).toBe(true);
     expect(isBotMessage("simon-bot: ")).toBe(true);
   });
 
-  it("isBotMessage should return false for non-bot messages", async () => {
-    const { isBotMessage } = await import("./api");
+  it("isBotMessage should return false for non-bot messages", () => {
     expect(isBotMessage("hello simon-bot")).toBe(false);
     expect(isBotMessage("user: hello")).toBe(false);
     expect(isBotMessage("")).toBe(false);
   });
 
-  it("mentionsBot should match various formats", async () => {
-    const { mentionsBot } = await import("./api");
+  it("mentionsBot should match various formats", () => {
     expect(mentionsBot("hey simon-bot")).toBe(true);
     expect(mentionsBot("hey simon bot")).toBe(true);
     expect(mentionsBot("hey simonbot")).toBe(true);
@@ -405,8 +409,7 @@ describe("bot constants", () => {
     expect(mentionsBot("Simon-Bot")).toBe(true);
   });
 
-  it("mentionsBot should not match partial words", async () => {
-    const { mentionsBot } = await import("./api");
+  it("mentionsBot should not match partial words", () => {
     expect(mentionsBot("simonbotx")).toBe(false);
     expect(mentionsBot("xsimon-bot")).toBe(false);
     expect(mentionsBot("hello world")).toBe(false);
@@ -431,7 +434,6 @@ describe("getMessage", () => {
       ),
     );
 
-    const { getMessage } = await import("./api");
     const message = await getMessage("msg-123");
 
     expect(message).toMatchObject({
@@ -458,7 +460,6 @@ describe("getMessage", () => {
       ),
     );
 
-    const { getMessage } = await import("./api");
     const message = await getMessage("msg-456");
 
     expect(message).toMatchObject({
@@ -484,7 +485,6 @@ describe("getMessage", () => {
       ),
     );
 
-    const { getMessage } = await import("./api");
     const message = await getMessage("msg-789");
 
     expect(message).toMatchObject({ id: "msg-789", parentId: "msg-123" });
@@ -515,7 +515,6 @@ describe("getMessage", () => {
       ),
     );
 
-    const { getMessage } = await import("./api");
     const message = await getMessage("msg-abc");
 
     expect(message).toMatchObject({
@@ -541,7 +540,6 @@ describe("getMessageChain", () => {
       ),
     );
 
-    const { getMessageChain } = await import("./api");
     const chain = await getMessageChain("msg-1");
 
     expect(chain).toHaveLength(1);
@@ -583,7 +581,6 @@ describe("getMessageChain", () => {
       ),
     );
 
-    const { getMessageChain } = await import("./api");
     const chain = await getMessageChain("msg-3");
 
     expect(chain).toHaveLength(3);
@@ -617,7 +614,6 @@ describe("getMessageChain", () => {
       ),
     );
 
-    const { getMessageChain } = await import("./api");
     const chain = await getMessageChain("msg-2");
 
     expect(chain).toHaveLength(2);
