@@ -17,18 +17,6 @@ vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/redis"), () => ({
   getRedis: () => ({ set: setMock }) as unknown as Redis,
 }));
-vi.mock(import("@/lib/log"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    log: {
-      ...actual.log,
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    },
-  };
-});
 
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
@@ -57,6 +45,7 @@ describe("handleMessage", () => {
   });
 
   it("should respond when bot is mentioned in the message", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
     let postCalled = false;
 
@@ -125,6 +114,7 @@ describe("handleMessage", () => {
   });
 
   it("should respond when bot is mentioned in parent message", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
     let postCalled = false;
 
@@ -223,6 +213,7 @@ describe("handleMessage", () => {
   });
 
   it("should log error and not post on failure", async () => {
+    const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
 
     server.use(
@@ -234,6 +225,6 @@ describe("handleMessage", () => {
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
-    expect(log.error).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
   });
 });
