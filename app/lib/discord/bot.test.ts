@@ -2,24 +2,31 @@
 // @vitest-environment node
 
 import type { Redis } from "@upstash/redis";
-import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createMessage as createAnthropicMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { server } from "@/mocks/node";
 
+import { getMessageChain, postChannelMessage } from "./api";
 import { handleMessage } from "./bot";
 import type { DiscordMessage } from "./schemas";
 
-const setMock = vi.fn();
-
 vi.mock(import("server-only"), () => ({}));
+
+const setMock = vi.fn();
 vi.mock(import("@/lib/redis"), () => ({
   getRedis: () => ({ set: setMock }) as unknown as Redis,
 }));
 
-const DISCORD_BASE_URL = "https://discord.com/api/v10";
-const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
+vi.mock(import("./api"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, getMessageChain: vi.fn(), postChannelMessage: vi.fn() };
+});
+
+vi.mock(import("@/lib/anthropic"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, createMessage: vi.fn() };
+});
 
 function createMessage(
   overrides: Partial<DiscordMessage> = {},
@@ -47,153 +54,78 @@ describe("handleMessage", () => {
   it("should respond when bot is mentioned in the message", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    let postCalled = false;
 
-    server.use(
-      // getMessageChain fetches the message
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 0,
-            id: "msg-1",
-            author: { id: "user1" },
-            content: "User1: hey simon-bot!",
-            edited_timestamp: null,
-          }),
-      ),
-      // Anthropic response
-      http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
-          content: [{ type: "text", text: "hello there!" }],
-          stop_reason: "end_turn",
-        }),
-      ),
-      // Post response
-      http.post(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages`,
-        async ({ request }) => {
-          const body = (await request.json()) as { content: string };
-          expect(body.content).toBe("simon-bot: hello there!");
-          postCalled = true;
-          return HttpResponse.json({ id: "response-1" });
-        },
-      ),
-    );
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
+    ]);
+
+    async function* mockResponse() {
+      yield "hello there!";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
 
-    expect(postCalled).toBe(true);
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "hello there!",
+      "simon-bot",
+      "msg-1",
+    );
   });
 
   it("should not respond when bot is not mentioned", async () => {
     setMock.mockResolvedValue("OK");
-    let postCalled = false;
 
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 0,
-            id: "msg-1",
-            author: { id: "user1" },
-            content: "User1: hello world",
-            edited_timestamp: null,
-          }),
-      ),
-      http.post(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
-        postCalled = true;
-        return HttpResponse.json({ id: "x" });
-      }),
-    );
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hello world" },
+    ]);
 
     await handleMessage(createMessage({ content: "User1: hello world" }));
 
-    expect(postCalled).toBe(false);
+    expect(postChannelMessage).not.toHaveBeenCalled();
   });
 
   it("should respond when bot is mentioned in parent message", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    let postCalled = false;
 
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        ({ params }) => {
-          const id = params["messageId"];
-          if (id === "msg-2") {
-            return HttpResponse.json({
-              type: 19,
-              id: "msg-2",
-              author: { id: "user2" },
-              content: "User2: thanks!",
-              edited_timestamp: null,
-              message_reference: { message_id: "msg-1" },
-            });
-          }
-          return HttpResponse.json({
-            type: 0,
-            id: "msg-1",
-            author: { id: "user1" },
-            content: "User1: hey simon-bot help",
-            edited_timestamp: null,
-          });
-        },
-      ),
-      http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
-          content: [{ type: "text", text: "you're welcome!" }],
-          stop_reason: "end_turn",
-        }),
-      ),
-      http.post(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
-        postCalled = true;
-        return HttpResponse.json({ id: "x" });
-      }),
-    );
+    vi.mocked(getMessageChain).mockResolvedValue([
+      {
+        id: "msg-1",
+        type: 0,
+        username: "User1",
+        content: "hey simon-bot help",
+      },
+      { id: "msg-2", type: 19, username: "User2", content: "thanks!" },
+    ]);
+
+    async function* mockResponse() {
+      yield "you're welcome!";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
 
     await handleMessage(
-      createMessage({
-        type: 19,
-        id: "msg-2",
-        author: { id: "user2" },
-        content: "User2: thanks!",
-        message_reference: { message_id: "msg-1" },
-      }),
+      createMessage({ type: 19, id: "msg-2", content: "User2: thanks!" }),
     );
 
-    expect(postCalled).toBe(true);
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "you're welcome!",
+      "simon-bot",
+      "msg-2",
+    );
   });
 
   it("should skip if already seen (dedup)", async () => {
     setMock.mockResolvedValue(null); // null = key already exists
-    let getMessageCalled = false;
-
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () => {
-          getMessageCalled = true;
-          return HttpResponse.json({
-            type: 0,
-            id: "msg-1",
-            author: { id: "user1" },
-            content: "User1: hey simon-bot",
-            edited_timestamp: null,
-          });
-        },
-      ),
-    );
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
-    expect(getMessageCalled).toBe(false);
+    expect(getMessageChain).not.toHaveBeenCalled();
   });
 
   it("should ignore non-standard message types", async () => {
-    // Type check happens FIRST, before dedup or API calls
     await handleMessage(
       createMessage({
         type: 7, // guild member join
@@ -201,14 +133,14 @@ describe("handleMessage", () => {
       }),
     );
 
-    // setMock should NOT be called - we exit early on type check
+    // Should exit early before dedup check
     expect(setMock).not.toHaveBeenCalled();
   });
 
   it("should skip bot's own messages", async () => {
     await handleMessage(createMessage({ content: "simon-bot: hello there!" }));
 
-    // setMock should NOT be called - we exit early on bot message check
+    // Should exit early before dedup check
     expect(setMock).not.toHaveBeenCalled();
   });
 
@@ -216,15 +148,11 @@ describe("handleMessage", () => {
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
 
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () => HttpResponse.error(),
-      ),
-    );
+    vi.mocked(getMessageChain).mockRejectedValue(new Error("API error"));
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(errorSpy).toHaveBeenCalled();
+    expect(postChannelMessage).not.toHaveBeenCalled();
   });
 });
