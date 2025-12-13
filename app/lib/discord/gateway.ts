@@ -5,6 +5,8 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 
+import { isBotMessage } from "./api";
+
 const GatewayOpcode = {
   DISPATCH: 0,
   HEARTBEAT: 1,
@@ -40,9 +42,16 @@ const ReadyDataSchema = z.object({
 
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
 
+const MessageCreateEventDataSchema = z.object({
+  id: z.string(),
+  channel_id: z.string(),
+  content: z.string(),
+});
+
 class DiscordGateway {
   #ws: WebSocket | null = null;
   #subscribers = new Set<() => void>();
+  #messageSubscribers = new Set<(messageId: string) => void>();
 
   // Session state (for resume)
   #sessionId: string | null = null;
@@ -76,6 +85,24 @@ class DiscordGateway {
         callback();
       } catch (err) {
         log.error({ err }, "Subscriber callback error");
+      }
+    }
+  }
+
+  addMessageSubscriber(callback: (messageId: string) => void): void {
+    this.#messageSubscribers.add(callback);
+  }
+
+  removeMessageSubscriber(callback: (messageId: string) => void): void {
+    this.#messageSubscribers.delete(callback);
+  }
+
+  #notifyMessageSubscribers(messageId: string): void {
+    for (const callback of this.#messageSubscribers) {
+      try {
+        callback(messageId);
+      } catch (err) {
+        log.error({ err }, "Message subscriber callback error");
       }
     }
   }
@@ -256,7 +283,23 @@ class DiscordGateway {
         onReady();
         break;
 
-      case "MESSAGE_CREATE":
+      case "MESSAGE_CREATE": {
+        const parsed = MessageCreateEventDataSchema.safeParse(data);
+        if (
+          parsed.success &&
+          parsed.data.channel_id === env.DISCORD_CHANNEL_ID
+        ) {
+          log.debug({ event: eventName }, "Message event for our channel");
+          this.#notifySubscribers();
+
+          // Notify message subscribers (skip bot's own messages)
+          if (!isBotMessage(parsed.data.content)) {
+            this.#notifyMessageSubscribers(parsed.data.id);
+          }
+        }
+        break;
+      }
+
       case "MESSAGE_UPDATE":
       case "MESSAGE_DELETE": {
         const parsed = MessageEventDataSchema.safeParse(data);
@@ -325,4 +368,17 @@ export async function subscribe(callback: () => void): Promise<() => void> {
   }
 
   return () => gw.removeSubscriber(callback);
+}
+
+export async function subscribeToMessages(
+  callback: (messageId: string) => void,
+): Promise<() => void> {
+  const gw = getGateway();
+  gw.addMessageSubscriber(callback);
+
+  if (!gw.connected) {
+    await gw.connect();
+  }
+
+  return () => gw.removeMessageSubscriber(callback);
 }
