@@ -221,7 +221,7 @@ const GetMessageResponseSchema = z.object({
   author: z.object({ id: z.string() }),
   content: z.string(),
   edited_timestamp: z.string().nullable(),
-  message_reference: z.object({ message_id: z.string().optional() }).nullable(),
+  message_reference: z.object({ message_id: z.string().optional() }).nullish(),
 });
 
 export type ChainMessage = {

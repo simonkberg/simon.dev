@@ -445,6 +445,26 @@ describe("getMessage", () => {
     });
   });
 
+  it("should handle missing message_reference field", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          // Discord omits message_reference entirely when there's no reply
+          HttpResponse.json({
+            id: "msg-no-ref",
+            author: { id: "user1" },
+            content: "TestUser: Hello world",
+            edited_timestamp: null,
+          }),
+      ),
+    );
+
+    const message = await getMessage("msg-no-ref");
+
+    expect(message).toMatchObject({ id: "msg-no-ref", parentId: undefined });
+  });
+
   it("should detect bot messages via prefix", async () => {
     server.use(
       http.get(
