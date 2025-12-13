@@ -5,8 +5,10 @@ import type { Redis } from "@upstash/redis";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
 
+import { handleMessage } from "./bot";
 import type { DiscordMessage } from "./schemas";
 
 const setMock = vi.fn();
@@ -90,7 +92,6 @@ describe("handleMessage", () => {
       ),
     );
 
-    const { handleMessage } = await import("./bot");
     await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
 
     expect(postCalled).toBe(true);
@@ -118,7 +119,6 @@ describe("handleMessage", () => {
       }),
     );
 
-    const { handleMessage } = await import("./bot");
     await handleMessage(createMessage({ content: "User1: hello world" }));
 
     expect(postCalled).toBe(false);
@@ -164,7 +164,6 @@ describe("handleMessage", () => {
       }),
     );
 
-    const { handleMessage } = await import("./bot");
     await handleMessage(
       createMessage({
         type: 19,
@@ -198,7 +197,6 @@ describe("handleMessage", () => {
       ),
     );
 
-    const { handleMessage } = await import("./bot");
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(getMessageCalled).toBe(false);
@@ -206,7 +204,6 @@ describe("handleMessage", () => {
 
   it("should ignore non-standard message types", async () => {
     // Type check happens FIRST, before dedup or API calls
-    const { handleMessage } = await import("./bot");
     await handleMessage(
       createMessage({
         type: 7, // guild member join
@@ -219,7 +216,6 @@ describe("handleMessage", () => {
   });
 
   it("should skip bot's own messages", async () => {
-    const { handleMessage } = await import("./bot");
     await handleMessage(createMessage({ content: "simon-bot: hello there!" }));
 
     // setMock should NOT be called - we exit early on bot message check
@@ -228,7 +224,6 @@ describe("handleMessage", () => {
 
   it("should log error and not post on failure", async () => {
     setMock.mockResolvedValue("OK");
-    const { log } = await import("@/lib/log");
 
     server.use(
       http.get(
@@ -237,7 +232,6 @@ describe("handleMessage", () => {
       ),
     );
 
-    const { handleMessage } = await import("./bot");
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(log.error).toHaveBeenCalled();
