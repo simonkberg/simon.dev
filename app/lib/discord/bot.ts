@@ -1,7 +1,7 @@
 // app/lib/discord/bot.ts
 import "server-only";
 
-import { createMessage } from "@/lib/anthropic";
+import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
 
@@ -48,6 +48,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     // Fetch the reply chain
     const chain = await getMessageChain(message.id);
+    if (chain.length === 0) return;
 
     // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
@@ -60,7 +61,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
           : ("user" as const),
       username: m.username,
       content: m.content,
-    }));
+    })) as [ChatMessage, ...ChatMessage[]];
 
     // Generate and post response
     for await (const response of createMessage(messages)) {

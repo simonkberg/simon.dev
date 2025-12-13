@@ -189,7 +189,7 @@ type Message = {
 };
 
 export async function* createMessage(
-  chatMessages: ChatMessage[],
+  chatMessages: [ChatMessage, ...ChatMessage[]],
 ): AsyncGenerator<string, void, unknown> {
   const messages: Message[] = chatMessages.map((m) => ({
     role: m.role,
