@@ -279,19 +279,7 @@ class DiscordGateway {
         onReady();
         break;
 
-      case "MESSAGE_CREATE": {
-        const parsed = DiscordMessageSchema.safeParse(data);
-        if (
-          parsed.success &&
-          parsed.data.channel_id === env.DISCORD_CHANNEL_ID
-        ) {
-          log.debug({ event: eventName }, "Message event for our channel");
-          this.#notifySubscribers();
-          this.#notifyMessageSubscribers(parsed.data);
-        }
-        break;
-      }
-
+      case "MESSAGE_CREATE":
       case "MESSAGE_UPDATE":
       case "MESSAGE_DELETE": {
         const parsed = MessageEventDataSchema.safeParse(data);
@@ -301,6 +289,13 @@ class DiscordGateway {
         ) {
           log.debug({ event: eventName }, "Message event for our channel");
           this.#notifySubscribers();
+
+          if (eventName === "MESSAGE_CREATE") {
+            const parsedMessage = DiscordMessageSchema.safeParse(data);
+            if (parsedMessage.success) {
+              this.#notifyMessageSubscribers(parsedMessage.data);
+            }
+          }
         }
         break;
       }
