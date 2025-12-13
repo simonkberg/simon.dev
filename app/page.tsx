@@ -100,6 +100,16 @@ export default async function RootPage() {
           </Suspense>
         </Terminal>
       </section>
+
+      <footer>
+        <Subtitle>
+          Hosted on{" "}
+          <ExternalLink href="https://railway.com?referralCode=wzuAxn">
+            Railway
+          </ExternalLink>{" "}
+          (affiliate link).
+        </Subtitle>
+      </footer>
     </Page>
   );
 }
