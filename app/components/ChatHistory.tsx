@@ -49,8 +49,6 @@ const ChatHistoryMessages = ({
 
 export interface ChatHistoryProps {
   history: Promise<ChatHistoryResult>;
-  loading?: boolean;
-  error?: boolean;
 }
 
 export const ChatHistory = ({ history }: ChatHistoryProps) => {
