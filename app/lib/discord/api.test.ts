@@ -372,6 +372,47 @@ describe("getChannelMessages", () => {
   });
 });
 
+describe("bot constants", () => {
+  it("should export BOT_USERNAME", async () => {
+    const { BOT_USERNAME } = await import("./api");
+    expect(BOT_USERNAME).toBe("simon-bot");
+  });
+
+  it("should export BOT_PREFIX", async () => {
+    const { BOT_PREFIX } = await import("./api");
+    expect(BOT_PREFIX).toBe("simon-bot: ");
+  });
+
+  it("isBotMessage should return true for bot messages", async () => {
+    const { isBotMessage } = await import("./api");
+    expect(isBotMessage("simon-bot: hello")).toBe(true);
+    expect(isBotMessage("simon-bot: ")).toBe(true);
+  });
+
+  it("isBotMessage should return false for non-bot messages", async () => {
+    const { isBotMessage } = await import("./api");
+    expect(isBotMessage("hello simon-bot")).toBe(false);
+    expect(isBotMessage("user: hello")).toBe(false);
+    expect(isBotMessage("")).toBe(false);
+  });
+
+  it("mentionsBot should match various formats", async () => {
+    const { mentionsBot } = await import("./api");
+    expect(mentionsBot("hey simon-bot")).toBe(true);
+    expect(mentionsBot("hey simon bot")).toBe(true);
+    expect(mentionsBot("hey simonbot")).toBe(true);
+    expect(mentionsBot("SIMON-BOT help")).toBe(true);
+    expect(mentionsBot("Simon-Bot")).toBe(true);
+  });
+
+  it("mentionsBot should not match partial words", async () => {
+    const { mentionsBot } = await import("./api");
+    expect(mentionsBot("simonbotx")).toBe(false);
+    expect(mentionsBot("xsimon-bot")).toBe(false);
+    expect(mentionsBot("hello world")).toBe(false);
+  });
+});
+
 describe("postChannelMessage", () => {
   it("should post message with username prefix", async () => {
     server.use(

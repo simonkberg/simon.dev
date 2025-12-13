@@ -12,6 +12,19 @@ import { stringToColor } from "@/lib/stringToColor";
 
 import type { Username } from "../session";
 
+// Bot constants
+export const BOT_USERNAME = "simon-bot" as Username;
+export const BOT_PREFIX = `${BOT_USERNAME}: `;
+const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
+
+export function isBotMessage(content: string): boolean {
+  return content.startsWith(BOT_PREFIX);
+}
+
+export function mentionsBot(content: string): boolean {
+  return BOT_MENTION_PATTERN.test(content);
+}
+
 const BASE_URL = "https://discord.com/api/v10";
 
 async function call<T extends z.ZodType>(
