@@ -525,6 +525,111 @@ describe("getMessage", () => {
   });
 });
 
+describe("getMessageChain", () => {
+  it("should return single message when no parent", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          HttpResponse.json({
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: Hello",
+            edited_timestamp: null,
+            message_reference: null,
+          }),
+      ),
+    );
+
+    const { getMessageChain } = await import("./api");
+    const chain = await getMessageChain("msg-1");
+
+    expect(chain).toHaveLength(1);
+    expect(chain[0]).toMatchObject({ id: "msg-1", content: "Hello" });
+  });
+
+  it("should walk up the chain to root (ordered root-first)", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-3") {
+            return HttpResponse.json({
+              id: "msg-3",
+              author: { id: "user3" },
+              content: "User3: Third",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-2" },
+            });
+          }
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Second",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          return HttpResponse.json({
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: First",
+            edited_timestamp: null,
+            message_reference: null,
+          });
+        },
+      ),
+    );
+
+    const { getMessageChain } = await import("./api");
+    const chain = await getMessageChain("msg-3");
+
+    expect(chain).toHaveLength(3);
+    expect(chain.map((m) => m.id)).toEqual(["msg-1", "msg-2", "msg-3"]);
+    expect(chain.map((m) => m.content)).toEqual(["First", "Second", "Third"]);
+  });
+
+  it("should handle bot messages in chain", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Thanks bot!",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          return HttpResponse.json({
+            id: "msg-1",
+            author: { id: "bot" },
+            content: "simon-bot: Hello human",
+            edited_timestamp: null,
+            message_reference: null,
+          });
+        },
+      ),
+    );
+
+    const { getMessageChain } = await import("./api");
+    const chain = await getMessageChain("msg-2");
+
+    expect(chain).toHaveLength(2);
+    expect(chain[0]).toMatchObject({
+      id: "msg-1",
+      isBot: true,
+      username: "simon-bot",
+    });
+    expect(chain[1]).toMatchObject({ id: "msg-2", isBot: false });
+  });
+});
+
 describe("postChannelMessage", () => {
   it("should post message with username prefix", async () => {
     server.use(

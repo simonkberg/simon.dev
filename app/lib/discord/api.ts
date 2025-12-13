@@ -269,6 +269,21 @@ export async function getMessage(messageId: string): Promise<ChainMessage> {
   };
 }
 
+export async function getMessageChain(
+  messageId: string,
+): Promise<ChainMessage[]> {
+  const chain: ChainMessage[] = [];
+  let currentId: string | undefined = messageId;
+
+  while (currentId) {
+    const message = await getMessage(currentId);
+    chain.unshift(message); // Add to front (we're walking backwards)
+    currentId = message.parentId;
+  }
+
+  return chain;
+}
+
 const PostChannelMessageResponseSchema = z.object({ id: z.string() });
 
 export async function postChannelMessage(
