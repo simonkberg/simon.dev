@@ -9,7 +9,6 @@ import {
   BOT_PREFIX,
   BOT_USERNAME,
   getChannelMessages,
-  getMessage,
   getMessageChain,
   isBotMessage,
   mentionsBot,
@@ -416,137 +415,6 @@ describe("bot constants", () => {
   });
 });
 
-describe("getMessage", () => {
-  it("should fetch a single message by ID", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        ({ params }) => {
-          expect(params["messageId"]).toBe("msg-123");
-          return HttpResponse.json({
-            type: 0,
-            id: "msg-123",
-            author: { id: "user1" },
-            content: "TestUser: Hello world",
-            edited_timestamp: null,
-          });
-        },
-      ),
-    );
-
-    const message = await getMessage("msg-123");
-
-    expect(message).toMatchObject({
-      id: "msg-123",
-      type: 0,
-      content: "Hello world",
-      username: "TestUser",
-      isBot: false,
-      parentId: undefined,
-    });
-  });
-
-  it("should return message type for filtering", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 19,
-            id: "msg-reply",
-            author: { id: "user1" },
-            content: "TestUser: A reply",
-            edited_timestamp: null,
-            message_reference: { message_id: "msg-parent" },
-          }),
-      ),
-    );
-
-    const message = await getMessage("msg-reply");
-
-    expect(message).toMatchObject({ type: 19, parentId: "msg-parent" });
-  });
-
-  it("should detect bot messages via prefix", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 0,
-            id: "msg-456",
-            author: { id: "bot1" },
-            content: "simon-bot: I am helpful",
-            edited_timestamp: null,
-          }),
-      ),
-    );
-
-    const message = await getMessage("msg-456");
-
-    expect(message).toMatchObject({
-      id: "msg-456",
-      content: "I am helpful",
-      username: "simon-bot",
-      isBot: true,
-    });
-  });
-
-  it("should include parentId when message_reference exists", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 19,
-            id: "msg-789",
-            author: { id: "user2" },
-            content: "User2: This is a reply",
-            edited_timestamp: null,
-            message_reference: { message_id: "msg-123" },
-          }),
-      ),
-    );
-
-    const message = await getMessage("msg-789");
-
-    expect(message).toMatchObject({ id: "msg-789", parentId: "msg-123" });
-  });
-
-  it("should lookup username via API when no prefix", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        () =>
-          HttpResponse.json({
-            type: 0,
-            id: "msg-abc",
-            author: { id: "user999" },
-            content: "No prefix here",
-            edited_timestamp: null,
-          }),
-      ),
-      http.get(
-        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
-        ({ params }) => {
-          expect(params["userId"]).toBe("user999");
-          return HttpResponse.json({
-            user: { username: "discorduser", global_name: "Discord User" },
-            nick: "Server Nick",
-          });
-        },
-      ),
-    );
-
-    const message = await getMessage("msg-abc");
-
-    expect(message).toMatchObject({
-      username: "Server Nick",
-      content: "No prefix here",
-    });
-  });
-});
-
 describe("getMessageChain", () => {
   it("should return single message when no parent", async () => {
     server.use(
@@ -649,6 +517,40 @@ describe("getMessageChain", () => {
       username: "simon-bot",
     });
     expect(chain[1]).toMatchObject({ id: "msg-2", isBot: false });
+  });
+
+  it("should lookup username via API when no prefix", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user999" },
+            content: "No prefix here",
+            edited_timestamp: null,
+          }),
+      ),
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
+        ({ params }) => {
+          expect(params["userId"]).toBe("user999");
+          return HttpResponse.json({
+            user: { username: "discorduser", global_name: "Discord User" },
+            nick: "Server Nick",
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-1");
+
+    expect(chain).toHaveLength(1);
+    expect(chain[0]).toMatchObject({
+      username: "Server Nick",
+      content: "No prefix here",
+    });
   });
 });
 

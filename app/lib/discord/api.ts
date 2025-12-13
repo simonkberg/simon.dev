@@ -134,6 +134,8 @@ const DiscordMessageSchema = z.object({
   message_reference: z.object({ message_id: z.string().optional() }).optional(),
 });
 
+type DiscordMessage = z.infer<typeof DiscordMessageSchema>;
+
 const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 
 const MessageSchema = z.object({
@@ -219,46 +221,7 @@ export type ChainMessage = {
   username: string;
   content: string;
   isBot: boolean;
-  parentId?: string;
 };
-
-export async function getMessage(messageId: string): Promise<ChainMessage> {
-  const response = await call(
-    "GET",
-    `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
-    DiscordMessageSchema,
-  );
-
-  const isBot = isBotMessage(response.content);
-
-  // Parse username from content prefix or lookup via API
-  let username: string;
-  let content: string;
-
-  if (isBot) {
-    username = BOT_USERNAME;
-    content = response.content.slice(BOT_PREFIX.length);
-  } else {
-    const match = response.content.match(/^(.+?): (.*)$/s);
-    if (match) {
-      username = match[1]!;
-      content = match[2]!.trim();
-    } else {
-      const member = await getGuildMember(response.author.id);
-      username = member.nick ?? member.user.global_name ?? member.user.username;
-      content = response.content.trim();
-    }
-  }
-
-  return {
-    id: response.id,
-    type: response.type,
-    username,
-    content,
-    isBot,
-    parentId: response.message_reference?.message_id,
-  };
-}
 
 export async function getMessageChain(
   messageId: string,
@@ -267,9 +230,43 @@ export async function getMessageChain(
   let currentId: string | undefined = messageId;
 
   while (currentId) {
-    const message = await getMessage(currentId);
-    chain.unshift(message); // Add to front (we're walking backwards)
-    currentId = message.parentId;
+    const response: DiscordMessage = await call(
+      "GET",
+      `channels/${env.DISCORD_CHANNEL_ID}/messages/${currentId}`,
+      DiscordMessageSchema,
+    );
+
+    const isBot = isBotMessage(response.content);
+
+    // Parse username from content prefix or lookup via API
+    let username: string;
+    let content: string;
+
+    if (isBot) {
+      username = BOT_USERNAME;
+      content = response.content.slice(BOT_PREFIX.length);
+    } else {
+      const match = response.content.match(/^(.+?): (.*)$/s);
+      if (match) {
+        username = match[1]!;
+        content = match[2]!.trim();
+      } else {
+        const member = await getGuildMember(response.author.id);
+        username =
+          member.nick ?? member.user.global_name ?? member.user.username;
+        content = response.content.trim();
+      }
+    }
+
+    chain.unshift({
+      id: response.id,
+      type: response.type,
+      username,
+      content,
+      isBot,
+    });
+
+    currentId = response.message_reference?.message_id;
   }
 
   return chain;
