@@ -33,6 +33,13 @@ export async function handleMessage(messageId: string): Promise<void> {
     // Fetch the reply chain
     const chain = await getMessageChain(messageId);
 
+    // Get the triggering message (last in chain)
+    const triggeringMessage = chain.at(-1);
+    if (!triggeringMessage) return;
+
+    // Only respond to default messages (0) and replies (19)
+    if (triggeringMessage.type !== 0 && triggeringMessage.type !== 19) return;
+
     // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
 

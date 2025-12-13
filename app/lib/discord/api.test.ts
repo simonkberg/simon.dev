@@ -424,11 +424,11 @@ describe("getMessage", () => {
         ({ params }) => {
           expect(params["messageId"]).toBe("msg-123");
           return HttpResponse.json({
+            type: 0,
             id: "msg-123",
             author: { id: "user1" },
             content: "TestUser: Hello world",
             edited_timestamp: null,
-            message_reference: null,
           });
         },
       ),
@@ -438,6 +438,7 @@ describe("getMessage", () => {
 
     expect(message).toMatchObject({
       id: "msg-123",
+      type: 0,
       content: "Hello world",
       username: "TestUser",
       isBot: false,
@@ -445,24 +446,25 @@ describe("getMessage", () => {
     });
   });
 
-  it("should handle missing message_reference field", async () => {
+  it("should return message type for filtering", async () => {
     server.use(
       http.get(
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
-          // Discord omits message_reference entirely when there's no reply
           HttpResponse.json({
-            id: "msg-no-ref",
+            type: 19,
+            id: "msg-reply",
             author: { id: "user1" },
-            content: "TestUser: Hello world",
+            content: "TestUser: A reply",
             edited_timestamp: null,
+            message_reference: { message_id: "msg-parent" },
           }),
       ),
     );
 
-    const message = await getMessage("msg-no-ref");
+    const message = await getMessage("msg-reply");
 
-    expect(message).toMatchObject({ id: "msg-no-ref", parentId: undefined });
+    expect(message).toMatchObject({ type: 19, parentId: "msg-parent" });
   });
 
   it("should detect bot messages via prefix", async () => {
@@ -471,11 +473,11 @@ describe("getMessage", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 0,
             id: "msg-456",
             author: { id: "bot1" },
             content: "simon-bot: I am helpful",
             edited_timestamp: null,
-            message_reference: null,
           }),
       ),
     );
@@ -496,6 +498,7 @@ describe("getMessage", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 19,
             id: "msg-789",
             author: { id: "user2" },
             content: "User2: This is a reply",
@@ -516,11 +519,11 @@ describe("getMessage", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 0,
             id: "msg-abc",
             author: { id: "user999" },
             content: "No prefix here",
             edited_timestamp: null,
-            message_reference: null,
           }),
       ),
       http.get(
@@ -551,11 +554,11 @@ describe("getMessageChain", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: Hello",
             edited_timestamp: null,
-            message_reference: null,
           }),
       ),
     );
@@ -574,6 +577,7 @@ describe("getMessageChain", () => {
           const id = params["messageId"];
           if (id === "msg-3") {
             return HttpResponse.json({
+              type: 19,
               id: "msg-3",
               author: { id: "user3" },
               content: "User3: Third",
@@ -583,6 +587,7 @@ describe("getMessageChain", () => {
           }
           if (id === "msg-2") {
             return HttpResponse.json({
+              type: 19,
               id: "msg-2",
               author: { id: "user2" },
               content: "User2: Second",
@@ -591,11 +596,11 @@ describe("getMessageChain", () => {
             });
           }
           return HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: First",
             edited_timestamp: null,
-            message_reference: null,
           });
         },
       ),
@@ -616,6 +621,7 @@ describe("getMessageChain", () => {
           const id = params["messageId"];
           if (id === "msg-2") {
             return HttpResponse.json({
+              type: 19,
               id: "msg-2",
               author: { id: "user2" },
               content: "User2: Thanks bot!",
@@ -624,11 +630,11 @@ describe("getMessageChain", () => {
             });
           }
           return HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "bot" },
             content: "simon-bot: Hello human",
             edited_timestamp: null,
-            message_reference: null,
           });
         },
       ),

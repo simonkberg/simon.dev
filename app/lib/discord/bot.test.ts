@@ -48,11 +48,11 @@ describe("handleMessage", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: hey simon-bot!",
             edited_timestamp: null,
-            message_reference: null,
           }),
       ),
       // Anthropic response
@@ -89,11 +89,11 @@ describe("handleMessage", () => {
         `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
         () =>
           HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: hello world",
             edited_timestamp: null,
-            message_reference: null,
           }),
       ),
       http.post(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
@@ -119,6 +119,7 @@ describe("handleMessage", () => {
           const id = params["messageId"];
           if (id === "msg-2") {
             return HttpResponse.json({
+              type: 19,
               id: "msg-2",
               author: { id: "user2" },
               content: "User2: thanks!",
@@ -127,11 +128,11 @@ describe("handleMessage", () => {
             });
           }
           return HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: hey simon-bot help",
             edited_timestamp: null,
-            message_reference: null,
           });
         },
       ),
@@ -163,11 +164,11 @@ describe("handleMessage", () => {
         () => {
           getMessageCalled = true;
           return HttpResponse.json({
+            type: 0,
             id: "msg-1",
             author: { id: "user1" },
             content: "User1: hey simon-bot",
             edited_timestamp: null,
-            message_reference: null,
           });
         },
       ),
@@ -177,6 +178,35 @@ describe("handleMessage", () => {
     await handleMessage("msg-1");
 
     expect(getMessageCalled).toBe(false);
+  });
+
+  it("should ignore non-standard message types", async () => {
+    setMock.mockResolvedValue("OK");
+    let postCalled = false;
+
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          // type 7 = guild member join
+          HttpResponse.json({
+            type: 7,
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: hey simon-bot!",
+            edited_timestamp: null,
+          }),
+      ),
+      http.post(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        postCalled = true;
+        return HttpResponse.json({ id: "x" });
+      }),
+    );
+
+    const { handleMessage } = await import("./bot");
+    await handleMessage("msg-1");
+
+    expect(postCalled).toBe(false);
   });
 
   it("should log error and not post on failure", async () => {

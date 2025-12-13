@@ -131,9 +131,6 @@ const DiscordMessageSchema = z.object({
   author: z.object({ id: z.string() }),
   content: z.string(),
   edited_timestamp: z.string().nullable(),
-  components: z
-    .array(z.object({ type: z.number(), label: z.string().optional() }))
-    .optional(),
   message_reference: z.object({ message_id: z.string().optional() }).optional(),
 });
 
@@ -216,16 +213,9 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
   return resolveReplies(messages);
 }
 
-const GetMessageResponseSchema = z.object({
-  id: z.string(),
-  author: z.object({ id: z.string() }),
-  content: z.string(),
-  edited_timestamp: z.string().nullable(),
-  message_reference: z.object({ message_id: z.string().optional() }).nullish(),
-});
-
 export type ChainMessage = {
   id: string;
+  type: number;
   username: string;
   content: string;
   isBot: boolean;
@@ -236,7 +226,7 @@ export async function getMessage(messageId: string): Promise<ChainMessage> {
   const response = await call(
     "GET",
     `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
-    GetMessageResponseSchema,
+    DiscordMessageSchema,
   );
 
   const isBot = isBotMessage(response.content);
@@ -262,6 +252,7 @@ export async function getMessage(messageId: string): Promise<ChainMessage> {
 
   return {
     id: response.id,
+    type: response.type,
     username,
     content,
     isBot,
