@@ -216,6 +216,59 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
   return resolveReplies(messages);
 }
 
+const GetMessageResponseSchema = z.object({
+  id: z.string(),
+  author: z.object({ id: z.string() }),
+  content: z.string(),
+  edited_timestamp: z.string().nullable(),
+  message_reference: z.object({ message_id: z.string().optional() }).nullable(),
+});
+
+export type ChainMessage = {
+  id: string;
+  username: string;
+  content: string;
+  isBot: boolean;
+  parentId?: string;
+};
+
+export async function getMessage(messageId: string): Promise<ChainMessage> {
+  const response = await call(
+    "GET",
+    `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
+    GetMessageResponseSchema,
+  );
+
+  const isBot = isBotMessage(response.content);
+
+  // Parse username from content prefix or lookup via API
+  let username: string;
+  let content: string;
+
+  if (isBot) {
+    username = BOT_USERNAME;
+    content = response.content.slice(BOT_PREFIX.length);
+  } else {
+    const match = response.content.match(/^(.+?): (.*)$/s);
+    if (match) {
+      username = match[1]!;
+      content = match[2]!.trim();
+    } else {
+      const member = await getGuildMember(response.author.id);
+      username = member.nick ?? member.user.global_name ?? member.user.username;
+      content = response.content.trim();
+    }
+  }
+
+  return {
+    id: response.id,
+    username,
+    content,
+    isBot,
+    parentId: response.message_reference?.message_id,
+  };
+}
+
 const PostChannelMessageResponseSchema = z.object({ id: z.string() });
 
 export async function postChannelMessage(
