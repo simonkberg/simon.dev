@@ -1,8 +1,7 @@
 import { after } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getChatHistory, postChatMessage } from "@/actions/chat";
-import { createMessage } from "@/lib/anthropic";
 import {
   getChannelMessages,
   type Message,
@@ -42,7 +41,7 @@ vi.mock(import("@/lib/session"), () => ({
   ),
 }));
 vi.mock(import("@/lib/discord/api"));
-vi.mock(import("@/lib/anthropic"));
+vi.mock(import("@/lib/redis"));
 
 function createMockMessage(overrides: Partial<Message> = {}): Message {
   return {
@@ -170,6 +169,8 @@ describe("postChatMessage", () => {
       }),
       "Hello everyone!",
     );
+    // Only one after() call for rate limit pending
+    expect(after).toHaveBeenCalledTimes(1);
   });
 
   it("returns error and logs when Discord API fails", async () => {
@@ -199,112 +200,5 @@ describe("postChatMessage", () => {
     const result = await postChatMessage(formData);
 
     expect(result.status).toBe("error");
-  });
-
-  describe("simon-bot trigger", () => {
-    beforeEach(() => {
-      vi.spyOn(log, "info").mockImplementation(() => {});
-      mockRateLimitSuccess();
-    });
-
-    it("schedules bot response when message mentions simon-bot", async () => {
-      vi.mocked(postChannelMessage).mockResolvedValue("msg-456");
-      const formData = new FormData();
-      formData.set("text", "Hey simon-bot, how are you?");
-
-      await postChatMessage(formData);
-
-      // First after() call is for rate limit pending, second is for bot response
-      expect(after).toHaveBeenCalledTimes(2);
-      expect(after).toHaveBeenLastCalledWith(expect.any(Promise));
-    });
-
-    it.each(["simon-bot", "Simon-Bot", "SIMON-BOT", "simonbot", "simon bot"])(
-      "triggers for pattern: %s",
-      async (pattern) => {
-        vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-        const formData = new FormData();
-        formData.set("text", `Hello ${pattern}!`);
-
-        await postChatMessage(formData);
-
-        expect(after).toHaveBeenCalledTimes(2);
-      },
-    );
-
-    it("does not trigger for regular messages", async () => {
-      vi.mocked(postChannelMessage).mockResolvedValue("msg-789");
-      const formData = new FormData();
-      formData.set("text", "Just a regular message");
-
-      await postChatMessage(formData);
-
-      // Only the rate limit pending after() call
-      expect(after).toHaveBeenCalledTimes(1);
-    });
-
-    it("posts AI responses as replies to the original message", async () => {
-      vi.mocked(postChannelMessage).mockResolvedValue("original-msg-id");
-      async function* mockGenerator() {
-        yield "First response";
-        yield "Second response";
-      }
-      vi.mocked(createMessage).mockReturnValue(mockGenerator());
-      const formData = new FormData();
-      formData.set("text", "Hey simon-bot!");
-
-      await postChatMessage(formData);
-      const botResponsePromise = vi.mocked(after).mock
-        .calls[1]?.[0] as Promise<void>;
-      await botResponsePromise;
-
-      expect(createMessage).toHaveBeenCalledWith([
-        { role: "user", username: "test-user", content: "Hey simon-bot!" },
-      ]);
-      expect(postChannelMessage).toHaveBeenCalledTimes(3);
-      expect(postChannelMessage).toHaveBeenNthCalledWith(
-        2,
-        "First response",
-        "simon-bot",
-        "original-msg-id",
-      );
-      expect(postChannelMessage).toHaveBeenNthCalledWith(
-        3,
-        "Second response",
-        "simon-bot",
-        "original-msg-id",
-      );
-    });
-
-    it("posts fallback message when AI fails", async () => {
-      const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
-      vi.mocked(postChannelMessage).mockResolvedValue("original-msg-id");
-      async function* mockGenerator(): AsyncGenerator<string, void, unknown> {
-        throw new Error("AI service unavailable");
-      }
-      vi.mocked(createMessage).mockReturnValue(mockGenerator());
-      const formData = new FormData();
-      formData.set("text", "Hey simon-bot!");
-
-      await postChatMessage(formData);
-      const botResponsePromise = vi.mocked(after).mock
-        .calls[1]?.[0] as Promise<void>;
-      await botResponsePromise;
-
-      expect(postChannelMessage).toHaveBeenLastCalledWith(
-        "oops, something went wrong... try again later!",
-        "simon-bot",
-        "original-msg-id",
-      );
-      expect(logErrorSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          err: expect.any(Error),
-          username: "test-user",
-          trigger: "simon-bot",
-          action: "botResponse",
-        }),
-        "Failed to generate bot response",
-      );
-    });
   });
 });
