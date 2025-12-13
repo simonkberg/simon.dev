@@ -3,13 +3,15 @@
 :root {
   --color-black: oklch(0 0 0);
   --color-white: oklch(1 0 0);
+  --color-grey: oklch(0.56 0 0);
   --color-silver: oklch(0.81 0 0);
   --color-whitesmoke: oklch(0.97 0 0);
   --color-firebrick: oklch(0.5 0.18 26.82);
 
   --color-primary: var(--color-black);
   --color-secondary: var(--color-white);
-  --color-muted: var(--color-silver);
+  --color-muted: var(--color-grey);
+  --color-decorative: var(--color-silver);
 
   --background-primary: var(--color-white);
   --background-secondary: var(--color-black);
@@ -83,7 +85,7 @@ ul {
       content: "*";
       position: absolute;
       left: -1.5ch;
-      color: var(--color-muted);
+      color: var(--color-decorative);
     }
 
     & > ul {
@@ -105,7 +107,7 @@ ul {
     content: ">";
     position: absolute;
     left: -1.5ch;
-    color: var(--color-muted);
+    color: var(--color-decorative);
   }
 }
 
@@ -183,6 +185,8 @@ ul {
 }
 
 .terminal {
+  --color-muted: var(--color-silver);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -415,7 +419,7 @@ ul {
       top: calc(50% - (0.625rem / 2));
       transform: translateY(-50%);
       font-weight: bold;
-      color: var(--color-muted);
+      color: var(--color-decorative);
     }
 
     > .input {
@@ -472,7 +476,7 @@ menu {
 
     + li::before {
       content: " | ";
-      color: var(--color-muted);
+      color: var(--color-decorative);
     }
   }
 }
