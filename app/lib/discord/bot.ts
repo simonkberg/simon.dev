@@ -1,4 +1,3 @@
-// app/lib/discord/bot.ts
 import "server-only";
 
 import { type ChatMessage, createMessage } from "@/lib/anthropic";

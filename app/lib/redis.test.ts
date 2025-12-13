@@ -1,4 +1,3 @@
-// app/lib/redis.test.ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("server-only"), () => ({}));

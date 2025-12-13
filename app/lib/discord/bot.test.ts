@@ -1,4 +1,3 @@
-// app/lib/discord/bot.test.ts
 // @vitest-environment node
 
 import type { Redis } from "@upstash/redis";
