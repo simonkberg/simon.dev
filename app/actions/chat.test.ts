@@ -160,6 +160,7 @@ describe("postChatMessage", () => {
     expect(postChannelMessage).toHaveBeenCalledWith(
       "Hello everyone!",
       "test-user",
+      undefined,
     );
     expect(logInfoSpy).toHaveBeenCalledWith(
       expect.objectContaining({

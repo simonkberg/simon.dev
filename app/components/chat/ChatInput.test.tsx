@@ -9,12 +9,15 @@ import { ChatInput } from "./ChatInput";
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 
 describe("ChatInput", () => {
+  const defaultReplyProps = { replyToId: null, setReplyToId: vi.fn() };
+
   afterEach(() => {
+    vi.clearAllMocks();
     vi.restoreAllMocks();
   });
 
   it("renders input field with correct attributes", () => {
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox");
 
     expect(input).toBeInTheDocument();
@@ -23,7 +26,7 @@ describe("ChatInput", () => {
   });
 
   it("input is not disabled initially", () => {
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox");
 
     expect(input).not.toBeDisabled();
@@ -35,7 +38,7 @@ describe("ChatInput", () => {
 
     vi.mocked(postChatMessage).mockReturnValue(promise);
 
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox");
 
     await user.type(input, "Hello");
@@ -55,7 +58,7 @@ describe("ChatInput", () => {
 
     vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox");
 
     await user.type(input, "Test message");
@@ -69,7 +72,7 @@ describe("ChatInput", () => {
 
     vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox") as HTMLInputElement;
 
     await user.type(input, "Test message");
@@ -89,7 +92,7 @@ describe("ChatInput", () => {
       error: "Rate limit exceeded",
     });
 
-    render(<ChatInput />);
+    render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox") as HTMLInputElement;
 
     await user.type(input, "Test message");
@@ -106,7 +109,7 @@ describe("ChatInput", () => {
 
   describe("ChatToast integration", () => {
     it("does not show toast initially", () => {
-      render(<ChatInput />);
+      render(<ChatInput {...defaultReplyProps} />);
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
@@ -114,7 +117,7 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput />);
+      render(<ChatInput {...defaultReplyProps} />);
       await user.type(screen.getByRole("textbox"), "Test");
       await user.keyboard("{Enter}");
 
@@ -129,7 +132,7 @@ describe("ChatInput", () => {
         error: "Rate limited",
       });
 
-      render(<ChatInput />);
+      render(<ChatInput {...defaultReplyProps} />);
       await user.type(screen.getByRole("textbox"), "Test");
       await user.keyboard("{Enter}");
 
@@ -144,7 +147,7 @@ describe("ChatInput", () => {
         .mockResolvedValueOnce({ status: "error", error: "Failed" })
         .mockResolvedValueOnce({ status: "ok" });
 
-      render(<ChatInput />);
+      render(<ChatInput {...defaultReplyProps} />);
       const input = screen.getByRole("textbox");
 
       await user.type(input, "First");
@@ -157,6 +160,117 @@ describe("ChatInput", () => {
       await waitFor(() =>
         expect(screen.queryByRole("status")).not.toBeInTheDocument(),
       );
+    });
+  });
+
+  describe("reply mode", () => {
+    it("shows 'Write a reply...' placeholder when replying", () => {
+      render(<ChatInput replyToId="some-message-id" setReplyToId={vi.fn()} />);
+      const input = screen.getByRole("textbox");
+
+      expect(input).toHaveAttribute("placeholder", "Write a reply...");
+    });
+
+    it("focuses input when replyToId changes to non-null", () => {
+      const { rerender } = render(
+        <ChatInput replyToId={null} setReplyToId={vi.fn()} />,
+      );
+
+      const input = screen.getByRole("textbox");
+      expect(input).not.toHaveFocus();
+
+      rerender(<ChatInput replyToId="message-id" setReplyToId={vi.fn()} />);
+
+      expect(input).toHaveFocus();
+    });
+
+    it("clears replyToId when Escape key is pressed while replying", async () => {
+      const user = userEvent.setup({ delay: null });
+      const setReplyToId = vi.fn();
+
+      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+
+      await user.keyboard("{Escape}");
+
+      expect(setReplyToId).toHaveBeenCalledWith(null);
+    });
+
+    it("does not call setReplyToId on Escape when not replying", async () => {
+      const user = userEvent.setup({ delay: null });
+      const setReplyToId = vi.fn();
+
+      render(<ChatInput replyToId={null} setReplyToId={setReplyToId} />);
+
+      await user.keyboard("{Escape}");
+
+      expect(setReplyToId).not.toHaveBeenCalled();
+    });
+
+    it("includes replyToId in form data when replying", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
+
+      render(<ChatInput replyToId="reply-target-id" setReplyToId={vi.fn()} />);
+
+      await user.type(screen.getByRole("textbox"), "Reply text");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(postChatMessage).toHaveBeenCalled();
+      });
+
+      const formData = vi.mocked(postChatMessage).mock
+        .calls[0]?.[0] as FormData;
+      expect(formData.get("text")).toBe("Reply text");
+      expect(formData.get("replyToId")).toBe("reply-target-id");
+    });
+
+    it("does not include replyToId in form data when not replying", async () => {
+      const user = userEvent.setup({ delay: null });
+      vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
+
+      render(<ChatInput replyToId={null} setReplyToId={vi.fn()} />);
+
+      await user.type(screen.getByRole("textbox"), "Normal message");
+      await user.keyboard("{Enter}");
+
+      const formData = vi.mocked(postChatMessage).mock
+        .calls[0]?.[0] as FormData;
+      expect(formData.get("replyToId")).toBeNull();
+    });
+
+    it("clears replyToId on successful submission", async () => {
+      const user = userEvent.setup({ delay: null });
+      const setReplyToId = vi.fn();
+      vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
+
+      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+
+      await user.type(screen.getByRole("textbox"), "Reply");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(setReplyToId).toHaveBeenCalledWith(null);
+      });
+    });
+
+    it("preserves replyToId on failed submission", async () => {
+      const user = userEvent.setup({ delay: null });
+      const setReplyToId = vi.fn();
+      vi.mocked(postChatMessage).mockResolvedValue({
+        status: "error",
+        error: "Failed",
+      });
+
+      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+
+      await user.type(screen.getByRole("textbox"), "Reply");
+      await user.keyboard("{Enter}");
+
+      await screen.findByText("Failed");
+
+      // setReplyToId should only be called from Escape handler, not from error
+      expect(setReplyToId).not.toHaveBeenCalledWith(null);
     });
   });
 });

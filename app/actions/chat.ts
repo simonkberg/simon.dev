@@ -58,6 +58,10 @@ export async function postChatMessage(
 ): Promise<PostChatMessageResult> {
   try {
     const text = z.string().parse(formData.get("text"));
+    const replyToId = z
+      .string()
+      .optional()
+      .parse(formData.get("replyToId") ?? undefined);
 
     const { username } = await getSession();
 
@@ -77,7 +81,7 @@ export async function postChatMessage(
       };
     }
 
-    const messageId = await postChannelMessage(text, username);
+    const messageId = await postChannelMessage(text, username, replyToId);
 
     log.info(
       { username, messageId, ip: request.ip, action: "postChatMessage" },

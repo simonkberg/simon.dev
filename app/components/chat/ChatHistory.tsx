@@ -1,22 +1,25 @@
 "use client";
 
 import { animated, useTransition } from "@react-spring/web";
-import { use, useEffect } from "react";
+import { type Dispatch, type SetStateAction, useEffect } from "react";
 
 import { refreshClientCache } from "@/actions/cache";
-import type { ChatHistoryResult } from "@/actions/chat";
 import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
 
 interface ChatHistoryMessagesProps {
   messages: Message[];
+  replyToId: string | null;
+  setReplyToId: Dispatch<SetStateAction<string | null>>;
   nested?: boolean;
 }
 
 const ChatHistoryMessages = ({
   messages,
   nested = false,
+  replyToId,
+  setReplyToId,
 }: ChatHistoryMessagesProps) => {
   const transitions = useTransition(messages, {
     keys: (message) => message.id,
@@ -35,10 +38,19 @@ const ChatHistoryMessages = ({
             transform: style.x.to((x) => `translateX(${x}%)`),
           }}
         >
-          <ChatMessage {...item} />
+          <ChatMessage
+            {...item}
+            replyToId={replyToId}
+            setReplyToId={setReplyToId}
+          />
           {item.replies.length > 0 && (
             <ul>
-              <ChatHistoryMessages messages={item.replies} nested />
+              <ChatHistoryMessages
+                messages={item.replies}
+                replyToId={replyToId}
+                setReplyToId={setReplyToId}
+                nested
+              />
             </ul>
           )}
         </animated.li>
@@ -48,12 +60,16 @@ const ChatHistoryMessages = ({
 };
 
 export interface ChatHistoryProps {
-  history: Promise<ChatHistoryResult>;
+  messages: Message[];
+  replyToId: string | null;
+  setReplyToId: Dispatch<SetStateAction<string | null>>;
 }
 
-export const ChatHistory = ({ history }: ChatHistoryProps) => {
-  const result = use(history);
-
+export const ChatHistory = ({
+  messages,
+  replyToId,
+  setReplyToId,
+}: ChatHistoryProps) => {
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectAttempts = 0;
@@ -90,15 +106,15 @@ export const ChatHistory = ({ history }: ChatHistoryProps) => {
     };
   }, []);
 
-  if (result.status === "error") {
-    return <p>Chat is temporarily unavailable :(</p>;
-  }
-
   return (
     <div className="chat-history">
       <div className="scrollable">
         <ul className="content">
-          <ChatHistoryMessages messages={result.messages} />
+          <ChatHistoryMessages
+            messages={messages}
+            replyToId={replyToId}
+            setReplyToId={setReplyToId}
+          />
         </ul>
       </div>
     </div>
