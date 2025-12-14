@@ -5,6 +5,8 @@ import { z } from "zod";
 import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 
+import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
+
 const GatewayOpcode = {
   DISPATCH: 0,
   HEARTBEAT: 1,
@@ -40,9 +42,12 @@ const ReadyDataSchema = z.object({
 
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
 
+export type MessageSubscriber = (message: DiscordMessage) => void;
+
 class DiscordGateway {
   #ws: WebSocket | null = null;
   #subscribers = new Set<() => void>();
+  #messageSubscribers = new Set<MessageSubscriber>();
 
   // Session state (for resume)
   #sessionId: string | null = null;
@@ -76,6 +81,24 @@ class DiscordGateway {
         callback();
       } catch (err) {
         log.error({ err }, "Subscriber callback error");
+      }
+    }
+  }
+
+  addMessageSubscriber(callback: MessageSubscriber): void {
+    this.#messageSubscribers.add(callback);
+  }
+
+  removeMessageSubscriber(callback: MessageSubscriber): void {
+    this.#messageSubscribers.delete(callback);
+  }
+
+  #notifyMessageSubscribers(message: DiscordMessage): void {
+    for (const callback of this.#messageSubscribers) {
+      try {
+        callback(message);
+      } catch (err) {
+        log.error({ err }, "Message subscriber callback error");
       }
     }
   }
@@ -266,6 +289,13 @@ class DiscordGateway {
         ) {
           log.debug({ event: eventName }, "Message event for our channel");
           this.#notifySubscribers();
+
+          if (eventName === "MESSAGE_CREATE") {
+            const parsedMessage = DiscordMessageSchema.safeParse(data);
+            if (parsedMessage.success) {
+              this.#notifyMessageSubscribers(parsedMessage.data);
+            }
+          }
         }
         break;
       }
@@ -325,4 +355,17 @@ export async function subscribe(callback: () => void): Promise<() => void> {
   }
 
   return () => gw.removeSubscriber(callback);
+}
+
+export async function subscribeToMessages(
+  callback: MessageSubscriber,
+): Promise<() => void> {
+  const gw = getGateway();
+  gw.addMessageSubscriber(callback);
+
+  if (!gw.connected) {
+    await gw.connect();
+  }
+
+  return () => gw.removeMessageSubscriber(callback);
 }

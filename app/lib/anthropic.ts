@@ -174,6 +174,12 @@ async function executeTool(
   }
 }
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  username: string;
+  content: string;
+};
+
 type Message = {
   role: "user" | "assistant";
   content:
@@ -183,14 +189,14 @@ type Message = {
 };
 
 export async function* createMessage(
-  userMessage: string,
-  username: string,
+  chatMessages: [ChatMessage, ...ChatMessage[]],
 ): AsyncGenerator<string, void, unknown> {
-  const messages: Message[] = [
-    { role: "user", content: `${username}: ${userMessage}` },
-  ];
+  const messages: Message[] = chatMessages.map((m) => ({
+    role: m.role,
+    content: m.role === "assistant" ? m.content : `${m.username}: ${m.content}`,
+  }));
 
-  log.debug({ message: userMessage }, "simon-bot received message");
+  log.debug({ messages }, "simon-bot received conversation");
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const response = await fetch(BASE_URL, {

@@ -11,6 +11,7 @@ import { LruMap } from "@/lib/LruMap";
 import { stringToColor } from "@/lib/stringToColor";
 
 import type { Username } from "../session";
+import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
 const BASE_URL = "https://discord.com/api/v10";
 
@@ -91,6 +92,13 @@ function parseMarkdown(content: string): string {
   );
 }
 
+const USERNAME_PREFIX_PATTERN = /^(.+?): (.*)$/s;
+
+function parseUsernamePrefix(content: string): [string, string] | undefined {
+  const match = content.match(USERNAME_PREFIX_PATTERN);
+  return match ? [match[1]!, match[2]!] : undefined;
+}
+
 const userLoader = new DataLoader<string, User>(
   (keys) =>
     Promise.allSettled(
@@ -111,18 +119,6 @@ const userLoader = new DataLoader<string, User>(
     ),
   { cacheMap: new LruMap(100) },
 );
-
-const DiscordMessageSchema = z.object({
-  type: z.number(),
-  id: z.string(),
-  author: z.object({ id: z.string() }),
-  content: z.string(),
-  edited_timestamp: z.string().nullable(),
-  components: z
-    .array(z.object({ type: z.number(), label: z.string().optional() }))
-    .optional(),
-  message_reference: z.object({ message_id: z.string().optional() }).optional(),
-});
 
 const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 
@@ -161,13 +157,13 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
     }
 
     const message = Promise.try(async () => {
-      const match = discordMessage.content.match(/^(.+?): (.*)$/s);
+      const parsed = parseUsernamePrefix(discordMessage.content);
 
-      const user = match
-        ? toUser(match[1]!)
+      const user = parsed
+        ? toUser(parsed[0])
         : await userLoader.load(discordMessage.author.id);
 
-      const content = (match?.[2] ?? discordMessage.content).trim();
+      const content = (parsed?.[1] ?? discordMessage.content).trim();
 
       return MessageSchema.decode({
         id: discordMessage.id,
@@ -201,6 +197,48 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
   };
 
   return resolveReplies(messages);
+}
+
+export type ChainMessage = {
+  id: string;
+  type: number;
+  username: string;
+  content: string;
+};
+
+const MAX_CHAIN_DEPTH = 50;
+
+export async function getMessageChain(
+  messageId: string,
+): Promise<ChainMessage[]> {
+  const chain: ChainMessage[] = [];
+  const seen = new Set<string>();
+  let currentId: string | undefined = messageId;
+
+  while (currentId && chain.length < MAX_CHAIN_DEPTH) {
+    // Cycle detection
+    if (seen.has(currentId)) break;
+    seen.add(currentId);
+
+    const response: DiscordMessage = await call(
+      "GET",
+      `channels/${env.DISCORD_CHANNEL_ID}/messages/${currentId}`,
+      DiscordMessageSchema,
+    );
+
+    // Parse username from content prefix or lookup via API
+    const parsed = parseUsernamePrefix(response.content);
+    const username = parsed
+      ? parsed[0]
+      : (await userLoader.load(response.author.id)).name;
+    const content = (parsed?.[1] ?? response.content).trim();
+
+    chain.unshift({ id: response.id, type: response.type, username, content });
+
+    currentId = response.message_reference?.message_id;
+  }
+
+  return chain;
 }
 
 const PostChannelMessageResponseSchema = z.object({ id: z.string() });

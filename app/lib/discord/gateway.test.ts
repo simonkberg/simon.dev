@@ -277,7 +277,14 @@ describe("subscribe", () => {
     getLastClient(gateway.clients)?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
-        { channel_id: "test-discord-channel-id" },
+        {
+          type: 0,
+          id: "msg-test",
+          channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
+          content: "test message",
+          edited_timestamp: null,
+        },
         2,
         "MESSAGE_CREATE",
       ),
@@ -323,7 +330,14 @@ describe("subscribe", () => {
     client?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
-        { channel_id: "test-discord-channel-id" },
+        {
+          type: 0,
+          id: "msg-1",
+          channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
+          content: "first",
+          edited_timestamp: null,
+        },
         2,
         "MESSAGE_CREATE",
       ),
@@ -338,7 +352,14 @@ describe("subscribe", () => {
     client?.send(
       createPayload(
         GatewayOpcode.DISPATCH,
-        { channel_id: "test-discord-channel-id" },
+        {
+          type: 0,
+          id: "msg-2",
+          channel_id: "test-discord-channel-id",
+          author: { id: "user-123" },
+          content: "second",
+          edited_timestamp: null,
+        },
         3,
         "MESSAGE_CREATE",
       ),
@@ -585,5 +606,131 @@ describe("subscribe", () => {
       { op: GatewayOpcode.IDENTIFY },
     ]);
     expect(connectionCount).toBe(2);
+  });
+
+  describe("subscribeToMessages", () => {
+    it("should notify message subscribers with full message on MESSAGE_CREATE", async () => {
+      const { subscribeToMessages } = await import("./gateway");
+      server.use(createHandshakeHandler());
+
+      const callback = vi.fn();
+      await subscribeToMessages(callback);
+
+      expect(callback).not.toHaveBeenCalled();
+
+      // Send MESSAGE_CREATE for matching channel
+      getLastClient(gateway.clients)?.send(
+        createPayload(
+          GatewayOpcode.DISPATCH,
+          {
+            type: 0,
+            id: "msg-123",
+            channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
+            content: "hello world",
+            edited_timestamp: null,
+          },
+          2,
+          "MESSAGE_CREATE",
+        ),
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "msg-123",
+          type: 0,
+          content: "hello world",
+        }),
+      );
+    });
+
+    it("should notify both refresh and message subscribers", async () => {
+      const { subscribe, subscribeToMessages } = await import("./gateway");
+      server.use(createHandshakeHandler());
+
+      const refreshCallback = vi.fn();
+      const messageCallback = vi.fn();
+
+      await subscribe(refreshCallback);
+      await subscribeToMessages(messageCallback);
+
+      getLastClient(gateway.clients)?.send(
+        createPayload(
+          GatewayOpcode.DISPATCH,
+          {
+            type: 0,
+            id: "msg-789",
+            channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
+            content: "hello",
+            edited_timestamp: null,
+          },
+          2,
+          "MESSAGE_CREATE",
+        ),
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Refresh callback called with no args
+      expect(refreshCallback).toHaveBeenCalledTimes(1);
+      expect(refreshCallback).toHaveBeenCalledWith();
+
+      // Message callback called with full message
+      expect(messageCallback).toHaveBeenCalledTimes(1);
+      expect(messageCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "msg-789" }),
+      );
+    });
+
+    it("should stop notifying after unsubscribe", async () => {
+      const { subscribeToMessages } = await import("./gateway");
+      server.use(createHandshakeHandler());
+
+      const callback = vi.fn();
+      const unsubscribe = await subscribeToMessages(callback);
+      const client = getLastClient(gateway.clients);
+
+      client?.send(
+        createPayload(
+          GatewayOpcode.DISPATCH,
+          {
+            type: 0,
+            id: "msg-1",
+            channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
+            content: "first",
+            edited_timestamp: null,
+          },
+          2,
+          "MESSAGE_CREATE",
+        ),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+
+      client?.send(
+        createPayload(
+          GatewayOpcode.DISPATCH,
+          {
+            type: 0,
+            id: "msg-2",
+            channel_id: "test-discord-channel-id",
+            author: { id: "user-123" },
+            content: "second",
+            edited_timestamp: null,
+          },
+          3,
+          "MESSAGE_CREATE",
+        ),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(callback).toHaveBeenCalledTimes(1); // Still 1
+    });
   });
 });

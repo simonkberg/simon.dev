@@ -5,7 +5,7 @@ import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { server } from "@/mocks/node";
 
-import { getChannelMessages, postChannelMessage } from "./api";
+import { getChannelMessages, getMessageChain, postChannelMessage } from "./api";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -369,6 +369,215 @@ describe("getChannelMessages", () => {
     );
 
     await expect(getChannelMessages()).rejects.toThrow();
+  });
+});
+
+describe("getMessageChain", () => {
+  it("should return single message when no parent", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: Hello",
+            edited_timestamp: null,
+          }),
+      ),
+    );
+
+    const chain = await getMessageChain("msg-1");
+
+    expect(chain).toHaveLength(1);
+    expect(chain[0]).toMatchObject({ id: "msg-1", content: "Hello" });
+  });
+
+  it("should walk up the chain to root (ordered root-first)", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-3") {
+            return HttpResponse.json({
+              type: 19,
+              id: "msg-3",
+              author: { id: "user3" },
+              content: "User3: Third",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-2" },
+            });
+          }
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              type: 19,
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Second",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          return HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: First",
+            edited_timestamp: null,
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-3");
+
+    expect(chain).toHaveLength(3);
+    expect(chain.map((m) => m.id)).toEqual(["msg-1", "msg-2", "msg-3"]);
+    expect(chain.map((m) => m.content)).toEqual(["First", "Second", "Third"]);
+  });
+
+  it("should parse bot messages like any other prefixed message", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              type: 19,
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Thanks bot!",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          return HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "bot" },
+            content: "simon-bot: Hello human",
+            edited_timestamp: null,
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-2");
+
+    expect(chain).toHaveLength(2);
+    expect(chain[0]).toMatchObject({
+      id: "msg-1",
+      username: "simon-bot",
+      content: "Hello human",
+    });
+    expect(chain[1]).toMatchObject({
+      id: "msg-2",
+      username: "User2",
+      content: "Thanks bot!",
+    });
+  });
+
+  it("should lookup username via API when no prefix", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        () =>
+          HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user999" },
+            content: "No prefix here",
+            edited_timestamp: null,
+          }),
+      ),
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
+        ({ params }) => {
+          expect(params["userId"]).toBe("user999");
+          return HttpResponse.json({
+            user: { username: "discorduser", global_name: "Discord User" },
+            nick: "Server Nick",
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-1");
+
+    expect(chain).toHaveLength(1);
+    expect(chain[0]).toMatchObject({
+      username: "Server Nick",
+      content: "No prefix here",
+    });
+  });
+
+  it("should stop on circular reference", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              type: 19,
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Reply",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          // msg-1 points back to msg-2 (circular)
+          return HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: First",
+            edited_timestamp: null,
+            message_reference: { message_id: "msg-2" },
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-2");
+
+    // Should stop after detecting the cycle
+    expect(chain).toHaveLength(2);
+    expect(chain.map((m) => m.id)).toEqual(["msg-1", "msg-2"]);
+  });
+
+  it("should limit chain depth to 50 messages", async () => {
+    let callCount = 0;
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          callCount++;
+          const id = Number(params["messageId"]);
+          const parentId = id - 1;
+          return HttpResponse.json({
+            type: parentId > 0 ? 19 : 0,
+            id: String(id),
+            author: { id: "user1" },
+            content: `User1: Message ${id}`,
+            edited_timestamp: null,
+            ...(parentId > 0 && {
+              message_reference: { message_id: String(parentId) },
+            }),
+          });
+        },
+      ),
+    );
+
+    // Start from message 100 (would be 100 messages deep without limit)
+    const chain = await getMessageChain("100");
+
+    expect(chain).toHaveLength(50);
+    expect(callCount).toBe(50);
   });
 });
 
