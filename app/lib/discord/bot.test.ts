@@ -122,6 +122,42 @@ describe("handleMessage", () => {
     );
   });
 
+  it("should map bot messages to assistant role in conversation", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
+      { id: "msg-2", type: 19, username: "simon-bot", content: "hello there!" },
+      { id: "msg-3", type: 19, username: "User1", content: "thanks!" },
+    ]);
+
+    async function* mockResponse() {
+      yield "you're welcome!";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(
+      createMessage({ type: 19, id: "msg-3", content: "User1: thanks!" }),
+    );
+
+    expect(createAnthropicMessage).toHaveBeenCalledWith([
+      { role: "user", username: "User1", content: "hey simon-bot!" },
+      { role: "assistant", username: "simon-bot", content: "hello there!" },
+      { role: "user", username: "User1", content: "thanks!" },
+    ]);
+  });
+
+  it("should skip if chain is empty", async () => {
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getMessageChain).mockResolvedValue([]);
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
+
+    expect(createAnthropicMessage).not.toHaveBeenCalled();
+  });
+
   it("should skip if already seen (dedup)", async () => {
     setMock.mockResolvedValue(null); // null = key already exists
 
