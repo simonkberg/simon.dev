@@ -7,7 +7,8 @@ import { createMessage as createAnthropicMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 
 import { getMessageChain, postChannelMessage } from "./api";
-import { handleMessage } from "./bot";
+import { handleMessage, startBotSubscription } from "./bot";
+import { subscribeToMessages } from "./gateway";
 import type { DiscordMessage } from "./schemas";
 
 vi.mock(import("server-only"), () => ({}));
@@ -25,6 +26,11 @@ vi.mock(import("./api"), async (importOriginal) => {
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, createMessage: vi.fn() };
+});
+
+vi.mock(import("./gateway"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, subscribeToMessages: vi.fn() };
 });
 
 function createMessage(
@@ -177,5 +183,16 @@ describe("handleMessage", () => {
       "simon-bot",
       "msg-1",
     );
+  });
+});
+
+describe("startBotSubscription", () => {
+  it("should subscribe to messages with handleMessage", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.mocked(subscribeToMessages).mockResolvedValue(() => {});
+
+    await startBotSubscription();
+
+    expect(subscribeToMessages).toHaveBeenCalledWith(handleMessage);
   });
 });
