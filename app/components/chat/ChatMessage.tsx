@@ -27,7 +27,7 @@ export const ChatMessage = ({
       title="Reply"
       className="reply"
       onClick={() => setReplyToId(id)}
-      aria-disabled={replyToId === id}
+      disabled={replyToId === id}
     >
       ↩
     </button>

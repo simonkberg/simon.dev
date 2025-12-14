@@ -47,7 +47,13 @@ export const Chat = ({ history }: ChatProps) => {
         setReplyToId={setReplyToId}
       />
       {replyToMessage && (
-        <div className="chat-replying-to">
+        <div className="chat-replying-to" role="status" aria-live="polite">
+          <Subtitle>Replying to</Subtitle>
+          <ChatMessage
+            replyToId={replyToId}
+            setReplyToId={setReplyToId}
+            {...replyToMessage}
+          />
           <button
             aria-label="Clear reply"
             title="Clear reply"
@@ -56,12 +62,6 @@ export const Chat = ({ history }: ChatProps) => {
           >
             &times;
           </button>
-          <Subtitle>Replying to</Subtitle>
-          <ChatMessage
-            replyToId={replyToId}
-            setReplyToId={setReplyToId}
-            {...replyToMessage}
-          />
         </div>
       )}
       <ChatInput replyToId={replyToId} setReplyToId={setReplyToId} />

@@ -86,7 +86,7 @@ describe("ChatMessage", () => {
       expect(setReplyToId).toHaveBeenCalledWith("test-message-id");
     });
 
-    it("has aria-disabled true when this message is being replied to", () => {
+    it("is disabled when this message is being replied to", () => {
       const message = createMessage({ id: "selected-message" });
       render(
         <ChatMessage
@@ -96,13 +96,10 @@ describe("ChatMessage", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: "Reply" })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
+      expect(screen.getByRole("button", { name: "Reply" })).toBeDisabled();
     });
 
-    it("does not have aria-disabled when a different message is being replied to", () => {
+    it("is not disabled when a different message is being replied to", () => {
       const message = createMessage({ id: "this-message" });
       render(
         <ChatMessage
@@ -112,10 +109,7 @@ describe("ChatMessage", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: "Reply" })).toHaveAttribute(
-        "aria-disabled",
-        "false",
-      );
+      expect(screen.getByRole("button", { name: "Reply" })).toBeEnabled();
     });
 
     it("has reply class for styling", () => {
