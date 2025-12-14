@@ -35,6 +35,7 @@ export const Chat = ({ history }: ChatProps) => {
     return <p>Chat is temporarily unavailable :(</p>;
   }
 
+  // @v8
   const replyToMessage = replyToId
     ? findMessageById(result.messages, replyToId)
     : null;
