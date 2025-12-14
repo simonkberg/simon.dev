@@ -221,8 +221,8 @@ export async function getMessageChain(
       username = match[1]!;
       content = match[2]!.trim();
     } else {
-      const member = await getGuildMember(response.author.id);
-      username = member.nick ?? member.user.global_name ?? member.user.username;
+      const user = await userLoader.load(response.author.id);
+      username = user.name;
       content = response.content.trim();
     }
 
