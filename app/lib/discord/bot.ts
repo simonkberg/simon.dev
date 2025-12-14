@@ -52,7 +52,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
 
-    // Build conversation for Anthropic
+    // Past this point, we're committed to responding
     const messages = chain.map((m) => ({
       role:
         m.username === BOT_USERNAME
@@ -62,15 +62,21 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       content: m.content,
     })) as [ChatMessage, ...ChatMessage[]];
 
-    // Generate and post response
-    for await (const response of createMessage(messages)) {
-      await postChannelMessage(response, BOT_USERNAME, message.id);
+    try {
+      for await (const response of createMessage(messages)) {
+        await postChannelMessage(response, BOT_USERNAME, message.id);
+      }
+      log.info({ messageId: message.id }, "Bot responded to message");
+    } catch (err) {
+      log.error({ err, messageId: message.id }, "Bot response failed");
+      await postChannelMessage(
+        "oops, something went wrong... try again later!",
+        BOT_USERNAME,
+        message.id,
+      );
     }
-
-    log.info({ messageId: message.id }, "Bot responded to message");
   } catch (err) {
     log.error({ err, messageId: message.id }, "Bot message handling failed");
-    // Silent failure - no error message posted
   }
 }
 

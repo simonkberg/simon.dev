@@ -143,7 +143,7 @@ describe("handleMessage", () => {
     expect(setMock).not.toHaveBeenCalled();
   });
 
-  it("should log error and not post on failure", async () => {
+  it("should log error silently on pre-commitment failure", async () => {
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
 
@@ -153,5 +153,29 @@ describe("handleMessage", () => {
 
     expect(errorSpy).toHaveBeenCalled();
     expect(postChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it("should post error message on post-commitment failure", async () => {
+    const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
+    ]);
+
+    async function* failingResponse(): AsyncGenerator<string> {
+      throw new Error("Anthropic error");
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(failingResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("error-msg-id");
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "oops, something went wrong... try again later!",
+      "simon-bot",
+      "msg-1",
+    );
   });
 });
