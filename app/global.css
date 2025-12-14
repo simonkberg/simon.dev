@@ -291,6 +291,8 @@ ul {
 .chat-message {
   --user-color: hsl(1 0 0);
 
+  text-wrap: pretty;
+
   > .user {
     font-weight: bold;
     color: oklch(from var(--user-color) l c h);
@@ -342,6 +344,26 @@ ul {
 
   > .edited {
     color: var(--color-muted);
+  }
+
+  > .reply {
+    color: var(--color-muted);
+    visibility: hidden;
+
+    &:hover,
+    &:focus {
+      color: inherit;
+      visibility: visible;
+    }
+
+    &:disabled {
+      visibility: hidden !important;
+    }
+  }
+
+  &:hover > .reply,
+  &:focus-within > .reply {
+    visibility: visible;
   }
 }
 
@@ -404,6 +426,25 @@ ul {
       margin: 0;
       padding: 0.625rem 0;
     }
+  }
+}
+
+.chat-replying-to {
+  position: relative;
+  padding: 0.25rem 0.625rem 0.625rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: color-mix(
+    in srgb,
+    var(--background-secondary),
+    transparent
+  );
+
+  & > .clear {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    color: var(--color-muted);
   }
 }
 

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type ChatHistoryResult, getChatHistory } from "@/actions/chat";
 import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
 import { getWakaTimeStats, type WakaTimeStatsResult } from "@/actions/wakaTime";
-import type { ChatHistoryProps } from "@/components/ChatHistory";
+import type { ChatProps } from "@/components/chat/Chat";
 import type { RecentTracksListProps } from "@/components/RecentTracksList";
 import type { StatsListProps } from "@/components/StatsList";
 import { config } from "@/config";
@@ -33,28 +33,24 @@ vi.mock(import("@/actions/wakaTime"), () => ({
 }));
 
 // Mock components that use() their promise props to trigger Suspense
-vi.mock(import("@/components/ChatHistory"), () => ({
-  ChatHistory: ({ history }: ChatHistoryProps) => {
+vi.mock(import("@/components/chat/Chat"), () => ({
+  Chat: ({ history }: ChatProps) => {
     use(history);
-    return <div data-testid="chat-history">Chat history</div>;
+    return <div data-testid="chat" />;
   },
-}));
-
-vi.mock(import("@/components/ChatInput"), () => ({
-  ChatInput: () => <div data-testid="chat-input">Chat input</div>,
 }));
 
 vi.mock(import("@/components/RecentTracksList"), () => ({
   RecentTracksList: ({ recentTracks }: RecentTracksListProps) => {
     use(recentTracks);
-    return <div data-testid="recent-tracks-list">Recent tracks</div>;
+    return <div data-testid="recent-tracks-list" />;
   },
 }));
 
 vi.mock(import("@/components/StatsList"), () => ({
   StatsList: ({ stats }: StatsListProps) => {
     use(stats);
-    return <div data-testid="stats-list">Stats list</div>;
+    return <div data-testid="stats-list" />;
   },
 }));
 
@@ -233,15 +229,13 @@ describe("RootPage", () => {
 
       const region = screen.getByRole("region", { name: /^Chat/ });
       expect(within(region).getByRole("status")).toBeInTheDocument();
-      expect(
-        within(region).queryByTestId("chat-history"),
-      ).not.toBeInTheDocument();
+      expect(within(region).queryByTestId("chat")).not.toBeInTheDocument();
 
       act(() => resolve({ status: "ok", messages: [] }));
 
       await waitFor(() => {
         expect(within(region).queryByRole("status")).not.toBeInTheDocument();
-        expect(within(region).getByTestId("chat-history")).toBeInTheDocument();
+        expect(within(region).getByTestId("chat")).toBeInTheDocument();
       });
     });
   });

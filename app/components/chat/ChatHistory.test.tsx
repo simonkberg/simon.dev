@@ -1,8 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { refreshClientCache } from "@/actions/cache";
-import type { ChatHistoryResult } from "@/actions/chat";
 import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
@@ -63,6 +62,8 @@ function createMockEventSource() {
 describe("ChatHistory", () => {
   let mockEventSource: ReturnType<typeof createMockEventSource>;
 
+  const defaultReplyProps = { replyToId: null, setReplyToId: vi.fn() };
+
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -72,7 +73,7 @@ describe("ChatHistory", () => {
     vi.stubGlobal("EventSource", mockEventSource.MockEventSource);
   });
 
-  it("renders messages as list with deeply nested replies", async () => {
+  it("renders messages as list with deeply nested replies", () => {
     const mockMessages: Message[] = [
       {
         id: "1234567890123456",
@@ -121,14 +122,7 @@ describe("ChatHistory", () => {
       },
     ];
 
-    const successResult: ChatHistoryResult = {
-      status: "ok",
-      messages: mockMessages,
-    };
-
-    await act(() =>
-      render(<ChatHistory history={Promise.resolve(successResult)} />),
-    );
+    render(<ChatHistory messages={mockMessages} {...defaultReplyProps} />);
 
     // 1 content list + 3 nested lists (replies → nested reply → deeply nested)
     expect(screen.getAllByRole("list")).toHaveLength(4);
@@ -141,31 +135,18 @@ describe("ChatHistory", () => {
     expect(screen.getByText("Second reply")).toBeInTheDocument();
   });
 
-  it("displays error message when history fetch fails", async () => {
-    const errorResult: ChatHistoryResult = {
-      status: "error",
-      error: "Failed to fetch chat history",
-    };
+  it("renders empty list when no messages", () => {
+    render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
-    await act(() =>
-      render(<ChatHistory history={Promise.resolve(errorResult)} />),
-    );
-
-    expect(
-      screen.getByText("Chat is temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
   describe("SSE connection", () => {
-    const successResult = Promise.resolve<ChatHistoryResult>({
-      status: "ok",
-      messages: [],
-    });
-
-    it("calls refreshClientCache when SSE message is received", async () => {
+    it("calls refreshClientCache when SSE message is received", () => {
       const { getInstance } = mockEventSource;
 
-      await act(() => render(<ChatHistory history={successResult} />));
+      render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
       const instance = getInstance();
 
@@ -174,11 +155,11 @@ describe("ChatHistory", () => {
       expect(refreshClientCache).toHaveBeenCalled();
     });
 
-    it("closes EventSource on unmount", async () => {
+    it("closes EventSource on unmount", () => {
       const { getInstance } = mockEventSource;
 
-      const { unmount } = await act(() =>
-        render(<ChatHistory history={successResult} />),
+      const { unmount } = render(
+        <ChatHistory messages={[]} {...defaultReplyProps} />,
       );
 
       const instance = getInstance();
@@ -188,12 +169,12 @@ describe("ChatHistory", () => {
       expect(instance.close).toHaveBeenCalled();
     });
 
-    it("reconnects with exponential backoff on SSE error", async () => {
+    it("reconnects with exponential backoff on SSE error", () => {
       vi.useFakeTimers();
 
       const { getInstance, instances } = mockEventSource;
 
-      await act(() => render(<ChatHistory history={successResult} />));
+      render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
       const initialCount = instances.length;
       expect(initialCount).toBeGreaterThanOrEqual(1);
@@ -223,12 +204,12 @@ describe("ChatHistory", () => {
       expect(instances.length).toBe(initialCount + 2);
     });
 
-    it("handles multiple onerror calls before reconnect", async () => {
+    it("handles multiple onerror calls before reconnect", () => {
       vi.useFakeTimers();
 
       const { getInstance, instances } = mockEventSource;
 
-      await act(() => render(<ChatHistory history={successResult} />));
+      render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
       const initialCount = instances.length;
       const instance = getInstance(-1);
@@ -247,12 +228,12 @@ describe("ChatHistory", () => {
       expect(instances.length).toBe(initialCount + 1);
     });
 
-    it("resets reconnect attempts on successful connection", async () => {
+    it("resets reconnect attempts on successful connection", () => {
       vi.useFakeTimers();
 
       const { getInstance, instances } = mockEventSource;
 
-      await act(() => render(<ChatHistory history={successResult} />));
+      render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
       const initialCount = instances.length;
       const firstInstance = getInstance(-1);
@@ -275,13 +256,13 @@ describe("ChatHistory", () => {
       expect(instances.length).toBe(initialCount + 2);
     });
 
-    it("clears pending reconnect timer on unmount", async () => {
+    it("clears pending reconnect timer on unmount", () => {
       vi.useFakeTimers();
 
       const { getInstance, instances } = mockEventSource;
 
-      const { unmount } = await act(() =>
-        render(<ChatHistory history={successResult} />),
+      const { unmount } = render(
+        <ChatHistory messages={[]} {...defaultReplyProps} />,
       );
 
       const initialCount = instances.length;
@@ -300,12 +281,12 @@ describe("ChatHistory", () => {
       expect(instances.length).toBe(initialCount);
     });
 
-    it("respects max backoff of 30 seconds", async () => {
+    it("respects max backoff of 30 seconds", () => {
       vi.useFakeTimers();
 
       const { getInstance, instances } = mockEventSource;
 
-      await act(() => render(<ChatHistory history={successResult} />));
+      render(<ChatHistory messages={[]} {...defaultReplyProps} />);
 
       // Trigger many errors to exceed max backoff
       for (let i = 0; i < 6; i++) {

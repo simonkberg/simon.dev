@@ -5,8 +5,7 @@ import { Suspense } from "react";
 import { getChatHistory } from "@/actions/chat";
 import { getRecentTracks } from "@/actions/lastfm";
 import { getWakaTimeStats } from "@/actions/wakaTime";
-import { ChatHistory } from "@/components/ChatHistory";
-import { ChatInput } from "@/components/ChatInput";
+import { Chat } from "@/components/chat/Chat";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
@@ -99,8 +98,7 @@ export default function RootPage() {
         </Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
-            <ChatHistory history={history} />
-            <ChatInput />
+            <Chat history={history} />
           </Suspense>
         </Terminal>
       </section>

@@ -7,7 +7,12 @@ import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
 import { ChatToast } from "./ChatToast";
 
-export const ChatInput = () => {
+export interface ChatInputProps {
+  replyToId: string | null;
+  setReplyToId: (id: string | null) => void;
+}
+
+export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<PostChatMessageResult>({
     status: "initial",
@@ -18,10 +23,17 @@ export const ChatInput = () => {
     const form = event.currentTarget;
 
     startTransition(async () => {
-      const result = await postChatMessage(new FormData(form));
+      const formData = new FormData(form);
+      if (replyToId) {
+        formData.append("replyToId", replyToId);
+      }
+      const result = await postChatMessage(formData);
 
       if (result.status === "ok") {
-        startTransition(() => requestFormReset(form));
+        startTransition(() => {
+          requestFormReset(form);
+          setReplyToId(null);
+        });
       }
 
       setResult(result);
@@ -33,6 +45,23 @@ export const ChatInput = () => {
       inputRef.current?.focus();
     }
   }, [pending, result.status]);
+
+  useEffect(() => {
+    if (replyToId) {
+      inputRef.current?.focus();
+      const keyDownHandler = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          setReplyToId(null);
+        }
+      };
+      window.addEventListener("keydown", keyDownHandler);
+      return () => {
+        window.removeEventListener("keydown", keyDownHandler);
+      };
+    }
+
+    return;
+  }, [replyToId, setReplyToId]);
 
   return (
     <>
@@ -46,7 +75,7 @@ export const ChatInput = () => {
         <div className="wrapper">
           <input
             name="text"
-            placeholder="Write a message..."
+            placeholder={`Write a ${replyToId ? "reply" : "message"}...`}
             disabled={pending}
             className="input"
             ref={inputRef}
