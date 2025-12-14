@@ -92,6 +92,13 @@ function parseMarkdown(content: string): string {
   );
 }
 
+const USERNAME_PREFIX_PATTERN = /^(.+?): (.*)$/s;
+
+function parseUsernamePrefix(content: string): [string, string] | undefined {
+  const match = content.match(USERNAME_PREFIX_PATTERN);
+  return match ? [match[1]!, match[2]!] : undefined;
+}
+
 const userLoader = new DataLoader<string, User>(
   (keys) =>
     Promise.allSettled(
@@ -150,13 +157,13 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
     }
 
     const message = Promise.try(async () => {
-      const match = discordMessage.content.match(/^(.+?): (.*)$/s);
+      const parsed = parseUsernamePrefix(discordMessage.content);
 
-      const user = match
-        ? toUser(match[1]!)
+      const user = parsed
+        ? toUser(parsed[0])
         : await userLoader.load(discordMessage.author.id);
 
-      const content = (match?.[2] ?? discordMessage.content).trim();
+      const content = (parsed?.[1] ?? discordMessage.content).trim();
 
       return MessageSchema.decode({
         id: discordMessage.id,
@@ -213,18 +220,11 @@ export async function getMessageChain(
     );
 
     // Parse username from content prefix or lookup via API
-    let username: string;
-    let content: string;
-
-    const match = response.content.match(/^(.+?): (.*)$/s);
-    if (match) {
-      username = match[1]!;
-      content = match[2]!.trim();
-    } else {
-      const user = await userLoader.load(response.author.id);
-      username = user.name;
-      content = response.content.trim();
-    }
+    const parsed = parseUsernamePrefix(response.content);
+    const username = parsed
+      ? parsed[0]
+      : (await userLoader.load(response.author.id)).name;
+    const content = (parsed?.[1] ?? response.content).trim();
 
     chain.unshift({ id: response.id, type: response.type, username, content });
 
