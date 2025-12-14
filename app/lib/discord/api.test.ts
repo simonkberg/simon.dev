@@ -513,6 +513,72 @@ describe("getMessageChain", () => {
       content: "No prefix here",
     });
   });
+
+  it("should stop on circular reference", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          const id = params["messageId"];
+          if (id === "msg-2") {
+            return HttpResponse.json({
+              type: 19,
+              id: "msg-2",
+              author: { id: "user2" },
+              content: "User2: Reply",
+              edited_timestamp: null,
+              message_reference: { message_id: "msg-1" },
+            });
+          }
+          // msg-1 points back to msg-2 (circular)
+          return HttpResponse.json({
+            type: 0,
+            id: "msg-1",
+            author: { id: "user1" },
+            content: "User1: First",
+            edited_timestamp: null,
+            message_reference: { message_id: "msg-2" },
+          });
+        },
+      ),
+    );
+
+    const chain = await getMessageChain("msg-2");
+
+    // Should stop after detecting the cycle
+    expect(chain).toHaveLength(2);
+    expect(chain.map((m) => m.id)).toEqual(["msg-1", "msg-2"]);
+  });
+
+  it("should limit chain depth to 50 messages", async () => {
+    let callCount = 0;
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
+        ({ params }) => {
+          callCount++;
+          const id = Number(params["messageId"]);
+          const parentId = id - 1;
+          return HttpResponse.json({
+            type: parentId > 0 ? 19 : 0,
+            id: String(id),
+            author: { id: "user1" },
+            content: `User1: Message ${id}`,
+            edited_timestamp: null,
+            ...(parentId > 0 && {
+              message_reference: { message_id: String(parentId) },
+            }),
+          });
+        },
+      ),
+    );
+
+    // Start from message 100 (would be 100 messages deep without limit)
+    const chain = await getMessageChain("100");
+
+    expect(chain).toHaveLength(50);
+    expect(callCount).toBe(50);
+  });
 });
 
 describe("postChannelMessage", () => {

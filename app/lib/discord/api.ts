@@ -206,13 +206,20 @@ export type ChainMessage = {
   content: string;
 };
 
+const MAX_CHAIN_DEPTH = 50;
+
 export async function getMessageChain(
   messageId: string,
 ): Promise<ChainMessage[]> {
   const chain: ChainMessage[] = [];
+  const seen = new Set<string>();
   let currentId: string | undefined = messageId;
 
-  while (currentId) {
+  while (currentId && chain.length < MAX_CHAIN_DEPTH) {
+    // Cycle detection
+    if (seen.has(currentId)) break;
+    seen.add(currentId);
+
     const response: DiscordMessage = await call(
       "GET",
       `channels/${env.DISCORD_CHANNEL_ID}/messages/${currentId}`,
