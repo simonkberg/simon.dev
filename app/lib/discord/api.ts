@@ -146,15 +146,7 @@ const userLoader = new DataLoader<string, User>(
           response.nick ?? response.user.global_name ?? response.user.username,
         );
       }),
-    ).then((result) =>
-      result.map((res) =>
-        res.status === "fulfilled"
-          ? res.value
-          : res.reason instanceof Error
-            ? res.reason
-            : new Error("Unknown error"),
-      ),
-    ),
+    ).then(flattenSettledPromises),
   { cacheMap: new LruMap(100) },
 );
 
@@ -237,6 +229,20 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
   return resolveReplies(messages);
 }
 
+const discordMessageLoader = new DataLoader<string, DiscordMessage>(
+  (keys) =>
+    Promise.allSettled(
+      keys.map((messageId) =>
+        call(
+          "GET",
+          `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
+          DiscordMessageSchema,
+        ),
+      ),
+    ).then(flattenSettledPromises),
+  { cacheMap: new LruMap(100) },
+);
+
 export type ChainMessage = {
   id: string;
   type: number;
@@ -258,11 +264,7 @@ export async function getMessageChain(
     if (seen.has(currentId)) break;
     seen.add(currentId);
 
-    const response: DiscordMessage = await call(
-      "GET",
-      `channels/${env.DISCORD_CHANNEL_ID}/messages/${currentId}`,
-      DiscordMessageSchema,
-    );
+    const response: DiscordMessage = await discordMessageLoader.load(currentId);
 
     // Parse username from content prefix or lookup via API
     const parsed = parseUsernamePrefix(response.content);
@@ -301,4 +303,17 @@ export async function postChannelMessage(
   );
 
   return response.id;
+}
+
+function flattenSettledPromises<T>(
+  promises: PromiseSettledResult<T>[],
+): (T | Error)[] {
+  return promises.map((res) =>
+    res.status === "fulfilled"
+      ? res.value
+      : res.reason instanceof Error
+        ? res.reason
+        : /* v8 ignore next -- @preserve */
+          new Error("Unknown error"),
+  );
 }
