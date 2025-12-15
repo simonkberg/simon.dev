@@ -150,6 +150,20 @@ const userLoader = new DataLoader<string, User>(
   { cacheMap: new LruMap(100) },
 );
 
+const discordMessageLoader = new DataLoader<string, DiscordMessage>(
+  (keys) =>
+    Promise.allSettled(
+      keys.map((messageId) =>
+        call(
+          "GET",
+          `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
+          DiscordMessageSchema,
+        ),
+      ),
+    ).then(flattenSettledPromises),
+  { cacheMap: new LruMap(100) },
+);
+
 const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 
 const MessageSchema = z.object({
@@ -185,6 +199,8 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
     if (discordMessage.type !== 0 && discordMessage.type !== 19) {
       continue;
     }
+
+    discordMessageLoader.prime(discordMessage.id, discordMessage);
 
     const message = Promise.try(async () => {
       const parsed = parseUsernamePrefix(discordMessage.content);
@@ -228,20 +244,6 @@ export async function getChannelMessages(limit = 50): Promise<Message[]> {
 
   return resolveReplies(messages);
 }
-
-const discordMessageLoader = new DataLoader<string, DiscordMessage>(
-  (keys) =>
-    Promise.allSettled(
-      keys.map((messageId) =>
-        call(
-          "GET",
-          `channels/${env.DISCORD_CHANNEL_ID}/messages/${messageId}`,
-          DiscordMessageSchema,
-        ),
-      ),
-    ).then(flattenSettledPromises),
-  { cacheMap: new LruMap(100) },
-);
 
 export type ChainMessage = {
   id: string;
