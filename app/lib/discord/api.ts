@@ -37,7 +37,7 @@ async function call<T extends z.ZodType>(
     }
   }
 
-  const startTime = Date.now();
+  const startTime = performance.now();
 
   while (true) {
     const response = await fetch(url, {
@@ -59,7 +59,7 @@ async function call<T extends z.ZodType>(
         : 1000;
       const global = rateLimit.success && rateLimit.data.global;
 
-      const elapsedMs = Date.now() - startTime;
+      const elapsedMs = performance.now() - startTime;
 
       if (elapsedMs + retryAfterMs > RATE_LIMIT_TIMEOUT_MS) {
         log.error(
