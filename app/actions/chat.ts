@@ -1,7 +1,7 @@
 "use server";
 
 import { Ratelimit } from "@upstash/ratelimit";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
@@ -22,6 +22,7 @@ export type ChatHistoryResult =
 export async function getChatHistory(): Promise<ChatHistoryResult> {
   "use cache";
   cacheLife("seconds");
+  cacheTag("getChatHistory");
 
   try {
     const messages = await getChannelMessages();
@@ -46,6 +47,11 @@ function getRateLimiter() {
   }
 
   return rateLimiter;
+}
+
+export async function refreshChatHistory() {
+  updateTag("getChatHistory");
+  refresh();
 }
 
 export type PostChatMessageResult =

@@ -3,7 +3,7 @@
 import { animated, useTransition } from "@react-spring/web";
 import { type Dispatch, type SetStateAction, useEffect } from "react";
 
-import { refreshClientCache } from "@/actions/cache";
+import { refreshChatHistory } from "@/actions/chat";
 import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
@@ -81,7 +81,7 @@ export const ChatHistory = ({
       eventSource.onopen = () => {
         reconnectAttempts = 0;
       };
-      eventSource.onmessage = () => void refreshClientCache();
+      eventSource.onmessage = () => void refreshChatHistory();
       eventSource.onerror = () => {
         if (eventSource) {
           eventSource.close();
