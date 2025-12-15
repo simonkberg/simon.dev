@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
@@ -679,5 +679,143 @@ describe("postChannelMessage", () => {
     await expect(
       postChannelMessage("Hello", "TestUser" as Username),
     ).rejects.toThrow(`Discord API error: ${status} ${statusText}`);
+  });
+});
+
+describe("rate limiting", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("should retry after 429 and succeed", async () => {
+    const logWarnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    let attempts = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        attempts++;
+        if (attempts <= 2) {
+          return HttpResponse.json(
+            { message: "Rate limited", retry_after: 1, global: false },
+            { status: 429 },
+          );
+        }
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const promise = getChannelMessages();
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await promise;
+
+    expect(attempts).toBe(3);
+    expect(logWarnSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("should throw when elapsed + retry_after exceeds timeout", async () => {
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>
+        HttpResponse.json(
+          { message: "Rate limited", retry_after: 35, global: true },
+          { status: 429 },
+        ),
+      ),
+    );
+
+    await expect(getChannelMessages()).rejects.toThrow(
+      "Discord rate limit exceeded",
+    );
+
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      {
+        endpoint: expect.any(String),
+        elapsedMs: 0,
+        retryAfterMs: 35000,
+        global: true,
+      },
+      "Discord rate limit exceeded max wait time",
+    );
+  });
+
+  it("should use 1 second fallback when response lacks retry_after", async () => {
+    const logWarnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    let attempts = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return HttpResponse.json({ invalid: "response" }, { status: 429 });
+        }
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const promise = getChannelMessages();
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await promise;
+
+    expect(attempts).toBe(2);
+    expect(logWarnSpy).toHaveBeenCalledWith(
+      { endpoint: expect.any(String), retryAfterMs: 1000, global: false },
+      "Discord rate limited, retrying",
+    );
+  });
+
+  it("should account for elapsed time in timeout calculation", async () => {
+    const logWarnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+    let attempts = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return HttpResponse.json(
+            { message: "Rate limited", retry_after: 15, global: false },
+            { status: 429 },
+          );
+        }
+        return HttpResponse.json(
+          { message: "Rate limited", retry_after: 16, global: false },
+          { status: 429 },
+        );
+      }),
+    );
+
+    const promise = getChannelMessages();
+    // Set up rejection expectation before advancing time to avoid unhandled rejection
+    const assertion = expect(promise).rejects.toThrow(
+      "Discord rate limit exceeded",
+    );
+
+    await vi.advanceTimersByTimeAsync(15000);
+    await assertion;
+
+    expect(attempts).toBe(2);
+    expect(logWarnSpy).toHaveBeenCalledWith(
+      { endpoint: expect.any(String), retryAfterMs: 15000, global: false },
+      "Discord rate limited, retrying",
+    );
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      {
+        endpoint: expect.any(String),
+        elapsedMs: 15000,
+        retryAfterMs: 16000,
+        global: false,
+      },
+      "Discord rate limit exceeded max wait time",
+    );
   });
 });
