@@ -14,6 +14,14 @@ import type { Username } from "../session";
 import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
 const BASE_URL = "https://discord.com/api/v10";
+const RATE_LIMIT_TIMEOUT_MS = 30_000;
+
+const RateLimitResponseSchema = z.object({
+  message: z.string(),
+  retry_after: z.number(),
+  global: z.boolean(),
+  code: z.number().optional(),
+});
 
 async function call<T extends z.ZodType>(
   method: string,
@@ -29,29 +37,59 @@ async function call<T extends z.ZodType>(
     }
   }
 
-  const response = await fetch(url, {
-    method,
-    body: method === "POST" ? JSON.stringify(params) : undefined,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-    },
-    signal: AbortSignal.timeout(5000),
-  });
+  const startTime = Date.now();
 
-  const json = await response.json();
+  while (true) {
+    const response = await fetch(url, {
+      method,
+      body: method === "POST" ? JSON.stringify(params) : undefined,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
 
-  if (!response.ok) {
-    log.error(
-      { endpoint, status: response.status, body: json },
-      "Discord API call failed",
-    );
-    throw new Error(
-      `Discord API error: ${response.status} ${response.statusText}`,
-    );
+    const json = await response.json();
+
+    if (response.status === 429) {
+      const rateLimit = RateLimitResponseSchema.safeParse(json);
+      const retryAfterMs = rateLimit.success
+        ? rateLimit.data.retry_after * 1000
+        : 1000;
+      const global = rateLimit.success && rateLimit.data.global;
+
+      const elapsedMs = Date.now() - startTime;
+
+      if (elapsedMs + retryAfterMs > RATE_LIMIT_TIMEOUT_MS) {
+        log.error(
+          { endpoint, elapsedMs, retryAfterMs, global },
+          "Discord rate limit exceeded max wait time",
+        );
+        throw new Error(`Discord rate limit exceeded`);
+      }
+
+      log.warn(
+        { endpoint, retryAfterMs, global },
+        "Discord rate limited, retrying",
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+      continue;
+    }
+
+    if (!response.ok) {
+      log.error(
+        { endpoint, status: response.status, body: json },
+        "Discord API call failed",
+      );
+      throw new Error(
+        `Discord API error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    return schema.parse(json);
   }
-
-  return schema.parse(json);
 }
 
 const GetGuildMemberResponseSchema = z.object({
