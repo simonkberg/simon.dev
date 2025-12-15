@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { refreshClientCache } from "@/actions/cache";
+import { refreshChatHistory } from "@/actions/chat";
 import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
 
-vi.mock(import("@/actions/cache"), () => ({ refreshClientCache: vi.fn() }));
+vi.mock(import("@/actions/chat"), () => ({ refreshChatHistory: vi.fn() }));
 
 function createMockEventSource() {
   const instances: MockEventSource[] = [];
@@ -143,7 +143,7 @@ describe("ChatHistory", () => {
   });
 
   describe("SSE connection", () => {
-    it("calls refreshClientCache when SSE message is received", () => {
+    it("calls refreshChatHistory when SSE message is received", () => {
       const { getInstance } = mockEventSource;
 
       render(<ChatHistory messages={[]} {...defaultReplyProps} />);
@@ -152,7 +152,7 @@ describe("ChatHistory", () => {
 
       instance.onmessage();
 
-      expect(refreshClientCache).toHaveBeenCalled();
+      expect(refreshChatHistory).toHaveBeenCalled();
     });
 
     it("closes EventSource on unmount", () => {

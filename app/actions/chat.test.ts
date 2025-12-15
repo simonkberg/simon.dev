@@ -1,7 +1,12 @@
+import { cacheLife, cacheTag, refresh, updateTag } from "next/cache"; // Hoisted so it can be referenced in the Ratelimit mock below
 import { after } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getChatHistory, postChatMessage } from "@/actions/chat";
+import {
+  getChatHistory,
+  postChatMessage,
+  refreshChatHistory,
+} from "@/actions/chat";
 import {
   getChannelMessages,
   type Message,
@@ -28,7 +33,12 @@ vi.mock("@upstash/ratelimit", async (importOriginal) => {
     ),
   };
 });
-vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
+vi.mock(import("next/cache"), () => ({
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
+  refresh: vi.fn(),
+  updateTag: vi.fn(),
+}));
 vi.mock(import("next/server"), () => ({ after: vi.fn() }));
 vi.mock(import("@/lib/identifiers"), () => ({
   identifiers: vi.fn(() =>
@@ -106,6 +116,23 @@ describe("getChatHistory", () => {
       { err: error, action: "getChatHistory" },
       "Error fetching chat history",
     );
+  });
+
+  it("sets cache life and tag", async () => {
+    vi.mocked(getChannelMessages).mockResolvedValue([]);
+
+    await getChatHistory();
+
+    expect(cacheLife).toHaveBeenCalledWith("seconds");
+    expect(cacheTag).toHaveBeenCalledWith("getChatHistory");
+  });
+});
+
+describe("refreshChatHistory", () => {
+  it("calls updateTag and refresh", () => {
+    refreshChatHistory();
+    expect(updateTag).toHaveBeenCalledWith("getChatHistory");
+    expect(refresh).toHaveBeenCalled();
   });
 });
 
