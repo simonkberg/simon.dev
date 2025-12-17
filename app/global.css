@@ -186,6 +186,7 @@ ul {
 
 .terminal {
   --color-muted: var(--color-silver);
+  --color-decorative: var(--color-grey);
 
   position: relative;
   display: flex;
@@ -278,12 +279,40 @@ ul {
       content: none;
     }
 
-    ul > li::before {
-      content: "├";
-    }
+    ul > li {
+      --decorator-inset: -1.5ch;
+      --decorator-offset: 1px;
+      --decorator-weight-scale: 1.5;
+      --decorator-width: 0.75ch;
+      --decorator-midpoint: 0.5lh;
 
-    ul > li:last-child::before {
-      content: "└";
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        left: var(--decorator-inset);
+        background-color: var(--color-decorative);
+        transform-origin: 0 0;
+      }
+
+      &::before {
+        top: var(--decorator-midpoint);
+        width: var(--decorator-width);
+        height: 1px;
+        transform: scaleY(var(--decorator-weight-scale));
+      }
+
+      &::after {
+        top: var(--decorator-offset);
+        bottom: calc(-1 * var(--decorator-offset));
+        width: 1px;
+        transform: scaleX(var(--decorator-weight-scale));
+      }
+
+      &:last-child::after {
+        bottom: auto;
+        height: var(--decorator-midpoint);
+      }
     }
   }
 }
