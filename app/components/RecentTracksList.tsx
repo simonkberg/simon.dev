@@ -71,9 +71,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
             <Subtitle>(Now playing)</Subtitle>
           ) : track.playedAt ? (
             <Subtitle>
-              <span suppressHydrationWarning={true}>
-                ({<RelativeTime timestamp={track.playedAt.getTime()} />})
-              </span>
+              ({<RelativeTime timestamp={track.playedAt.getTime()} />})
             </Subtitle>
           ) : null}
         </li>
