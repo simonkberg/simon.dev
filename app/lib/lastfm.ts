@@ -76,7 +76,7 @@ const userGetRecentTracksResponseSchema = z
               .object({ uts: z.string() })
               .optional()
               .transform((data) =>
-                data ? new Date(Number(data.uts) * 1000) : undefined,
+                data ? Number(data.uts) * 1000 : undefined,
               ),
             loved: z
               .union([z.literal("0"), z.literal("1")])

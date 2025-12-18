@@ -1047,7 +1047,7 @@ describe("createMessage", () => {
           name: "Track 1",
           artist: "Artist 1",
           album: "Album 1",
-          playedAt: new Date("2025-01-01"),
+          playedAt: new Date("2025-01-01").getTime(),
           nowPlaying: false,
           loved: true,
         },

@@ -101,7 +101,7 @@ describe("RecentTracksList", () => {
     const now = Date.now();
     vi.setSystemTime(now);
 
-    const fiveMinutesAgo = new Date(now - 5 * 60 * 1000);
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
 
     const successResult: GetRecentTracksResult = {
       status: "ok",
@@ -149,7 +149,7 @@ describe("RecentTracksList", () => {
         createMockTrack({
           name: "Current Song",
           nowPlaying: true,
-          playedAt: new Date(Date.now() - 5 * 60 * 1000),
+          playedAt: Date.now() - 5 * 60 * 1000,
         }),
       ],
     };
@@ -197,7 +197,7 @@ describe("RecentTracksList", () => {
 
       const now = Date.now();
       vi.setSystemTime(now);
-      const timestamp = new Date(now - offset);
+      const timestamp = now - offset;
 
       const successResult: GetRecentTracksResult = {
         status: "ok",
@@ -244,7 +244,7 @@ describe("RecentTracksList", () => {
 
         const now = Date.now();
         vi.setSystemTime(now);
-        const timestamp = new Date(now - initialOffset);
+        const timestamp = now - initialOffset;
 
         const successResult: GetRecentTracksResult = {
           status: "ok",
@@ -275,7 +275,7 @@ describe("RecentTracksList", () => {
       const now = Date.now();
       vi.setSystemTime(now);
 
-      const twoDaysAgo = new Date(now - 2 * 24 * 60 * 60 * 1000);
+      const twoDaysAgo = now - 2 * 24 * 60 * 60 * 1000;
 
       const successResult: GetRecentTracksResult = {
         status: "ok",

@@ -8,11 +8,11 @@ import { Subtitle } from "@/components/Subtitle";
 const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 const second = 1000;
-const minute = 60 * 1000;
-const hour = minute * 60;
-const day = hour * 24;
-const month = day * 30;
-const year = day * 365;
+const minute = 60 * second;
+const hour = 60 * minute;
+const day = 24 * hour;
+const month = 30 * day;
+const year = 365 * day;
 
 const RelativeTime = ({ timestamp }: { timestamp: number }) => {
   const [now, setNow] = useState(Date.now);
@@ -64,15 +64,13 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
   return (
     <ul>
       {result.tracks.map((track) => (
-        <li key={`${track.name}-${track.playedAt?.getTime()}`}>
+        <li key={`${track.name}-${track.playedAt}`}>
           <>{track.name}</> &ndash; <em>{track.artist}</em>{" "}
           {track.loved ? " ❤ " : ""}
           {track.nowPlaying ? (
             <Subtitle>(Now playing)</Subtitle>
           ) : track.playedAt ? (
-            <Subtitle>
-              ({<RelativeTime timestamp={track.playedAt.getTime()} />})
-            </Subtitle>
+            <Subtitle>({<RelativeTime timestamp={track.playedAt} />})</Subtitle>
           ) : null}
         </li>
       ))}
