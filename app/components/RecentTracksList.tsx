@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 
 import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
+import { Loader } from "@/components/Loader";
 import { Subtitle } from "@/components/Subtitle";
 
 const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
@@ -65,15 +66,17 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
     <ul>
       {result.tracks.map((track) => (
         <li key={`${track.name}-${track.playedAt}`}>
-          <>{track.name}</> &ndash; <em>{track.artist}</em>{" "}
-          {track.loved ? " ❤ " : ""}
-          {track.nowPlaying ? (
-            <Subtitle>(Now playing)</Subtitle>
-          ) : track.playedAt ? (
-            <Subtitle>
-              (<RelativeTime timestamp={track.playedAt} />)
-            </Subtitle>
-          ) : null}
+          <Suspense fallback={<Loader />}>
+            <>{track.name}</> &ndash; <em>{track.artist}</em>{" "}
+            {track.loved ? " ❤ " : ""}
+            {track.nowPlaying ? (
+              <Subtitle>(Now playing)</Subtitle>
+            ) : track.playedAt ? (
+              <Subtitle>
+                (<RelativeTime timestamp={track.playedAt} />)
+              </Subtitle>
+            ) : null}
+          </Suspense>
         </li>
       ))}
     </ul>
