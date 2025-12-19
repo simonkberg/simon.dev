@@ -70,7 +70,7 @@ const LASTFM_USER = "magijo";
 
 // Tool input schemas
 const chatHistoryInputSchema = z.object({
-  limit: z.number().min(1).max(20).default(10).describe("Number of messages"),
+  limit: z.number().min(1).max(50).default(10).describe("Number of messages"),
 });
 const wakatimeInputSchema = z.object({
   period: z
@@ -80,11 +80,11 @@ const wakatimeInputSchema = z.object({
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });
 const recentTracksInputSchema = z.object({
-  limit: z.number().min(1).max(20).default(5).describe("Number of tracks"),
+  limit: z.number().min(1).max(50).default(5).describe("Number of tracks"),
 });
 const topItemsInputSchema = z.object({
   period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
-  limit: z.number().min(1).max(20).default(10).describe("Number of items"),
+  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
 });
 
 const TOOLS = [
