@@ -14,9 +14,9 @@ const day = 24 * hour;
 const month = 30 * day;
 const year = 365 * day;
 
-const RelativeTime = ({ timestamp }: { timestamp: number }) => {
+const RelativeTime = ({ date }: { date: Date }) => {
   const [now, setNow] = useState(Date.now);
-  const relativeTime = now - timestamp;
+  const relativeTime = now - date.getTime();
   const elapsed = Math.abs(relativeTime);
   const sign = Math.sign(-relativeTime);
 
@@ -30,19 +30,27 @@ const RelativeTime = ({ timestamp }: { timestamp: number }) => {
     return () => clearInterval(timer);
   }, [elapsed]);
 
+  let string: string;
+
   if (elapsed < minute) {
-    return rtf.format(sign * Math.round(elapsed / second), "second");
+    string = rtf.format(sign * Math.round(elapsed / second), "second");
   } else if (elapsed < hour) {
-    return rtf.format(sign * Math.round(elapsed / minute), "minute");
+    string = rtf.format(sign * Math.round(elapsed / minute), "minute");
   } else if (elapsed < day) {
-    return rtf.format(sign * Math.round(elapsed / hour), "hour");
+    string = rtf.format(sign * Math.round(elapsed / hour), "hour");
   } else if (elapsed < month) {
-    return rtf.format(sign * Math.round(elapsed / day), "day");
+    string = rtf.format(sign * Math.round(elapsed / day), "day");
   } else if (elapsed < year) {
-    return rtf.format(sign * Math.round(elapsed / month), "month");
+    string = rtf.format(sign * Math.round(elapsed / month), "month");
+  } else {
+    string = rtf.format(sign * Math.round(elapsed / year), "year");
   }
 
-  return rtf.format(sign * Math.round(elapsed / year), "year");
+  return (
+    <time dateTime={date.toISOString()} title={date.toLocaleString()}>
+      {string}
+    </time>
+  );
 };
 
 export interface RecentTracksListProps {
@@ -74,12 +82,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
               (
               <Suspense fallback="Loading">
                 {/* Suspends due to usage of Date */}
-                <time
-                  dateTime={track.playedAt.toISOString()}
-                  title={track.playedAt.toLocaleString()}
-                >
-                  <RelativeTime timestamp={track.playedAt.getTime()} />
-                </time>
+                <RelativeTime date={track.playedAt} />
               </Suspense>
               )
             </Subtitle>
