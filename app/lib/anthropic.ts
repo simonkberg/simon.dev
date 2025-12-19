@@ -45,6 +45,14 @@ const SYSTEM_PROMPT = md`
   - match the energy of whoever you're talking to
   - if someone just says hi, just say hi back
   - light banter is good, wallowing is not
+
+  Tool usage:
+
+  - when you need to look something up, consider sending a quick word first so
+    they're not waiting in silence - something like "lemme check" or "one sec"
+  - keep any pre-tool message super brief, just a few words
+  - don't force it - skip the preamble for quick simple lookups or when it would
+    feel awkward
 `;
 
 const contentBlockSchema = z.discriminatedUnion("type", [
