@@ -165,6 +165,31 @@ describe("RecentTracksList", () => {
   });
 
   describe("RelativeTime component", () => {
+    it("renders semantic time element with correct attributes", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const now = Date.now();
+      vi.setSystemTime(now);
+
+      const testDate = new Date(now - 5 * 60 * 1000);
+      const successResult: GetRecentTracksResult = {
+        status: "ok",
+        tracks: [createMockTrack({ playedAt: testDate })],
+      };
+
+      await act(() =>
+        render(
+          <RecentTracksList recentTracks={Promise.resolve(successResult)} />,
+        ),
+      );
+
+      const timeElement = screen.getByText(/5 minutes ago/).closest("time");
+      expect(timeElement).toHaveAttribute("dateTime", testDate.toISOString());
+      expect(timeElement).toHaveAttribute("title", testDate.toLocaleString());
+
+      vi.useRealTimers();
+    });
+
     it.each([
       { offset: 30 * 1000, expected: /30 seconds ago/, description: "seconds" },
       {
