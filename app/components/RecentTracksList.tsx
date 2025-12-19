@@ -74,7 +74,12 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
               (
               <Suspense fallback="Loading">
                 {/* Suspends due to usage of Date */}
-                <RelativeTime timestamp={track.playedAt.getTime()} />
+                <time
+                  dateTime={track.playedAt.toISOString()}
+                  title={track.playedAt.toLocaleString()}
+                >
+                  <RelativeTime timestamp={track.playedAt.getTime()} />
+                </time>
               </Suspense>
               )
             </Subtitle>
