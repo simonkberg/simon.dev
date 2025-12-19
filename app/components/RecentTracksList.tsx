@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 
 import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
 import { Subtitle } from "@/components/Subtitle";
@@ -8,11 +8,11 @@ import { Subtitle } from "@/components/Subtitle";
 const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 const second = 1000;
-const minute = 60 * 1000;
-const hour = minute * 60;
-const day = hour * 24;
-const month = day * 30;
-const year = day * 365;
+const minute = 60 * second;
+const hour = 60 * minute;
+const day = 24 * hour;
+const month = 30 * day;
+const year = 365 * day;
 
 const RelativeTime = ({ timestamp }: { timestamp: number }) => {
   const [now, setNow] = useState(Date.now);
@@ -71,9 +71,12 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
             <Subtitle>(Now playing)</Subtitle>
           ) : track.playedAt ? (
             <Subtitle>
-              <span suppressHydrationWarning={true}>
-                ({<RelativeTime timestamp={track.playedAt.getTime()} />})
-              </span>
+              (
+              <Suspense fallback="Loading">
+                {/* Suspends due to usage of Date */}
+                <RelativeTime timestamp={track.playedAt.getTime()} />
+              </Suspense>
+              )
             </Subtitle>
           ) : null}
         </li>
