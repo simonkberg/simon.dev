@@ -16,4 +16,20 @@ describe("CaretBuddy", () => {
     const buddy = screen.getByText("(-_-)zzZ");
     expect(buddy).toHaveAttribute("aria-hidden", "true");
   });
+
+  describe("expressions", () => {
+    it.each([
+      ["idle", "(-_-)zzZ"],
+      ["typing", "(°▽°)"],
+      ["thinking", "(・・?)"],
+      ["code", "(⌐■_■)"],
+      ["long", "(°o°)"],
+      ["error", "(╥_╥)"],
+      ["success", "(＾▽＾)"],
+    ] as const)("renders %s state as %s", (state, expression) => {
+      render(<CaretBuddy state={state} />);
+
+      expect(screen.getByText(expression)).toBeInTheDocument();
+    });
+  });
 });
