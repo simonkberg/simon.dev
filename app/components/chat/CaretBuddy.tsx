@@ -32,7 +32,7 @@ export const CaretBuddy = ({ state }: CaretBuddyProps) => {
   const [isBlinking, setIsBlinking] = useState(false);
 
   useEffect(() => {
-    let blinkEndTimer: ReturnType<typeof setTimeout>;
+    let blinkEndTimer: ReturnType<typeof setTimeout> | undefined;
 
     const scheduleNextBlink = () => {
       const delay = 2000 + Math.random() * 3000;
