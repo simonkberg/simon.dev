@@ -45,9 +45,12 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
       const result = await postChatMessage(formData);
 
       if (result.status === "ok") {
-        requestFormReset(form);
-        setReplyToId(null);
-        setInputValue("");
+        // Nested startTransition required: after await, we're outside the original transition context
+        startTransition(() => {
+          requestFormReset(form);
+          setReplyToId(null);
+          setInputValue("");
+        });
       }
 
       setResult(result);
