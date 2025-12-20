@@ -45,11 +45,9 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
       const result = await postChatMessage(formData);
 
       if (result.status === "ok") {
-        startTransition(() => {
-          requestFormReset(form);
-          setReplyToId(null);
-          setInputValue("");
-        });
+        requestFormReset(form);
+        setReplyToId(null);
+        setInputValue("");
       }
 
       setResult(result);
@@ -86,24 +84,16 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
 
   // Success timeout - show success for 1.5s after successful submission
   useEffect(() => {
-    if (result.status === "ok" && !showSuccess) {
-      const timer = setTimeout(() => {
-        setShowSuccess(true);
-      }, 0);
+    if (result.status === "ok") {
+      const showTimer = setTimeout(() => setShowSuccess(true), 0);
+      const hideTimer = setTimeout(() => setShowSuccess(false), 1500);
       return () => {
-        clearTimeout(timer);
-      };
-    }
-    if (showSuccess) {
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-      }, 1500);
-      return () => {
-        clearTimeout(timer);
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
       };
     }
     return undefined;
-  }, [result, showSuccess]);
+  }, [result]);
 
   useEffect(() => {
     if (!pending && result.status !== "initial") {
