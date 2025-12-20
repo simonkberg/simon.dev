@@ -516,6 +516,18 @@ ul {
   }
 }
 
+.caret-buddy {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
 .chat-toast {
   position: absolute;
   z-index: 1;
