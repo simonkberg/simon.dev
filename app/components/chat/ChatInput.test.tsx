@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
 
+import type { BuddyState } from "./CaretBuddy";
 import { ChatInput } from "./ChatInput";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
@@ -80,7 +81,9 @@ describe("ChatInput", () => {
 
     await user.keyboard("{Enter}");
 
-    expect(input.value).toBe("");
+    await waitFor(() => {
+      expect(input.value).toBe("");
+    });
     expect(input).toHaveFocus();
   });
 
@@ -271,6 +274,148 @@ describe("ChatInput", () => {
 
       // setReplyToId should only be called from Escape handler, not from error
       expect(setReplyToId).not.toHaveBeenCalledWith(null);
+    });
+  });
+});
+
+// Helper to get buddy state from rendered text
+const getBuddyExpression = () => {
+  const expressions: Record<string, BuddyState> = {
+    "(-_-)zzZ": "idle",
+    "(°▽°)": "typing",
+    "(・・?)": "thinking",
+    "(⌐■_■)": "code",
+    "(°o°)": "long",
+    "(╥_╥)": "error",
+    "(＾▽＾)": "success",
+  };
+
+  for (const [expr, state] of Object.entries(expressions)) {
+    if (screen.queryByText(expr)) return state;
+  }
+  return null;
+};
+
+describe("CaretBuddy integration", () => {
+  const defaultReplyProps = { replyToId: null, setReplyToId: vi.fn() };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows idle state when input is empty and no recent activity", async () => {
+    render(<ChatInput {...defaultReplyProps} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(getBuddyExpression()).toBe("idle");
+  });
+
+  it("shows typing state during active input", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "H");
+
+    expect(getBuddyExpression()).toBe("typing");
+  });
+
+  it("shows code state when backticks are present", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "Check this `code`");
+
+    expect(getBuddyExpression()).toBe("code");
+  });
+
+  it("shows long state when input exceeds 100 characters", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    const longText = "a".repeat(101);
+    await user.type(input, longText);
+
+    expect(getBuddyExpression()).toBe("long");
+  });
+
+  it("shows thinking state while message is pending", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+    const { promise } = Promise.withResolvers<PostChatMessageResult>();
+
+    vi.mocked(postChatMessage).mockReturnValue(promise);
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "Hello");
+    await user.keyboard("{Enter}");
+
+    expect(getBuddyExpression()).toBe("thinking");
+  });
+
+  it("shows error state on failed submission", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+
+    vi.mocked(postChatMessage).mockResolvedValue({
+      status: "error",
+      error: "Failed",
+    });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "Hello");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(getBuddyExpression()).toBe("error");
+    });
+  });
+
+  it("shows success state briefly after successful submission", async () => {
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: vi.advanceTimersByTime,
+    });
+
+    vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "Hello");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(getBuddyExpression()).toBe("success");
     });
   });
 });

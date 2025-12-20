@@ -1,10 +1,18 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
+import { BuddyState, CaretBuddy } from "./CaretBuddy";
 import { ChatToast } from "./ChatToast";
 
 export interface ChatInputProps {
@@ -18,6 +26,13 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
     status: "initial",
   });
   const [pending, startTransition] = useTransition();
+
+  // Buddy state tracking
+  const [inputValue, setInputValue] = useState("");
+  const [lastKeystroke, setLastKeystroke] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -33,12 +48,62 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
+          setInputValue("");
         });
       }
 
       setResult(result);
     });
   }
+
+  function onChange(event: ChangeEvent<HTMLInputElement>) {
+    setInputValue(event.target.value);
+    setLastKeystroke(Date.now());
+    setIsTyping(true);
+  }
+
+  // Derive buddy state
+  function getBuddyState(): BuddyState {
+    if (result.status === "error") return "error";
+    if (showSuccess) return "success";
+    if (pending) return "thinking";
+    if (inputValue.includes("`")) return "code";
+    if (inputValue.length > 100) return "long";
+    if (isTyping) return "typing";
+    return "idle";
+  }
+
+  // Typing timeout - transition to idle after 3s
+  useEffect(() => {
+    if (lastKeystroke > 0 && isTyping) {
+      const timer = setTimeout(() => setIsTyping(false), 3000);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [lastKeystroke, isTyping]);
+
+  // Success timeout - show success for 1.5s after successful submission
+  useEffect(() => {
+    if (result.status === "ok" && !showSuccess) {
+      const timer = setTimeout(() => {
+        setShowSuccess(true);
+      }, 0);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+      }, 1500);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [result, showSuccess]);
 
   useEffect(() => {
     if (!pending && result.status !== "initial") {
@@ -79,7 +144,10 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             disabled={pending}
             className="input"
             ref={inputRef}
+            value={inputValue}
+            onChange={onChange}
           />
+          <CaretBuddy state={getBuddyState()} />
         </div>
       </form>
     </>
