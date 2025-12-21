@@ -61,41 +61,52 @@ describe("CaretBuddy", () => {
 
     it("shows alternate expression after first frame duration", async () => {
       await act(async () => {
-        // Use typing state which has shorter durations: [1.0s, 0.15s]
+        // Use typing state which has durations: [0.9s, 1.2s, 0.8s, 0.15s]
         render(<CaretBuddy state="typing" />);
       });
 
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
 
-      // First frame is 1 second
+      // First frame is 0.9 seconds
       await act(async () => {
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(900);
       });
 
-      expect(screen.getByText("(°_°)")).toBeInTheDocument();
+      // Now shows soft smile variation
+      expect(screen.getByText("(°ᴗ°)")).toBeInTheDocument();
     });
 
-    it("cycles through main and alternate expressions", async () => {
+    it("cycles through all expression variations", async () => {
       await act(async () => {
-        // Use typing state which has durations: [1.0s, 0.15s]
+        // Use typing state which has durations: [0.9s, 1.2s, 0.8s, 0.15s]
         render(<CaretBuddy state="typing" />);
       });
 
       // Initially shows main expression
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
 
-      // After 1 second, shows alternate expression
+      // After 0.9 seconds, shows soft smile
       await act(async () => {
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(900);
       });
+      expect(screen.getByText("(°ᴗ°)")).toBeInTheDocument();
 
+      // After another 1.2 seconds, back to happy
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+      });
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+
+      // After another 0.8 seconds, shows blink
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+      });
       expect(screen.getByText("(°_°)")).toBeInTheDocument();
 
-      // After another 0.15 seconds, back to main expression
+      // After 0.15 seconds, back to start
       await act(async () => {
         vi.advanceTimersByTime(150);
       });
-
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
     });
   });
