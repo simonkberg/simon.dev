@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const EXPRESSIONS = {
   idle: "(-_-)zzZ",
@@ -31,11 +31,31 @@ export interface CaretBuddyInputs {
 }
 
 export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
-  // Priority-ordered derivation (no timing yet)
+  const [lastInputChange, setLastInputChange] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Track input changes
+  const prevInputValue = useRef(inputs.inputValue);
+  useEffect(() => {
+    if (inputs.inputValue !== prevInputValue.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: tracking input changes requires setState on prop change
+      setLastInputChange(Date.now());
+      prevInputValue.current = inputs.inputValue;
+    }
+  }, [inputs.inputValue]);
+
+  // Tick to update `now` for time-based transitions
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, []);
+
+  // Priority-ordered derivation
   if (inputs.resultStatus === "error") return "error";
   if (inputs.isPending) return "thinking";
   if (inputs.inputValue.includes("`")) return "code";
   if (inputs.inputValue.length > 100) return "long";
+  if (lastInputChange > 0 && now - lastInputChange < 3000) return "typing";
   return "idle";
 }
 
