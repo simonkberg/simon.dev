@@ -41,8 +41,17 @@ describe("CaretBuddy", () => {
   describe("blink animation", () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      // Mock Math.random to return predictable value (0.5 = halfway between min and max)
-      vi.spyOn(Math, "random").mockReturnValue(0.5);
+      let frameId = 0;
+      let mockCurrentTime = 0;
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+        frameId++;
+        setTimeout(() => {
+          mockCurrentTime += 16;
+          cb(mockCurrentTime);
+        }, 16);
+        return frameId;
+      });
+      vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -50,40 +59,44 @@ describe("CaretBuddy", () => {
       vi.restoreAllMocks();
     });
 
-    it.skip("blinks after 2-5 seconds showing alternate expression", async () => {
+    it("shows alternate expression after first frame duration", async () => {
       await act(async () => {
-        render(<CaretBuddy state="idle" />);
+        // Use typing state which has shorter durations: [1.0s, 0.15s]
+        render(<CaretBuddy state="typing" />);
       });
 
-      expect(screen.getByText("(-_-)zzZ")).toBeInTheDocument();
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
 
-      // Math.random() mocked to 0.5, so delay = 2000 + 0.5 * 3000 = 3500ms
+      // First frame is 1 second
       await act(async () => {
-        vi.advanceTimersByTime(3500);
+        vi.advanceTimersByTime(1000);
       });
 
-      // Should show blink expression
-      expect(screen.getByText("(-_-)...")).toBeInTheDocument();
+      expect(screen.getByText("(°_°)")).toBeInTheDocument();
     });
 
-    it.skip("returns to main expression after 150ms blink", async () => {
+    it("cycles through main and alternate expressions", async () => {
       await act(async () => {
-        render(<CaretBuddy state="idle" />);
+        // Use typing state which has durations: [1.0s, 0.15s]
+        render(<CaretBuddy state="typing" />);
       });
 
-      // Trigger blink (Math.random() mocked to 0.5, so delay = 3500ms)
+      // Initially shows main expression
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+
+      // After 1 second, shows alternate expression
       await act(async () => {
-        vi.advanceTimersByTime(3500);
+        vi.advanceTimersByTime(1000);
       });
 
-      expect(screen.getByText("(-_-)...")).toBeInTheDocument();
+      expect(screen.getByText("(°_°)")).toBeInTheDocument();
 
-      // Wait for blink to end
+      // After another 0.15 seconds, back to main expression
       await act(async () => {
         vi.advanceTimersByTime(150);
       });
 
-      expect(screen.getByText("(-_-)zzZ")).toBeInTheDocument();
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
     });
   });
 });
