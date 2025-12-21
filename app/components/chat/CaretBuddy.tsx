@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 const ANIMATIONS = {
   idle: [
-    [4.0, "(-_-)zzZ"],
-    [0.15, "(-_-)..."],
-    [2.0, "(-_-)zzZ"],
-    [0.1, "(-_-)..."],
+    [3.5, "(-_-)zzZ"], // sleeping
+    [0.4, "(-_-)zZ"], // inhale
+    [0.6, "(-o-)..."], // snore exhale
+    [2.8, "(-_-)zzZ"], // back to sleep
+    [0.15, "(-_-)..."], // blink
+    [1.2, "(-_-)zzZ"], // brief sleep
+    [0.1, "(-_-)..."], // double-blink
     [0.08, "(-_-)zzZ"],
     [0.1, "(-_-)..."],
   ],

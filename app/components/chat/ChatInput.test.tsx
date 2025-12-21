@@ -282,6 +282,9 @@ describe("ChatInput", () => {
 const getBuddyExpression = () => {
   const expressions: Record<string, BuddyState> = {
     "(-_-)zzZ": "idle",
+    "(-_-)zZ": "idle",
+    "(-o-)...": "idle",
+    "(-_-)...": "idle",
     "(°▽°)": "typing",
     "(・・?)": "thinking",
     "(⌐■_■)": "code",
