@@ -12,7 +12,7 @@ import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
-import { BuddyState, CaretBuddy } from "./CaretBuddy";
+import { CaretBuddy, useCaretBuddyState } from "./CaretBuddy";
 import { ChatToast } from "./ChatToast";
 
 export interface ChatInputProps {
@@ -29,9 +29,11 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
 
   // Buddy state tracking
   const [inputValue, setInputValue] = useState("");
-  const [lastKeystroke, setLastKeystroke] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const buddyState = useCaretBuddyState({
+    inputValue,
+    isPending: pending,
+    resultStatus: result.status,
+  });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,44 +61,7 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
 
   function onChange(event: ChangeEvent<HTMLInputElement>) {
     setInputValue(event.target.value);
-    setLastKeystroke(Date.now());
-    setIsTyping(true);
   }
-
-  // Derive buddy state
-  function getBuddyState(): BuddyState {
-    if (result.status === "error") return "error";
-    if (showSuccess) return "success";
-    if (pending) return "thinking";
-    if (inputValue.includes("`")) return "code";
-    if (inputValue.length > 100) return "long";
-    if (isTyping) return "typing";
-    return "idle";
-  }
-
-  // Typing timeout - transition to idle after 3s
-  useEffect(() => {
-    if (lastKeystroke > 0 && isTyping) {
-      const timer = setTimeout(() => setIsTyping(false), 3000);
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-    return undefined;
-  }, [lastKeystroke, isTyping]);
-
-  // Success timeout - show success for 1.5s after successful submission
-  useEffect(() => {
-    if (result.status === "ok") {
-      const showTimer = setTimeout(() => setShowSuccess(true), 0);
-      const hideTimer = setTimeout(() => setShowSuccess(false), 1500);
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
-    }
-    return undefined;
-  }, [result]);
 
   useEffect(() => {
     if (!pending && result.status !== "initial") {
@@ -140,7 +105,7 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             value={inputValue}
             onChange={onChange}
           />
-          <CaretBuddy state={getBuddyState()} />
+          <CaretBuddy state={buddyState} />
         </div>
       </form>
     </>
