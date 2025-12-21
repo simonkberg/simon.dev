@@ -12,6 +12,8 @@ const EXPRESSIONS = {
   success: "(＾▽＾)",
 } as const;
 
+type BuddyState = keyof typeof EXPRESSIONS;
+
 const BLINK_EXPRESSIONS = {
   idle: "(-_-)...",
   typing: "(°_°)",
@@ -20,9 +22,22 @@ const BLINK_EXPRESSIONS = {
   long: "(°_°)",
   error: "(╥︵╥)",
   success: "(＾_＾)",
-} as const;
+} as const satisfies Record<BuddyState, string>;
 
-type BuddyState = keyof typeof EXPRESSIONS;
+export interface CaretBuddyInputs {
+  inputValue: string;
+  isPending: boolean;
+  resultStatus: "initial" | "ok" | "error";
+}
+
+export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
+  // Priority-ordered derivation (no timing yet)
+  if (inputs.resultStatus === "error") return "error";
+  if (inputs.isPending) return "thinking";
+  if (inputs.inputValue.includes("`")) return "code";
+  if (inputs.inputValue.length > 100) return "long";
+  return "idle";
+}
 
 interface CaretBuddyProps {
   state: BuddyState;
