@@ -201,4 +201,52 @@ describe("useCaretBuddyState", () => {
 
     expect(result.current).toBe("idle");
   });
+
+  it("returns success when resultStatus changes to ok", () => {
+    const { result, rerender } = renderHook(
+      (props) => useCaretBuddyState(props),
+      {
+        initialProps: {
+          inputValue: "",
+          isPending: false,
+          resultStatus: "initial" as const,
+        },
+      }
+    );
+
+    rerender({
+      inputValue: "",
+      isPending: false,
+      resultStatus: "ok" as const,
+    });
+
+    expect(result.current).toBe("success");
+  });
+
+  it("transitions from success to idle after 1.5 seconds", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useCaretBuddyState(props),
+      {
+        initialProps: {
+          inputValue: "",
+          isPending: false,
+          resultStatus: "initial" as const,
+        },
+      }
+    );
+
+    rerender({
+      inputValue: "",
+      isPending: false,
+      resultStatus: "ok" as const,
+    });
+
+    expect(result.current).toBe("success");
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(result.current).toBe("idle");
+  });
 });
