@@ -71,6 +71,53 @@ export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   return "idle";
 }
 
+export function useFrameAnimation(frames: [number, string][]): string {
+  const [frameIndex, setFrameIndex] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+  const frameRef = useRef(0);
+  const frameIndexRef = useRef(0);
+
+  // Reset when frames change
+  const framesKey = frames.map(([d, e]) => `${d}:${e}`).join("|");
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: resetting animation state when frames prop changes
+    setFrameIndex(0);
+    frameIndexRef.current = 0;
+    startTimeRef.current = null;
+  }, [framesKey]);
+
+  useEffect(() => {
+    // Keep frameIndexRef in sync with frameIndex state
+    frameIndexRef.current = frameIndex;
+
+    const animate = (timestamp: number) => {
+      if (startTimeRef.current === null) {
+        startTimeRef.current = timestamp;
+      }
+
+      const elapsed = timestamp - startTimeRef.current;
+      const currentFrameDuration =
+        (frames[frameIndexRef.current]?.[0] ?? 1) * 1000;
+
+      if (elapsed >= currentFrameDuration) {
+        const nextIndex = (frameIndexRef.current + 1) % frames.length;
+        setFrameIndex(nextIndex);
+        startTimeRef.current = timestamp;
+      }
+
+      frameRef.current = requestAnimationFrame(animate);
+    };
+
+    frameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, [frames, frameIndex]);
+
+  return frames[frameIndex]?.[1] ?? "";
+}
+
 interface CaretBuddyProps {
   state: BuddyState;
 }

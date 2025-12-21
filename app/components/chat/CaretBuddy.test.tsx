@@ -336,15 +336,21 @@ describe("useCaretBuddyState", () => {
 });
 
 describe("useFrameAnimation", () => {
+  let mockCurrentTime: number;
+
   beforeEach(() => {
     vi.useFakeTimers();
     let frameId = 0;
+    mockCurrentTime = 0;
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
       frameId++;
-      setTimeout(() => cb(performance.now()), 16);
+      setTimeout(() => {
+        mockCurrentTime += 16;
+        cb(mockCurrentTime);
+      }, 16);
       return frameId;
     });
-    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {
       // no-op for tests
     });
   });
