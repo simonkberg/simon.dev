@@ -1,7 +1,7 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CaretBuddy } from "./CaretBuddy";
+import { CaretBuddy, useCaretBuddyState } from "./CaretBuddy";
 
 describe("CaretBuddy", () => {
   it("renders the idle expression by default", () => {
@@ -80,5 +80,75 @@ describe("CaretBuddy", () => {
 
       expect(screen.getByText("(-_-)zzZ")).toBeInTheDocument();
     });
+  });
+});
+
+describe("useCaretBuddyState", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns idle when no input and no activity", () => {
+    const { result } = renderHook(() =>
+      useCaretBuddyState({
+        inputValue: "",
+        isPending: false,
+        resultStatus: "initial",
+      })
+    );
+
+    expect(result.current).toBe("idle");
+  });
+
+  it("returns error when resultStatus is error", () => {
+    const { result } = renderHook(() =>
+      useCaretBuddyState({
+        inputValue: "",
+        isPending: false,
+        resultStatus: "error",
+      })
+    );
+
+    expect(result.current).toBe("error");
+  });
+
+  it("returns thinking when isPending is true", () => {
+    const { result } = renderHook(() =>
+      useCaretBuddyState({
+        inputValue: "",
+        isPending: true,
+        resultStatus: "initial",
+      })
+    );
+
+    expect(result.current).toBe("thinking");
+  });
+
+  it("returns code when input contains backticks", () => {
+    const { result } = renderHook(() =>
+      useCaretBuddyState({
+        inputValue: "check this `code`",
+        isPending: false,
+        resultStatus: "initial",
+      })
+    );
+
+    expect(result.current).toBe("code");
+  });
+
+  it("returns long when input exceeds 100 characters", () => {
+    const { result } = renderHook(() =>
+      useCaretBuddyState({
+        inputValue: "a".repeat(101),
+        isPending: false,
+        resultStatus: "initial",
+      })
+    );
+
+    expect(result.current).toBe("long");
   });
 });
