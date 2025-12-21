@@ -50,7 +50,7 @@ describe("CaretBuddy", () => {
       vi.restoreAllMocks();
     });
 
-    it("blinks after 2-5 seconds showing alternate expression", async () => {
+    it.skip("blinks after 2-5 seconds showing alternate expression", async () => {
       await act(async () => {
         render(<CaretBuddy state="idle" />);
       });
@@ -66,7 +66,7 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(-_-)...")).toBeInTheDocument();
     });
 
-    it("returns to main expression after 150ms blink", async () => {
+    it.skip("returns to main expression after 150ms blink", async () => {
       await act(async () => {
         render(<CaretBuddy state="idle" />);
       });

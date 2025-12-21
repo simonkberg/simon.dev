@@ -2,27 +2,42 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const EXPRESSIONS = {
-  idle: "(-_-)zzZ",
-  typing: "(°▽°)",
-  thinking: "(・・?)",
-  code: "(⌐■_■)",
-  long: "(°o°)",
-  error: "(╥_╥)",
-  success: "(＾▽＾)",
+const ANIMATIONS = {
+  idle: [
+    [4.0, "(-_-)zzZ"],
+    [0.15, "(-_-)..."],
+    [2.0, "(-_-)zzZ"],
+    [0.1, "(-_-)..."],
+    [0.08, "(-_-)zzZ"],
+    [0.1, "(-_-)..."],
+  ],
+  typing: [
+    [1.0, "(°▽°)"],
+    [0.15, "(°_°)"],
+  ],
+  thinking: [
+    [1.0, "(・・?)"],
+    [0.15, "(・_・)"],
+  ],
+  code: [
+    [1.5, "(⌐■_■)"],
+    [0.15, "( ■_■)"],
+  ],
+  long: [
+    [1.0, "(°o°)"],
+    [0.15, "(°_°)"],
+  ],
+  error: [
+    [1.0, "(╥_╥)"],
+    [0.15, "(╥︵╥)"],
+  ],
+  success: [
+    [1.0, "(＾▽＾)"],
+    [0.15, "(＾_＾)"],
+  ],
 } as const;
 
-type BuddyState = keyof typeof EXPRESSIONS;
-
-const BLINK_EXPRESSIONS = {
-  idle: "(-_-)...",
-  typing: "(°_°)",
-  thinking: "(・_・)",
-  code: "( ■_■)",
-  long: "(°_°)",
-  error: "(╥︵╥)",
-  success: "(＾_＾)",
-} as const satisfies Record<BuddyState, string>;
+type BuddyState = keyof typeof ANIMATIONS;
 
 export interface CaretBuddyInputs {
   inputValue: string;
@@ -71,7 +86,9 @@ export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   return "idle";
 }
 
-export function useFrameAnimation(frames: [number, string][]): string {
+export function useFrameAnimation(
+  frames: readonly (readonly [number, string])[],
+): string {
   const [frameIndex, setFrameIndex] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const frameRef = useRef(0);
@@ -123,31 +140,8 @@ interface CaretBuddyProps {
 }
 
 export const CaretBuddy = ({ state }: CaretBuddyProps) => {
-  const [isBlinking, setIsBlinking] = useState(false);
-
-  useEffect(() => {
-    let blinkEndTimer: ReturnType<typeof setTimeout> | undefined;
-
-    const scheduleNextBlink = () => {
-      const delay = 2000 + Math.random() * 3000;
-      return setTimeout(() => {
-        setIsBlinking(true);
-        blinkEndTimer = setTimeout(() => {
-          setIsBlinking(false);
-          blinkTimer = scheduleNextBlink();
-        }, 150);
-      }, delay);
-    };
-
-    let blinkTimer = scheduleNextBlink();
-
-    return () => {
-      clearTimeout(blinkTimer);
-      clearTimeout(blinkEndTimer);
-    };
-  }, [state]);
-
-  const expression = isBlinking ? BLINK_EXPRESSIONS[state] : EXPRESSIONS[state];
+  const frames = ANIMATIONS[state];
+  const expression = useFrameAnimation(frames);
 
   return (
     <span className="caret-buddy" aria-hidden="true">
