@@ -245,4 +245,91 @@ describe("useCaretBuddyState", () => {
 
     expect(result.current).toBe("idle");
   });
+
+  describe("priority ordering", () => {
+    it("error takes priority over success", () => {
+      const { result, rerender } = renderHook(
+        (props: CaretBuddyInputs) => useCaretBuddyState(props),
+        {
+          initialProps: {
+            inputValue: "",
+            isPending: false,
+            resultStatus: "initial",
+          },
+        },
+      );
+
+      // First get into success state
+      rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
+
+      expect(result.current).toBe("success");
+
+      // Now error should override
+      rerender({ inputValue: "", isPending: false, resultStatus: "error" });
+
+      expect(result.current).toBe("error");
+    });
+
+    it("success takes priority over thinking", () => {
+      const { result, rerender } = renderHook(
+        (props: CaretBuddyInputs) => useCaretBuddyState(props),
+        {
+          initialProps: {
+            inputValue: "",
+            isPending: false,
+            resultStatus: "initial",
+          },
+        },
+      );
+
+      rerender({ inputValue: "", isPending: true, resultStatus: "ok" });
+
+      expect(result.current).toBe("success");
+    });
+
+    it("thinking takes priority over code", () => {
+      const { result } = renderHook(() =>
+        useCaretBuddyState({
+          inputValue: "`code`",
+          isPending: true,
+          resultStatus: "initial",
+        }),
+      );
+
+      expect(result.current).toBe("thinking");
+    });
+
+    it("code takes priority over long", () => {
+      const { result } = renderHook(() =>
+        useCaretBuddyState({
+          inputValue: "`" + "a".repeat(100),
+          isPending: false,
+          resultStatus: "initial",
+        }),
+      );
+
+      expect(result.current).toBe("code");
+    });
+
+    it("long takes priority over typing", async () => {
+      const { result, rerender } = renderHook(
+        (props: CaretBuddyInputs) => useCaretBuddyState(props),
+        {
+          initialProps: {
+            inputValue: "",
+            isPending: false,
+            resultStatus: "initial",
+          },
+        },
+      );
+
+      rerender({
+        inputValue: "a".repeat(101),
+        isPending: false,
+        resultStatus: "initial",
+      });
+
+      expect(result.current).toBe("long");
+    });
+  });
 });
