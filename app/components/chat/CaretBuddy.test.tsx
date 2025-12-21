@@ -5,6 +5,7 @@ import {
   CaretBuddy,
   type CaretBuddyInputs,
   useCaretBuddyState,
+  useFrameAnimation,
 } from "./CaretBuddy";
 
 describe("CaretBuddy", () => {
@@ -331,5 +332,100 @@ describe("useCaretBuddyState", () => {
 
       expect(result.current).toBe("long");
     });
+  });
+});
+
+describe("useFrameAnimation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    let frameId = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      frameId++;
+      setTimeout(() => cb(performance.now()), 16);
+      return frameId;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      // no-op for tests
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("returns first frame expression initially", () => {
+    const frames: [number, string][] = [
+      [1.0, "first"],
+      [0.5, "second"],
+    ];
+
+    const { result } = renderHook(() => useFrameAnimation(frames));
+
+    expect(result.current).toBe("first");
+  });
+
+  it("advances to next frame after duration", async () => {
+    const frames: [number, string][] = [
+      [0.1, "first"],
+      [0.1, "second"],
+    ];
+
+    const { result } = renderHook(() => useFrameAnimation(frames));
+
+    expect(result.current).toBe("first");
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(result.current).toBe("second");
+  });
+
+  it("loops back to first frame after last", async () => {
+    const frames: [number, string][] = [
+      [0.05, "first"],
+      [0.05, "second"],
+    ];
+
+    const { result } = renderHook(() => useFrameAnimation(frames));
+
+    await act(async () => {
+      vi.advanceTimersByTime(50); // to second
+    });
+
+    expect(result.current).toBe("second");
+
+    await act(async () => {
+      vi.advanceTimersByTime(50); // back to first
+    });
+
+    expect(result.current).toBe("first");
+  });
+
+  it("resets to first frame when frames change", async () => {
+    const frames1: [number, string][] = [
+      [0.05, "a1"],
+      [0.05, "a2"],
+    ];
+    const frames2: [number, string][] = [
+      [0.05, "b1"],
+      [0.05, "b2"],
+    ];
+
+    const { result, rerender } = renderHook(
+      (frames) => useFrameAnimation(frames),
+      { initialProps: frames1 },
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(50);
+    });
+
+    expect(result.current).toBe("a2");
+
+    rerender(frames2);
+
+    expect(result.current).toBe("b1");
   });
 });
