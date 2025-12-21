@@ -151,4 +151,54 @@ describe("useCaretBuddyState", () => {
 
     expect(result.current).toBe("long");
   });
+
+  it("returns typing when input changes", () => {
+    const { result, rerender } = renderHook(
+      (props) => useCaretBuddyState(props),
+      {
+        initialProps: {
+          inputValue: "",
+          isPending: false,
+          resultStatus: "initial" as const,
+        },
+      }
+    );
+
+    expect(result.current).toBe("idle");
+
+    rerender({
+      inputValue: "h",
+      isPending: false,
+      resultStatus: "initial" as const,
+    });
+
+    expect(result.current).toBe("typing");
+  });
+
+  it("transitions from typing to idle after 3 seconds", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useCaretBuddyState(props),
+      {
+        initialProps: {
+          inputValue: "",
+          isPending: false,
+          resultStatus: "initial" as const,
+        },
+      }
+    );
+
+    rerender({
+      inputValue: "hello",
+      isPending: false,
+      resultStatus: "initial" as const,
+    });
+
+    expect(result.current).toBe("typing");
+
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(result.current).toBe("idle");
+  });
 });
