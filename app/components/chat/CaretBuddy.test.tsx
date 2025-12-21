@@ -1,7 +1,11 @@
-import { act, render, screen, renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CaretBuddy, useCaretBuddyState } from "./CaretBuddy";
+import {
+  CaretBuddy,
+  type CaretBuddyInputs,
+  useCaretBuddyState,
+} from "./CaretBuddy";
 
 describe("CaretBuddy", () => {
   it("renders the idle expression by default", () => {
@@ -98,7 +102,7 @@ describe("useCaretBuddyState", () => {
         inputValue: "",
         isPending: false,
         resultStatus: "initial",
-      })
+      }),
     );
 
     expect(result.current).toBe("idle");
@@ -110,7 +114,7 @@ describe("useCaretBuddyState", () => {
         inputValue: "",
         isPending: false,
         resultStatus: "error",
-      })
+      }),
     );
 
     expect(result.current).toBe("error");
@@ -122,7 +126,7 @@ describe("useCaretBuddyState", () => {
         inputValue: "",
         isPending: true,
         resultStatus: "initial",
-      })
+      }),
     );
 
     expect(result.current).toBe("thinking");
@@ -134,7 +138,7 @@ describe("useCaretBuddyState", () => {
         inputValue: "check this `code`",
         isPending: false,
         resultStatus: "initial",
-      })
+      }),
     );
 
     expect(result.current).toBe("code");
@@ -146,7 +150,7 @@ describe("useCaretBuddyState", () => {
         inputValue: "a".repeat(101),
         isPending: false,
         resultStatus: "initial",
-      })
+      }),
     );
 
     expect(result.current).toBe("long");
@@ -161,7 +165,7 @@ describe("useCaretBuddyState", () => {
           isPending: false,
           resultStatus: "initial" as const,
         },
-      }
+      },
     );
 
     expect(result.current).toBe("idle");
@@ -184,7 +188,7 @@ describe("useCaretBuddyState", () => {
           isPending: false,
           resultStatus: "initial" as const,
         },
-      }
+      },
     );
 
     rerender({
@@ -204,42 +208,34 @@ describe("useCaretBuddyState", () => {
 
   it("returns success when resultStatus changes to ok", () => {
     const { result, rerender } = renderHook(
-      (props) => useCaretBuddyState(props),
+      (props: CaretBuddyInputs) => useCaretBuddyState(props),
       {
         initialProps: {
           inputValue: "",
           isPending: false,
-          resultStatus: "initial" as const,
+          resultStatus: "initial",
         },
-      }
+      },
     );
 
-    rerender({
-      inputValue: "",
-      isPending: false,
-      resultStatus: "ok" as const,
-    });
+    rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
 
     expect(result.current).toBe("success");
   });
 
   it("transitions from success to idle after 1.5 seconds", async () => {
     const { result, rerender } = renderHook(
-      (props) => useCaretBuddyState(props),
+      (props: CaretBuddyInputs) => useCaretBuddyState(props),
       {
         initialProps: {
           inputValue: "",
           isPending: false,
-          resultStatus: "initial" as const,
+          resultStatus: "initial",
         },
-      }
+      },
     );
 
-    rerender({
-      inputValue: "",
-      isPending: false,
-      resultStatus: "ok" as const,
-    });
+    rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
 
     expect(result.current).toBe("success");
 

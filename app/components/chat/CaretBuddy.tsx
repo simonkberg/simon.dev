@@ -32,6 +32,7 @@ export interface CaretBuddyInputs {
 
 export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   const [lastInputChange, setLastInputChange] = useState(0);
+  const [successUntil, setSuccessUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
 
   // Track input changes
@@ -44,6 +45,16 @@ export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
     }
   }, [inputs.inputValue]);
 
+  // Set success timer when result changes to "ok"
+  const prevResultStatus = useRef(inputs.resultStatus);
+  useEffect(() => {
+    if (inputs.resultStatus === "ok" && prevResultStatus.current !== "ok") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: tracking result status changes requires setState on prop change
+      setSuccessUntil(Date.now() + 1500);
+    }
+    prevResultStatus.current = inputs.resultStatus;
+  }, [inputs.resultStatus]);
+
   // Tick to update `now` for time-based transitions
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 100);
@@ -52,6 +63,7 @@ export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
 
   // Priority-ordered derivation
   if (inputs.resultStatus === "error") return "error";
+  if (now < successUntil) return "success";
   if (inputs.isPending) return "thinking";
   if (inputs.inputValue.includes("`")) return "code";
   if (inputs.inputValue.length > 100) return "long";
