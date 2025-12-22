@@ -28,67 +28,40 @@ describe("CaretBuddy", () => {
   });
 
   describe("state derivation", () => {
-    it("shows idle expression when no input and no activity", async () => {
-      await act(async () => {
-        render(<CaretBuddy {...defaultProps} />);
-      });
-
+    it("shows idle when no input and no activity", () => {
+      render(<CaretBuddy {...defaultProps} />);
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
 
-    it("shows error expression when resultStatus is error", async () => {
-      await act(async () => {
-        render(<CaretBuddy {...defaultProps} resultStatus="error" />);
-      });
-
+    it("shows error when resultStatus is error", () => {
+      render(<CaretBuddy {...defaultProps} resultStatus="error" />);
       expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
     });
 
-    it("shows thinking expression when isPending is true", async () => {
-      await act(async () => {
-        render(<CaretBuddy {...defaultProps} isPending={true} />);
-      });
-
+    it("shows thinking when isPending is true", () => {
+      render(<CaretBuddy {...defaultProps} isPending={true} />);
       expect(screen.getByText("(・・?)")).toBeInTheDocument();
     });
 
-    it("shows code expression when input contains backticks", async () => {
-      await act(async () => {
-        render(<CaretBuddy {...defaultProps} inputValue="check `code`" />);
-      });
-
+    it("shows code when input contains backticks", () => {
+      render(<CaretBuddy {...defaultProps} inputValue="check `code`" />);
       expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
     });
 
-    it("shows long expression when input exceeds 100 characters", async () => {
-      await act(async () => {
-        render(<CaretBuddy {...defaultProps} inputValue={"a".repeat(101)} />);
-      });
-
+    it("shows long when input exceeds 100 characters", () => {
+      render(<CaretBuddy {...defaultProps} inputValue={"a".repeat(101)} />);
       expect(screen.getByText("(°o°)")).toBeInTheDocument();
     });
 
-    it("shows typing expression when input changes", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
-      });
-
+    it("shows typing when input changes", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
     });
 
-    it("shows success expression when resultStatus changes to ok", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      });
-
+    it("shows success when resultStatus changes to ok", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
       expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
     });
   });
