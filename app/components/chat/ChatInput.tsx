@@ -12,7 +12,7 @@ import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
-import { CaretBuddy, useCaretBuddyState } from "./CaretBuddy";
+import { CaretBuddy } from "./CaretBuddy";
 import { ChatToast } from "./ChatToast";
 
 export interface ChatInputProps {
@@ -29,11 +29,6 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
 
   // Buddy state tracking
   const [inputValue, setInputValue] = useState("");
-  const buddyState = useCaretBuddyState({
-    inputValue,
-    isPending: pending,
-    resultStatus: result.status,
-  });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -105,7 +100,11 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             value={inputValue}
             onChange={onChange}
           />
-          <CaretBuddy state={buddyState} />
+          <CaretBuddy
+            inputValue={inputValue}
+            isPending={pending}
+            resultStatus={result.status}
+          />
         </div>
       </form>
     </>

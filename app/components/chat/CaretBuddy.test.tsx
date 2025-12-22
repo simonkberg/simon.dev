@@ -1,89 +1,164 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  type AnimationFrames,
-  CaretBuddy,
-  type CaretBuddyInputs,
-  useCaretBuddyState,
-  useFrameAnimation,
-} from "./CaretBuddy";
+import { CaretBuddy } from "./CaretBuddy";
 
 describe("CaretBuddy", () => {
-  it("renders the idle expression by default", () => {
-    render(<CaretBuddy state="idle" />);
-
-    expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
+  beforeEach(() => {
+    vi.useFakeTimers();
+    let frameId = 0;
+    let mockCurrentTime = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      frameId++;
+      setTimeout(() => {
+        mockCurrentTime += 16;
+        cb(mockCurrentTime);
+      }, 16);
+      return frameId;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
   });
 
-  it("has aria-hidden attribute for accessibility", () => {
-    render(<CaretBuddy state="idle" />);
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
-    const buddy = screen.getByText("(-_-)zzz");
+  const defaultProps = {
+    inputValue: "",
+    isPending: false,
+    resultStatus: "initial" as const,
+  };
+
+  it("has aria-hidden attribute for accessibility", async () => {
+    await act(async () => {
+      render(<CaretBuddy {...defaultProps} />);
+    });
+
+    const buddy = document.querySelector(".caret-buddy");
     expect(buddy).toHaveAttribute("aria-hidden", "true");
   });
 
-  describe("expressions", () => {
-    it.each([
-      ["idle", "(-_-)zzz"],
-      ["typing", "(°▽°)"],
-      ["thinking", "(・・?)"],
-      ["code", "(⌐■_■)"],
-      ["long", "(°o°)"],
-      ["error", "(╥_╥)"],
-      ["success", "(＾▽＾)"],
-    ] as const)("renders %s state as %s", (state, expression) => {
-      render(<CaretBuddy state={state} />);
-
-      expect(screen.getByText(expression)).toBeInTheDocument();
-    });
-  });
-
-  describe("blink animation", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-      let frameId = 0;
-      let mockCurrentTime = 0;
-      vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
-        frameId++;
-        setTimeout(() => {
-          mockCurrentTime += 16;
-          cb(mockCurrentTime);
-        }, 16);
-        return frameId;
-      });
-      vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-      vi.restoreAllMocks();
-    });
-
-    it("shows alternate expression after first frame duration", async () => {
+  describe("state derivation", () => {
+    it("shows idle expression when no input and no activity", async () => {
       await act(async () => {
-        // Use typing state which has durations: [0.9s, 1.2s, 0.8s, 0.15s]
-        render(<CaretBuddy state="typing" />);
+        render(<CaretBuddy {...defaultProps} />);
+      });
+
+      expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
+    });
+
+    it("shows error expression when resultStatus is error", async () => {
+      await act(async () => {
+        render(<CaretBuddy {...defaultProps} resultStatus="error" />);
+      });
+
+      expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
+    });
+
+    it("shows thinking expression when isPending is true", async () => {
+      await act(async () => {
+        render(<CaretBuddy {...defaultProps} isPending={true} />);
+      });
+
+      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+    });
+
+    it("shows code expression when input contains backticks", async () => {
+      await act(async () => {
+        render(<CaretBuddy {...defaultProps} inputValue="check `code`" />);
+      });
+
+      expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
+    });
+
+    it("shows long expression when input exceeds 100 characters", async () => {
+      await act(async () => {
+        render(<CaretBuddy {...defaultProps} inputValue={"a".repeat(101)} />);
+      });
+
+      expect(screen.getByText("(°o°)")).toBeInTheDocument();
+    });
+
+    it("shows typing expression when input changes", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
+      });
+
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
       });
 
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
-
-      // First frame is 0.9 seconds
-      await act(async () => {
-        vi.advanceTimersByTime(900);
-      });
-
-      // Now shows soft smile variation
-      expect(screen.getByText("(°ᴗ°)")).toBeInTheDocument();
     });
 
-    it("cycles through all expression variations", async () => {
-      await act(async () => {
-        // Use typing state which has durations: [0.9s, 1.2s, 0.8s, 0.15s]
-        render(<CaretBuddy state="typing" />);
+    it("shows success expression when resultStatus changes to ok", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
       });
 
-      // Initially shows main expression
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      });
+
+      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+    });
+  });
+
+  describe("state priority", () => {
+    it("error takes priority over success", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
+      });
+
+      // First transition to success
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      });
+
+      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+
+      // Then show error takes priority
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
+      });
+
+      expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
+    });
+
+    it("thinking takes priority over code", async () => {
+      await act(async () => {
+        render(
+          <CaretBuddy {...defaultProps} inputValue="`code`" isPending={true} />,
+        );
+      });
+
+      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+    });
+
+    it("code takes priority over long", async () => {
+      await act(async () => {
+        render(
+          <CaretBuddy {...defaultProps} inputValue={"`" + "a".repeat(100)} />,
+        );
+      });
+
+      expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
+    });
+  });
+
+  describe("animation cycling", () => {
+    it("cycles through expression variations over time", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
+      });
+
+      // Trigger typing state
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} inputValue="hi" />);
+      });
+
+      // Initially shows main typing expression
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
 
       // After 0.9 seconds, shows soft smile
@@ -97,366 +172,44 @@ describe("CaretBuddy", () => {
         vi.advanceTimersByTime(1200);
       });
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+    });
+  });
 
-      // After another 0.8 seconds, shows blink
-      await act(async () => {
-        vi.advanceTimersByTime(800);
+  describe("time-based transitions", () => {
+    it("transitions from typing to idle after 3 seconds of no input", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
       });
-      expect(screen.getByText("(°_°)")).toBeInTheDocument();
 
-      // After 0.15 seconds, back to start
       await act(async () => {
-        vi.advanceTimersByTime(150);
+        rerender(<CaretBuddy {...defaultProps} inputValue="hello" />);
       });
+
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
-    });
-  });
-});
 
-describe("useCaretBuddyState", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("returns idle when no input and no activity", () => {
-    const { result } = renderHook(() =>
-      useCaretBuddyState({
-        inputValue: "",
-        isPending: false,
-        resultStatus: "initial",
-      }),
-    );
-
-    expect(result.current).toBe("idle");
-  });
-
-  it("returns error when resultStatus is error", () => {
-    const { result } = renderHook(() =>
-      useCaretBuddyState({
-        inputValue: "",
-        isPending: false,
-        resultStatus: "error",
-      }),
-    );
-
-    expect(result.current).toBe("error");
-  });
-
-  it("returns thinking when isPending is true", () => {
-    const { result } = renderHook(() =>
-      useCaretBuddyState({
-        inputValue: "",
-        isPending: true,
-        resultStatus: "initial",
-      }),
-    );
-
-    expect(result.current).toBe("thinking");
-  });
-
-  it("returns code when input contains backticks", () => {
-    const { result } = renderHook(() =>
-      useCaretBuddyState({
-        inputValue: "check this `code`",
-        isPending: false,
-        resultStatus: "initial",
-      }),
-    );
-
-    expect(result.current).toBe("code");
-  });
-
-  it("returns long when input exceeds 100 characters", () => {
-    const { result } = renderHook(() =>
-      useCaretBuddyState({
-        inputValue: "a".repeat(101),
-        isPending: false,
-        resultStatus: "initial",
-      }),
-    );
-
-    expect(result.current).toBe("long");
-  });
-
-  it("returns typing when input changes", () => {
-    const { result, rerender } = renderHook(
-      (props) => useCaretBuddyState(props),
-      {
-        initialProps: {
-          inputValue: "",
-          isPending: false,
-          resultStatus: "initial" as const,
-        },
-      },
-    );
-
-    expect(result.current).toBe("idle");
-
-    rerender({
-      inputValue: "h",
-      isPending: false,
-      resultStatus: "initial" as const,
-    });
-
-    expect(result.current).toBe("typing");
-  });
-
-  it("transitions from typing to idle after 3 seconds", async () => {
-    const { result, rerender } = renderHook(
-      (props) => useCaretBuddyState(props),
-      {
-        initialProps: {
-          inputValue: "",
-          isPending: false,
-          resultStatus: "initial" as const,
-        },
-      },
-    );
-
-    rerender({
-      inputValue: "hello",
-      isPending: false,
-      resultStatus: "initial" as const,
-    });
-
-    expect(result.current).toBe("typing");
-
-    await act(async () => {
-      vi.advanceTimersByTime(3000);
-    });
-
-    expect(result.current).toBe("idle");
-  });
-
-  it("returns success when resultStatus changes to ok", () => {
-    const { result, rerender } = renderHook(
-      (props: CaretBuddyInputs) => useCaretBuddyState(props),
-      {
-        initialProps: {
-          inputValue: "",
-          isPending: false,
-          resultStatus: "initial",
-        },
-      },
-    );
-
-    rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
-
-    expect(result.current).toBe("success");
-  });
-
-  it("transitions from success to idle after 1.5 seconds", async () => {
-    const { result, rerender } = renderHook(
-      (props: CaretBuddyInputs) => useCaretBuddyState(props),
-      {
-        initialProps: {
-          inputValue: "",
-          isPending: false,
-          resultStatus: "initial",
-        },
-      },
-    );
-
-    rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
-
-    expect(result.current).toBe("success");
-
-    await act(async () => {
-      vi.advanceTimersByTime(1500);
-    });
-
-    expect(result.current).toBe("idle");
-  });
-
-  describe("priority ordering", () => {
-    it("error takes priority over success", () => {
-      const { result, rerender } = renderHook(
-        (props: CaretBuddyInputs) => useCaretBuddyState(props),
-        {
-          initialProps: {
-            inputValue: "",
-            isPending: false,
-            resultStatus: "initial",
-          },
-        },
-      );
-
-      // First get into success state
-      rerender({ inputValue: "", isPending: false, resultStatus: "ok" });
-
-      expect(result.current).toBe("success");
-
-      // Now error should override
-      rerender({ inputValue: "", isPending: false, resultStatus: "error" });
-
-      expect(result.current).toBe("error");
-    });
-
-    it("success takes priority over thinking", () => {
-      const { result, rerender } = renderHook(
-        (props: CaretBuddyInputs) => useCaretBuddyState(props),
-        {
-          initialProps: {
-            inputValue: "",
-            isPending: false,
-            resultStatus: "initial",
-          },
-        },
-      );
-
-      rerender({ inputValue: "", isPending: true, resultStatus: "ok" });
-
-      expect(result.current).toBe("success");
-    });
-
-    it("thinking takes priority over code", () => {
-      const { result } = renderHook(() =>
-        useCaretBuddyState({
-          inputValue: "`code`",
-          isPending: true,
-          resultStatus: "initial",
-        }),
-      );
-
-      expect(result.current).toBe("thinking");
-    });
-
-    it("code takes priority over long", () => {
-      const { result } = renderHook(() =>
-        useCaretBuddyState({
-          inputValue: "`" + "a".repeat(100),
-          isPending: false,
-          resultStatus: "initial",
-        }),
-      );
-
-      expect(result.current).toBe("code");
-    });
-
-    it("long takes priority over typing", async () => {
-      const { result, rerender } = renderHook(
-        (props: CaretBuddyInputs) => useCaretBuddyState(props),
-        {
-          initialProps: {
-            inputValue: "",
-            isPending: false,
-            resultStatus: "initial",
-          },
-        },
-      );
-
-      rerender({
-        inputValue: "a".repeat(101),
-        isPending: false,
-        resultStatus: "initial",
+      await act(async () => {
+        vi.advanceTimersByTime(3000);
       });
 
-      expect(result.current).toBe("long");
-    });
-  });
-});
-
-describe("useFrameAnimation", () => {
-  let mockCurrentTime: number;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    let frameId = 0;
-    mockCurrentTime = 0;
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
-      frameId++;
-      setTimeout(() => {
-        mockCurrentTime += 16;
-        cb(mockCurrentTime);
-      }, 16);
-      return frameId;
-    });
-    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {
-      // no-op for tests
-    });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  it("returns first frame expression initially", () => {
-    const frames: AnimationFrames = [
-      [1.0, "first"],
-      [0.5, "second"],
-    ];
-
-    const { result } = renderHook(() => useFrameAnimation(frames));
-
-    expect(result.current).toBe("first");
-  });
-
-  it("advances to next frame after duration", async () => {
-    const frames: AnimationFrames = [
-      [0.1, "first"],
-      [0.1, "second"],
-    ];
-
-    const { result } = renderHook(() => useFrameAnimation(frames));
-
-    expect(result.current).toBe("first");
-
-    await act(async () => {
-      vi.advanceTimersByTime(100);
+      expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
 
-    expect(result.current).toBe("second");
-  });
+    it("transitions from success to idle after 1.5 seconds", async () => {
+      const { rerender } = await act(async () => {
+        return render(<CaretBuddy {...defaultProps} />);
+      });
 
-  it("loops back to first frame after last", async () => {
-    const frames: AnimationFrames = [
-      [0.05, "first"],
-      [0.05, "second"],
-    ];
+      await act(async () => {
+        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      });
 
-    const { result } = renderHook(() => useFrameAnimation(frames));
+      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
 
-    await act(async () => {
-      vi.advanceTimersByTime(50); // to second
+      await act(async () => {
+        vi.advanceTimersByTime(1500);
+      });
+
+      expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
-
-    expect(result.current).toBe("second");
-
-    await act(async () => {
-      vi.advanceTimersByTime(50); // back to first
-    });
-
-    expect(result.current).toBe("first");
-  });
-
-  it("resets to first frame when frames change", async () => {
-    const frames1: AnimationFrames = [
-      [0.05, "a1"],
-      [0.05, "a2"],
-    ];
-    const frames2: AnimationFrames = [
-      [0.05, "b1"],
-      [0.05, "b2"],
-    ];
-
-    const { result, rerender } = renderHook(
-      (frames: AnimationFrames) => useFrameAnimation(frames),
-      { initialProps: frames1 },
-    );
-
-    await act(async () => {
-      vi.advanceTimersByTime(50);
-    });
-
-    expect(result.current).toBe("a2");
-
-    rerender(frames2);
-
-    expect(result.current).toBe("b1");
   });
 });

@@ -57,13 +57,13 @@ const ANIMATIONS = {
 
 type BuddyState = keyof typeof ANIMATIONS;
 
-export interface CaretBuddyInputs {
+interface CaretBuddyInputs {
   inputValue: string;
   isPending: boolean;
   resultStatus: "initial" | "ok" | "error";
 }
 
-export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
+function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   const [now, setNow] = useState(() => Date.now());
   const [lastInputChange, setLastInputChange] = useState(0);
   const [successUntil, setSuccessUntil] = useState(0);
@@ -100,7 +100,7 @@ export function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   return "idle";
 }
 
-export function useFrameAnimation(frames: AnimationFrames): string {
+function useFrameAnimation(frames: AnimationFrames): string {
   const [frameIndex, setFrameIndex] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const frameRef = useRef(0);
@@ -148,11 +148,18 @@ export function useFrameAnimation(frames: AnimationFrames): string {
   return frames[frameIndex]![1];
 }
 
-interface CaretBuddyProps {
-  state: BuddyState;
+export interface CaretBuddyProps {
+  inputValue: string;
+  isPending: boolean;
+  resultStatus: "initial" | "ok" | "error";
 }
 
-export const CaretBuddy = ({ state }: CaretBuddyProps) => {
+export const CaretBuddy = ({
+  inputValue,
+  isPending,
+  resultStatus,
+}: CaretBuddyProps) => {
+  const state = useCaretBuddyState({ inputValue, isPending, resultStatus });
   const frames = ANIMATIONS[state];
   const expression = useFrameAnimation(frames);
 
@@ -162,5 +169,3 @@ export const CaretBuddy = ({ state }: CaretBuddyProps) => {
     </span>
   );
 };
-
-export type { AnimationFrames, BuddyState };

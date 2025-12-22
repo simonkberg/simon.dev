@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
 
-import type { BuddyState } from "./CaretBuddy";
 import { ChatInput } from "./ChatInput";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
@@ -278,10 +277,10 @@ describe("ChatInput", () => {
   });
 });
 
-// Helper to get buddy state from rendered text
+// Helper to check buddy is showing expected state category
 const getBuddyExpression = () => {
-  const expressions: Record<string, BuddyState> = {
-    // idle - breathing cycle with Z wave
+  // Only check for key expressions we need in integration tests
+  const expressions: Record<string, string> = {
     "(-_-)zzz": "idle",
     "(-_-)Zzz": "idle",
     "(-_-)zZz": "idle",
@@ -289,7 +288,6 @@ const getBuddyExpression = () => {
     "(-_-)...": "idle",
     "(-o-)...": "idle",
     "(-O-)...": "idle",
-    // other states
     "(°▽°)": "typing",
     "(・・?)": "thinking",
     "(⌐■_■)": "code",
@@ -337,35 +335,6 @@ describe("CaretBuddy integration", () => {
     await user.type(input, "H");
 
     expect(getBuddyExpression()).toBe("typing");
-  });
-
-  it("shows code state when backticks are present", async () => {
-    const user = userEvent.setup({
-      delay: null,
-      advanceTimers: vi.advanceTimersByTime,
-    });
-
-    render(<ChatInput {...defaultReplyProps} />);
-    const input = screen.getByRole("textbox");
-
-    await user.type(input, "Check this `code`");
-
-    expect(getBuddyExpression()).toBe("code");
-  });
-
-  it("shows long state when input exceeds 100 characters", async () => {
-    const user = userEvent.setup({
-      delay: null,
-      advanceTimers: vi.advanceTimersByTime,
-    });
-
-    render(<ChatInput {...defaultReplyProps} />);
-    const input = screen.getByRole("textbox");
-
-    const longText = "a".repeat(101);
-    await user.type(input, longText);
-
-    expect(getBuddyExpression()).toBe("long");
   });
 
   it("shows thinking state while message is pending", async () => {
