@@ -5,6 +5,11 @@ import { useEffect, useRef, useState } from "react";
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
 type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
 
+const STATE_TICK_MS = 100;
+const SUCCESS_DURATION_MS = 1500;
+const TYPING_TIMEOUT_MS = 3000;
+const LONG_MESSAGE_THRESHOLD = 100;
+
 const ANIMATIONS = {
   idle: [
     // Z wave
@@ -69,7 +74,7 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   const [successUntil, setSuccessUntil] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 100);
+    const id = setInterval(() => setNow(Date.now()), STATE_TICK_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -81,7 +86,7 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
 
   const [prevResultStatus, setPrevResultStatus] = useState(inputs.resultStatus);
   if (inputs.resultStatus === "ok" && prevResultStatus !== "ok") {
-    setSuccessUntil(now + 1500);
+    setSuccessUntil(now + SUCCESS_DURATION_MS);
   }
   if (inputs.resultStatus !== prevResultStatus) {
     setPrevResultStatus(inputs.resultStatus);
@@ -91,8 +96,9 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   if (now < successUntil) return "success";
   if (inputs.isPending) return "thinking";
   if (inputs.inputValue.includes("`")) return "code";
-  if (inputs.inputValue.length > 100) return "long";
-  if (lastInputChange > 0 && now - lastInputChange < 3000) return "typing";
+  if (inputs.inputValue.length > LONG_MESSAGE_THRESHOLD) return "long";
+  if (lastInputChange > 0 && now - lastInputChange < TYPING_TIMEOUT_MS)
+    return "typing";
   return "idle";
 }
 
