@@ -116,4 +116,55 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
   });
+
+  describe("frame animation", () => {
+    it("advances to next frame after duration elapses", () => {
+      render(<CaretBuddy {...defaultProps} resultStatus="error" />);
+      // error frames: [1.0, "(╥_╥)"], [0.15, "(╥︵╥)"]
+      expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
+
+      act(() => {
+        // First rAF starts the animation loop
+        vi.advanceTimersToNextFrame();
+        // Advance time by 1 second
+        vi.advanceTimersByTime(1000);
+        // Second rAF processes the elapsed time
+        vi.advanceTimersToNextFrame();
+      });
+
+      expect(screen.getByText("(╥︵╥)")).toBeInTheDocument();
+    });
+
+    it("loops back to first frame after last", () => {
+      render(<CaretBuddy {...defaultProps} resultStatus="error" />);
+
+      act(() => {
+        vi.advanceTimersToNextFrame(); // start loop
+        vi.advanceTimersByTime(1000); // → frame 1
+        vi.advanceTimersToNextFrame(); // process
+        vi.advanceTimersByTime(150); // → frame 0 (loops)
+        vi.advanceTimersToNextFrame(); // process
+      });
+
+      expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
+    });
+
+    it("resets to first frame when state changes", () => {
+      const { rerender } = render(
+        <CaretBuddy {...defaultProps} resultStatus="error" />,
+      );
+
+      act(() => {
+        vi.advanceTimersToNextFrame(); // start loop
+        vi.advanceTimersByTime(1000); // → frame 1 of error
+        vi.advanceTimersToNextFrame(); // process
+      });
+      expect(screen.getByText("(╥︵╥)")).toBeInTheDocument();
+
+      rerender(<CaretBuddy {...defaultProps} isPending={true} />);
+
+      // Should show frame 0 of thinking, not carry over frame index
+      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+    });
+  });
 });
