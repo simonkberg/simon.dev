@@ -6,22 +6,10 @@ import { CaretBuddy } from "./CaretBuddy";
 describe("CaretBuddy", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    let frameId = 0;
-    let mockCurrentTime = 0;
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
-      frameId++;
-      setTimeout(() => {
-        mockCurrentTime += 16;
-        cb(mockCurrentTime);
-      }, 16);
-      return frameId;
-    });
-    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
   const defaultProps = {
