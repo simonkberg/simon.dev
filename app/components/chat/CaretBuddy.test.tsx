@@ -67,43 +67,26 @@ describe("CaretBuddy", () => {
   });
 
   describe("state priority", () => {
-    it("error takes priority over success", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      // First transition to success
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      });
-
+    it("error takes priority over success", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
       expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
 
-      // Then show error takes priority
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
-      });
-
+      rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
       expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
     });
 
-    it("thinking takes priority over code", async () => {
-      await act(async () => {
-        render(
-          <CaretBuddy {...defaultProps} inputValue="`code`" isPending={true} />,
-        );
-      });
-
+    it("thinking takes priority over code", () => {
+      render(
+        <CaretBuddy {...defaultProps} inputValue="`code`" isPending={true} />,
+      );
       expect(screen.getByText("(・・?)")).toBeInTheDocument();
     });
 
-    it("code takes priority over long", async () => {
-      await act(async () => {
-        render(
-          <CaretBuddy {...defaultProps} inputValue={"`" + "a".repeat(100)} />,
-        );
-      });
-
+    it("code takes priority over long", () => {
+      render(
+        <CaretBuddy {...defaultProps} inputValue={"`" + "a".repeat(100)} />,
+      );
       expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
     });
   });
