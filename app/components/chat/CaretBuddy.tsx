@@ -114,14 +114,8 @@ function useFrameAnimation(frames: AnimationFrames): string {
     const animate = (timestamp: number) => {
       startTime ??= timestamp;
       const idx = frameIndexRef.current;
-      const frame = frames[idx];
 
-      // Defensive: reset if out of bounds
-      if (!frame) {
-        frameIndexRef.current = 0;
-        setExpression(frames[0][1]);
-        startTime = timestamp;
-      } else if (timestamp - startTime >= frame[0] * 1000) {
+      if (timestamp - startTime >= frames[idx]![0] * 1000) {
         const next = (idx + 1) % frames.length;
         frameIndexRef.current = next;
         setExpression(frames[next]![1]);
