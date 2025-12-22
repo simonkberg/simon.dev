@@ -2,6 +2,7 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  type AnimationFrames,
   CaretBuddy,
   type CaretBuddyInputs,
   useCaretBuddyState,
@@ -12,19 +13,19 @@ describe("CaretBuddy", () => {
   it("renders the idle expression by default", () => {
     render(<CaretBuddy state="idle" />);
 
-    expect(screen.getByText("(-_-)zzZ")).toBeInTheDocument();
+    expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
   });
 
   it("has aria-hidden attribute for accessibility", () => {
     render(<CaretBuddy state="idle" />);
 
-    const buddy = screen.getByText("(-_-)zzZ");
+    const buddy = screen.getByText("(-_-)zzz");
     expect(buddy).toHaveAttribute("aria-hidden", "true");
   });
 
   describe("expressions", () => {
     it.each([
-      ["idle", "(-_-)zzZ"],
+      ["idle", "(-_-)zzz"],
       ["typing", "(°▽°)"],
       ["thinking", "(・・?)"],
       ["code", "(⌐■_■)"],
@@ -385,7 +386,7 @@ describe("useFrameAnimation", () => {
   });
 
   it("returns first frame expression initially", () => {
-    const frames: [number, string][] = [
+    const frames: AnimationFrames = [
       [1.0, "first"],
       [0.5, "second"],
     ];
@@ -396,7 +397,7 @@ describe("useFrameAnimation", () => {
   });
 
   it("advances to next frame after duration", async () => {
-    const frames: [number, string][] = [
+    const frames: AnimationFrames = [
       [0.1, "first"],
       [0.1, "second"],
     ];
@@ -413,7 +414,7 @@ describe("useFrameAnimation", () => {
   });
 
   it("loops back to first frame after last", async () => {
-    const frames: [number, string][] = [
+    const frames: AnimationFrames = [
       [0.05, "first"],
       [0.05, "second"],
     ];
@@ -434,17 +435,17 @@ describe("useFrameAnimation", () => {
   });
 
   it("resets to first frame when frames change", async () => {
-    const frames1: [number, string][] = [
+    const frames1: AnimationFrames = [
       [0.05, "a1"],
       [0.05, "a2"],
     ];
-    const frames2: [number, string][] = [
+    const frames2: AnimationFrames = [
       [0.05, "b1"],
       [0.05, "b2"],
     ];
 
     const { result, rerender } = renderHook(
-      (frames) => useFrameAnimation(frames),
+      (frames: AnimationFrames) => useFrameAnimation(frames),
       { initialProps: frames1 },
     );
 

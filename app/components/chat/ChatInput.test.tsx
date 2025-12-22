@@ -281,10 +281,15 @@ describe("ChatInput", () => {
 // Helper to get buddy state from rendered text
 const getBuddyExpression = () => {
   const expressions: Record<string, BuddyState> = {
+    // idle - breathing cycle with Z wave
+    "(-_-)zzz": "idle",
+    "(-_-)Zzz": "idle",
+    "(-_-)zZz": "idle",
     "(-_-)zzZ": "idle",
-    "(-_-)zZ": "idle",
-    "(-o-)...": "idle",
     "(-_-)...": "idle",
+    "(-o-)...": "idle",
+    "(-O-)...": "idle",
+    // other states
     "(°▽°)": "typing",
     "(・・?)": "thinking",
     "(⌐■_■)": "code",
