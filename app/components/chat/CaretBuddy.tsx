@@ -101,51 +101,46 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
 }
 
 function useFrameAnimation(frames: AnimationFrames): string {
-  const [frameIndex, setFrameIndex] = useState(0);
-  const startTimeRef = useRef<number | null>(null);
-  const frameRef = useRef(0);
   const frameIndexRef = useRef(0);
+  const [expression, setExpression] = useState(frames[0]![1]);
 
-  // Reset when frames change - adjust state during render
-  const framesKey = frames.map(([d, e]) => `${d}:${e}`).join("|");
-  const [prevFramesKey, setPrevFramesKey] = useState(framesKey);
-  if (framesKey !== prevFramesKey) {
-    setPrevFramesKey(framesKey);
-    setFrameIndex(0);
+  // Reset when frames change
+  const [prevFrames, setPrevFrames] = useState(frames);
+  if (frames !== prevFrames) {
+    setPrevFrames(frames);
+    frameIndexRef.current = 0;
+    setExpression(frames[0]![1]);
   }
 
   useEffect(() => {
-    // Sync ref with state and reset timing on frame change
-    frameIndexRef.current = frameIndex;
-    if (frameIndex === 0) {
-      startTimeRef.current = null;
-    }
+    let startTime: number | null = null;
+    let raf: number;
 
     const animate = (timestamp: number) => {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = timestamp;
+      startTime ??= timestamp;
+      const idx = frameIndexRef.current;
+      const frame = frames[idx];
+
+      // Defensive: reset if out of bounds
+      if (!frame) {
+        frameIndexRef.current = 0;
+        setExpression(frames[0]![1]);
+        startTime = timestamp;
+      } else if (timestamp - startTime >= frame[0] * 1000) {
+        const next = (idx + 1) % frames.length;
+        frameIndexRef.current = next;
+        setExpression(frames[next]![1]);
+        startTime = timestamp;
       }
 
-      const elapsed = timestamp - startTimeRef.current;
-      const currentFrameDuration = frames[frameIndexRef.current]![0] * 1000;
-
-      if (elapsed >= currentFrameDuration) {
-        const nextIndex = (frameIndexRef.current + 1) % frames.length;
-        setFrameIndex(nextIndex);
-        startTimeRef.current = timestamp;
-      }
-
-      frameRef.current = requestAnimationFrame(animate);
+      raf = requestAnimationFrame(animate);
     };
 
-    frameRef.current = requestAnimationFrame(animate);
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, [frames]);
 
-    return () => {
-      cancelAnimationFrame(frameRef.current);
-    };
-  }, [frames, frameIndex]);
-
-  return frames[frameIndex]![1];
+  return expression;
 }
 
 export interface CaretBuddyProps {

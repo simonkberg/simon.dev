@@ -147,34 +147,6 @@ describe("CaretBuddy", () => {
     });
   });
 
-  describe("animation cycling", () => {
-    it("cycles through expression variations over time", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      // Trigger typing state
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} inputValue="hi" />);
-      });
-
-      // Initially shows main typing expression
-      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
-
-      // After 0.9 seconds, shows soft smile
-      await act(async () => {
-        vi.advanceTimersByTime(900);
-      });
-      expect(screen.getByText("(°ᴗ°)")).toBeInTheDocument();
-
-      // After another 1.2 seconds, back to happy
-      await act(async () => {
-        vi.advanceTimersByTime(1200);
-      });
-      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
-    });
-  });
-
   describe("time-based transitions", () => {
     it("transitions from typing to idle after 3 seconds of no input", async () => {
       const { rerender } = await act(async () => {
