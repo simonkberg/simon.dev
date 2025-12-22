@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
-type AnimationFrames = readonly AnimationFrame[];
+type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
 
 const ANIMATIONS = {
   idle: [
@@ -102,14 +102,14 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
 
 function useFrameAnimation(frames: AnimationFrames): string {
   const frameIndexRef = useRef(0);
-  const [expression, setExpression] = useState(frames[0]![1]);
+  const [expression, setExpression] = useState(frames[0][1]);
 
   // Reset when frames change
   const [prevFrames, setPrevFrames] = useState(frames);
   if (frames !== prevFrames) {
     setPrevFrames(frames);
     frameIndexRef.current = 0;
-    setExpression(frames[0]![1]);
+    setExpression(frames[0][1]);
   }
 
   useEffect(() => {
@@ -124,7 +124,7 @@ function useFrameAnimation(frames: AnimationFrames): string {
       // Defensive: reset if out of bounds
       if (!frame) {
         frameIndexRef.current = 0;
-        setExpression(frames[0]![1]);
+        setExpression(frames[0][1]);
         startTime = timestamp;
       } else if (timestamp - startTime >= frame[0] * 1000) {
         const next = (idx + 1) % frames.length;
