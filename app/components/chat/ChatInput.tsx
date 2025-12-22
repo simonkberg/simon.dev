@@ -1,10 +1,18 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
+import { CaretBuddy } from "./CaretBuddy";
 import { ChatToast } from "./ChatToast";
 
 export interface ChatInputProps {
@@ -18,6 +26,8 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
     status: "initial",
   });
   const [pending, startTransition] = useTransition();
+  const [inputValue, setInputValue] = useState("");
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -30,14 +40,20 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
       const result = await postChatMessage(formData);
 
       if (result.status === "ok") {
+        // Nested startTransition required: after await, we're outside the original transition context
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
+          setInputValue("");
         });
       }
 
       setResult(result);
     });
+  }
+
+  function onChange(event: ChangeEvent<HTMLInputElement>) {
+    setInputValue(event.target.value);
   }
 
   useEffect(() => {
@@ -79,6 +95,13 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             disabled={pending}
             className="input"
             ref={inputRef}
+            value={inputValue}
+            onChange={onChange}
+          />
+          <CaretBuddy
+            inputValue={inputValue}
+            isPending={pending}
+            resultStatus={result.status}
           />
         </div>
       </form>
