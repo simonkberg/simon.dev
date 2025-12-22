@@ -496,6 +496,7 @@ ul {
       position: relative;
       width: 100%;
       padding-left: 1.5ch;
+      padding-right: 7ch;
       margin-bottom: 0.625rem;
       background: transparent;
       border: 0;
@@ -518,9 +519,9 @@ ul {
 
 .caret-buddy {
   position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: 0.25rem;
+  width: 8ch;
   font-size: 0.75rem;
   color: var(--color-muted);
   pointer-events: none;
