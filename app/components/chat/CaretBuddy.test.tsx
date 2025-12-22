@@ -18,10 +18,8 @@ describe("CaretBuddy", () => {
     resultStatus: "initial" as const,
   };
 
-  it("has aria-hidden attribute for accessibility", async () => {
-    await act(async () => {
-      render(<CaretBuddy {...defaultProps} />);
-    });
+  it("has aria-hidden attribute for accessibility", () => {
+    render(<CaretBuddy {...defaultProps} />);
 
     const buddy = document.querySelector(".caret-buddy");
     expect(buddy).toHaveAttribute("aria-hidden", "true");
