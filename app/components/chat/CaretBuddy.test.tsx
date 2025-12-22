@@ -92,36 +92,24 @@ describe("CaretBuddy", () => {
   });
 
   describe("time-based transitions", () => {
-    it("transitions from typing to idle after 3 seconds of no input", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} inputValue="hello" />);
-      });
-
+    it("transitions from typing to idle after 3 seconds", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} inputValue="hello" />);
       expect(screen.getByText("(°▽°)")).toBeInTheDocument();
 
-      await act(async () => {
+      act(() => {
         vi.advanceTimersByTime(3000);
       });
 
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
 
-    it("transitions from success to idle after 1.5 seconds", async () => {
-      const { rerender } = await act(async () => {
-        return render(<CaretBuddy {...defaultProps} />);
-      });
-
-      await act(async () => {
-        rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      });
-
+    it("transitions from success to idle after 1.5 seconds", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
       expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
 
-      await act(async () => {
+      act(() => {
         vi.advanceTimersByTime(1500);
       });
 
