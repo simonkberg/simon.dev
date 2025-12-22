@@ -26,8 +26,6 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
     status: "initial",
   });
   const [pending, startTransition] = useTransition();
-
-  // Buddy state tracking
   const [inputValue, setInputValue] = useState("");
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {

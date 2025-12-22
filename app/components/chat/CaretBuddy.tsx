@@ -7,43 +7,43 @@ type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
 
 const ANIMATIONS = {
   idle: [
-    // Z wave: zzz → Zzz → zZz → zzZ → zzz
-    [0.5, "(-_-)zzz"], // quiet sleep
-    [0.4, "(-_-)Zzz"], // snore starts
-    [0.4, "(-_-)zZz"], // snore middle
-    [0.4, "(-_-)zzZ"], // snore peak
-    [0.5, "(-_-)zzz"], // quiet again
-    // Inhale - mouth opens
-    [0.4, "(-_-)..."], // breath pause
-    [0.4, "(-o-)..."], // inhaling
-    [0.5, "(-O-)..."], // deep breath
-    // Exhale - mouth closes
-    [0.4, "(-o-)..."], // exhaling
-    [0.4, "(-_-)..."], // settling
+    // Z wave
+    [0.5, "(-_-)zzz"],
+    [0.4, "(-_-)Zzz"],
+    [0.4, "(-_-)zZz"],
+    [0.4, "(-_-)zzZ"],
+    [0.5, "(-_-)zzz"],
+    // Inhale
+    [0.4, "(-_-)..."],
+    [0.4, "(-o-)..."],
+    [0.5, "(-O-)..."],
+    // Exhale
+    [0.4, "(-o-)..."],
+    [0.4, "(-_-)..."],
   ],
   typing: [
-    [0.9, "(°▽°)"], // happy
-    [1.2, "(°ᴗ°)"], // soft smile
-    [0.8, "(°▽°)"], // back to happy
-    [0.15, "(°_°)"], // blink
+    [0.9, "(°▽°)"],
+    [1.2, "(°ᴗ°)"],
+    [0.8, "(°▽°)"],
+    [0.15, "(°_°)"],
   ],
   thinking: [
-    [1.1, "(・・?)"], // thinking
-    [0.9, "(・.・?)"], // pondering
-    [1.0, "(・・?)"], // back
-    [0.15, "(・_・)"], // blink
+    [1.1, "(・・?)"],
+    [0.9, "(・.・?)"],
+    [1.0, "(・・?)"],
+    [0.15, "(・_・)"],
   ],
   code: [
-    [1.4, "(⌐■_■)"], // cool
-    [1.2, "(■_■⌐)"], // head bob
-    [1.3, "(⌐■_■)"], // back
-    [0.15, "( ■_■)"], // glasses slip
+    [1.4, "(⌐■_■)"],
+    [1.2, "(■_■⌐)"],
+    [1.3, "(⌐■_■)"],
+    [0.15, "( ■_■)"],
   ],
   long: [
-    [0.9, "(°o°)"], // amazed
-    [0.8, "(°O°)"], // bigger gasp
-    [1.1, "(°o°)"], // back
-    [0.15, "(°_°)"], // blink
+    [0.9, "(°o°)"],
+    [0.8, "(°O°)"],
+    [1.1, "(°o°)"],
+    [0.15, "(°_°)"],
   ],
   error: [
     [1.0, "(╥_╥)"],
@@ -68,20 +68,17 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   const [lastInputChange, setLastInputChange] = useState(0);
   const [successUntil, setSuccessUntil] = useState(0);
 
-  // Tick to update `now` for time-based transitions
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(id);
   }, []);
 
-  // Track input changes - adjust state during render using `now` (pure)
   const [prevInputValue, setPrevInputValue] = useState(inputs.inputValue);
   if (inputs.inputValue !== prevInputValue) {
     setPrevInputValue(inputs.inputValue);
     setLastInputChange(now);
   }
 
-  // Set success timer when result changes to "ok" - adjust state during render
   const [prevResultStatus, setPrevResultStatus] = useState(inputs.resultStatus);
   if (inputs.resultStatus === "ok" && prevResultStatus !== "ok") {
     setSuccessUntil(now + 1500);
@@ -90,7 +87,6 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
     setPrevResultStatus(inputs.resultStatus);
   }
 
-  // Priority-ordered derivation
   if (inputs.resultStatus === "error") return "error";
   if (now < successUntil) return "success";
   if (inputs.isPending) return "thinking";
@@ -104,7 +100,6 @@ function useFrameAnimation(frames: AnimationFrames): string {
   const frameIndexRef = useRef(0);
   const [expression, setExpression] = useState(frames[0][1]);
 
-  // Reset when frames change
   const [prevFrames, setPrevFrames] = useState(frames);
   if (frames !== prevFrames) {
     setPrevFrames(frames);
