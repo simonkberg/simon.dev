@@ -39,7 +39,7 @@
     "sanitize.css": "13.0.0",
     "server-only": "0.0.1",
     "string-dedent": "3.0.2",
-    "ts-extras": "0.16.0"
+    "ts-extras": "0.16.1"
   },
   "devDependencies": {
     "@edge-runtime/cookies": "6.0.0",
