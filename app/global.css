@@ -35,12 +35,17 @@
   --terminal--content-color: oklch(0.98 0.01 0);
   --terminal--content-max-height: 25rem;
 
-  --code--inline-color: var(--color-firebrick);
-  --code--block-color: var(--color-black);
-  --code-background-color: var(--color-whitesmoke);
-  --code-border: var(--color-silver);
-
-  --quote-border-color: var(--color-silver);
+  --code-color: var(--terminal--content-color);
+  --code-background-color: color-mix(
+    in oklch,
+    var(--background-secondary),
+    transparent 75%
+  );
+  --code-border: color-mix(
+    in oklch,
+    var(--background-primary),
+    transparent 80%
+  );
 }
 
 body {
@@ -234,7 +239,7 @@ ul {
 
         &:focus {
           border-color: color-mix(
-            in srgb,
+            in oklch,
             var(--terminal--controls-close-background-color) 85%,
             black
           );
@@ -246,7 +251,7 @@ ul {
 
         &:focus {
           border-color: color-mix(
-            in srgb,
+            in oklch,
             var(--terminal--controls-minimize-background-color) 85%,
             black
           );
@@ -258,7 +263,7 @@ ul {
 
         &:focus {
           border-color: color-mix(
-            in srgb,
+            in oklch,
             var(--terminal--controls-maximize-background-color) 85%,
             black
           );
@@ -332,33 +337,11 @@ ul {
 
     code {
       padding: 0.1em 0.2em;
-      font-size: 0.8em;
-      color: var(--code--inline-color);
+      color: var(--code-color);
       background-color: var(--code-background-color);
       border: 1px solid var(--code-border);
       border-radius: 0.2em;
       vertical-align: text-bottom;
-    }
-
-    pre {
-      padding: 0.5em;
-      margin: 0.5em 0;
-      background-color: var(--code-background-color);
-      border: 1px solid var(--code-border);
-      border-radius: 0.2em;
-      line-height: 1;
-
-      > code {
-        color: var(--code--block-color);
-        padding: 0;
-        border-width: 0;
-      }
-    }
-
-    blockquote {
-      margin: 0;
-      padding-left: 1ch;
-      border-left: 0.5ch solid var(--quote-border-color);
     }
 
     a {
@@ -464,7 +447,7 @@ ul {
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
   background-color: color-mix(
-    in srgb,
+    in oklch,
     var(--background-secondary),
     transparent
   );
