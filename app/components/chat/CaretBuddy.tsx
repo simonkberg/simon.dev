@@ -44,6 +44,12 @@ const ANIMATIONS = {
     [1.3, "(⌐■_■)"],
     [0.15, "( ■_■)"],
   ],
+  love: [
+    [1.2, "♥(◡‿◡)"],
+    [0.15, "♡(◕‿◕)"],
+    [0.15, "♥(◡‿◡)"],
+    [0.4, "♡(◕‿◕)"],
+  ],
   long: [
     [0.9, "(°o°)"],
     [0.8, "(°O°)"],
@@ -96,6 +102,7 @@ function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
   if (now < successUntil) return "success";
   if (inputs.isPending) return "thinking";
   if (inputs.inputValue.includes("`")) return "code";
+  if (/\blove\b/i.test(inputs.inputValue)) return "love";
   if (inputs.inputValue.length > LONG_MESSAGE_THRESHOLD) return "long";
   if (lastInputChange > 0 && now - lastInputChange < TYPING_TIMEOUT_MS)
     return "typing";

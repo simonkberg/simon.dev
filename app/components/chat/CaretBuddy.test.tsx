@@ -46,6 +46,11 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
     });
 
+    it("shows love when input contains the word love", () => {
+      render(<CaretBuddy {...defaultProps} inputValue="I love this" />);
+      expect(screen.getByText("♥(◡‿◡)")).toBeInTheDocument();
+    });
+
     it("shows long when input exceeds 100 characters", () => {
       render(<CaretBuddy {...defaultProps} inputValue={"a".repeat(101)} />);
       expect(screen.getByText("(°o°)")).toBeInTheDocument();
@@ -81,11 +86,16 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(・・?)")).toBeInTheDocument();
     });
 
-    it("code takes priority over long", () => {
-      render(
-        <CaretBuddy {...defaultProps} inputValue={"`" + "a".repeat(100)} />,
-      );
+    it("code takes priority over love", () => {
+      render(<CaretBuddy {...defaultProps} inputValue="`love`" />);
       expect(screen.getByText("(⌐■_■)")).toBeInTheDocument();
+    });
+
+    it("love takes priority over long", () => {
+      render(
+        <CaretBuddy {...defaultProps} inputValue={"love " + "a".repeat(100)} />,
+      );
+      expect(screen.getByText("♥(◡‿◡)")).toBeInTheDocument();
     });
   });
 
