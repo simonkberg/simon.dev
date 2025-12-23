@@ -337,6 +337,7 @@ ul {
 
     code {
       padding: 0.1em 0.2em;
+      font-size: 0.95em;
       color: var(--code-color);
       background-color: var(--code-background-color);
       border: 1px solid var(--code-border);
