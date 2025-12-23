@@ -97,6 +97,7 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             ref={inputRef}
             value={inputValue}
             onChange={onChange}
+            autoComplete="off"
           />
           <CaretBuddy
             inputValue={inputValue}
