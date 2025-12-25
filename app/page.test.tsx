@@ -118,6 +118,7 @@ describe("RootPage", () => {
     });
 
     it("should show loader while stats are loading", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
       const { promise, resolve } = Promise.withResolvers<WakaTimeStatsResult>();
       vi.mocked(getWakaTimeStats).mockReturnValue(promise);
 
@@ -129,12 +130,17 @@ describe("RootPage", () => {
         within(region).queryByTestId("stats-list"),
       ).not.toBeInTheDocument();
 
-      act(() => resolve({ status: "ok", stats: [] }));
+      await act(async () => {
+        resolve({ status: "ok", stats: [] });
+        // Skip React's Suspense throttling delay
+        await vi.advanceTimersByTimeAsync(300);
+      });
 
       await waitFor(() => {
         expect(within(region).queryByRole("status")).not.toBeInTheDocument();
         expect(within(region).getByTestId("stats-list")).toBeInTheDocument();
       });
+      vi.useRealTimers();
     });
   });
 
@@ -170,6 +176,7 @@ describe("RootPage", () => {
     });
 
     it("should show loader while tracks are loading", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
       const { promise, resolve } =
         Promise.withResolvers<GetRecentTracksResult>();
       vi.mocked(getRecentTracks).mockReturnValue(promise);
@@ -184,7 +191,11 @@ describe("RootPage", () => {
         within(region).queryByTestId("recent-tracks-list"),
       ).not.toBeInTheDocument();
 
-      act(() => resolve({ status: "ok", tracks: [] }));
+      await act(async () => {
+        resolve({ status: "ok", tracks: [] });
+        // Skip React's Suspense throttling delay
+        await vi.advanceTimersByTimeAsync(300);
+      });
 
       await waitFor(() => {
         expect(within(region).queryByRole("status")).not.toBeInTheDocument();
@@ -192,6 +203,7 @@ describe("RootPage", () => {
           within(region).getByTestId("recent-tracks-list"),
         ).toBeInTheDocument();
       });
+      vi.useRealTimers();
     });
   });
 
@@ -222,6 +234,7 @@ describe("RootPage", () => {
     });
 
     it("should show loader while chat history is loading", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
       const { promise, resolve } = Promise.withResolvers<ChatHistoryResult>();
       vi.mocked(getChatHistory).mockReturnValue(promise);
 
@@ -231,12 +244,17 @@ describe("RootPage", () => {
       expect(within(region).getByRole("status")).toBeInTheDocument();
       expect(within(region).queryByTestId("chat")).not.toBeInTheDocument();
 
-      act(() => resolve({ status: "ok", messages: [] }));
+      await act(async () => {
+        resolve({ status: "ok", messages: [] });
+        // Skip React's Suspense throttling delay
+        await vi.advanceTimersByTimeAsync(300);
+      });
 
       await waitFor(() => {
         expect(within(region).queryByRole("status")).not.toBeInTheDocument();
         expect(within(region).getByTestId("chat")).toBeInTheDocument();
       });
+      vi.useRealTimers();
     });
   });
 
