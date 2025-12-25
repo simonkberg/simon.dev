@@ -123,5 +123,39 @@ describe("Chat", () => {
       await user.click(screen.getByRole("button", { name: "Clear reply" }));
       expect(screen.queryByText("Replying to")).not.toBeInTheDocument();
     });
+
+    it("hides reply preview when message is deleted", async () => {
+      const user = userEvent.setup();
+      const message = createMessage({
+        id: "will-be-deleted",
+        content: "Soon gone",
+      });
+      const initialResult: ChatHistoryResult = {
+        status: "ok",
+        messages: [message],
+      };
+
+      const { rerender } = await act(async () =>
+        render(<Chat history={Promise.resolve(initialResult)} />),
+      );
+
+      await user.click(screen.getByRole("button", { name: "Reply" }));
+      expect(screen.getByText("Replying to")).toBeInTheDocument();
+
+      // Re-render with messages that don't include the replied-to message
+      const updatedResult: ChatHistoryResult = {
+        status: "ok",
+        messages: [
+          createMessage({ id: "different-msg", content: "New message" }),
+        ],
+      };
+
+      await act(async () =>
+        rerender(<Chat history={Promise.resolve(updatedResult)} />),
+      );
+
+      // Reply preview should be hidden since the message no longer exists
+      expect(screen.queryByText("Replying to")).not.toBeInTheDocument();
+    });
   });
 });
