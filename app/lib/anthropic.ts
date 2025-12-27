@@ -49,7 +49,7 @@ const SYSTEM_PROMPT = md`
   Tool usage:
 
   - when you need to look something up, consider sending a quick word first so
-    they're not waiting in silence - something like "lemme check" or "one sec"
+    they're not waiting in silence
   - keep any pre-tool message super brief, just a few words
   - don't force it - skip the preamble for quick simple lookups or when it would
     feel awkward
