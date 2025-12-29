@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
   turbopack: { root: import.meta.dirname },
   typedRoutes: true,
   experimental: { globalNotFound: true },
-  serverExternalPackages: ["pino", "pino-pretty"],
 };
 
 export default nextConfig;
