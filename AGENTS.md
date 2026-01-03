@@ -2,6 +2,8 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
+> `CLAUDE.md` is a symlink to this file (`AGENTS.md`) for compatibility with Claude Code.
+
 ## Project Overview
 
 This is a personal website built with Next.js 16 (App Router) that integrates with Discord for real-time chat functionality, WakaTime for coding statistics, and Last.fm for recently played music. The site is deployed as a standalone Docker container on Railway.
@@ -23,11 +25,13 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 - `pnpm test` - Run tests (auto-detects TTY; no `CI=true` prefix needed)
 - `pnpm test --coverage` - Run tests with coverage report
 
+> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:eslint`, `lint:prettier`). They run all checks in parallel and complete in seconds.
+
 ### MCP Tools
 
 MCP servers are configured in `.mcp.json`:
 
-- Use ESLint MCP tools for linting instead of `pnpm lint` directly
+- ESLint MCP tools are available for targeted file linting when needed
 - Consult Next.js documentation via the `nextjs_docs` MCP tool for Next.js questions
 
 ### Docker
@@ -204,3 +208,12 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 ### Private Fields
 
 Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. Use `#` for new private fields.
+
+## Maintaining This Document
+
+When making changes that affect documented patterns, architecture, commands, or conventions, update this file accordingly. Examples:
+
+- Adding/removing environment variables → update the Environment Variables table
+- Changing directory structure → update Directory Structure
+- Adding new patterns or conventions → document them
+- Modifying existing documented code → verify documentation still matches
