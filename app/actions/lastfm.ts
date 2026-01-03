@@ -2,6 +2,7 @@
 
 import { cacheLife } from "next/cache";
 
+import { config } from "@/config";
 import {
   type Period,
   userGetRecentTracks,
@@ -25,7 +26,9 @@ export async function getRecentTracks(): Promise<GetRecentTracksResult> {
   "use cache";
 
   try {
-    const tracks = await userGetRecentTracks("magijo", { limit: 5 });
+    const tracks = await userGetRecentTracks(config.lastfmUsername, {
+      limit: 5,
+    });
     cacheLife("minutes");
     return { status: "ok", tracks };
   } catch (err) {
@@ -50,7 +53,10 @@ export async function getTopTracks(
   "use cache";
 
   try {
-    const tracks = await userGetTopTracks("magijo", { period, limit: 10 });
+    const tracks = await userGetTopTracks(config.lastfmUsername, {
+      period,
+      limit: 10,
+    });
     cacheLife("hours");
     return { status: "ok", tracks };
   } catch (err) {
@@ -72,7 +78,10 @@ export async function getTopArtists(
   "use cache";
 
   try {
-    const artists = await userGetTopArtists("magijo", { period, limit: 10 });
+    const artists = await userGetTopArtists(config.lastfmUsername, {
+      period,
+      limit: 10,
+    });
     cacheLife("hours");
     return { status: "ok", artists };
   } catch (err) {
@@ -94,7 +103,10 @@ export async function getTopAlbums(
   "use cache";
 
   try {
-    const albums = await userGetTopAlbums("magijo", { period, limit: 10 });
+    const albums = await userGetTopAlbums(config.lastfmUsername, {
+      period,
+      limit: 10,
+    });
     cacheLife("hours");
     return { status: "ok", albums };
   } catch (err) {

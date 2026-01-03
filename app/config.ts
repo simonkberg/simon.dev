@@ -8,4 +8,5 @@ export const config = {
     { label: "LinkedIn", url: "https://linkedin.com/in/simonkjellberg" },
   ],
   gtmId: "GTM-P3HX5HW",
+  lastfmUsername: "magijo",
 } as const;
