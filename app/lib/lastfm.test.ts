@@ -121,7 +121,7 @@ describe("userGetRecentTracks", () => {
     await expect(userGetRecentTracks("testuser")).rejects.toThrow();
   });
 
-  it("should configure fetch with 3 second timeout", async () => {
+  it("should configure fetch with 10 second timeout", async () => {
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 
     server.use(
@@ -132,7 +132,7 @@ describe("userGetRecentTracks", () => {
 
     await userGetRecentTracks("testuser");
 
-    expect(timeoutSpy).toHaveBeenCalledWith(3000);
+    expect(timeoutSpy).toHaveBeenCalledWith(10000);
     timeoutSpy.mockRestore();
   });
 
