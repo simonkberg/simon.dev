@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { config } from "@/config";
 import { getChannelMessages } from "@/lib/discord/api";
 import {
   userGetRecentTracks,
@@ -582,7 +583,9 @@ describe("createMessage", () => {
 
     expect(responses).toEqual(["got both results"]);
     expect(getStats).toHaveBeenCalled();
-    expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
+    expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
+      limit: 5,
+    });
   });
 
   it("should yield multiple text blocks from single response", async () => {
@@ -849,7 +852,7 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
+      expect(userGetTopTracks).toHaveBeenCalledWith(config.lastfmUsername, {
         period: "3month",
         limit: 10,
       });
@@ -912,7 +915,7 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
+      expect(userGetTopArtists).toHaveBeenCalledWith(config.lastfmUsername, {
         period: "6month",
         limit: 3,
       });
@@ -975,7 +978,7 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
+      expect(userGetTopAlbums).toHaveBeenCalledWith(config.lastfmUsername, {
         period: "12month",
         limit: 7,
       });
@@ -1104,7 +1107,9 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 10 });
+      expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
+        limit: 10,
+      });
     });
 
     it("should use default values when tool inputs are empty", async () => {
@@ -1180,16 +1185,92 @@ describe("createMessage", () => {
 
       expect(getChannelMessages).toHaveBeenCalledWith(10);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
-      expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
-      expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
+      expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
+        limit: 5,
+      });
+      expect(userGetTopTracks).toHaveBeenCalledWith(config.lastfmUsername, {
         period: "1month",
         limit: 10,
       });
-      expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
+      expect(userGetTopArtists).toHaveBeenCalledWith(config.lastfmUsername, {
         period: "1month",
         limit: 10,
       });
-      expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
+      expect(userGetTopAlbums).toHaveBeenCalledWith(config.lastfmUsername, {
+        period: "1month",
+        limit: 10,
+      });
+    });
+
+    it("should pass custom username to Last.fm tools", async () => {
+      vi.mocked(userGetRecentTracks).mockResolvedValue([]);
+      vi.mocked(userGetTopTracks).mockResolvedValue([]);
+      vi.mocked(userGetTopArtists).mockResolvedValue([]);
+      vi.mocked(userGetTopAlbums).mockResolvedValue([]);
+
+      let callCount = 0;
+
+      server.use(
+        http.post(ANTHROPIC_BASE_URL, () => {
+          callCount++;
+
+          if (callCount === 1) {
+            return HttpResponse.json({
+              content: [
+                {
+                  type: "tool_use",
+                  id: "tool_1",
+                  name: "get_recent_tracks",
+                  input: { username: "customuser", limit: 3 },
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_2",
+                  name: "get_top_tracks",
+                  input: { username: "customuser", period: "7day", limit: 5 },
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_3",
+                  name: "get_top_artists",
+                  input: { username: "customuser", period: "overall" },
+                },
+                {
+                  type: "tool_use",
+                  id: "tool_4",
+                  name: "get_top_albums",
+                  input: { username: "anotheruser" },
+                },
+              ],
+              stop_reason: "tool_use",
+            });
+          }
+
+          return HttpResponse.json({
+            content: [{ type: "text", text: "done" }],
+            stop_reason: "end_turn",
+          });
+        }),
+      );
+
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
+
+      expect(userGetRecentTracks).toHaveBeenCalledWith("customuser", {
+        limit: 3,
+      });
+      expect(userGetTopTracks).toHaveBeenCalledWith("customuser", {
+        period: "7day",
+        limit: 5,
+      });
+      expect(userGetTopArtists).toHaveBeenCalledWith("customuser", {
+        period: "overall",
+        limit: 10,
+      });
+      expect(userGetTopAlbums).toHaveBeenCalledWith("anotheruser", {
         period: "1month",
         limit: 10,
       });

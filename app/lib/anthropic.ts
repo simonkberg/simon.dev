@@ -3,6 +3,7 @@ import "server-only";
 import md from "string-dedent";
 import { z } from "zod";
 
+import { config } from "@/config";
 import { getChannelMessages } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
@@ -74,8 +75,6 @@ const createMessageResponseSchema = z.object({
   stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
 });
 
-const LASTFM_USER = "magijo";
-
 // Tool input schemas
 const chatHistoryInputSchema = z.object({
   limit: z.number().min(1).max(50).default(10).describe("Number of messages"),
@@ -88,9 +87,17 @@ const wakatimeInputSchema = z.object({
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });
 const recentTracksInputSchema = z.object({
+  username: z
+    .string()
+    .default(config.lastfmUsername)
+    .describe("Last.fm username (defaults to Simon's account)"),
   limit: z.number().min(1).max(50).default(5).describe("Number of tracks"),
 });
 const topItemsInputSchema = z.object({
+  username: z
+    .string()
+    .default(config.lastfmUsername)
+    .describe("Last.fm username (defaults to Simon's account)"),
   period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
   limit: z.number().min(1).max(50).default(10).describe("Number of items"),
 });
@@ -111,23 +118,25 @@ const TOOLS = [
   {
     name: "get_recent_tracks",
     description:
-      "Get tracks Simon recently listened to on Last.fm. Includes now-playing status.",
+      "Get recently played tracks from Last.fm. Defaults to Simon's account. Includes now-playing status.",
     input_schema: z.toJSONSchema(recentTracksInputSchema),
   },
   {
     name: "get_top_tracks",
-    description: "Get Simon's most played tracks on Last.fm for a time period.",
+    description:
+      "Get most played tracks from Last.fm for a time period. Defaults to Simon's account.",
     input_schema: z.toJSONSchema(topItemsInputSchema),
   },
   {
     name: "get_top_artists",
     description:
-      "Get Simon's most played artists on Last.fm for a time period.",
+      "Get most played artists from Last.fm for a time period. Defaults to Simon's account.",
     input_schema: z.toJSONSchema(topItemsInputSchema),
   },
   {
     name: "get_top_albums",
-    description: "Get Simon's most played albums on Last.fm for a time period.",
+    description:
+      "Get most played albums from Last.fm for a time period. Defaults to Simon's account.",
     input_schema: z.toJSONSchema(topItemsInputSchema),
   },
 ];
@@ -147,30 +156,20 @@ async function executeTool(
         return JSON.stringify(await getStats(period, limit));
       }
       case "get_recent_tracks": {
-        return JSON.stringify(
-          await userGetRecentTracks(
-            LASTFM_USER,
-            recentTracksInputSchema.parse(input),
-          ),
-        );
+        const { username, ...params } = recentTracksInputSchema.parse(input);
+        return JSON.stringify(await userGetRecentTracks(username, params));
       }
       case "get_top_tracks": {
-        return JSON.stringify(
-          await userGetTopTracks(LASTFM_USER, topItemsInputSchema.parse(input)),
-        );
+        const { username, ...params } = topItemsInputSchema.parse(input);
+        return JSON.stringify(await userGetTopTracks(username, params));
       }
       case "get_top_artists": {
-        return JSON.stringify(
-          await userGetTopArtists(
-            LASTFM_USER,
-            topItemsInputSchema.parse(input),
-          ),
-        );
+        const { username, ...params } = topItemsInputSchema.parse(input);
+        return JSON.stringify(await userGetTopArtists(username, params));
       }
       case "get_top_albums": {
-        return JSON.stringify(
-          await userGetTopAlbums(LASTFM_USER, topItemsInputSchema.parse(input)),
-        );
+        const { username, ...params } = topItemsInputSchema.parse(input);
+        return JSON.stringify(await userGetTopAlbums(username, params));
       }
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
