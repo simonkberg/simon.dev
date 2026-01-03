@@ -43,7 +43,7 @@ async function call<T extends z.ZodType>(
     url.searchParams.set(key, String(value));
   }
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+  const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!response.ok) {
     throw new Error(
       `Last.fm API error: ${response.status} ${response.statusText}`,
