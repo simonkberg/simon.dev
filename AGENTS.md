@@ -108,7 +108,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 - `app/lib/lastfm.ts`: Wraps Last.fm Web Services API
 - Methods: `user.getRecentTracks`, `user.getTopTracks`, `user.getTopArtists`, `user.getTopAlbums`
-- 3-second timeout, period filtering (`7day`, `1month`, `3month`, `6month`, `12month`, `overall`)
+- 10-second timeout, period filtering (`7day`, `1month`, `3month`, `6month`, `12month`, `overall`)
 
 ### Anthropic Integration (simon-bot)
 
