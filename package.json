@@ -33,7 +33,7 @@
     "dataloader": "2.2.3",
     "jose": "6.1.3",
     "next": "16.1.3",
-    "pino": "10.2.0",
+    "pino": "10.2.1",
     "react": "19.3.0-canary-fd524fe0-20251121",
     "react-dom": "19.3.0-canary-fd524fe0-20251121",
     "sanitize.css": "13.0.0",
