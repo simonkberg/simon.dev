@@ -11,6 +11,9 @@ importers:
       '@khanacademy/simple-markdown':
         specifier: 2.2.0
         version: 2.2.0(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+      '@next/third-parties':
+        specifier: 16.1.6
+        version: 16.1.6(next@16.1.6(@babel/core@7.28.6)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@react-spring/web':
         specifier: 10.0.3
         version: 10.0.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
@@ -57,9 +60,6 @@ importers:
       '@edge-runtime/cookies':
         specifier: 6.0.0
         version: 6.0.0
-      '@next/third-parties':
-        specifier: 16.1.6
-        version: 16.1.6(next@16.1.6(@babel/core@7.28.6)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@testing-library/dom':
         specifier: 10.4.1
         version: 10.4.1

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@khanacademy/simple-markdown": "2.2.0",
+    "@next/third-parties": "16.1.6",
     "@react-spring/web": "10.0.3",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.36.1",
@@ -43,7 +44,6 @@
   },
   "devDependencies": {
     "@edge-runtime/cookies": "6.0.0",
-    "@next/third-parties": "16.1.6",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
