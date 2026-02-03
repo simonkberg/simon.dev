@@ -54,8 +54,8 @@ importers:
         specifier: 3.0.2
         version: 3.0.2
       ts-extras:
-        specifier: 0.16.1
-        version: 0.16.1
+        specifier: 0.17.0
+        version: 0.17.0
     devDependencies:
       '@edge-runtime/cookies':
         specifier: 6.0.0
@@ -2813,8 +2813,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
-  ts-extras@0.16.1:
-    resolution: {integrity: sha512-mvLaDJDWP0g65CPyHPMaMK5xo8x8MO2BHWoRbk60GGMEuIXa403Ey0vk5N7jyT3lXtvUz6j+rOnIlu3ky8XxMg==}
+  ts-extras@0.17.0:
+    resolution: {integrity: sha512-0CaHIA88Up/vodzPyidsvzaTMqAcySf0uNk/AgQd+qq6FdbN7LH7smL/zuN3/hOPLcNttXIZSPRL3EAYGhAqtw==}
     engines: {node: '>=20'}
 
   tsconfck@3.1.6:
@@ -5834,7 +5834,7 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  ts-extras@0.16.1:
+  ts-extras@0.17.0:
     dependencies:
       type-fest: 5.4.3
 
