@@ -36,8 +36,8 @@ importers:
         specifier: 16.1.6
         version: 16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       pino:
-        specifier: 10.3.0
-        version: 10.3.0
+        specifier: 10.3.1
+        version: 10.3.1
       react:
         specifier: 19.3.0-canary-fd524fe0-20251121
         version: 19.3.0-canary-fd524fe0-20251121
@@ -2411,8 +2411,8 @@ packages:
   pino-std-serializers@7.1.0:
     resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
 
-  pino@10.3.0:
-    resolution: {integrity: sha512-0GNPNzHXBKw6U/InGe79A3Crzyk9bcSyObF9/Gfo9DLEf5qj5RF50RSjsu0W1rZ6ZqRGdzDFCRBQvi9/rSGPtA==}
+  pino@10.3.1:
+    resolution: {integrity: sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==}
     hasBin: true
 
   possible-typed-array-names@1.1.0:
@@ -5361,7 +5361,7 @@ snapshots:
 
   pino-std-serializers@7.1.0: {}
 
-  pino@10.3.0:
+  pino@10.3.1:
     dependencies:
       '@pinojs/redact': 0.4.0
       atomic-sleep: 1.0.0
