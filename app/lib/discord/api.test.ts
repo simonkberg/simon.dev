@@ -5,7 +5,12 @@ import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { server } from "@/mocks/node";
 
-import { getChannelMessages, getMessageChain, postChannelMessage } from "./api";
+import {
+  _resetRateLimitState,
+  getChannelMessages,
+  getMessageChain,
+  postChannelMessage,
+} from "./api";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -708,6 +713,7 @@ describe("rate limiting", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    _resetRateLimitState();
   });
 
   it("should retry after 429 and succeed", async () => {
@@ -759,6 +765,7 @@ describe("rate limiting", () => {
         elapsedMs: 0,
         retryAfterMs: 35000,
         global: true,
+        retries: 1,
       },
       "Discord rate limit exceeded max wait time",
     );
@@ -786,7 +793,12 @@ describe("rate limiting", () => {
 
     expect(attempts).toBe(2);
     expect(logWarnSpy).toHaveBeenCalledWith(
-      { endpoint: expect.any(String), retryAfterMs: 1000, global: false },
+      {
+        endpoint: expect.any(String),
+        retryAfterMs: 1000,
+        global: false,
+        retries: 1,
+      },
       "Discord rate limited, retrying",
     );
   });
@@ -823,7 +835,12 @@ describe("rate limiting", () => {
 
     expect(attempts).toBe(2);
     expect(logWarnSpy).toHaveBeenCalledWith(
-      { endpoint: expect.any(String), retryAfterMs: 15000, global: false },
+      {
+        endpoint: expect.any(String),
+        retryAfterMs: 15000,
+        global: false,
+        retries: 1,
+      },
       "Discord rate limited, retrying",
     );
     expect(logErrorSpy).toHaveBeenCalledWith(
@@ -832,8 +849,114 @@ describe("rate limiting", () => {
         elapsedMs: 15000,
         retryAfterMs: 16000,
         global: false,
+        retries: 2,
       },
       "Discord rate limit exceeded max wait time",
+    );
+  });
+
+  it("should throw when max retries exceeded", async () => {
+    const logWarnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+    let attempts = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        attempts++;
+        return HttpResponse.json(
+          { message: "Rate limited", retry_after: 1, global: false },
+          { status: 429 },
+        );
+      }),
+    );
+
+    const promise = getChannelMessages();
+    const assertion = expect(promise).rejects.toThrow(
+      "Discord rate limit exceeded",
+    );
+
+    await vi.advanceTimersByTimeAsync(10000);
+    await assertion;
+
+    // 1 initial + 5 retries = 6 total attempts
+    expect(attempts).toBe(6);
+    expect(logWarnSpy).toHaveBeenCalledTimes(5);
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ retries: 6 }),
+      "Discord rate limit exceeded max wait time",
+    );
+  });
+
+  it("should share rate limit state across concurrent requests", async () => {
+    vi.spyOn(log, "warn").mockImplementation(() => {});
+    let fetchCount = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        fetchCount++;
+        if (fetchCount === 1) {
+          return HttpResponse.json(
+            { message: "Rate limited", retry_after: 2, global: false },
+            { status: 429 },
+          );
+        }
+        return HttpResponse.json([]);
+      }),
+    );
+
+    // First request gets 429 and sets the shared gate
+    const promise1 = getChannelMessages();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // Second request arrives while rate limit gate is active
+    const promise2 = getChannelMessages();
+
+    // Advance past the 2-second rate limit window
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await Promise.all([promise1, promise2]);
+
+    // Without shared state: 4 fetches (both hit 429 independently, both retry)
+    // With shared state: 3 fetches (first gets 429, second waits on gate, both succeed after delay)
+    expect(fetchCount).toBe(3);
+  });
+
+  it("should include retry count in log messages", async () => {
+    const logWarnSpy = vi.spyOn(log, "warn").mockImplementation(() => {});
+    let attempts = 0;
+
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () => {
+        attempts++;
+        if (attempts <= 3) {
+          return HttpResponse.json(
+            { message: "Rate limited", retry_after: 1, global: false },
+            { status: 429 },
+          );
+        }
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const promise = getChannelMessages();
+    await vi.advanceTimersByTimeAsync(3000);
+    await promise;
+
+    expect(logWarnSpy).toHaveBeenCalledTimes(3);
+    expect(logWarnSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ retries: 1 }),
+      "Discord rate limited, retrying",
+    );
+    expect(logWarnSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ retries: 2 }),
+      "Discord rate limited, retrying",
+    );
+    expect(logWarnSpy).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ retries: 3 }),
+      "Discord rate limited, retrying",
     );
   });
 });

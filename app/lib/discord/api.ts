@@ -15,6 +15,7 @@ import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
 
 const BASE_URL = "https://discord.com/api/v10";
 const RATE_LIMIT_TIMEOUT_MS = 30_000;
+const MAX_RETRIES = 5;
 
 const RateLimitResponseSchema = z.object({
   message: z.string(),
@@ -22,6 +23,14 @@ const RateLimitResponseSchema = z.object({
   global: z.boolean(),
   code: z.number().optional(),
 });
+
+// Per-endpoint rate limit tracking: endpoint → timestamp until which requests should wait
+const rateLimitUntil = new Map<string, number>();
+
+/** @internal Exported for test cleanup only */
+export function _resetRateLimitState(): void {
+  rateLimitUntil.clear();
+}
 
 async function call<T extends z.ZodType>(
   method: string,
@@ -38,8 +47,26 @@ async function call<T extends z.ZodType>(
   }
 
   const startTime = performance.now();
+  let retries = 0;
 
   while (true) {
+    // Wait for any active rate limit gate on this endpoint
+    const waitUntil = rateLimitUntil.get(endpoint);
+    if (waitUntil != null) {
+      const waitMs = waitUntil - Date.now();
+      if (waitMs > 0) {
+        const elapsedMs = performance.now() - startTime;
+        if (elapsedMs + waitMs > RATE_LIMIT_TIMEOUT_MS) {
+          log.error(
+            { endpoint, elapsedMs, waitMs, retries },
+            "Discord rate limit exceeded max wait time",
+          );
+          throw new Error(`Discord rate limit exceeded`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    }
+
     const response = await fetch(url, {
       method,
       body: method === "POST" ? JSON.stringify(params) : undefined,
@@ -53,6 +80,8 @@ async function call<T extends z.ZodType>(
     const json = await response.json();
 
     if (response.status === 429) {
+      retries++;
+
       const rateLimit = RateLimitResponseSchema.safeParse(json);
       const retryAfterMs = rateLimit.success
         ? rateLimit.data.retry_after * 1000
@@ -61,22 +90,33 @@ async function call<T extends z.ZodType>(
 
       const elapsedMs = performance.now() - startTime;
 
-      if (elapsedMs + retryAfterMs > RATE_LIMIT_TIMEOUT_MS) {
+      if (
+        retries > MAX_RETRIES ||
+        elapsedMs + retryAfterMs > RATE_LIMIT_TIMEOUT_MS
+      ) {
         log.error(
-          { endpoint, elapsedMs, retryAfterMs, global },
+          { endpoint, elapsedMs, retryAfterMs, global, retries },
           "Discord rate limit exceeded max wait time",
         );
         throw new Error(`Discord rate limit exceeded`);
       }
 
+      // Update shared rate limit gate (Math.max avoids overwriting a longer wait)
+      const newUntil = Date.now() + retryAfterMs;
+      const existing = rateLimitUntil.get(endpoint) ?? 0;
+      rateLimitUntil.set(endpoint, Math.max(existing, newUntil));
+
       log.warn(
-        { endpoint, retryAfterMs, global },
+        { endpoint, retryAfterMs, global, retries },
         "Discord rate limited, retrying",
       );
 
       await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
       continue;
     }
+
+    // Clear rate limit gate on success
+    rateLimitUntil.delete(endpoint);
 
     if (!response.ok) {
       log.error(
