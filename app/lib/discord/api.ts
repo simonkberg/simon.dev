@@ -32,6 +32,11 @@ export function _resetRateLimitState(): void {
   rateLimitUntil.clear();
 }
 
+/** @internal Exported for testing the gate timeout path */
+export function _setRateLimitGate(endpoint: string, until: number): void {
+  rateLimitUntil.set(endpoint, until);
+}
+
 async function call<T extends z.ZodType>(
   method: string,
   endpoint: string,

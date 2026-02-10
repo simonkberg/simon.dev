@@ -7,6 +7,7 @@ import { server } from "@/mocks/node";
 
 import {
   _resetRateLimitState,
+  _setRateLimitGate,
   getChannelMessages,
   getMessageChain,
   postChannelMessage,
@@ -919,6 +920,24 @@ describe("rate limiting", () => {
     // Without shared state: 4 fetches (both hit 429 independently, both retry)
     // With shared state: 3 fetches (first gets 429, second waits on gate, both succeed after delay)
     expect(fetchCount).toBe(3);
+  });
+
+  it("should throw when shared gate wait exceeds timeout", async () => {
+    const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+
+    // Directly set a gate 31 seconds in the future — exceeds RATE_LIMIT_TIMEOUT_MS (30s)
+    const endpoint = "channels/test-discord-channel-id/messages";
+    _setRateLimitGate(endpoint, Date.now() + 31_000);
+
+    // A fresh request checks the gate: waitMs=31000, elapsedMs≈0, 0+31000 > 30000 → throws
+    await expect(getChannelMessages()).rejects.toThrow(
+      "Discord rate limit exceeded",
+    );
+
+    expect(logErrorSpy).toHaveBeenCalledWith(
+      { endpoint, elapsedMs: expect.any(Number), waitMs: 31_000, retries: 0 },
+      "Discord rate limit exceeded max wait time",
+    );
   });
 
   it("should include retry count in log messages", async () => {
