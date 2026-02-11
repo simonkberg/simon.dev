@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@khanacademy/simple-markdown':
-        specifier: 2.2.0
-        version: 2.2.0(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        specifier: 2.2.1
+        version: 2.2.1(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@next/third-parties':
         specifier: 16.1.6
         version: 16.1.6(next@16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
@@ -668,8 +668,8 @@ packages:
   '@khanacademy/perseus-utils@2.1.4':
     resolution: {integrity: sha512-TQLLUZQWc0K0gCLejNTd7G2y1qMhF3BtM9rBGvSObo10EVL4LwA2nCgm0FaPLowCp0ujweZACh9ty+xlekkGXA==}
 
-  '@khanacademy/simple-markdown@2.2.0':
-    resolution: {integrity: sha512-kbAiY4fVIRqGfH1OdqffeldeSxcY/rfBODyNH6ZKKoLh40pPlU6iunPyQk1GnOdfwPeE+6J93TDwN2ZIUlD5LA==}
+  '@khanacademy/simple-markdown@2.2.1':
+    resolution: {integrity: sha512-9xmLOLIh//ZiWwQFtJETnV8Ha24J3KgHpcwrROjqjuXD3tNiNZrVMBBZU93Aw1/jeocA7p5jiYBrErZiqGlLag==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -3490,7 +3490,7 @@ snapshots:
 
   '@khanacademy/perseus-utils@2.1.4': {}
 
-  '@khanacademy/simple-markdown@2.2.0(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@khanacademy/simple-markdown@2.2.1(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
     dependencies:
       '@khanacademy/perseus-utils': 2.1.4
       react: 19.3.0-canary-fd524fe0-20251121
