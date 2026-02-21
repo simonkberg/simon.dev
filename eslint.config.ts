@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
       "simple-import-sort/exports": "warn",
     },
   },
+  { settings: { react: { version: "19" } } },
   { ignores: [".worktrees/**", "coverage/**", "junit.xml"] },
 ]);
 
