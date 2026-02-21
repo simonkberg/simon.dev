@@ -50,9 +50,10 @@ app/                          # Next.js App Router (all source code)
 ├── api/chat/sse/             # SSE endpoint for real-time chat updates
 ├── assets/                   # Static assets (fonts, images)
 ├── components/               # Shared React components (with co-located tests)
+├── config.ts                 # Site metadata, links, external usernames
 ├── health/                   # Health check endpoint for monitoring
 ├── lib/                      # Utility libraries and core logic
-│   └── discord/              # Discord API and Gateway integration
+│   └── discord/              # Discord API, Gateway, and bot integration
 ├── listening/[[...period]]/  # Listening stats page (optional catch-all)
 │   └── components/           # Route-specific components
 ├── layout.tsx                # Root layout
@@ -60,6 +61,7 @@ app/                          # Next.js App Router (all source code)
 ├── global-error.tsx          # Global error boundary
 └── global-not-found.tsx      # Global 404 page
 
+instrumentation.ts            # Server startup hooks (bot subscription)
 mocks/                        # Test mocks (MSW handlers, env vars)
 ```
 
@@ -72,9 +74,19 @@ mocks/                        # Test mocks (MSW handlers, env vars)
 - `@/*` → `app/*`
 - `@/mocks/*` → `mocks/*`
 
+### Next.js Config
+
+Key settings in `next.config.ts`:
+
+- `output: "standalone"` — self-contained build for Docker deployment
+- `cacheComponents: true` — Next.js 16 Cache Components
+- `reactCompiler: true` — React Compiler (auto-memoization)
+- `typedRoutes: true` — type-safe `<Link>` hrefs
+- `experimental: { globalNotFound: true }` — top-level 404 page
+
 ### Typed Routes
 
-`typedRoutes` is enabled for type-safe `<Link>` hrefs. For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
+For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
 
 ### Environment Variables
 
@@ -101,6 +113,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 - **Gateway** (`app/lib/discord/gateway.ts`): WebSocket for real-time notifications with auto-reconnect and heartbeat
 - **SSE** (`app/api/chat/sse/route.ts`): Streams chat updates to clients
 - DataLoader with LRU cache (100 entries) batches user info requests
+- Rate limit "gate" system prevents retry storms when Discord returns 429s
 - Messages from site use "username: content" prefix format for attribution
 
 ### WakaTime Integration
@@ -116,9 +129,10 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ### Anthropic Integration (simon-bot)
 
-- `app/lib/anthropic.ts`: Claude Haiku 4.5 for chat responses
-- Triggered by "simon-bot" mention (case-insensitive, word boundary: `/\bsimon[- ]?bot\b/i`)
-- 5-second timeout, runs async via Next.js `after()` to avoid blocking
+- `app/lib/anthropic.ts`: Claude Haiku 4.5 for chat responses with tool use (chat history, WakaTime, Last.fm)
+- `app/lib/discord/bot.ts`: Bot logic — triggered by "simon-bot" mention (regex: `/\bsimon[- ]?bot\b/i`)
+- Started at server boot via `instrumentation.ts` → `startBotSubscription()` (long-lived Gateway WebSocket subscription, not per-request)
+- 5-second timeout per API call, Redis-based message deduplication (60s TTL) across instances
 - Responses posted as threaded Discord replies
 
 ## Patterns
