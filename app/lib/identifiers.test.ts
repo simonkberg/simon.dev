@@ -6,6 +6,30 @@ import { identifiers } from "./identifiers";
 vi.mock(import("next/headers"), () => ({ headers: vi.fn() }));
 
 describe("identifiers", () => {
+  it("should return IP from cf-connecting-ip header", async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers([["cf-connecting-ip", "172.16.0.1"]]),
+    );
+
+    const result = await identifiers();
+
+    expect(result.ip).toBe("172.16.0.1");
+  });
+
+  it("should prefer cf-connecting-ip over x-forwarded-for and x-real-ip", async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers([
+        ["cf-connecting-ip", "172.16.0.1"],
+        ["x-forwarded-for", "192.168.1.1"],
+        ["x-real-ip", "10.0.0.1"],
+      ]),
+    );
+
+    const result = await identifiers();
+
+    expect(result.ip).toBe("172.16.0.1");
+  });
+
   it("should return IP from x-forwarded-for header", async () => {
     vi.mocked(headers).mockResolvedValue(
       new Headers([["x-forwarded-for", "192.168.1.1"]]),
