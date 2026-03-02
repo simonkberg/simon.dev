@@ -28,7 +28,11 @@ ARG ANTHROPIC_API_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN node --run build
+# Use cache mount for Next.js build cache, then copy it out of the
+# mount so it's available in the layer for the runner stage.
+RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/app/.next/cache,target=/app/.next/cache \
+    node --run build && \
+    cp -r /app/.next/cache /app/.next/build-cache
 
 # Production server
 FROM base AS runner
@@ -39,12 +43,11 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+RUN mkdir .next && chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/.next/cache ./.next/cache
+COPY --from=builder --chown=nextjs:nodejs /app/.next/build-cache ./.next/cache
 
 USER nextjs
 
