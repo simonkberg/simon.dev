@@ -53,7 +53,7 @@ app/                          # Next.js App Router (all source code)
 ├── config.ts                 # Site metadata, links, external usernames
 ├── health/                   # Health check endpoint for monitoring
 ├── lib/                      # Utility libraries and core logic
-│   └── discord/              # Discord API, Gateway, and bot integration
+│   └── discord/              # Discord API, Gateway, bot, and shared schemas
 ├── listening/[[...period]]/  # Listening stats page (optional catch-all)
 │   └── components/           # Route-specific components
 ├── layout.tsx                # Root layout
@@ -129,7 +129,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ### Anthropic Integration (simon-bot)
 
-- `app/lib/anthropic.ts`: Claude Haiku 4.5 for chat responses with tool use (chat history, WakaTime, Last.fm)
+- `app/lib/anthropic.ts`: Claude Haiku 4.5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, WakaTime, Last.fm)
 - `app/lib/discord/bot.ts`: Bot logic — triggered by "simon-bot" mention (regex: `/\bsimon[- ]?bot\b/i`)
 - Started at server boot via `instrumentation.ts` → `startBotSubscription()` (long-lived Gateway WebSocket subscription, not per-request)
 - 5-second timeout per API call, Redis-based message deduplication (60s TTL) across instances
@@ -214,10 +214,12 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 - **`.decode()` vs `.parse()`**: Use `.parse()` for untyped data, `.decode()` for typed inputs (compile-time checking)
 - **`z.templateLiteral()`**: Precise string format validation (e.g., HSL colors)
 - **`z.stringbool()`**: Env-style boolean coercion ("true"/"false"/"1"/"0")
+- **`z.toJSONSchema()`**: Convert Zod schemas to JSON Schema (used for Anthropic tool input schemas)
+- **`z.prettifyError()`**: Human-readable error formatting for `ZodError`
 
 ### `useTransition` Naming Collision
 
-`useTransition` in this codebase is from `@react-spring/web` for animations, NOT React's async transition hook. Check imports carefully.
+`useTransition` is used from both `@react-spring/web` (animations in `ChatHistory`) and React (async transitions in `ChatInput`). Check imports carefully — they have different signatures and return types.
 
 ### Private Fields
 
