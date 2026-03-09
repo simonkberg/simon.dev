@@ -32,7 +32,7 @@
     "@upstash/redis": "1.36.3",
     "comparator.ts": "1.0.4",
     "dataloader": "2.2.3",
-    "jose": "6.2.0",
+    "jose": "6.2.1",
     "next": "16.1.6",
     "pino": "10.3.1",
     "react": "19.3.0-canary-fd524fe0-20251121",
