@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@khanacademy/simple-markdown':
-        specifier: 2.2.1
-        version: 2.2.1(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        specifier: 2.2.2
+        version: 2.2.2(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
       '@next/third-parties':
         specifier: 16.1.7
         version: 16.1.7(next@16.1.7(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
@@ -501,11 +501,11 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@khanacademy/perseus-utils@2.1.4':
-    resolution: {integrity: sha512-TQLLUZQWc0K0gCLejNTd7G2y1qMhF3BtM9rBGvSObo10EVL4LwA2nCgm0FaPLowCp0ujweZACh9ty+xlekkGXA==}
+  '@khanacademy/perseus-utils@2.1.5':
+    resolution: {integrity: sha512-QZIGpnrwXCH13KR3FK+804+xc3gJGNrj51+D2zj6s2kF0V9H4xgW4XIcPPaN8R0eLW0b5y5Xw/oKW2v/LNB9OQ==}
 
-  '@khanacademy/simple-markdown@2.2.1':
-    resolution: {integrity: sha512-9xmLOLIh//ZiWwQFtJETnV8Ha24J3KgHpcwrROjqjuXD3tNiNZrVMBBZU93Aw1/jeocA7p5jiYBrErZiqGlLag==}
+  '@khanacademy/simple-markdown@2.2.2':
+    resolution: {integrity: sha512-vWdGuOyksPqATzK7Z1ncCWoMZYesrOrOJk+NKyYXRGIkXDmsBENUx5djs9RdP+7zCE/1AF5pS98specNwUzjdg==}
     peerDependencies:
       react: ^18.2.0
       react-dom: ^18.2.0
@@ -3251,11 +3251,11 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@khanacademy/perseus-utils@2.1.4': {}
+  '@khanacademy/perseus-utils@2.1.5': {}
 
-  '@khanacademy/simple-markdown@2.2.1(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@khanacademy/simple-markdown@2.2.2(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
     dependencies:
-      '@khanacademy/perseus-utils': 2.1.4
+      '@khanacademy/perseus-utils': 2.1.5
       react: 19.3.0-canary-fd524fe0-20251121
       react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
 
