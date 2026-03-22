@@ -1,3 +1,11 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+# Next.js: ALWAYS read docs before coding
+
+Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
+
+<!-- END:nextjs-agent-rules -->
+
 # AGENTS.md
 
 This file provides guidance to AI coding agents when working with code in this repository.
@@ -31,8 +39,8 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 
 MCP servers are configured in `.mcp.json`:
 
-- ESLint MCP tools are available for targeted file linting when needed
-- Consult Next.js documentation via the `nextjs_docs` MCP tool for Next.js questions
+- `eslint` — ESLint MCP tools for targeted file linting when needed
+- `next-devtools` — Next.js MCP tools (`nextjs_docs` for docs lookup, `nextjs_call` for app state)
 
 ### Docker
 
