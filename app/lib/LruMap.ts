@@ -110,6 +110,24 @@ export class LruMap<K, V> implements Map<K, V> {
     }
   }
 
+  getOrInsert(key: K, defaultValue: V): V {
+    const existing = this.get(key);
+    if (existing !== undefined) return existing;
+    // Also check if key exists with undefined value
+    if (this.has(key)) return undefined as V;
+    this.set(key, defaultValue);
+    return defaultValue;
+  }
+
+  getOrInsertComputed(key: K, callbackfn: (key: K) => V): V {
+    const existing = this.get(key);
+    if (existing !== undefined) return existing;
+    if (this.has(key)) return undefined as V;
+    const value = callbackfn(key);
+    this.set(key, value);
+    return value;
+  }
+
   [Symbol.iterator](): MapIterator<[K, V]> {
     return this.entries();
   }
