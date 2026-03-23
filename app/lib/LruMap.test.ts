@@ -195,4 +195,64 @@ describe("LruMap", () => {
     expect(cache.size).toBe(0);
     expect(cache.has("a")).toBe(false);
   });
+
+  describe("getOrInsert", () => {
+    it("returns existing value without inserting", () => {
+      const cache = new LruMap<string, number>(3);
+      cache.set("a", 1);
+
+      expect(cache.getOrInsert("a", 99)).toBe(1);
+      expect(cache.get("a")).toBe(1);
+    });
+
+    it("inserts and returns default value for missing key", () => {
+      const cache = new LruMap<string, number>(3);
+
+      expect(cache.getOrInsert("a", 42)).toBe(42);
+      expect(cache.get("a")).toBe(42);
+    });
+
+    it("respects max size when inserting", () => {
+      const cache = new LruMap<string, number>(2);
+      cache.set("a", 1);
+      cache.set("b", 2);
+      cache.getOrInsert("c", 3);
+
+      expect(cache.has("a")).toBe(false);
+      expect(cache.get("c")).toBe(3);
+    });
+  });
+
+  describe("getOrInsertComputed", () => {
+    it("returns existing value without calling callback", () => {
+      const cache = new LruMap<string, number>(3);
+      cache.set("a", 1);
+
+      const result = cache.getOrInsertComputed("a", () => 99);
+
+      expect(result).toBe(1);
+      expect(cache.get("a")).toBe(1);
+    });
+
+    it("calls callback and inserts result for missing key", () => {
+      const cache = new LruMap<string, number>(3);
+
+      const result = cache.getOrInsertComputed("a", (key) =>
+        key === "a" ? 42 : 0,
+      );
+
+      expect(result).toBe(42);
+      expect(cache.get("a")).toBe(42);
+    });
+
+    it("respects max size when inserting", () => {
+      const cache = new LruMap<string, number>(2);
+      cache.set("a", 1);
+      cache.set("b", 2);
+      cache.getOrInsertComputed("c", () => 3);
+
+      expect(cache.has("a")).toBe(false);
+      expect(cache.get("c")).toBe(3);
+    });
+  });
 });
