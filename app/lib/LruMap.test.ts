@@ -175,6 +175,91 @@ describe("LruMap", () => {
     expect(cache.size).toBe(1);
   });
 
+  it("getOrInsert returns existing value without modifying cache", () => {
+    const cache = new LruMap<string, number>(3);
+    cache.set("a", 1);
+
+    expect(cache.getOrInsert("a", 99)).toBe(1);
+    expect(cache.get("a")).toBe(1);
+    expect(cache.size).toBe(1);
+  });
+
+  it("getOrInsert inserts default value for missing key", () => {
+    const cache = new LruMap<string, number>(3);
+
+    expect(cache.getOrInsert("a", 42)).toBe(42);
+    expect(cache.get("a")).toBe(42);
+    expect(cache.size).toBe(1);
+  });
+
+  it("getOrInsert respects LRU eviction", () => {
+    const cache = new LruMap<string, number>(2);
+    cache.set("a", 1);
+    cache.set("b", 2);
+    cache.getOrInsert("c", 3);
+
+    expect(cache.has("a")).toBe(false);
+    expect(cache.get("b")).toBe(2);
+    expect(cache.get("c")).toBe(3);
+  });
+
+  it("getOrInsert moves existing key to most recently used", () => {
+    const cache = new LruMap<string, number>(2);
+    cache.set("a", 1);
+    cache.set("b", 2);
+    cache.getOrInsert("a", 99); // Access "a", should become MRU
+    cache.set("c", 3);
+
+    expect(cache.get("a")).toBe(1);
+    expect(cache.has("b")).toBe(false);
+  });
+
+  it("getOrInsertComputed returns existing value without calling callback", () => {
+    const cache = new LruMap<string, number>(3);
+    cache.set("a", 1);
+
+    let called = false;
+    const result = cache.getOrInsertComputed("a", () => {
+      called = true;
+      return 99;
+    });
+
+    expect(result).toBe(1);
+    expect(called).toBe(false);
+  });
+
+  it("getOrInsertComputed computes and inserts value for missing key", () => {
+    const cache = new LruMap<string, number>(3);
+
+    const result = cache.getOrInsertComputed("a", (key) => key.length);
+
+    expect(result).toBe(1);
+    expect(cache.get("a")).toBe(1);
+    expect(cache.size).toBe(1);
+  });
+
+  it("getOrInsertComputed respects LRU eviction", () => {
+    const cache = new LruMap<string, number>(2);
+    cache.set("a", 1);
+    cache.set("b", 2);
+    cache.getOrInsertComputed("c", () => 3);
+
+    expect(cache.has("a")).toBe(false);
+    expect(cache.get("b")).toBe(2);
+    expect(cache.get("c")).toBe(3);
+  });
+
+  it("getOrInsertComputed moves existing key to most recently used", () => {
+    const cache = new LruMap<string, number>(2);
+    cache.set("a", 1);
+    cache.set("b", 2);
+    cache.getOrInsertComputed("a", () => 99); // Access "a", should become MRU
+    cache.set("c", 3);
+
+    expect(cache.get("a")).toBe(1);
+    expect(cache.has("b")).toBe(false);
+  });
+
   it("deletes the tail node", () => {
     const cache = new LruMap<string, number>(3);
     cache.set("a", 1);
