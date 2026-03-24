@@ -3,6 +3,7 @@
   "compilerOptions": {
     "target": "es2024",
     "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["node"],
     "allowJs": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
@@ -26,8 +27,7 @@
     "skipLibCheck": true,
     "strict": true,
     "plugins": [{ "name": "next" }],
-    "baseUrl": ".",
-    "paths": { "@/*": ["app/*"], "@/mocks/*": ["mocks/*"] }
+    "paths": { "@/*": ["./app/*"], "@/mocks/*": ["./mocks/*"] }
   },
   "include": [
     "next-env.d.ts",

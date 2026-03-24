@@ -69,6 +69,27 @@ export class LruMap<K, V> implements Map<K, V> {
     return this.#cache.delete(key);
   }
 
+  getOrInsert(key: K, defaultValue: V): V {
+    const node = this.#cache.get(key);
+    if (node) {
+      this.#moveToTail(node);
+      return node.value;
+    }
+    this.set(key, defaultValue);
+    return defaultValue;
+  }
+
+  getOrInsertComputed(key: K, callbackfn: (key: K) => V): V {
+    const node = this.#cache.get(key);
+    if (node) {
+      this.#moveToTail(node);
+      return node.value;
+    }
+    const value = callbackfn(key);
+    this.set(key, value);
+    return value;
+  }
+
   clear(): void {
     this.#cache.clear();
     this.#head = null;
