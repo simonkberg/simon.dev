@@ -77,6 +77,18 @@ describe("ChatInput", () => {
     expect(postChatMessage).not.toHaveBeenCalled();
   });
 
+  it("does not submit when input is only whitespace", async () => {
+    const user = userEvent.setup({ delay: null });
+
+    render(<ChatInput {...defaultReplyProps} />);
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "   ");
+    await user.keyboard("{Enter}");
+
+    expect(postChatMessage).not.toHaveBeenCalled();
+  });
+
   it("clears input and focuses it after successful submission", async () => {
     const user = userEvent.setup({ delay: null });
 
