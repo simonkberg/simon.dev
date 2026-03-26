@@ -1,5 +1,4 @@
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 import { mockEnv } from "./mocks/env";
@@ -7,7 +6,8 @@ import { mockEnv } from "./mocks/env";
 const isCI = process.env["CI"] === "true";
 
 const config = defineConfig({
-  plugins: [tsconfigPaths(), react()],
+  plugins: [react()],
+  resolve: { tsconfigPaths: true },
   test: {
     environment: "happy-dom",
     environmentOptions: {
