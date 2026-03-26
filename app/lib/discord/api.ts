@@ -175,11 +175,11 @@ function parseMarkdown(content: string): string {
   );
 }
 
-const USERNAME_PREFIX_PATTERN = /^(.+?): (.*)$/s;
+const USERNAME_PREFIX_PATTERN = /^(.+?):(?:\s(.*))?$/s;
 
 function parseUsernamePrefix(content: string): [string, string] | undefined {
   const match = content.match(USERNAME_PREFIX_PATTERN);
-  return match ? [match[1]!, match[2]!] : undefined;
+  return match ? [match[1]!, match[2] ?? ""] : undefined;
 }
 
 const userLoader = new DataLoader<string, User>(

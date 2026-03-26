@@ -63,7 +63,7 @@ export async function postChatMessage(
   formData: FormData,
 ): Promise<PostChatMessageResult> {
   try {
-    const text = z.string().parse(formData.get("text"));
+    const text = z.string().trim().min(1).parse(formData.get("text"));
     const replyToId = z
       .string()
       .optional()

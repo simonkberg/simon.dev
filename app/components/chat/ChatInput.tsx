@@ -30,6 +30,7 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!inputValue.trim()) return;
     const form = event.currentTarget;
 
     startTransition(async () => {

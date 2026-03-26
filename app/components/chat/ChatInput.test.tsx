@@ -67,6 +67,16 @@ describe("ChatInput", () => {
     expect(postChatMessage).toHaveBeenCalled();
   });
 
+  it("does not submit when input is empty", async () => {
+    const user = userEvent.setup({ delay: null });
+
+    render(<ChatInput {...defaultReplyProps} />);
+
+    await user.keyboard("{Enter}");
+
+    expect(postChatMessage).not.toHaveBeenCalled();
+  });
+
   it("clears input and focuses it after successful submission", async () => {
     const user = userEvent.setup({ delay: null });
 
