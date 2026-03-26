@@ -45,6 +45,28 @@ describe("getChannelMessages", () => {
     ]);
   });
 
+  it("should parse prefixed message with empty content", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>
+        HttpResponse.json([
+          {
+            type: 0,
+            id: "1",
+            author: { id: "user1" },
+            content: "TestUser:",
+            edited_timestamp: null,
+          },
+        ]),
+      ),
+    );
+
+    const messages = await getChannelMessages();
+
+    expect(messages).toMatchObject([
+      { id: "1", content: "", user: { name: "TestUser" } },
+    ]);
+  });
+
   it("should parse markdown to HTML in content", async () => {
     server.use(
       http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>

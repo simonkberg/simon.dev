@@ -229,4 +229,22 @@ describe("postChatMessage", () => {
 
     expect(result.status).toBe("error");
   });
+
+  it("returns error when text is empty", async () => {
+    const formData = new FormData();
+    formData.set("text", "");
+
+    const result = await postChatMessage(formData);
+
+    expect(result.status).toBe("error");
+  });
+
+  it("returns error when text is only whitespace", async () => {
+    const formData = new FormData();
+    formData.set("text", "   ");
+
+    const result = await postChatMessage(formData);
+
+    expect(result.status).toBe("error");
+  });
 });
