@@ -107,6 +107,63 @@ describe("RelativeTime", () => {
     },
   );
 
+  it("uses long style by default", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    await act(() =>
+      render(<RelativeTime date={new Date(now - 5 * 60 * 1000)} />),
+    );
+
+    // "long" style produces full words like "5 minutes ago"
+    expect(screen.getByText(/5 minutes ago/)).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it.each([
+    { style: "short" as const, expected: /5 min. ago/, description: "short" },
+    { style: "narrow" as const, expected: /5m ago/, description: "narrow" },
+  ])('formats with "$description" style', async ({ style, expected }) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    await act(() =>
+      render(
+        <RelativeTime date={new Date(now - 5 * 60 * 1000)} style={style} />,
+      ),
+    );
+
+    expect(screen.getByText(expected)).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("updates formatter when style prop changes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const date = new Date(now - 5 * 60 * 1000);
+
+    const { rerender } = await act(() =>
+      render(<RelativeTime date={date} style="long" />),
+    );
+
+    expect(screen.getByText(/5 minutes ago/)).toBeInTheDocument();
+
+    await act(() => rerender(<RelativeTime date={date} style="narrow" />));
+
+    expect(screen.getByText(/5m ago/)).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
   it("does not update display for times older than a day", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 

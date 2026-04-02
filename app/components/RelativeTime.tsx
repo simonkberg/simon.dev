@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
 const second = 1000;
 const minute = 60 * second;
 const hour = 60 * minute;
@@ -11,11 +9,27 @@ const day = 24 * hour;
 const month = 30 * day;
 const year = 365 * day;
 
-export const RelativeTime = ({ date }: { date: Date }) => {
+const createRtf = (options: Intl.RelativeTimeFormatOptions) =>
+  new Intl.RelativeTimeFormat("en", { numeric: "auto", ...options });
+
+export interface RelativeTimeProps {
+  date: Date;
+  /** @defaultValue "long" */
+  style?: "long" | "short" | "narrow";
+}
+
+export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
   const [now, setNow] = useState(Date.now);
   const relativeTime = now - date.getTime();
   const elapsed = Math.abs(relativeTime);
   const sign = Math.sign(-relativeTime);
+  const [rtf, setRtf] = useState(() => createRtf({ style }));
+  const [prevStyle, setPrevStyle] = useState(style);
+
+  if (style !== prevStyle) {
+    setPrevStyle(style);
+    setRtf(createRtf({ style }));
+  }
 
   useEffect(() => {
     if (elapsed > day) return;
