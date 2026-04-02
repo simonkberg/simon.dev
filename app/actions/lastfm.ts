@@ -1,6 +1,6 @@
 "use server";
 
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 
 import { config } from "@/config";
 import {
@@ -24,6 +24,7 @@ export type GetRecentTracksResult =
 
 export async function getRecentTracks(): Promise<GetRecentTracksResult> {
   "use cache";
+  cacheTag("getRecentTracks");
 
   try {
     const tracks = await userGetRecentTracks(config.lastfmUsername, {
@@ -39,6 +40,10 @@ export async function getRecentTracks(): Promise<GetRecentTracksResult> {
     );
     return { status: "error", error: "Failed to fetch recent tracks" };
   }
+}
+
+export async function refreshRecentTracks(): Promise<void> {
+  revalidateTag("getRecentTracks", "max");
 }
 
 export type TopTrack = UserGetTopTracksResponse[number];

@@ -2,11 +2,11 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { GetRecentTracksResult, RecentTrack } from "@/actions/lastfm";
-import { getRecentTracks } from "@/actions/lastfm";
+import { refreshRecentTracks } from "@/actions/lastfm";
 
 import { RecentTracksList } from "./RecentTracksList";
 
-vi.mock(import("@/actions/lastfm"), () => ({ getRecentTracks: vi.fn() }));
+vi.mock(import("@/actions/lastfm"), () => ({ refreshRecentTracks: vi.fn() }));
 
 describe("RecentTracksList", () => {
   const createMockTrack = (
@@ -165,7 +165,7 @@ describe("RecentTracksList", () => {
   });
 
   describe("polling for new tracks", () => {
-    it("sets up interval to call getRecentTracks every minute", async () => {
+    it("refreshes recent tracks every minute", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
 
       const successResult: GetRecentTracksResult = {
@@ -179,19 +179,19 @@ describe("RecentTracksList", () => {
         ),
       );
 
-      expect(getRecentTracks).not.toHaveBeenCalled();
+      expect(refreshRecentTracks).not.toHaveBeenCalled();
 
       await act(async () => {
         vi.advanceTimersByTime(60 * 1000);
       });
 
-      expect(getRecentTracks).toHaveBeenCalledTimes(1);
+      expect(refreshRecentTracks).toHaveBeenCalledTimes(1);
 
       await act(async () => {
         vi.advanceTimersByTime(60 * 1000);
       });
 
-      expect(getRecentTracks).toHaveBeenCalledTimes(2);
+      expect(refreshRecentTracks).toHaveBeenCalledTimes(2);
 
       vi.useRealTimers();
     });
@@ -214,7 +214,7 @@ describe("RecentTracksList", () => {
         vi.advanceTimersByTime(60 * 1000);
       });
 
-      expect(getRecentTracks).toHaveBeenCalledTimes(1);
+      expect(refreshRecentTracks).toHaveBeenCalledTimes(1);
 
       unmount();
 
@@ -223,7 +223,7 @@ describe("RecentTracksList", () => {
       });
 
       // Should not have been called again after unmount
-      expect(getRecentTracks).toHaveBeenCalledTimes(1);
+      expect(refreshRecentTracks).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
     });

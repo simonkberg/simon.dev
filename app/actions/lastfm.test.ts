@@ -1,3 +1,4 @@
+import { cacheTag, revalidateTag } from "next/cache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -17,6 +18,7 @@ import {
   getTopAlbums,
   getTopArtists,
   getTopTracks,
+  refreshRecentTracks,
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
@@ -26,7 +28,11 @@ vi.mock(import("@/lib/lastfm"), () => ({
   userGetTopAlbums: vi.fn(),
 }));
 
-vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
+vi.mock(import("next/cache"), () => ({
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -57,6 +63,7 @@ describe("getRecentTracks", () => {
 
     const result = await getRecentTracks();
 
+    expect(cacheTag).toHaveBeenCalledWith("getRecentTracks");
     expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
     expect(result).toEqual({ status: "ok", tracks: mockTracks });
   });
@@ -78,6 +85,14 @@ describe("getRecentTracks", () => {
       { err: mockError, action: "getRecentTracks" },
       "Error fetching recent tracks",
     );
+  });
+});
+
+describe("refreshRecentTracks", () => {
+  it("should revalidate the getRecentTracks cache tag", async () => {
+    await refreshRecentTracks();
+
+    expect(revalidateTag).toHaveBeenCalledWith("getRecentTracks", "max");
   });
 });
 
