@@ -208,6 +208,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 ### Best Practices
 
 - **Type-safe mocks:** Use `vi.mock(import("module"), ...)`, never string-based
+- **Accessing mocks:** Import mocked functions at the top level like any other import — `vi.mock` is hoisted before imports, so they resolve to the mock automatically. Never use `await import()` to access mocked values.
 - **Async components with `use()`:** Wrap render in `await act(async () => render(...))`
 - **Server-only modules:** Mock with `vi.mock("server-only", () => ({}))`
 
