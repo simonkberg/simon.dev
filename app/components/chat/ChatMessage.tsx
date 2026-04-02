@@ -31,7 +31,7 @@ export const ChatMessage = ({
     {edited && <small className="edited"> (edited) </small>}{" "}
     <small className="timestamp">
       <Suspense>
-        <RelativeTime date={timestamp} />
+        <RelativeTime date={timestamp} style="narrow" />
       </Suspense>
     </small>{" "}
     <button

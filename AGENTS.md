@@ -239,6 +239,10 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 `useState(Date.now)` causes suspension during hydration (server/client time mismatch). Wrap components that use `Date` in `<Suspense>` — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`.
 
+### setState During Render
+
+Components use React's recommended [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders) pattern to adjust state based on changing props (e.g. `ChatToast`, `CaretBuddy`, `RelativeTime`). This is NOT an anti-pattern — do not suggest `useEffect` or `useMemo` as replacements.
+
 ## Maintaining This Document
 
 When making changes that affect documented patterns, architecture, commands, or conventions, update this file accordingly. Examples:

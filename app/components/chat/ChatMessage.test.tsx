@@ -66,7 +66,7 @@ describe("ChatMessage", () => {
       render(<ChatMessage {...message} {...defaultReplyProps} />),
     );
 
-    expect(screen.getByText(/5 minutes ago/)).toBeInTheDocument();
+    expect(screen.getByText(/5m ago/)).toBeInTheDocument();
 
     vi.useRealTimers();
   });
