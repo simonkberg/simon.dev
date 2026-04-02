@@ -4,7 +4,7 @@ import md from "string-dedent";
 import { z } from "zod";
 
 import { config } from "@/config";
-import { getChannelMessages } from "@/lib/discord/api";
+import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
   periods as lastfmPeriods,
@@ -26,8 +26,8 @@ const SYSTEM_PROMPT = md`
   need to remind everyone constantly. Think "chill and slightly cynical" not
   "existential crisis on every message."
 
-  You have tools to look up chat history, Simon's coding stats, and music
-  listening history. Use them when relevant.
+  You have tools to look up chat history, search past messages, check Simon's
+  coding stats, and browse music listening history. Use them when relevant.
 
   Messages are formatted as "username: message" - use their name when it feels
   natural.
@@ -102,6 +102,18 @@ const topItemsInputSchema = z.object({
   period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
   limit: z.number().min(1).max(50).default(10).describe("Number of items"),
 });
+const searchMessagesInputSchema = z.object({
+  content: z.string().describe("Search query text"),
+  limit: z.number().min(1).max(25).default(25).describe("Max results"),
+  sort_by: z
+    .enum(["timestamp", "relevance"])
+    .default("relevance")
+    .describe("Sort by timestamp or relevance"),
+  sort_order: z
+    .enum(["asc", "desc"])
+    .default("desc")
+    .describe("Sort direction"),
+});
 
 const TOOLS = [
   {
@@ -140,6 +152,12 @@ const TOOLS = [
       "Get most played albums from Last.fm for a time period. Defaults to Simon's account.",
     input_schema: z.toJSONSchema(topItemsInputSchema),
   },
+  {
+    name: "search_messages",
+    description:
+      "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
+    input_schema: z.toJSONSchema(searchMessagesInputSchema),
+  },
 ];
 
 async function executeTool(
@@ -171,6 +189,10 @@ async function executeTool(
       case "get_top_albums": {
         const { username, ...params } = topItemsInputSchema.parse(input);
         return JSON.stringify(await userGetTopAlbums(username, params));
+      }
+      case "search_messages": {
+        const params = searchMessagesInputSchema.parse(input);
+        return JSON.stringify(await searchChannelMessages(params));
       }
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
