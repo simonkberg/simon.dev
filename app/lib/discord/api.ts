@@ -216,6 +216,7 @@ const MessageSchema = z.object({
   user: UserSchema,
   content: z.string(),
   edited: z.boolean(),
+  timestamp: z.string().pipe(z.coerce.date()),
   get replies() {
     return z.array(MessageSchema);
   },
@@ -261,6 +262,7 @@ export async function getChannelMessages(limit = 100): Promise<Message[]> {
         user,
         content: parseMarkdown(content),
         edited: discordMessage.edited_timestamp !== null,
+        timestamp: discordMessage.timestamp,
         replies: [],
       });
     });

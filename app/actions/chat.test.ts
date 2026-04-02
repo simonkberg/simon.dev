@@ -59,6 +59,7 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
     user: { name: "test-user", color: "hsl(200 50% 50%)" },
     content: "Hello, world!",
     edited: false,
+    timestamp: new Date("2025-01-01T00:00:00.000000+00:00"),
     replies: [],
     ...overrides,
   };
