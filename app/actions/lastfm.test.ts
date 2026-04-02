@@ -1,3 +1,4 @@
+import { cacheTag, revalidateTag } from "next/cache";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -62,6 +63,7 @@ describe("getRecentTracks", () => {
 
     const result = await getRecentTracks();
 
+    expect(cacheTag).toHaveBeenCalledWith("getRecentTracks");
     expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
     expect(result).toEqual({ status: "ok", tracks: mockTracks });
   });
@@ -88,8 +90,6 @@ describe("getRecentTracks", () => {
 
 describe("refreshRecentTracks", () => {
   it("should revalidate the getRecentTracks cache tag", async () => {
-    const { revalidateTag } = await import("next/cache");
-
     await refreshRecentTracks();
 
     expect(revalidateTag).toHaveBeenCalledWith("getRecentTracks", "max");
