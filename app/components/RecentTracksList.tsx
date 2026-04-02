@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 
 import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -13,10 +13,22 @@ export interface RecentTracksListProps {
 }
 
 export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
-  const result = use(recentTracks);
+  const initialResult = use(recentTracks);
+  const [polledResult, setPolledResult] =
+    useState<GetRecentTracksResult | null>(null);
+  const result = polledResult ?? initialResult;
 
   useEffect(() => {
-    const interval = setInterval(() => getRecentTracks(), minute);
+    const interval = setInterval(async () => {
+      try {
+        const next = await getRecentTracks();
+        setPolledResult((prev) =>
+          JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+        );
+      } catch {
+        // Network error — keep showing previous result
+      }
+    }, minute);
     return () => clearInterval(interval);
   }, []);
 

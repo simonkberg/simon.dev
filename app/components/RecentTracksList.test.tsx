@@ -196,6 +196,61 @@ describe("RecentTracksList", () => {
       vi.useRealTimers();
     });
 
+    it("updates displayed tracks with polled data", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const initialResult: GetRecentTracksResult = {
+        status: "ok",
+        tracks: [createMockTrack({ name: "Old Song" })],
+      };
+
+      const updatedResult: GetRecentTracksResult = {
+        status: "ok",
+        tracks: [createMockTrack({ name: "New Song" })],
+      };
+
+      vi.mocked(getRecentTracks).mockResolvedValue(updatedResult);
+
+      await act(() =>
+        render(
+          <RecentTracksList recentTracks={Promise.resolve(initialResult)} />,
+        ),
+      );
+
+      expect(screen.getByRole("listitem")).toHaveTextContent("Old Song");
+
+      await act(() => vi.advanceTimersByTimeAsync(60 * 1000));
+
+      expect(screen.getByRole("listitem")).toHaveTextContent("New Song");
+
+      vi.useRealTimers();
+    });
+
+    it("keeps previous data when polling fails", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const successResult: GetRecentTracksResult = {
+        status: "ok",
+        tracks: [createMockTrack({ name: "Current Song" })],
+      };
+
+      vi.mocked(getRecentTracks).mockRejectedValue(new Error("Network error"));
+
+      await act(() =>
+        render(
+          <RecentTracksList recentTracks={Promise.resolve(successResult)} />,
+        ),
+      );
+
+      expect(screen.getByRole("listitem")).toHaveTextContent("Current Song");
+
+      await act(() => vi.advanceTimersByTimeAsync(60 * 1000));
+
+      expect(screen.getByRole("listitem")).toHaveTextContent("Current Song");
+
+      vi.useRealTimers();
+    });
+
     it("cleans up interval on unmount", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
 
