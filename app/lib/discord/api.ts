@@ -182,6 +182,17 @@ function parseUsernamePrefix(content: string): [string, string] | undefined {
   return match ? [match[1]!, match[2] ?? ""] : undefined;
 }
 
+async function resolveMessageContent(
+  msg: DiscordMessage,
+): Promise<{ username: string; content: string }> {
+  const parsed = parseUsernamePrefix(msg.content);
+  const username = parsed
+    ? parsed[0]
+    : (await userLoader.load(msg.author.id)).name;
+  const content = (parsed?.[1] ?? msg.content).trim();
+  return { username, content };
+}
+
 const userLoader = new DataLoader<string, User>(
   (keys) =>
     Promise.allSettled(
@@ -249,17 +260,11 @@ export async function getChannelMessages(limit = 100): Promise<Message[]> {
     discordMessageLoader.prime(discordMessage.id, discordMessage);
 
     const message = Promise.try(async () => {
-      const parsed = parseUsernamePrefix(discordMessage.content);
-
-      const user = parsed
-        ? toUser(parsed[0])
-        : await userLoader.load(discordMessage.author.id);
-
-      const content = (parsed?.[1] ?? discordMessage.content).trim();
+      const { username, content } = await resolveMessageContent(discordMessage);
 
       return MessageSchema.decode({
         id: discordMessage.id,
-        user,
+        user: toUser(username),
         content: parseMarkdown(content),
         edited: discordMessage.edited_timestamp !== null,
         timestamp: discordMessage.timestamp,
@@ -315,12 +320,7 @@ export async function getMessageChain(
 
     const response: DiscordMessage = await discordMessageLoader.load(currentId);
 
-    // Parse username from content prefix or lookup via API
-    const parsed = parseUsernamePrefix(response.content);
-    const username = parsed
-      ? parsed[0]
-      : (await userLoader.load(response.author.id)).name;
-    const content = (parsed?.[1] ?? response.content).trim();
+    const { username, content } = await resolveMessageContent(response);
 
     chain.unshift({ id: response.id, type: response.type, username, content });
 
@@ -353,11 +353,7 @@ export type SearchResult = { total_results: number; hits: SearchHit[] };
 async function resolveSearchMessage(
   msg: z.infer<typeof SearchMessageSchema>,
 ): Promise<SearchMessage> {
-  const parsed = parseUsernamePrefix(msg.content);
-  const username = parsed
-    ? parsed[0]
-    : (await userLoader.load(msg.author.id)).name;
-  const content = (parsed?.[1] ?? msg.content).trim();
+  const { username, content } = await resolveMessageContent(msg);
   return { id: msg.id, username, content, timestamp: msg.timestamp };
 }
 
