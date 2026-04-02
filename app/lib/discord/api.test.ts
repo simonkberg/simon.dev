@@ -1193,4 +1193,30 @@ describe("searchChannelMessages", () => {
 
     await searchChannelMessages({ content: "test" });
   });
+
+  it("should throw when a message group has no hit marker", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({
+          total_results: 1,
+          messages: [
+            [
+              {
+                type: 0,
+                id: "no-hit-1",
+                author: { id: "user1" },
+                content: "Alice: no hit flag",
+                timestamp: "2025-01-01T00:00:00.000000+00:00",
+                edited_timestamp: null,
+              },
+            ],
+          ],
+        }),
+      ),
+    );
+
+    await expect(searchChannelMessages({ content: "test" })).rejects.toThrow(
+      "Discord search returned a message group with no hit",
+    );
+  });
 });

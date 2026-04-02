@@ -375,7 +375,9 @@ export async function searchChannelMessages(params: {
   const hits = await Promise.all(
     response.messages.map(async (group) => {
       const hitMsg = group.find((msg) => msg.hit === true);
-      if (!hitMsg) return null;
+      if (!hitMsg) {
+        throw new Error("Discord search returned a message group with no hit");
+      }
 
       const contextMsgs = group.filter((msg) => msg !== hitMsg);
 
@@ -388,10 +390,7 @@ export async function searchChannelMessages(params: {
     }),
   );
 
-  return {
-    total_results: response.total_results,
-    hits: hits.filter((h) => h !== null),
-  };
+  return { total_results: response.total_results, hits };
 }
 
 const PostChannelMessageResponseSchema = z.object({ id: z.string() });
