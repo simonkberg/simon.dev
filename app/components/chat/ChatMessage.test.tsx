@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -51,6 +51,24 @@ describe("ChatMessage", () => {
     render(<ChatMessage {...message} {...defaultReplyProps} />);
 
     expect(screen.getByText(/\(edited\)/)).toBeInTheDocument();
+  });
+
+  it("displays relative time for message timestamp", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const fiveMinutesAgo = new Date(now - 5 * 60 * 1000);
+    const message = createMessage({ timestamp: fiveMinutesAgo });
+
+    await act(() =>
+      render(<ChatMessage {...message} {...defaultReplyProps} />),
+    );
+
+    expect(screen.getByText(/5 minutes ago/)).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 
   it("does not show edited indicator when edited is false", () => {
