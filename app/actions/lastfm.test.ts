@@ -17,6 +17,7 @@ import {
   getTopAlbums,
   getTopArtists,
   getTopTracks,
+  refreshRecentTracks,
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
@@ -82,6 +83,16 @@ describe("getRecentTracks", () => {
       { err: mockError, action: "getRecentTracks" },
       "Error fetching recent tracks",
     );
+  });
+});
+
+describe("refreshRecentTracks", () => {
+  it("should revalidate the getRecentTracks cache tag", async () => {
+    const { revalidateTag } = await import("next/cache");
+
+    await refreshRecentTracks();
+
+    expect(revalidateTag).toHaveBeenCalledWith("getRecentTracks", "max");
   });
 });
 

@@ -19,7 +19,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
   const result = use(recentTracks);
 
   useEffect(() => {
-    const interval = setInterval(() => refreshRecentTracks(), minute);
+    const interval = setInterval(() => void refreshRecentTracks(), minute);
     return () => clearInterval(interval);
   }, []);
 
