@@ -10,6 +10,7 @@ export const DiscordMessageSchema = z.object({
   channel_id: z.string().optional(), // Present in gateway events, not in API single-message fetch
   author: z.object({ id: z.string() }),
   content: z.string(),
+  timestamp: z.string(),
   edited_timestamp: z.string().nullable().optional(),
   message_reference: z.object({ message_id: z.string().optional() }).optional(),
 });

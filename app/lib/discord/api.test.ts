@@ -11,6 +11,7 @@ import {
   getChannelMessages,
   getMessageChain,
   postChannelMessage,
+  searchChannelMessages,
 } from "./api";
 
 vi.mock(import("server-only"), () => ({}));
@@ -27,6 +28,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "TestUser: Hello world",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -54,6 +56,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "TestUser:",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -76,6 +79,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "TestUser: **Bold** and *italic*",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -98,6 +102,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user123" },
             content: "No prefix here",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -130,6 +135,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user456" },
             content: "Message",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -156,6 +162,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user789" },
             content: "Message",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -182,6 +189,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "User: Edited message",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: "2024-01-01T00:00:00Z",
           },
         ]),
@@ -202,6 +210,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "User1: Parent message",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -209,6 +218,7 @@ describe("getChannelMessages", () => {
             id: "2",
             author: { id: "user2" },
             content: "User2: First reply",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "1" },
           },
@@ -217,6 +227,7 @@ describe("getChannelMessages", () => {
             id: "3",
             author: { id: "user3" },
             content: "User3: Reply to reply",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "2" },
           },
@@ -225,6 +236,7 @@ describe("getChannelMessages", () => {
             id: "4",
             author: { id: "user4" },
             content: "User4: Another top-level reply",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "1" },
           },
@@ -259,6 +271,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "User1: Message 1",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -266,6 +279,7 @@ describe("getChannelMessages", () => {
             id: "2",
             author: { id: "user2" },
             content: "User2: Valid reply to message 1",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "1" },
           },
@@ -274,6 +288,7 @@ describe("getChannelMessages", () => {
             id: "3",
             author: { id: "user3" },
             content: "User3: Orphaned reply",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "999" },
           },
@@ -295,6 +310,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "User: Normal message",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -302,6 +318,7 @@ describe("getChannelMessages", () => {
             id: "2",
             author: { id: "user2" },
             content: "User joined",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -309,6 +326,7 @@ describe("getChannelMessages", () => {
             id: "3",
             author: { id: "user3" },
             content: "Thread created",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -329,6 +347,7 @@ describe("getChannelMessages", () => {
             id: "3",
             author: { id: "user1" },
             content: "User: Third",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -336,6 +355,7 @@ describe("getChannelMessages", () => {
             id: "1",
             author: { id: "user1" },
             content: "User: First",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
           {
@@ -343,6 +363,7 @@ describe("getChannelMessages", () => {
             id: "2",
             author: { id: "user1" },
             content: "User: Second",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           },
         ]),
@@ -414,6 +435,7 @@ describe("getMessageChain", () => {
             id: "single-1",
             author: { id: "user1" },
             content: "User1: Hello",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           }),
       ),
@@ -437,6 +459,7 @@ describe("getMessageChain", () => {
               id: "chain-3",
               author: { id: "user3" },
               content: "User3: Third",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
               message_reference: { message_id: "chain-2" },
             });
@@ -447,6 +470,7 @@ describe("getMessageChain", () => {
               id: "chain-2",
               author: { id: "user2" },
               content: "User2: Second",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
               message_reference: { message_id: "chain-1" },
             });
@@ -456,6 +480,7 @@ describe("getMessageChain", () => {
             id: "chain-1",
             author: { id: "user1" },
             content: "User1: First",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           });
         },
@@ -481,6 +506,7 @@ describe("getMessageChain", () => {
               id: "bot-2",
               author: { id: "user2" },
               content: "User2: Thanks bot!",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
               message_reference: { message_id: "bot-1" },
             });
@@ -490,6 +516,7 @@ describe("getMessageChain", () => {
             id: "bot-1",
             author: { id: "bot" },
             content: "simon-bot: Hello human",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           });
         },
@@ -521,6 +548,7 @@ describe("getMessageChain", () => {
             id: "noprefix-1",
             author: { id: "user999" },
             content: "No prefix here",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
           }),
       ),
@@ -557,6 +585,7 @@ describe("getMessageChain", () => {
               id: "circular-2",
               author: { id: "user2" },
               content: "User2: Reply",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
               message_reference: { message_id: "circular-1" },
             });
@@ -567,6 +596,7 @@ describe("getMessageChain", () => {
             id: "circular-1",
             author: { id: "user1" },
             content: "User1: First",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             message_reference: { message_id: "circular-2" },
           });
@@ -610,6 +640,7 @@ describe("getMessageChain", () => {
             id: String(id),
             author: { id: "user1" },
             content: `User1: Message ${id}`,
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
             ...(parentId > 0 && {
               message_reference: { message_id: String(parentId) },
@@ -998,6 +1029,194 @@ describe("rate limiting", () => {
       3,
       expect.objectContaining({ retries: 3 }),
       "Discord rate limited, retrying",
+    );
+  });
+});
+
+describe("searchChannelMessages", () => {
+  it("should search messages and return hits with context", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/messages/search`,
+        ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("content")).toBe("hello");
+          expect(url.searchParams.get("channel_id")).toBe(
+            "test-discord-channel-id",
+          );
+          expect(url.searchParams.get("limit")).toBe("5");
+          expect(url.searchParams.get("sort_by")).toBe("relevance");
+          expect(url.searchParams.get("sort_order")).toBe("desc");
+
+          return HttpResponse.json({
+            total_results: 1,
+            messages: [
+              [
+                {
+                  type: 0,
+                  id: "ctx-1",
+                  author: { id: "user1" },
+                  content: "Alice: before the match",
+                  timestamp: "2025-01-01T00:00:00.000000+00:00",
+                  edited_timestamp: null,
+                },
+                {
+                  type: 0,
+                  id: "hit-1",
+                  author: { id: "user2" },
+                  content: "Bob: hello everyone",
+                  timestamp: "2025-01-01T00:01:00.000000+00:00",
+                  edited_timestamp: null,
+                  hit: true,
+                },
+                {
+                  type: 0,
+                  id: "ctx-2",
+                  author: { id: "user3" },
+                  content: "Charlie: after the match",
+                  timestamp: "2025-01-01T00:02:00.000000+00:00",
+                  edited_timestamp: null,
+                },
+              ],
+            ],
+          });
+        },
+      ),
+    );
+
+    const result = await searchChannelMessages({
+      content: "hello",
+      limit: 5,
+      sort_by: "relevance",
+      sort_order: "desc",
+    });
+
+    expect(result).toEqual({
+      total_results: 1,
+      hits: [
+        {
+          hit: {
+            id: "hit-1",
+            username: "Bob",
+            content: "hello everyone",
+            timestamp: "2025-01-01T00:01:00.000000+00:00",
+          },
+          context: [
+            {
+              id: "ctx-1",
+              username: "Alice",
+              content: "before the match",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
+            },
+            {
+              id: "ctx-2",
+              username: "Charlie",
+              content: "after the match",
+              timestamp: "2025-01-01T00:02:00.000000+00:00",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should handle empty search results", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({ total_results: 0, messages: [] }),
+      ),
+    );
+
+    const result = await searchChannelMessages({ content: "nonexistent" });
+
+    expect(result).toEqual({ total_results: 0, hits: [] });
+  });
+
+  it("should resolve username via guild member API when no prefix", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({
+          total_results: 1,
+          messages: [
+            [
+              {
+                type: 0,
+                id: "search-noprefix-1",
+                author: { id: "user-lookup-1" },
+                content: "unprefixed message",
+                timestamp: "2025-06-01T12:00:00.000000+00:00",
+                edited_timestamp: null,
+                hit: true,
+              },
+            ],
+          ],
+        }),
+      ),
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
+        ({ params }) => {
+          expect(params["userId"]).toBe("user-lookup-1");
+          return HttpResponse.json({
+            user: { username: "discorduser", global_name: "Discord User" },
+            nick: "Nickname",
+          });
+        },
+      ),
+    );
+
+    const result = await searchChannelMessages({ content: "unprefixed" });
+
+    expect(result.hits[0]?.hit).toMatchObject({
+      username: "Nickname",
+      content: "unprefixed message",
+    });
+  });
+
+  it("should pass only provided params to Discord API", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/messages/search`,
+        ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("content")).toBe("test");
+          expect(url.searchParams.get("channel_id")).toBe(
+            "test-discord-channel-id",
+          );
+          expect(url.searchParams.has("limit")).toBe(false);
+          expect(url.searchParams.has("sort_by")).toBe(false);
+          expect(url.searchParams.has("sort_order")).toBe(false);
+
+          return HttpResponse.json({ total_results: 0, messages: [] });
+        },
+      ),
+    );
+
+    await searchChannelMessages({ content: "test" });
+  });
+
+  it("should throw when a message group has no hit marker", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({
+          total_results: 1,
+          messages: [
+            [
+              {
+                type: 0,
+                id: "no-hit-1",
+                author: { id: "user1" },
+                content: "Alice: no hit flag",
+                timestamp: "2025-01-01T00:00:00.000000+00:00",
+                edited_timestamp: null,
+              },
+            ],
+          ],
+        }),
+      ),
+    );
+
+    await expect(searchChannelMessages({ content: "test" })).rejects.toThrow(
+      "Discord search returned a message group with no hit",
     );
   });
 });

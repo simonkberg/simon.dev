@@ -42,6 +42,7 @@ function createMessage(
     channel_id: "test-channel",
     author: { id: "user1" },
     content: "User1: hello",
+    timestamp: "2025-01-01T00:00:00.000000+00:00",
     edited_timestamp: null,
     ...overrides,
   };

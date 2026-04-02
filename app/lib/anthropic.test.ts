@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { config } from "@/config";
-import { getChannelMessages } from "@/lib/discord/api";
+import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
 import {
   userGetRecentTracks,
   userGetTopAlbums,
@@ -16,7 +16,10 @@ import { server } from "@/mocks/node";
 import { createMessage } from "./anthropic";
 
 vi.mock(import("server-only"), () => ({}));
-vi.mock(import("@/lib/discord/api"), () => ({ getChannelMessages: vi.fn() }));
+vi.mock(import("@/lib/discord/api"), () => ({
+  getChannelMessages: vi.fn(),
+  searchChannelMessages: vi.fn(),
+}));
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
@@ -47,7 +50,7 @@ async function collectResponses(
 
 describe("createMessage", () => {
   beforeEach(() => {
-    vi.spyOn(log, "debug").mockImplementation(() => {});
+    vi.spyOn(log, "info").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -71,6 +74,7 @@ describe("createMessage", () => {
             { name: "get_top_tracks" },
             { name: "get_top_artists" },
             { name: "get_top_albums" },
+            { name: "search_messages" },
           ],
         });
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
@@ -1183,7 +1187,7 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(getChannelMessages).toHaveBeenCalledWith(10);
+      expect(getChannelMessages).toHaveBeenCalledWith(50);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
       expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
         limit: 5,
@@ -1273,6 +1277,87 @@ describe("createMessage", () => {
       expect(userGetTopAlbums).toHaveBeenCalledWith("anotheruser", {
         period: "1month",
         limit: 10,
+      });
+    });
+
+    it("should call searchChannelMessages for search_messages tool", async () => {
+      const mockSearchResult = {
+        total_results: 1,
+        hits: [
+          {
+            hit: {
+              id: "1",
+              username: "Alice",
+              content: "hello world",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
+            },
+            context: [],
+          },
+        ],
+      };
+      vi.mocked(searchChannelMessages).mockResolvedValue(mockSearchResult);
+
+      let callCount = 0;
+
+      server.use(
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+          callCount++;
+
+          const toolUse = {
+            type: "tool_use",
+            id: "tool_1",
+            name: "search_messages",
+            input: {
+              content: "hello",
+              limit: 10,
+              sort_by: "timestamp",
+              sort_order: "asc",
+            },
+          };
+
+          if (callCount === 1) {
+            return HttpResponse.json({
+              content: [toolUse],
+              stop_reason: "tool_use",
+            });
+          }
+
+          expect(await request.json()).toMatchObject({
+            messages: [
+              { role: "user", content: `${TEST_USERNAME}: Test` },
+              { role: "assistant", content: [toolUse] },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "tool_result",
+                    tool_use_id: toolUse.id,
+                    content: JSON.stringify(mockSearchResult),
+                  },
+                ],
+              },
+            ],
+          });
+
+          return HttpResponse.json({
+            content: [{ type: "text", text: "found it" }],
+            stop_reason: "end_turn",
+          });
+        }),
+      );
+
+      const responses = await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "Test" },
+        ]),
+      );
+
+      expect(responses).toEqual(["found it"]);
+      expect(searchChannelMessages).toHaveBeenCalledWith({
+        content: "hello",
+        limit: 10,
+        sort_by: "timestamp",
+        sort_order: "asc",
       });
     });
   });
