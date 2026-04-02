@@ -14,6 +14,7 @@ describe("ChatMessage", () => {
     content: "Hello, world!",
     user: mockUser,
     edited: false,
+    timestamp: new Date("2025-01-01T00:00:00.000000+00:00"),
     replies: [],
     ...overrides,
   });

@@ -734,6 +734,7 @@ describe("createMessage", () => {
           user: { name: "User1", color: "hsl(0 50% 50%)" as const },
           content: "Hello",
           edited: false,
+          timestamp: new Date("2025-01-01T00:00:00.000000+00:00"),
           replies: [],
         },
         {
@@ -741,6 +742,7 @@ describe("createMessage", () => {
           user: { name: "User2", color: "hsl(120 50% 50%)" as const },
           content: "World",
           edited: false,
+          timestamp: new Date("2025-01-01T00:01:00.000000+00:00"),
           replies: [],
         },
       ];

@@ -1,5 +1,6 @@
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
 
+import { RelativeTime } from "@/components/RelativeTime";
 import type { Message } from "@/lib/discord/api";
 
 export interface ChatMessageProps extends Message {
@@ -12,6 +13,7 @@ export const ChatMessage = ({
   user,
   content,
   edited,
+  timestamp,
   replyToId,
   setReplyToId,
 }: ChatMessageProps) => (
@@ -22,6 +24,9 @@ export const ChatMessage = ({
     <span className="user">{user.name}: </span>
     <div className="text" dangerouslySetInnerHTML={{ __html: content }} />
     {edited && <small className="edited"> (edited) </small>}{" "}
+    <small className="timestamp">
+      <RelativeTime date={timestamp} />
+    </small>{" "}
     <button
       aria-label="Reply"
       title="Reply"

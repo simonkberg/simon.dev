@@ -27,6 +27,7 @@ describe("Chat", () => {
     content: "Test message",
     user: { name: "TestUser", color: "hsl(0 100% 50%)" },
     edited: false,
+    timestamp: new Date("2025-01-01T00:00:00.000000+00:00"),
     replies: [],
     ...overrides,
   });

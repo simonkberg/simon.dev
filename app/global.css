@@ -355,7 +355,8 @@ ul {
     }
   }
 
-  > .edited {
+  > .edited,
+  > .timestamp {
     color: var(--color-muted);
   }
 
