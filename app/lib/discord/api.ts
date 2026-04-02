@@ -228,7 +228,7 @@ const messageIdComparator = comparing(
   stringComparator,
 );
 
-export async function getChannelMessages(limit = 50): Promise<Message[]> {
+export async function getChannelMessages(limit = 100): Promise<Message[]> {
   const response = await call(
     "GET",
     `channels/${env.DISCORD_CHANNEL_ID}/messages`,

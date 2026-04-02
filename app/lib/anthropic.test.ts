@@ -1187,7 +1187,7 @@ describe("createMessage", () => {
         ]),
       );
 
-      expect(getChannelMessages).toHaveBeenCalledWith(10);
+      expect(getChannelMessages).toHaveBeenCalledWith(50);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
       expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
         limit: 5,

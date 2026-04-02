@@ -78,7 +78,7 @@ const createMessageResponseSchema = z.object({
 
 // Tool input schemas
 const chatHistoryInputSchema = z.object({
-  limit: z.number().min(1).max(50).default(10).describe("Number of messages"),
+  limit: z.number().min(1).max(100).default(50).describe("Number of messages"),
 });
 const wakatimeInputSchema = z.object({
   period: z
