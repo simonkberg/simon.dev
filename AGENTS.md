@@ -137,7 +137,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ### Anthropic Integration (simon-bot)
 
-- `app/lib/anthropic.ts`: Claude Haiku 4.5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, WakaTime, Last.fm)
+- `app/lib/anthropic.ts`: Claude Haiku 4.5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, message search, WakaTime, Last.fm)
 - `app/lib/discord/bot.ts`: Bot logic — triggered by "simon-bot" mention (regex: `/\bsimon[- ]?bot\b/i`)
 - Started at server boot via `instrumentation.ts` → `startBotSubscription()` (long-lived Gateway WebSocket subscription, not per-request)
 - 5-second timeout per API call, Redis-based message deduplication (60s TTL) across instances
@@ -224,6 +224,7 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 - **`z.stringbool()`**: Env-style boolean coercion ("true"/"false"/"1"/"0")
 - **`z.toJSONSchema()`**: Convert Zod schemas to JSON Schema (used for Anthropic tool input schemas)
 - **`z.prettifyError()`**: Human-readable error formatting for `ZodError`
+- **`z.coerce.date()`**: For parsing date strings, prefer `z.string().pipe(z.coerce.date())` over `.transform()` — validates the result instead of silently producing `Invalid Date`
 
 ### `useTransition` Naming Collision
 
@@ -232,6 +233,10 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 ### Private Fields
 
 Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. Use `#` for new private fields.
+
+### Suspense for Date-Dependent Components
+
+`useState(Date.now)` causes suspension during hydration (server/client time mismatch). Wrap components that use `Date` in `<Suspense>` — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`.
 
 ## Maintaining This Document
 
