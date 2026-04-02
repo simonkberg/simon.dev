@@ -50,7 +50,7 @@ async function collectResponses(
 
 describe("createMessage", () => {
   beforeEach(() => {
-    vi.spyOn(log, "debug").mockImplementation(() => {});
+    vi.spyOn(log, "info").mockImplementation(() => {});
   });
 
   afterEach(() => {

@@ -231,7 +231,7 @@ export async function* createMessage(
     content: m.role === "assistant" ? m.content : `${m.username}: ${m.content}`,
   }));
 
-  log.debug({ messages }, "simon-bot received conversation");
+  log.info({ messages }, "simon-bot received conversation");
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const response = await fetch(BASE_URL, {
@@ -262,7 +262,7 @@ export async function* createMessage(
     // Log and yield text blocks
     for (const block of result.content) {
       if (block.type === "text") {
-        log.debug({ text: block.text }, "simon-bot response");
+        log.info({ text: block.text }, "simon-bot response");
         yield block.text;
       }
     }
@@ -283,12 +283,12 @@ export async function* createMessage(
     // Execute tools in parallel and collect results
     const toolResults = await Promise.all(
       toolUseBlocks.map(async (toolUse) => {
-        log.debug(
+        log.info(
           { tool: toolUse.name, input: toolUse.input },
           "simon-bot tool call",
         );
         const content = await executeTool(toolUse.name, toolUse.input);
-        log.debug(
+        log.info(
           { tool: toolUse.name, result: content },
           "simon-bot tool result",
         );
