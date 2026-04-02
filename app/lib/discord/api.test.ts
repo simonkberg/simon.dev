@@ -11,6 +11,7 @@ import {
   getChannelMessages,
   getMessageChain,
   postChannelMessage,
+  searchChannelMessages,
 } from "./api";
 
 vi.mock(import("server-only"), () => ({}));
@@ -1029,5 +1030,167 @@ describe("rate limiting", () => {
       expect.objectContaining({ retries: 3 }),
       "Discord rate limited, retrying",
     );
+  });
+});
+
+describe("searchChannelMessages", () => {
+  it("should search messages and return hits with context", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/messages/search`,
+        ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("content")).toBe("hello");
+          expect(url.searchParams.get("channel_id")).toBe(
+            "test-discord-channel-id",
+          );
+          expect(url.searchParams.get("limit")).toBe("5");
+          expect(url.searchParams.get("sort_by")).toBe("relevance");
+          expect(url.searchParams.get("sort_order")).toBe("desc");
+
+          return HttpResponse.json({
+            total_results: 1,
+            messages: [
+              [
+                {
+                  type: 0,
+                  id: "ctx-1",
+                  author: { id: "user1" },
+                  content: "Alice: before the match",
+                  timestamp: "2025-01-01T00:00:00.000000+00:00",
+                  edited_timestamp: null,
+                },
+                {
+                  type: 0,
+                  id: "hit-1",
+                  author: { id: "user2" },
+                  content: "Bob: hello everyone",
+                  timestamp: "2025-01-01T00:01:00.000000+00:00",
+                  edited_timestamp: null,
+                  hit: true,
+                },
+                {
+                  type: 0,
+                  id: "ctx-2",
+                  author: { id: "user3" },
+                  content: "Charlie: after the match",
+                  timestamp: "2025-01-01T00:02:00.000000+00:00",
+                  edited_timestamp: null,
+                },
+              ],
+            ],
+          });
+        },
+      ),
+    );
+
+    const result = await searchChannelMessages({
+      content: "hello",
+      limit: 5,
+      sort_by: "relevance",
+      sort_order: "desc",
+    });
+
+    expect(result).toEqual({
+      total_results: 1,
+      hits: [
+        {
+          hit: {
+            id: "hit-1",
+            username: "Bob",
+            content: "hello everyone",
+            timestamp: "2025-01-01T00:01:00.000000+00:00",
+          },
+          context: [
+            {
+              id: "ctx-1",
+              username: "Alice",
+              content: "before the match",
+              timestamp: "2025-01-01T00:00:00.000000+00:00",
+            },
+            {
+              id: "ctx-2",
+              username: "Charlie",
+              content: "after the match",
+              timestamp: "2025-01-01T00:02:00.000000+00:00",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should handle empty search results", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({ total_results: 0, messages: [] }),
+      ),
+    );
+
+    const result = await searchChannelMessages({ content: "nonexistent" });
+
+    expect(result).toEqual({ total_results: 0, hits: [] });
+  });
+
+  it("should resolve username via guild member API when no prefix", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/messages/search`, () =>
+        HttpResponse.json({
+          total_results: 1,
+          messages: [
+            [
+              {
+                type: 0,
+                id: "search-noprefix-1",
+                author: { id: "user-lookup-1" },
+                content: "unprefixed message",
+                timestamp: "2025-06-01T12:00:00.000000+00:00",
+                edited_timestamp: null,
+                hit: true,
+              },
+            ],
+          ],
+        }),
+      ),
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
+        ({ params }) => {
+          expect(params["userId"]).toBe("user-lookup-1");
+          return HttpResponse.json({
+            user: { username: "discorduser", global_name: "Discord User" },
+            nick: "Nickname",
+          });
+        },
+      ),
+    );
+
+    const result = await searchChannelMessages({ content: "unprefixed" });
+
+    expect(result.hits[0]?.hit).toMatchObject({
+      username: "Nickname",
+      content: "unprefixed message",
+    });
+  });
+
+  it("should pass only provided params to Discord API", async () => {
+    server.use(
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/messages/search`,
+        ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get("content")).toBe("test");
+          expect(url.searchParams.get("channel_id")).toBe(
+            "test-discord-channel-id",
+          );
+          expect(url.searchParams.has("limit")).toBe(false);
+          expect(url.searchParams.has("sort_by")).toBe(false);
+          expect(url.searchParams.has("sort_order")).toBe(false);
+
+          return HttpResponse.json({ total_results: 0, messages: [] });
+        },
+      ),
+    );
+
+    await searchChannelMessages({ content: "test" });
   });
 });

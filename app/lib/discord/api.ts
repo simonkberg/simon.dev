@@ -328,6 +328,72 @@ export async function getMessageChain(
   return chain;
 }
 
+const SearchMessageSchema = DiscordMessageSchema.extend({
+  hit: z.boolean().optional(),
+});
+
+const SearchGuildMessagesResponseSchema = z.object({
+  total_results: z.number(),
+  messages: z.array(z.array(SearchMessageSchema)),
+});
+
+export type SearchMessage = {
+  id: string;
+  username: string;
+  content: string;
+  timestamp: string;
+};
+
+export type SearchHit = { hit: SearchMessage; context: SearchMessage[] };
+
+export type SearchResult = { total_results: number; hits: SearchHit[] };
+
+async function resolveSearchMessage(
+  msg: z.infer<typeof SearchMessageSchema>,
+): Promise<SearchMessage> {
+  const parsed = parseUsernamePrefix(msg.content);
+  const username = parsed
+    ? parsed[0]
+    : (await userLoader.load(msg.author.id)).name;
+  const content = (parsed?.[1] ?? msg.content).trim();
+  return { id: msg.id, username, content, timestamp: msg.timestamp };
+}
+
+export async function searchChannelMessages(params: {
+  content: string;
+  limit?: number;
+  sort_by?: "timestamp" | "relevance";
+  sort_order?: "asc" | "desc";
+}): Promise<SearchResult> {
+  const response = await call(
+    "GET",
+    `guilds/${env.DISCORD_GUILD_ID}/messages/search`,
+    SearchGuildMessagesResponseSchema,
+    { channel_id: env.DISCORD_CHANNEL_ID, ...params },
+  );
+
+  const hits = await Promise.all(
+    response.messages.map(async (group) => {
+      const hitMsg = group.find((msg) => msg.hit === true);
+      if (!hitMsg) return null;
+
+      const contextMsgs = group.filter((msg) => msg !== hitMsg);
+
+      const [hit, ...context] = await Promise.all([
+        resolveSearchMessage(hitMsg),
+        ...contextMsgs.map(resolveSearchMessage),
+      ]);
+
+      return { hit, context };
+    }),
+  );
+
+  return {
+    total_results: response.total_results,
+    hits: hits.filter((h) => h !== null),
+  };
+}
+
 const PostChannelMessageResponseSchema = z.object({ id: z.string() });
 
 export async function postChannelMessage(
