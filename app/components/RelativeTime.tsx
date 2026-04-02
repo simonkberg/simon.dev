@@ -20,11 +20,11 @@ export const RelativeTime = ({ date }: { date: Date }) => {
   useEffect(() => {
     if (elapsed > day) return;
 
-    const timer = setInterval(
+    const timer = setTimeout(
       () => setNow(Date.now()),
       elapsed < 2 * minute ? second : elapsed < hour ? minute : 5 * minute,
     );
-    return () => clearInterval(timer);
+    return () => clearTimeout(timer);
   }, [elapsed]);
 
   let string: string;

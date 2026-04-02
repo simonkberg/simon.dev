@@ -216,7 +216,7 @@ const MessageSchema = z.object({
   user: UserSchema,
   content: z.string(),
   edited: z.boolean(),
-  timestamp: z.string().transform((s) => new Date(s)),
+  timestamp: z.string().pipe(z.coerce.date()),
   get replies() {
     return z.array(MessageSchema);
   },
