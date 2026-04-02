@@ -26,7 +26,11 @@ vi.mock(import("@/lib/lastfm"), () => ({
   userGetTopAlbums: vi.fn(),
 }));
 
-vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
+vi.mock(import("next/cache"), () => ({
+  cacheLife: vi.fn(),
+  cacheTag: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
 
 afterEach(() => {
   vi.restoreAllMocks();

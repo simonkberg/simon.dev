@@ -2,7 +2,10 @@
 
 import { Suspense, use, useEffect } from "react";
 
-import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
+import {
+  type GetRecentTracksResult,
+  refreshRecentTracks,
+} from "@/actions/lastfm";
 import { RelativeTime } from "@/components/RelativeTime";
 import { Subtitle } from "@/components/Subtitle";
 
@@ -16,7 +19,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
   const result = use(recentTracks);
 
   useEffect(() => {
-    const interval = setInterval(() => getRecentTracks(), minute);
+    const interval = setInterval(() => refreshRecentTracks(), minute);
     return () => clearInterval(interval);
   }, []);
 
