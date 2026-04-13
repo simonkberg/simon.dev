@@ -10,13 +10,13 @@ importers:
     dependencies:
       '@khanacademy/simple-markdown':
         specifier: 2.2.2
-        version: 2.2.2(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        version: 2.2.2(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@next/third-parties':
         specifier: 16.2.3
-        version: 16.2.3(next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        version: 16.2.3(next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@react-spring/web':
         specifier: 10.0.3
-        version: 10.0.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        version: 10.0.3(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@upstash/ratelimit':
         specifier: 2.0.8
         version: 2.0.8(@upstash/redis@1.37.0)
@@ -34,16 +34,16 @@ importers:
         version: 6.2.2
       next:
         specifier: 16.2.3
-        version: 16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        version: 16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       pino:
         specifier: 10.3.1
         version: 10.3.1
       react:
-        specifier: 19.3.0-canary-fd524fe0-20251121
-        version: 19.3.0-canary-fd524fe0-20251121
+        specifier: 19.3.0-canary-fef12a01-20260413
+        version: 19.3.0-canary-fef12a01-20260413
       react-dom:
-        specifier: 19.3.0-canary-fd524fe0-20251121
-        version: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
+        specifier: 19.3.0-canary-fef12a01-20260413
+        version: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
       sanitize.css:
         specifier: 13.0.0
         version: 13.0.0
@@ -68,7 +68,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: 16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@testing-library/user-event':
         specifier: 14.6.1
         version: 14.6.1(@testing-library/dom@10.4.1)
@@ -2284,10 +2284,10 @@ packages:
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
 
-  react-dom@19.3.0-canary-fd524fe0-20251121:
-    resolution: {integrity: sha512-+M3m+8ysDcPmt7ncitPOX5O71OOKF6lq6INFZFUMJjEGDxvl4CS2D41DJG5MnXcwiWTZLAp/uILZtt4sKTRSyQ==}
+  react-dom@19.3.0-canary-fef12a01-20260413:
+    resolution: {integrity: sha512-p54k3/9xj+yM0pBA0JBmrMSngfkFrmI2HrNJ0OKSwNxofh4XORGHpVLHQBelAUX7q/LQeoikA1z2BVknzhIGtw==}
     peerDependencies:
-      react: 19.3.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -2295,8 +2295,8 @@ packages:
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
 
-  react@19.3.0-canary-fd524fe0-20251121:
-    resolution: {integrity: sha512-T36dcD3rbOLZsmTmYBl4Cjp02s/qsFo1y1tIAhiqU02ztPhsEp+8V+xgW3ML7L6bSwwCwDLTgDRbXIN66P/jGQ==}
+  react@19.3.0-canary-fef12a01-20260413:
+    resolution: {integrity: sha512-M9RtWF/KiutUtmfGWBcOkCsZ+w2Ty9HJuIajFkBI+qDOeT8gO7B8lQyuXpDjOTtqwRvFuO11kd/3B5zsyYsOCQ==}
     engines: {node: '>=0.10.0'}
 
   real-require@0.2.0:
@@ -2371,8 +2371,8 @@ packages:
   sanitize.css@13.0.0:
     resolution: {integrity: sha512-ZRwKbh/eQ6w9vmTjkuG0Ioi3HBwPFce0O+v//ve+aOq1oeCy7jMV2qzzAlpsNuqpqCBjjriM1lbtZbF/Q8jVyA==}
 
-  scheduler@0.28.0-canary-fd524fe0-20251121:
-    resolution: {integrity: sha512-8KVr3jEIUZXbf6XFkluou7z6/Gwwxr8ULAGB3O4V4kdNIGs+auA3/dBUD8BCkloPgqfpiDnQrhaXF/FBHWxG4A==}
+  scheduler@0.28.0-canary-fef12a01-20260413:
+    resolution: {integrity: sha512-7JTRTnWnDobqAgmiIGfRvAw+qH15j0MG4oxTd9tROdab5FeiFK5lxtSbKYkEEOzt0jgdm3KxqzdKRo/Qf1izcA==}
 
   secure-json-parse@4.1.0:
     resolution: {integrity: sha512-l4KnYfEyqYJxDwlNVyRfO2E4NTHfMKAWdUuA8J0yve2Dz/E/PdBepY03RvyJpssIpRFwJoCD55wA+mEDs6ByWA==}
@@ -3192,11 +3192,11 @@ snapshots:
 
   '@khanacademy/perseus-utils@2.1.5': {}
 
-  '@khanacademy/simple-markdown@2.2.2(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@khanacademy/simple-markdown@2.2.2(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
       '@khanacademy/perseus-utils': 2.1.5
-      react: 19.3.0-canary-fd524fe0-20251121
-      react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
+      react: 19.3.0-canary-fef12a01-20260413
+      react-dom: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
 
   '@mswjs/interceptors@0.41.3':
     dependencies:
@@ -3251,10 +3251,10 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.2.3':
     optional: true
 
-  '@next/third-parties@16.2.3(next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@next/third-parties@16.2.3(next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      next: 16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)
-      react: 19.3.0-canary-fd524fe0-20251121
+      next: 16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
+      react: 19.3.0-canary-fef12a01-20260413
       third-party-capital: 1.0.20
 
   '@nodelib/fs.scandir@2.1.5':
@@ -3286,37 +3286,37 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@react-spring/animated@10.0.3(react@19.3.0-canary-fd524fe0-20251121)':
+  '@react-spring/animated@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
+      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
       '@react-spring/types': 10.0.3
-      react: 19.3.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
 
-  '@react-spring/core@10.0.3(react@19.3.0-canary-fd524fe0-20251121)':
+  '@react-spring/core@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
+      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
       '@react-spring/types': 10.0.3
-      react: 19.3.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
 
   '@react-spring/rafz@10.0.3': {}
 
-  '@react-spring/shared@10.0.3(react@19.3.0-canary-fd524fe0-20251121)':
+  '@react-spring/shared@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
       '@react-spring/rafz': 10.0.3
       '@react-spring/types': 10.0.3
-      react: 19.3.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
 
   '@react-spring/types@10.0.3': {}
 
-  '@react-spring/web@10.0.3(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@react-spring/web@10.0.3(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
-      '@react-spring/core': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fd524fe0-20251121)
+      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/core': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
       '@react-spring/types': 10.0.3
-      react: 19.3.0-canary-fd524fe0-20251121
-      react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
+      react: 19.3.0-canary-fef12a01-20260413
+      react-dom: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
 
   '@rolldown/binding-android-arm64@1.0.0-rc.15':
     optional: true
@@ -3399,12 +3399,12 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
       '@babel/runtime': 7.29.2
       '@testing-library/dom': 10.4.1
-      react: 19.3.0-canary-fd524fe0-20251121
-      react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
+      react: 19.3.0-canary-fef12a01-20260413
+      react-dom: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
     optionalDependencies:
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
@@ -4873,16 +4873,16 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121))(react@19.3.0-canary-fd524fe0-20251121):
+  next@16.2.3(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413):
     dependencies:
       '@next/env': 16.2.3
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.10.18
       caniuse-lite: 1.0.30001787
       postcss: 8.4.31
-      react: 19.3.0-canary-fd524fe0-20251121
-      react-dom: 19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121)
-      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.3.0-canary-fd524fe0-20251121)
+      react: 19.3.0-canary-fef12a01-20260413
+      react-dom: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
+      styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.3.0-canary-fef12a01-20260413)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.3
       '@next/swc-darwin-x64': 16.2.3
@@ -5081,16 +5081,16 @@ snapshots:
 
   quick-format-unescaped@4.0.4: {}
 
-  react-dom@19.3.0-canary-fd524fe0-20251121(react@19.3.0-canary-fd524fe0-20251121):
+  react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413):
     dependencies:
-      react: 19.3.0-canary-fd524fe0-20251121
-      scheduler: 0.28.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
+      scheduler: 0.28.0-canary-fef12a01-20260413
 
   react-is@16.13.1: {}
 
   react-is@17.0.2: {}
 
-  react@19.3.0-canary-fd524fe0-20251121: {}
+  react@19.3.0-canary-fef12a01-20260413: {}
 
   real-require@0.2.0: {}
 
@@ -5195,7 +5195,7 @@ snapshots:
 
   sanitize.css@13.0.0: {}
 
-  scheduler@0.28.0-canary-fd524fe0-20251121: {}
+  scheduler@0.28.0-canary-fef12a01-20260413: {}
 
   secure-json-parse@4.1.0: {}
 
@@ -5425,10 +5425,10 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.3.0-canary-fd524fe0-20251121):
+  styled-jsx@5.1.6(@babel/core@7.29.0)(react@19.3.0-canary-fef12a01-20260413):
     dependencies:
       client-only: 0.0.1
-      react: 19.3.0-canary-fd524fe0-20251121
+      react: 19.3.0-canary-fef12a01-20260413
     optionalDependencies:
       '@babel/core': 7.29.0
 
