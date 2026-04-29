@@ -116,11 +116,11 @@ function useFrameAnimation(frames: AnimationFrames): string {
   const [prevFrames, setPrevFrames] = useState(frames);
   if (frames !== prevFrames) {
     setPrevFrames(frames);
-    frameIndexRef.current = 0;
     setExpression(frames[0][1]);
   }
 
   useEffect(() => {
+    frameIndexRef.current = 0;
     let startTime: number | null = null;
     let raf: number;
 
