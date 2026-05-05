@@ -62,7 +62,7 @@
     "eslint-plugin-simple-import-sort": "13.0.0",
     "happy-dom": "20.9.0",
     "husky": "9.1.7",
-    "jiti": "2.6.1",
+    "jiti": "2.7.0",
     "lint-staged": "16.4.0",
     "msw": "2.14.3",
     "pino-pretty": "13.1.3",
