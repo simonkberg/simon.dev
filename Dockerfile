@@ -10,9 +10,11 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm
 
-# Use cache mount for pnpm store
+# Use cache mount for pnpm store. --ignore-scripts skips the prepare
+# lifecycle script, which runs `husky && next typegen` and needs .git
+# and app/ — neither is present in this stage.
 RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
-    pnpm i --frozen-lockfile
+    pnpm i --frozen-lockfile --ignore-scripts
 
 # Build the app
 FROM base AS builder
