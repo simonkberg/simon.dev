@@ -1,9 +1,10 @@
-ignoredBuiltDependencies:
-  - esbuild
-  - msw
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  esbuild: false
+  msw: false
+  sharp: false
+  unrs-resolver: false
 peerDependencyRules:
   allowAny:
     - "react"
     - "react-dom"
+saveExact: true
