@@ -15,8 +15,8 @@ importers:
         specifier: 16.2.6
         version: 16.2.6(next@16.2.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@react-spring/web':
-        specifier: 10.0.3
-        version: 10.0.3(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
+        specifier: 10.0.4
+        version: 10.0.4(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)
       '@upstash/ratelimit':
         specifier: 2.0.8
         version: 2.0.8(@upstash/redis@1.38.0)
@@ -609,29 +609,29 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@react-spring/animated@10.0.3':
-    resolution: {integrity: sha512-7MrxADV3vaUADn2V9iYhaIL6iOWRx9nCJjYrsk2AHD2kwPr6fg7Pt0v+deX5RnCDmCKNnD6W5fasiyM8D+wzJQ==}
+  '@react-spring/animated@10.0.4':
+    resolution: {integrity: sha512-AgKkI4q8YO1vgpcdWzRNQ2+6UrvYlpVRKm86RXj/gYpWJ0yR8vM+EY4BFAsqJgrs9e+33KkBDJpjYpNXuQ/FOQ==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@react-spring/core@10.0.3':
-    resolution: {integrity: sha512-D4DwNO68oohDf/0HG2G0Uragzb9IA1oXblxrd6MZAcBcUQG2EHUWXewjdECMPLNmQvlYVyyBRH6gPxXM5DX7DQ==}
+  '@react-spring/core@10.0.4':
+    resolution: {integrity: sha512-Gf4xRLo1WA34We8H51DPMAPTzcm4ccfFdFiIoL/Qh5s5JkanDcNYbBJAdacnH8KO1+42TMeTtNm8HMFCASHE7g==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@react-spring/rafz@10.0.3':
-    resolution: {integrity: sha512-Ri2/xqt8OnQ2iFKkxKMSF4Nqv0LSWnxXT4jXFzBDsHgeeH/cHxTLupAWUwmV9hAGgmEhBmh5aONtj3J6R/18wg==}
+  '@react-spring/rafz@10.0.4':
+    resolution: {integrity: sha512-QK/vnFUpgVE1Wm4cvb1vDbhY6Xz4Ywfgkbr30hlXM3XAaMBWv08TWMorZhYb9T+gphHP45t7dUbUtp3r6k2nxA==}
 
-  '@react-spring/shared@10.0.3':
-    resolution: {integrity: sha512-geCal66nrkaQzUVhPkGomylo+Jpd5VPK8tPMEDevQEfNSWAQP15swHm+MCRG4wVQrQlTi9lOzKzpRoTL3CA84Q==}
+  '@react-spring/shared@10.0.4':
+    resolution: {integrity: sha512-OddJdzRNlQBX7vp9C4ow7OIcRbDXtic6PPqdUPHx89xwBH0u89Jm9h4B2HZQJnw+KiupGLXLGrUKSkZQfKlG0w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@react-spring/types@10.0.3':
-    resolution: {integrity: sha512-H5Ixkd2OuSIgHtxuHLTt7aJYfhMXKXT/rK32HPD/kSrOB6q6ooeiWAXkBy7L8F3ZxdkBb9ini9zP9UwnEFzWgQ==}
+  '@react-spring/types@10.0.4':
+    resolution: {integrity: sha512-E0KekCFXut0IB8+msh1g4oXz4AXwyfDz9Sqz+tfabnKbI1AkyoFs1tPJB8ViN0Ckq7Da6jYGU8TVNVkirsXBjQ==}
 
-  '@react-spring/web@10.0.3':
-    resolution: {integrity: sha512-ndU+kWY81rHsT7gTFtCJ6mrVhaJ6grFmgTnENipzmKqot4HGf5smPNK+cZZJqoGeDsj9ZsiWPW4geT/NyD484A==}
+  '@react-spring/web@10.0.4':
+    resolution: {integrity: sha512-6uYPLfuTlxR/t/s9xoliU1NObETm7Yad5PFLc0OFCqyF62BWZ8m73wTn6R091lvMyvddrl7NP2v95ueX3HAjmw==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -3306,35 +3306,36 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@react-spring/animated@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
+  '@react-spring/animated@10.0.4(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/types': 10.0.3
+      '@react-spring/shared': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/types': 10.0.4
       react: 19.3.0-canary-fef12a01-20260413
 
-  '@react-spring/core@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
+  '@react-spring/core@10.0.4(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/types': 10.0.3
+      '@react-spring/animated': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/shared': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/types': 10.0.4
       react: 19.3.0-canary-fef12a01-20260413
 
-  '@react-spring/rafz@10.0.3': {}
+  '@react-spring/rafz@10.0.4': {}
 
-  '@react-spring/shared@10.0.3(react@19.3.0-canary-fef12a01-20260413)':
+  '@react-spring/shared@10.0.4(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/rafz': 10.0.3
-      '@react-spring/types': 10.0.3
+      '@react-spring/rafz': 10.0.4
+      '@react-spring/types': 10.0.4
       react: 19.3.0-canary-fef12a01-20260413
 
-  '@react-spring/types@10.0.3': {}
+  '@react-spring/types@10.0.4': {}
 
-  '@react-spring/web@10.0.3(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
+  '@react-spring/web@10.0.4(react-dom@19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413))(react@19.3.0-canary-fef12a01-20260413)':
     dependencies:
-      '@react-spring/animated': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/core': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/shared': 10.0.3(react@19.3.0-canary-fef12a01-20260413)
-      '@react-spring/types': 10.0.3
+      '@react-spring/animated': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/core': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/shared': 10.0.4(react@19.3.0-canary-fef12a01-20260413)
+      '@react-spring/types': 10.0.4
+      csstype: 3.2.3
       react: 19.3.0-canary-fef12a01-20260413
       react-dom: 19.3.0-canary-fef12a01-20260413(react@19.3.0-canary-fef12a01-20260413)
 
