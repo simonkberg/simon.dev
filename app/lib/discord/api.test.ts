@@ -26,7 +26,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "TestUser: Hello world",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -54,7 +54,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "TestUser:",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -77,7 +77,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "TestUser: **Bold** and *italic*",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -90,6 +90,44 @@ describe("getChannelMessages", () => {
 
     expect(messages).toMatchObject([
       { content: "<strong>Bold</strong> and <em>italic</em>" },
+    ]);
+  });
+
+  it("should not parse username prefix from non-bot messages", async () => {
+    server.use(
+      http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>
+        HttpResponse.json([
+          {
+            type: 0,
+            id: "1",
+            author: { id: "human-user" },
+            content: "the source is here: https://github.com/example/repo",
+            timestamp: "2025-01-01T00:00:00.000000+00:00",
+            edited_timestamp: null,
+          },
+        ]),
+      ),
+      http.get(
+        `${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`,
+        ({ params }) => {
+          expect(params["userId"]).toBe("human-user");
+          return HttpResponse.json({
+            user: { username: "simon", global_name: "Simon" },
+            nick: "simon",
+          });
+        },
+      ),
+    );
+
+    const messages = await getChannelMessages();
+
+    expect(messages).toMatchObject([
+      {
+        id: "1",
+        content:
+          'the source is here: <a href="https://github.com/example/repo">https://github.com/example/repo</a>',
+        user: { name: "simon" },
+      },
     ]);
   });
 
@@ -187,7 +225,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User: Edited message",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: "2024-01-01T00:00:00Z",
@@ -208,7 +246,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User1: Parent message",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -216,7 +254,7 @@ describe("getChannelMessages", () => {
           {
             type: 19,
             id: "2",
-            author: { id: "user2" },
+            author: { id: "user2", bot: true },
             content: "User2: First reply",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -225,7 +263,7 @@ describe("getChannelMessages", () => {
           {
             type: 19,
             id: "3",
-            author: { id: "user3" },
+            author: { id: "user3", bot: true },
             content: "User3: Reply to reply",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -234,7 +272,7 @@ describe("getChannelMessages", () => {
           {
             type: 19,
             id: "4",
-            author: { id: "user4" },
+            author: { id: "user4", bot: true },
             content: "User4: Another top-level reply",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -269,7 +307,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User1: Message 1",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -277,7 +315,7 @@ describe("getChannelMessages", () => {
           {
             type: 19,
             id: "2",
-            author: { id: "user2" },
+            author: { id: "user2", bot: true },
             content: "User2: Valid reply to message 1",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -286,7 +324,7 @@ describe("getChannelMessages", () => {
           {
             type: 19,
             id: "3",
-            author: { id: "user3" },
+            author: { id: "user3", bot: true },
             content: "User3: Orphaned reply",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -308,7 +346,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User: Normal message",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -345,7 +383,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "3",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User: Third",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -353,7 +391,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User: First",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -361,7 +399,7 @@ describe("getChannelMessages", () => {
           {
             type: 0,
             id: "2",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User: Second",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -433,7 +471,7 @@ describe("getMessageChain", () => {
           HttpResponse.json({
             type: 0,
             id: "single-1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User1: Hello",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -457,7 +495,7 @@ describe("getMessageChain", () => {
             return HttpResponse.json({
               type: 19,
               id: "chain-3",
-              author: { id: "user3" },
+              author: { id: "user3", bot: true },
               content: "User3: Third",
               timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
@@ -468,7 +506,7 @@ describe("getMessageChain", () => {
             return HttpResponse.json({
               type: 19,
               id: "chain-2",
-              author: { id: "user2" },
+              author: { id: "user2", bot: true },
               content: "User2: Second",
               timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
@@ -478,7 +516,7 @@ describe("getMessageChain", () => {
           return HttpResponse.json({
             type: 0,
             id: "chain-1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User1: First",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -504,7 +542,7 @@ describe("getMessageChain", () => {
             return HttpResponse.json({
               type: 19,
               id: "bot-2",
-              author: { id: "user2" },
+              author: { id: "user2", bot: true },
               content: "User2: Thanks bot!",
               timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
@@ -514,7 +552,7 @@ describe("getMessageChain", () => {
           return HttpResponse.json({
             type: 0,
             id: "bot-1",
-            author: { id: "bot" },
+            author: { id: "bot", bot: true },
             content: "simon-bot: Hello human",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -583,7 +621,7 @@ describe("getMessageChain", () => {
             return HttpResponse.json({
               type: 19,
               id: "circular-2",
-              author: { id: "user2" },
+              author: { id: "user2", bot: true },
               content: "User2: Reply",
               timestamp: "2025-01-01T00:00:00.000000+00:00",
               edited_timestamp: null,
@@ -594,7 +632,7 @@ describe("getMessageChain", () => {
           return HttpResponse.json({
             type: 0,
             id: "circular-1",
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: "User1: First",
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -638,7 +676,7 @@ describe("getMessageChain", () => {
           return HttpResponse.json({
             type: parentId > 0 ? 19 : 0,
             id: String(id),
-            author: { id: "user1" },
+            author: { id: "user1", bot: true },
             content: `User1: Message ${id}`,
             timestamp: "2025-01-01T00:00:00.000000+00:00",
             edited_timestamp: null,
@@ -1055,7 +1093,7 @@ describe("searchChannelMessages", () => {
                 {
                   type: 0,
                   id: "ctx-1",
-                  author: { id: "user1" },
+                  author: { id: "user1", bot: true },
                   content: "Alice: before the match",
                   timestamp: "2025-01-01T00:00:00.000000+00:00",
                   edited_timestamp: null,
@@ -1063,7 +1101,7 @@ describe("searchChannelMessages", () => {
                 {
                   type: 0,
                   id: "hit-1",
-                  author: { id: "user2" },
+                  author: { id: "user2", bot: true },
                   content: "Bob: hello everyone",
                   timestamp: "2025-01-01T00:01:00.000000+00:00",
                   edited_timestamp: null,
@@ -1072,7 +1110,7 @@ describe("searchChannelMessages", () => {
                 {
                   type: 0,
                   id: "ctx-2",
-                  author: { id: "user3" },
+                  author: { id: "user3", bot: true },
                   content: "Charlie: after the match",
                   timestamp: "2025-01-01T00:02:00.000000+00:00",
                   edited_timestamp: null,
@@ -1204,7 +1242,7 @@ describe("searchChannelMessages", () => {
               {
                 type: 0,
                 id: "no-hit-1",
-                author: { id: "user1" },
+                author: { id: "user1", bot: true },
                 content: "Alice: no hit flag",
                 timestamp: "2025-01-01T00:00:00.000000+00:00",
                 edited_timestamp: null,
