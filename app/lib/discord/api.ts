@@ -185,7 +185,7 @@ function parseUsernamePrefix(content: string): [string, string] | undefined {
 async function resolveMessageContent(
   msg: DiscordMessage,
 ): Promise<{ username: string; content: string }> {
-  const parsed = parseUsernamePrefix(msg.content);
+  const parsed = msg.author.bot ? parseUsernamePrefix(msg.content) : undefined;
   const username = parsed
     ? parsed[0]
     : (await userLoader.load(msg.author.id)).name;
