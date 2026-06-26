@@ -165,6 +165,12 @@ ul {
   font-weight: normal;
 }
 
+/* Keep the played-at timestamp parenthetical from breaking mid-phrase so the
+   whole "(12 minutes ago)" wraps onto the next line instead of orphaning. */
+.recent-tracks .subtitle {
+  white-space: nowrap;
+}
+
 @keyframes loading-dots {
   0% {
     content: "";
