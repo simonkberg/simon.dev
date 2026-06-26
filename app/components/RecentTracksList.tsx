@@ -28,7 +28,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
   }
 
   return (
-    <ul>
+    <ul className="recent-tracks">
       {result.tracks.map((track) => (
         <li key={`${track.name}-${track.playedAt?.getTime()}`}>
           <>{track.name}</> &ndash; <em>{track.artist}</em>{" "}
