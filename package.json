@@ -27,7 +27,7 @@
   "dependencies": {
     "@khanacademy/simple-markdown": "2.2.3",
     "@next/third-parties": "16.2.9",
-    "@react-spring/web": "10.1.1",
+    "@react-spring/web": "10.1.2",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.0",
     "comparator.ts": "1.0.4",
