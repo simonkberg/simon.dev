@@ -6,8 +6,7 @@ import { log } from "@/lib/log";
 import { getStats, type WakaTimeStats } from "@/lib/wakaTime";
 
 export type WakaTimeStatsResult =
-  | { status: "ok"; stats: WakaTimeStats }
-  | { status: "error"; error: string };
+  { status: "ok"; stats: WakaTimeStats } | { status: "error"; error: string };
 
 export async function getWakaTimeStats(): Promise<WakaTimeStatsResult> {
   "use cache";

@@ -19,8 +19,7 @@ import { log } from "@/lib/log";
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
 export type GetRecentTracksResult =
-  | { status: "ok"; tracks: RecentTrack[] }
-  | { status: "error"; error: string };
+  { status: "ok"; tracks: RecentTrack[] } | { status: "error"; error: string };
 
 export async function getRecentTracks(): Promise<GetRecentTracksResult> {
   "use cache";
@@ -49,8 +48,7 @@ export async function refreshRecentTracks(): Promise<void> {
 export type TopTrack = UserGetTopTracksResponse[number];
 
 export type GetTopTracksResult =
-  | { status: "ok"; tracks: TopTrack[] }
-  | { status: "error"; error: string };
+  { status: "ok"; tracks: TopTrack[] } | { status: "error"; error: string };
 
 export async function getTopTracks(
   period: Period,
@@ -74,8 +72,7 @@ export async function getTopTracks(
 export type TopArtist = UserGetTopArtistsResponse[number];
 
 export type GetTopArtistsResult =
-  | { status: "ok"; artists: TopArtist[] }
-  | { status: "error"; error: string };
+  { status: "ok"; artists: TopArtist[] } | { status: "error"; error: string };
 
 export async function getTopArtists(
   period: Period,
@@ -99,8 +96,7 @@ export async function getTopArtists(
 export type TopAlbum = UserGetTopAlbumsResponse[number];
 
 export type GetTopAlbumsResult =
-  | { status: "ok"; albums: TopAlbum[] }
-  | { status: "error"; error: string };
+  { status: "ok"; albums: TopAlbum[] } | { status: "error"; error: string };
 
 export async function getTopAlbums(
   period: Period,
