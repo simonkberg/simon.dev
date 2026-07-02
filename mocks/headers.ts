@@ -63,8 +63,7 @@ export class MockCookies implements ReadonlyRequestCookies {
 
   delete(
     ...args:
-      | [key: string]
-      | [options: Omit<ResponseCookie, "value" | "expires">]
+      [key: string] | [options: Omit<ResponseCookie, "value" | "expires">]
   ): ResponseCookies {
     return this.#responseCookies.delete(...args);
   }
