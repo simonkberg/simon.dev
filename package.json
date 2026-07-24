@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@khanacademy/simple-markdown": "2.2.3",
-    "@next/third-parties": "16.2.10",
+    "@next/third-parties": "16.2.11",
     "@react-spring/web": "10.1.2",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.38.0",
@@ -57,7 +57,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "concurrently": "10.0.3",
     "eslint": "10.7.0",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.2.11",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-simple-import-sort": "14.0.0",
     "happy-dom": "20.10.6",
