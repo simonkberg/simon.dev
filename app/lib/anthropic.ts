@@ -18,8 +18,8 @@ import { log } from "@/lib/log";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-haiku-4-5" as const;
-const MAX_TOKENS = 500;
+const MODEL = "claude-sonnet-5" as const;
+const MAX_TOKENS = 2048;
 const MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev. You're friendly with dry,
@@ -60,8 +60,9 @@ const SYSTEM_PROMPT = md`
 
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
-  z.object({ type: z.literal("thinking") }),
-  z.object({ type: z.literal("redacted_thinking") }),
+  // Loose so thinking blocks keep their signature when echoed back.
+  z.looseObject({ type: z.literal("thinking") }),
+  z.looseObject({ type: z.literal("redacted_thinking") }),
   z.object({
     type: z.literal("tool_use"),
     id: z.string(),
@@ -74,7 +75,13 @@ const contentBlockSchema = z.discriminatedUnion("type", [
 
 const createMessageResponseSchema = z.object({
   content: z.array(contentBlockSchema),
-  stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
+  stop_reason: z.enum([
+    "end_turn",
+    "tool_use",
+    "max_tokens",
+    "stop_sequence",
+    "refusal",
+  ]),
 });
 
 // Tool input schemas
@@ -245,6 +252,8 @@ export async function* createMessage(
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low" },
         system: SYSTEM_PROMPT,
         messages,
         tools: TOOLS,
@@ -260,12 +269,24 @@ export async function* createMessage(
 
     const result = createMessageResponseSchema.parse(await response.json());
 
+    // Must precede the yield loop - a refusal can still carry text.
+    if (result.stop_reason === "refusal") {
+      log.warn("simon-bot response was refused");
+      yield "yeah I'm not touching that one, sorry";
+      return;
+    }
+
     // Log and yield text blocks
     for (const block of result.content) {
       if (block.type === "text") {
         log.info({ text: block.text }, "simon-bot response");
         yield block.text;
       }
+    }
+
+    if (result.stop_reason === "max_tokens") {
+      log.warn("simon-bot response hit the token limit");
+      yield "...welp, ran out of words there";
     }
 
     // If not a tool use, we're done
