@@ -1,5 +1,4 @@
 import "server-only";
-
 import { Redis } from "@upstash/redis";
 
 let redis: Redis | undefined;

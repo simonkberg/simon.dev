@@ -30,18 +30,17 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 - `pnpm dev` - Start Next.js development server with Turbopack
 - `pnpm build` - Build production bundle (requires all environment variables)
 - `pnpm start` - Start production server
-- `pnpm lint` - Run TypeScript, ESLint, and Prettier checks
-- `pnpm lint:fix` - Auto-fix ESLint and Prettier issues
+- `pnpm lint` - Run TypeScript, Oxlint, and Oxfmt checks
+- `pnpm lint:fix` - Auto-fix Oxlint and Oxfmt issues
 - `pnpm test` - Run tests (auto-detects TTY; no `CI=true` prefix needed)
 - `pnpm test --coverage` - Run tests with coverage report
 
-> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:eslint`, `lint:prettier`). They run all checks in parallel and complete in seconds.
+> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:oxfmt`). They run all checks in parallel and complete in seconds.
 
 ### MCP Tools
 
 MCP servers are configured in `.mcp.json`:
 
-- `eslint` — ESLint MCP tools for targeted file linting when needed
 - `next-devtools` — Next.js MCP tools (`nextjs_docs` for docs lookup, `nextjs_call` for app state)
 
 ### Docker
@@ -94,7 +93,6 @@ Key settings in `next.config.ts`:
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
 - `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
-- `experimental: { useTypeScriptCli: false }` — type check through the TS 6 compiler API (see [TypeScript 7 and 6 side by side](#typescript-7-and-6-side-by-side))
 
 > **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: on a client
 > navigation the URL updates but the statistics stay on the period first loaded. All six
@@ -105,6 +103,17 @@ Key settings in `next.config.ts`:
 ### Typed Routes
 
 For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
+
+### Lint and Format Config
+
+Oxlint (`oxlint.config.ts`) lints, Oxfmt (`oxfmt.config.ts`) formats, and they never
+overlap — no stylistic rules are enabled, and import sorting is Oxfmt's. The non-obvious
+choices are commented in place.
+
+**Fix the diagnostic; don't suppress it.** The codebase has no `oxlint-disable` comments
+and shouldn't gain any — a rule firing where it shouldn't usually means the code can be
+written so the rule is satisfied honestly. Reach for the fix the rule's `help` line
+suggests, and if you cannot find one, raise it rather than silencing it.
 
 ### Environment Variables
 
@@ -229,10 +238,6 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 ## TypeScript
 
 Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromIndexSignature`. Always use optional chaining when accessing arrays/objects.
-
-### TypeScript 7 and 6 side by side
-
-TS 7 (native) ships a `tsc` CLI but no JS compiler API until 7.1, and typescript-eslint refuses to load without one. So `package.json` aliases both: `typescript` → `@typescript/typescript6` (what tools import), `@typescript/native` → `typescript@7` (the `tsc` behind `pnpm lint`). Neither is a mistake — don't "fix" them. The shim declares no `tsc` bin, so `experimental.useTypeScriptCli: false` is required; without it `next build` and `next typegen` fail to resolve one. Collapse both entries back into a plain `typescript` once 7.1 ships the API.
 
 ## Non-Obvious Patterns
 

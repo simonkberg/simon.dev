@@ -1,5 +1,6 @@
 import "server-only";
-
+// The `md` name is what marks `SYSTEM_PROMPT` as Markdown for Oxfmt; renaming
+// it silently stops the prompt being wrapped.
 import md from "string-dedent";
 import { z } from "zod";
 

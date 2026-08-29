@@ -26,11 +26,12 @@ vi.mock(import("@upstash/redis"));
 // Untyped mock due to complexity of the actual module exports
 vi.mock("@upstash/ratelimit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@upstash/ratelimit")>();
+  const slidingWindow = actual.Ratelimit.slidingWindow.bind(actual.Ratelimit);
   return {
     Ratelimit: vi.fn(
       class {
         limit = limitMock;
-        static slidingWindow = actual.Ratelimit.slidingWindow;
+        static slidingWindow = slidingWindow;
       },
     ),
   };
@@ -133,8 +134,8 @@ describe("getChatHistory", () => {
 });
 
 describe("refreshChatHistory", () => {
-  it("calls updateTag and refresh", () => {
-    refreshChatHistory();
+  it("calls updateTag and refresh", async () => {
+    await refreshChatHistory();
     expect(updateTag).toHaveBeenCalledWith("getChatHistory");
     expect(refresh).toHaveBeenCalled();
   });

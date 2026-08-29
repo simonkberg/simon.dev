@@ -1,5 +1,4 @@
 import "server-only";
-
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";

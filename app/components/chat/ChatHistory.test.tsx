@@ -49,7 +49,7 @@ function createMockEventSource() {
   return {
     MockEventSource,
     instances,
-    getInstance(index = -1) {
+    getInstance(this: void, index = -1) {
       const instance = instances.at(index);
       if (!instance) {
         throw new Error(`No EventSource instance at ${index} available`);

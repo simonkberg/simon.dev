@@ -207,7 +207,7 @@ describe("handleMessage", () => {
     ]);
 
     async function* failingResponse(): AsyncGenerator<string> {
-      throw new Error("Anthropic error");
+      yield await Promise.reject(new Error("Anthropic error"));
     }
     vi.mocked(createAnthropicMessage).mockReturnValue(failingResponse());
     vi.mocked(postChannelMessage).mockResolvedValue("error-msg-id");

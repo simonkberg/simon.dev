@@ -1,0 +1,46 @@
+import { defineConfig } from "oxlint";
+
+export default defineConfig({
+  plugins: [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "nextjs",
+    "jsx-a11y",
+    "import",
+  ],
+  categories: { correctness: "error" },
+  options: { typeAware: true, reportUnusedDisableDirectives: "error" },
+  env: { browser: true, node: true, es2024: true },
+  settings: { react: { version: "19" } },
+  // Rules we want that oxlint files outside `correctness`.
+  rules: {
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "no-array-constructor": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "react/rules-of-hooks": "error",
+    "react/display-name": "error",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/no-unescaped-entities": "error",
+    "react/unsupported-syntax": "warn",
+    "import/no-anonymous-default-export": "warn",
+    "unicorn/no-abusive-eslint-disable": "error",
+    // `Image` here is `next/image`.
+    "jsx-a11y/alt-text": ["error", { elements: ["img"], img: ["Image"] }],
+    // `<output>` only takes phrasing content, so it can't replace the
+    // `role="status"` on `.chat-replying-to`.
+    "jsx-a11y/prefer-tag-over-role": "off",
+  },
+  ignorePatterns: [".next/**", ".worktrees/**", "coverage/**", "junit.xml"],
+});

@@ -1,5 +1,4 @@
 import "@/global.css";
-
 import { GoogleTagManager } from "@next/third-parties/google";
 import type { PropsWithChildren } from "react";
 

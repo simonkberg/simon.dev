@@ -10,7 +10,7 @@ export interface ChatToastProps {
 
 export const ChatToast = ({
   variant = "default",
-  message = undefined,
+  message,
   duration = 5000,
 }: ChatToastProps) => {
   const [isVisible, setIsVisible] = useState(!!message);

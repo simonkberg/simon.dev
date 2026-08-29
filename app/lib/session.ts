@@ -1,5 +1,4 @@
 import "server-only";
-
 import { type JWTPayload, jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { forbidden } from "next/navigation";
