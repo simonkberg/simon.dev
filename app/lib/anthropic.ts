@@ -51,9 +51,6 @@ const SYSTEM_PROMPT = md`
 
   Tool usage:
 
-  - if an answer depends on what was said in chat, Simon's coding stats, or
-    listening history, call the relevant tool instead of guessing or answering
-    from memory
   - when you need to look something up, consider sending a quick word first so
     they're not waiting in silence
   - keep any pre-tool message super brief, just a few words
@@ -63,8 +60,7 @@ const SYSTEM_PROMPT = md`
 
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
-  // Loose so every field round-trips: thinking blocks must be echoed back to
-  // the API unchanged, and a stripped one loses its signature.
+  // Loose so thinking blocks keep their signature when echoed back.
   z.looseObject({ type: z.literal("thinking") }),
   z.looseObject({ type: z.literal("redacted_thinking") }),
   z.object({
