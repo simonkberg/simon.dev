@@ -58,6 +58,16 @@ describe("chatTip", () => {
       expect(setCookie).toContain(`Max-Age=${365 * 24 * 60 * 60}`);
     });
 
+    it("omits Secure outside production", async () => {
+      // Browsers drop a Secure cookie sent over plain http, which silently
+      // made the dismissal a no-op on every dev origin.
+      const headers = mockCookies();
+
+      await setChatTipDismissed();
+
+      expect(headers.get("set-cookie")).not.toContain("Secure");
+    });
+
     it("does not rewrite an already-dismissed cookie", async () => {
       const headers = mockCookies("chatTipDismissed=true");
 
