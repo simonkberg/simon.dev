@@ -206,9 +206,8 @@ describe("handleMessage", () => {
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
 
-    // oxlint-disable-next-line require-yield -- throws before it can yield
     async function* failingResponse(): AsyncGenerator<string> {
-      throw new Error("Anthropic error");
+      yield await Promise.reject(new Error("Anthropic error"));
     }
     vi.mocked(createAnthropicMessage).mockReturnValue(failingResponse());
     vi.mocked(postChannelMessage).mockResolvedValue("error-msg-id");

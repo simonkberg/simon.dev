@@ -107,11 +107,13 @@ For optional catch-all routes like `[[...param]]`, use a trailing slash to link 
 ### Lint and Format Config
 
 Oxlint (`oxlint.config.ts`) lints, Oxfmt (`oxfmt.config.ts`) formats, and they never
-overlap — no stylistic rules are enabled, and import sorting is Oxfmt's. Both configs are
-JSONC; the non-obvious choices are commented in place.
+overlap — no stylistic rules are enabled, and import sorting is Oxfmt's. The non-obvious
+choices are commented in place.
 
-Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`, not
-the `eslint-` prefix.
+**Fix the diagnostic; don't suppress it.** The codebase has no `oxlint-disable` comments
+and shouldn't gain any — a rule firing where it shouldn't usually means the code can be
+written so the rule is satisfied honestly. Reach for the fix the rule's `help` line
+suggests, and if you cannot find one, raise it rather than silencing it.
 
 ### Environment Variables
 

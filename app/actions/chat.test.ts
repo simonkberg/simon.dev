@@ -26,12 +26,12 @@ vi.mock(import("@upstash/redis"));
 // Untyped mock due to complexity of the actual module exports
 vi.mock("@upstash/ratelimit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@upstash/ratelimit")>();
+  const slidingWindow = actual.Ratelimit.slidingWindow.bind(actual.Ratelimit);
   return {
     Ratelimit: vi.fn(
       class {
         limit = limitMock;
-        // oxlint-disable-next-line typescript/unbound-method -- binding it trips TS7022
-        static slidingWindow = actual.Ratelimit.slidingWindow;
+        static slidingWindow = slidingWindow;
       },
     ),
   };
