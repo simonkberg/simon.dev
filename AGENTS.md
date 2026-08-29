@@ -251,9 +251,9 @@ Components use React's recommended [storing information from previous renders](h
 
 Discord message content is stored and returned as **raw markdown** — `getChannelMessages()` does not pre-render it. `app/components/Markdown.tsx` parses it with `SimpleMarkdown.defaultInlineParse()` and walks the AST itself to emit React elements.
 
-Do not replace that walk with simple-markdown's own React output (`defaultReactOutput`, `markdownToReact`, `reactFor`). It hand-rolls elements as `{ $$typeof: Symbol.for("react.element"), … }`, and React 19 renamed that brand to `react.transitional.element`, so those objects throw "Objects are not valid as a React child". This is still true on the latest release (3.0.1) and on upstream `main`.
+Do not replace that walk with simple-markdown's own React output (`defaultReactOutput`, `markdownToReact`, `reactFor`). It hand-rolls elements as `{ $$typeof: Symbol.for("react.element"), … }`, and React 19 renamed that brand to `react.transitional.element`, so those objects throw "Objects are not valid as a React child". Still unfixed upstream as of 2026-08 (3.0.1 and `main`); re-check the element brand before assuming a newer release helps.
 
-The package is pinned to 2.2.3 because 3.x removed the html output. Only the parser is used, so the pin is not blocking — but 3.x is not a drop-in upgrade until upstream fixes element creation.
+The package is pinned to 2.2.3. Only the parser is used, so the major version is not load-bearing and the pin costs nothing — but 3.x is still not a drop-in until upstream fixes element creation. (3.x also dropped the html output, which is what this code used before it walked the AST itself.)
 
 `sanitizeUrl()` must stay applied to every `link` target; it is what strips `javascript:`, `vbscript:` and `data:` URLs.
 

@@ -14,8 +14,8 @@ import type { ReactNode } from "react";
  * Every node `defaultInlineParse()` can produce. Block rules bail out while
  * `state.inline` is set, and the inline rules normalise into this set: `escape`
  * collapses into `text`, and `autolink`, `mailto`, `url` and `reflink` collapse
- * into `link`. `target` is optional because a `reflink`/`refimage` whose
- * definition never appears is parsed without one.
+ * into `link`. `target` is optional because a `reflink` whose definition never
+ * appears is parsed without one.
  *
  * simple-markdown types every node as `{ type: string; [key: string]: any }`,
  * so this is the shape the parser guarantees rather than one it declares.
@@ -25,16 +25,25 @@ type InlineNode =
   | { type: "br" }
   | { type: "em" | "strong" | "u" | "del"; content: InlineNode[] }
   | { type: "link"; content: InlineNode[]; target?: string; title?: string }
-  | { type: "image"; alt: string; target?: string; title?: string };
+  | { type: "image"; alt: string };
 
 /** Strips `javascript:`, `vbscript:` and `data:` targets, as the html output did. */
 const sanitizeUrl = (target?: string): string | undefined =>
   SimpleMarkdown.sanitizeUrl(target) ?? undefined;
 
 const renderNodes = (nodes: InlineNode[]): ReactNode[] =>
-  nodes.map((node, index) => renderNode(node, String(index)));
+  nodes.map((node, index) => renderNode(node, index));
 
-const renderNode = (node: InlineNode, key: string): ReactNode => {
+/**
+ * Excluding `undefined` from the return type is what keeps `InlineNode` honest:
+ * the switch has no `default`, so dropping a case makes the function fall
+ * through and TypeScript rejects it, rather than that node silently rendering
+ * as nothing.
+ */
+const renderNode = (
+  node: InlineNode,
+  key: number,
+): Exclude<ReactNode, undefined> => {
   switch (node.type) {
     case "text":
       return node.content;
@@ -73,5 +82,3 @@ export interface MarkdownProps {
 export const Markdown = ({ source }: MarkdownProps) => (
   <>{renderNodes(SimpleMarkdown.defaultInlineParse(source) as InlineNode[])}</>
 );
-
-export default Markdown;

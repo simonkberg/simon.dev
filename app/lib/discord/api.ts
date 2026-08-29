@@ -218,6 +218,7 @@ const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 const MessageSchema = z.object({
   id: z.string(),
   user: UserSchema,
+  /** Raw Discord markdown, never HTML — render with `<Markdown>`, never `dangerouslySetInnerHTML`. */
   content: z.string(),
   edited: z.boolean(),
   timestamp: z.string().pipe(z.coerce.date()),

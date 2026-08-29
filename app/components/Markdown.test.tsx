@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Markdown } from "./Markdown";
@@ -69,11 +69,10 @@ describe("Markdown", () => {
   });
 
   describe("escaping", () => {
-    it("renders html in the source as text", () => {
-      render(<Markdown source="<script>alert(1)</script>" />);
-
-      expect(document.querySelector("script")).toBeNull();
-      expect(screen.getByText("<script>alert(1)</script>")).toBeInTheDocument();
+    it("renders html in the source as text, not markup", () => {
+      expect(html("<script>alert(1)</script>")).toBe(
+        "&lt;script&gt;alert(1)&lt;/script&gt;",
+      );
     });
 
     it("escapes ampersands and quotes", () => {
