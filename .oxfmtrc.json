@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "objectWrap": "collapse",
+  "printWidth": 80,
+  "sortImports": {
+    "groups": [
+      "side_effect",
+      "builtin",
+      "external",
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"],
+      "style",
+      "unknown"
+    ]
+  },
+  "sortPackageJson": false,
+  "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"]
+}

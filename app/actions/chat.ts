@@ -17,7 +17,8 @@ import { getRedis } from "@/lib/redis";
 import { getSession } from "@/lib/session";
 
 export type ChatHistoryResult =
-  { status: "ok"; messages: Message[] } | { status: "error"; error: string };
+  | { status: "ok"; messages: Message[] }
+  | { status: "error"; error: string };
 
 export async function getChatHistory(): Promise<ChatHistoryResult> {
   "use cache";
@@ -59,7 +60,9 @@ export async function dismissChatTip() {
 }
 
 export type PostChatMessageResult =
-  { status: "initial" } | { status: "ok" } | { status: "error"; error: string };
+  | { status: "initial" }
+  | { status: "ok" }
+  | { status: "error"; error: string };
 
 export async function postChatMessage(
   formData: FormData,

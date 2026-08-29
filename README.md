@@ -31,10 +31,10 @@ pnpm dev
 # Run tests
 pnpm test
 
-# Lint (Oxlint + Prettier)
+# Lint and format (Oxlint + Oxfmt)
 pnpm lint
 
-# Auto-fix linting issues
+# Auto-fix lint and formatting issues
 pnpm lint:fix
 ```
 

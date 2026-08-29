@@ -30,12 +30,12 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 - `pnpm dev` - Start Next.js development server with Turbopack
 - `pnpm build` - Build production bundle (requires all environment variables)
 - `pnpm start` - Start production server
-- `pnpm lint` - Run TypeScript, Oxlint, and Prettier checks
-- `pnpm lint:fix` - Auto-fix Oxlint and Prettier issues
+- `pnpm lint` - Run TypeScript, Oxlint, and Oxfmt checks
+- `pnpm lint:fix` - Auto-fix Oxlint and Oxfmt issues
 - `pnpm test` - Run tests (auto-detects TTY; no `CI=true` prefix needed)
 - `pnpm test --coverage` - Run tests with coverage report
 
-> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:prettier`). They run all checks in parallel and complete in seconds.
+> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:oxfmt`). They run all checks in parallel and complete in seconds.
 
 To lint a single file, run `npx oxlint <file>` directly — it finishes in milliseconds, so
 there is no lint server to go through.
@@ -110,7 +110,7 @@ For optional catch-all routes like `[[...param]]`, use a trailing slash to link 
 ### Lint Config
 
 Linting is [Oxlint](https://oxc.rs/docs/guide/usage/linter), configured in `.oxlintrc.json`
-(JSONC — comments are allowed, and Prettier preserves them).
+(JSONC — comments are allowed, and Oxfmt preserves them).
 
 - The `correctness` category is the baseline, with the `eslint`, `typescript`, `unicorn`,
   `oxc`, `react`, `nextjs`, `jsx-a11y` and `import` plugins enabled. Note that listing
@@ -125,18 +125,30 @@ Linting is [Oxlint](https://oxc.rs/docs/guide/usage/linter), configured in `.oxl
   [type-aware rules](https://oxc.rs/docs/guide/usage/linter/type-aware), which run through
   the `oxlint-tsgolint` binary. It builds on TypeScript 7 directly, so it needs no
   `tsconfig` of its own — but legacy options like `baseUrl` would break it.
-- Import sorting is the one thing with no native equivalent, so
-  `eslint-plugin-simple-import-sort` runs through oxlint's
-  [JS plugin](https://oxc.rs/docs/guide/usage/linter/js-plugins) support (`jsPlugins`) —
-  the only remaining ESLint-shaped dependency. It costs ~200ms per full run, and its
-  `eslint` peer means pnpm still auto-installs ESLint, which nothing ever runs. The only
-  way out is `oxfmt`'s `sortImports`, which means replacing Prettier.
-- No stylistic rules are enabled, so nothing conflicts with Prettier — there is no
-  `eslint-config-prettier` equivalent to install.
+- No stylistic rules are enabled — formatting is Oxfmt's job, and the two never overlap.
+  Import sorting lives in `.oxfmtrc.json`, not here.
 - Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`.
 
 `lint:tsc` stays: `oxlint --type-check` can report compiler diagnostics too, but it is
 experimental, and `next typegen` has to run first regardless.
+
+### Format Config
+
+Formatting is [Oxfmt](https://oxc.rs/docs/guide/usage/formatter), configured in
+`.oxfmtrc.json`. It covers every file type Prettier did here — TS/TSX, JSON, JSONC, JSON5,
+YAML, Markdown, CSS — and matches Prettier's output apart from putting a leading `|` on
+wrapped union types.
+
+- `printWidth` is pinned to `80`. Oxfmt's own default is `100`, so dropping it would
+  reflow the entire codebase.
+- `sortImports.groups` names `side_effect` first. Everything after it is Oxfmt's default
+  group order, which already matches what `eslint-plugin-simple-import-sort` produced;
+  without the explicit `side_effect` group a bare `import "server-only"` loses its blank
+  line.
+- Oxfmt reads `.gitignore` on its own, so `ignorePatterns` only lists the two files
+  `.prettierignore` used to carry.
+- It exits `2` when handed only file types it doesn't format, which is why
+  `lint-staged.config.ts` passes `--no-error-on-unmatched-pattern` (Prettier's `-u`).
 
 ### Environment Variables
 

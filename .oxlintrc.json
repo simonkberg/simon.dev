@@ -13,17 +13,12 @@
     "jsx-a11y",
     "import"
   ],
-  "jsPlugins": ["eslint-plugin-simple-import-sort"],
   "categories": { "correctness": "error" },
   // Type-aware rules run through oxlint-tsgolint, which needs TypeScript 7.
   "options": { "typeAware": true },
   "env": { "browser": true, "node": true, "es2024": true },
   "settings": { "react": { "version": "19" } },
   "rules": {
-    // eslint-config-next: sorted imports/exports (via JS plugin)
-    "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error",
-
     // typescript-eslint `recommended` rules outside oxlint's correctness set
     "typescript/ban-ts-comment": "error",
     "typescript/no-empty-object-type": "error",
