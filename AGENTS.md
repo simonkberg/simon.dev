@@ -170,7 +170,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 restates it goes stale and earns nothing. If a block needs prose to be followed, that is
 usually a signal to extract a function or rename a variable instead.
 
-The bar for keeping one: it explains *why*, not *what* — a workaround, a non-obvious
+The bar for keeping one: it explains _why_, not _what_ — a workaround, a non-obvious
 constraint, a deliberate deviation someone would otherwise "fix". When that bar is met,
 write one short line and move on.
 
