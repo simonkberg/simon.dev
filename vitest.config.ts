@@ -6,7 +6,7 @@ import { mockEnv } from "./mocks/env";
 const isCI = process.env["CI"] === "true";
 
 const config = defineConfig({
-  plugins: [react()],
+  plugins: [react({ compiler: true })],
   resolve: { tsconfigPaths: true },
   test: {
     environment: "happy-dom",
