@@ -6,11 +6,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   cacheComponents: true,
   logging: { fetches: { fullUrl: true } },
-  partialPrefetching: true,
   reactCompiler: true,
   turbopack: { root: import.meta.dirname },
   typedRoutes: true,
-  experimental: { globalNotFound: true, turbopackRustReactCompiler: true },
+  experimental: { globalNotFound: true },
 };
 
 export default nextConfig;
