@@ -1,5 +1,5 @@
 import SimpleMarkdown from "@khanacademy/simple-markdown";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 /**
  * Renders inline markdown as React elements.
@@ -59,12 +59,20 @@ const renderNode = (
       return <del key={key}>{renderNodes(node.content)}</del>;
     case "inlineCode":
       return <code key={key}>{node.content}</code>;
-    case "link":
-      return (
-        <a key={key} href={sanitizeUrl(node.target)} title={node.title}>
+    case "link": {
+      const href = sanitizeUrl(node.target);
+      // A target that did not survive sanitising is not a link, so render just
+      // the label. An `<a>` without `href` still picks up link styling while
+      // being unclickable, and exposes no link role to assistive tech — the
+      // appearance would contradict what the element actually is.
+      return href === undefined ? (
+        <Fragment key={key}>{renderNodes(node.content)}</Fragment>
+      ) : (
+        <a key={key} href={href} title={node.title}>
           {renderNodes(node.content)}
         </a>
       );
+    }
     // Deliberately not embedded. Message content is user-supplied, so an
     // `<img>` would let anyone posting in the channel load an arbitrary remote
     // URL in every visitor's browser — a tracking pixel, an IP logger, or

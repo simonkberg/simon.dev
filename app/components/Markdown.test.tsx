@@ -81,8 +81,8 @@ describe("Markdown", () => {
   });
 
   describe("reference links without a definition", () => {
-    it("renders a link with no href", () => {
-      expect(html("[undefined-ref][9]")).toBe("<a>undefined-ref</a>");
+    it("renders the label as plain text", () => {
+      expect(html("[undefined-ref][9]")).toBe("undefined-ref");
     });
 
     it("renders an image as its alt text", () => {
@@ -91,12 +91,14 @@ describe("Markdown", () => {
   });
 
   describe("url sanitisation", () => {
-    it("drops javascript: link targets", () => {
-      expect(html("[xss](javascript:alert(1))")).toBe("<a>xss</a>");
+    it("drops javascript: link targets, leaving no anchor", () => {
+      expect(html("[xss](javascript:alert(1))")).toBe("xss");
+      expect(document.querySelector("a")).toBeNull();
     });
 
-    it("drops data: link targets", () => {
-      expect(html("[x](data:text/html;base64,PHN2Zz4=)")).toBe("<a>x</a>");
+    it("drops data: link targets, leaving no anchor", () => {
+      expect(html("[x](data:text/html;base64,PHN2Zz4=)")).toBe("x");
+      expect(document.querySelector("a")).toBeNull();
     });
   });
 });
