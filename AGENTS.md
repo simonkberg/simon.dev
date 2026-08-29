@@ -90,7 +90,6 @@ Key settings in `next.config.ts`:
 
 - `output: "standalone"` — self-contained build for Docker deployment
 - `cacheComponents: true` — Next.js 16 Cache Components
-- `partialPrefetching: true` — one reusable App Shell prefetch per route instead of one per link
 - `reactCompiler: true` — React Compiler (auto-memoization)
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
