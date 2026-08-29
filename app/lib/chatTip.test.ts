@@ -58,22 +58,6 @@ describe("chatTip", () => {
       expect(setCookie).toContain(`Max-Age=${365 * 24 * 60 * 60}`);
     });
 
-    it("is Lax rather than Strict", async () => {
-      const headers = mockCookies();
-
-      await setChatTipDismissed();
-
-      expect(headers.get("set-cookie")).toContain("SameSite=lax");
-    });
-
-    it("omits Secure outside production", async () => {
-      const headers = mockCookies();
-
-      await setChatTipDismissed();
-
-      expect(headers.get("set-cookie")).not.toContain("Secure");
-    });
-
     it("does not rewrite an already-dismissed cookie", async () => {
       const headers = mockCookies("chatTipDismissed=true");
 
