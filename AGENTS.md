@@ -70,7 +70,7 @@ app/                          # Next.js App Router (all source code)
 └── global-not-found.tsx      # Global 404 page
 
 instrumentation.ts            # Server startup hooks (bot subscription)
-mocks/                        # Test mocks (MSW handlers, env vars)
+mocks/                        # Test mocks (MSW handlers, env vars, cookies)
 ```
 
 **Convention:** Route-specific components live in `{route}/components/` rather than `app/components/`.
@@ -203,7 +203,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`
 
 ### Best Practices
 
@@ -211,6 +211,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 - **Accessing mocks:** Import mocked functions at the top level like any other import — `vi.mock` is hoisted before imports, so they resolve to the mock automatically. Never use `await import()` to access mocked values.
 - **Async components with `use()`:** Wrap render in `await act(async () => render(...))`
 - **Server-only modules:** Mock with `vi.mock("server-only", () => ({}))`
+- **Shared mocks:** Check `mocks/` before hand-rolling a stub. For `cookies()` from `next/headers`, use `MockCookies` from `@/mocks/headers` — a real jar over `@edge-runtime/cookies` that needs no casting to satisfy the return type, and lets tests assert on the resulting `set-cookie` header rather than on a `vi.fn` spy. See `app/lib/session.test.ts` and `app/lib/chatTip.test.ts`.
 
 ## TypeScript
 
