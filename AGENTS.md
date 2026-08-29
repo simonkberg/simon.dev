@@ -30,18 +30,20 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 - `pnpm dev` - Start Next.js development server with Turbopack
 - `pnpm build` - Build production bundle (requires all environment variables)
 - `pnpm start` - Start production server
-- `pnpm lint` - Run TypeScript, ESLint, and Prettier checks
-- `pnpm lint:fix` - Auto-fix ESLint and Prettier issues
+- `pnpm lint` - Run TypeScript, Oxlint, and Prettier checks
+- `pnpm lint:fix` - Auto-fix Oxlint and Prettier issues
 - `pnpm test` - Run tests (auto-detects TTY; no `CI=true` prefix needed)
 - `pnpm test --coverage` - Run tests with coverage report
 
-> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:eslint`, `lint:prettier`). They run all checks in parallel and complete in seconds.
+> **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:prettier`). They run all checks in parallel and complete in seconds.
+
+To lint a single file, run `npx oxlint <file>` directly — it finishes in milliseconds, so
+there is no lint server to go through.
 
 ### MCP Tools
 
 MCP servers are configured in `.mcp.json`:
 
-- `eslint` — ESLint MCP tools for targeted file linting when needed
 - `next-devtools` — Next.js MCP tools (`nextjs_docs` for docs lookup, `nextjs_call` for app state)
 
 ### Docker
@@ -105,6 +107,32 @@ Key settings in `next.config.ts`:
 ### Typed Routes
 
 For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
+
+### Lint Config
+
+Linting is [Oxlint](https://oxc.rs/docs/guide/usage/linter), configured in `.oxlintrc.json`
+(JSONC — comments are allowed, and Prettier preserves them).
+
+- The `correctness` category is the baseline, with the `eslint`, `typescript`, `unicorn`,
+  `oxc`, `react`, `nextjs`, `jsx-a11y` and `import` plugins enabled. Note that listing
+  `plugins` **replaces** the default set, so the four defaults are listed explicitly.
+- `rules` only restores what `eslint-config-next` used to enforce but oxlint files under a
+  non-`correctness` category. Don't add rules there without a reason — reach for a whole
+  category first.
+- The React Compiler rules (`react/purity`, `react/preserve-manual-memoization`,
+  `react/immutability`, …) come from `correctness` and run the compiler's own validation
+  passes, so they replace `eslint-plugin-react-hooks` v7 one-for-one.
+- Import sorting still comes from `eslint-plugin-simple-import-sort`, loaded through
+  oxlint's [JS plugin](https://oxc.rs/docs/guide/usage/linter/js-plugins) support
+  (`jsPlugins`). Oxlint has no native equivalent. The plugin peer-depends on `eslint`, so
+  pnpm still auto-installs ESLint itself — nothing ever runs it.
+- No stylistic rules are enabled, so nothing conflicts with Prettier — there is no
+  `eslint-config-prettier` equivalent to install.
+- Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`.
+
+Type-aware rules (`oxlint --type-aware`) are **not** enabled: they need
+[`oxlint-tsgolint`](https://oxc.rs/docs/guide/usage/linter/type-aware), which requires
+TypeScript 7. `tsc --noEmit` covers this today via `pnpm lint:tsc`.
 
 ### Environment Variables
 

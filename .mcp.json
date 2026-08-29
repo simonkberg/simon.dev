@@ -3,11 +3,6 @@
     "next-devtools": {
       "command": "npx",
       "args": ["-y", "next-devtools-mcp@latest"]
-    },
-    "eslint": {
-      "command": "npx",
-      "args": ["@eslint/mcp@latest"],
-      "env": { "ESLINT_FLAGS": "unstable_native_nodejs_ts_config" }
     }
   }
 }

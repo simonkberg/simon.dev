@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Oxlint's `correctness` category is the baseline. Rules below restore the
+  // parts of `eslint-config-next` (typescript-eslint recommended, react,
+  // next.js) that oxlint files under other categories.
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "nextjs",
+    "jsx-a11y",
+    "import"
+  ],
+  "jsPlugins": ["eslint-plugin-simple-import-sort"],
+  "categories": { "correctness": "error" },
+  "env": { "browser": true, "node": true, "es2024": true },
+  "settings": { "react": { "version": "19" } },
+  "rules": {
+    // eslint-config-next: sorted imports/exports (via JS plugin)
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
+
+    // typescript-eslint `recommended` rules outside oxlint's correctness set
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "no-array-constructor": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+
+    // eslint-plugin-react / react-hooks `recommended` outside correctness
+    "react/rules-of-hooks": "error",
+    "react/display-name": "error",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/no-unescaped-entities": "error",
+    "react/unsupported-syntax": "warn",
+    "import/no-anonymous-default-export": "warn",
+
+    // `next/image` counts as an image for alt-text purposes
+    "jsx-a11y/alt-text": ["error", { "elements": ["img"], "img": ["Image"] }],
+
+    // Not enforced under eslint-config-next; the roles here are deliberate.
+    "jsx-a11y/prefer-tag-over-role": "off"
+  },
+  "ignorePatterns": [".next/**", ".worktrees/**", "coverage/**", "junit.xml"]
+}

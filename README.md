@@ -31,7 +31,7 @@ pnpm dev
 # Run tests
 pnpm test
 
-# Lint (ESLint + Prettier)
+# Lint (Oxlint + Prettier)
 pnpm lint
 
 # Auto-fix linting issues
