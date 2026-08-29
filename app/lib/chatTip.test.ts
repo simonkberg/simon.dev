@@ -58,6 +58,16 @@ describe("chatTip", () => {
       expect(setCookie).toContain(`Max-Age=${365 * 24 * 60 * 60}`);
     });
 
+    it("is Lax rather than Strict", async () => {
+      // Strict withholds the cookie from a navigation that started on another
+      // site, so arriving from a link renders the tip again.
+      const headers = mockCookies();
+
+      await setChatTipDismissed();
+
+      expect(headers.get("set-cookie")).toContain("SameSite=lax");
+    });
+
     it("omits Secure outside production", async () => {
       // Browsers drop a Secure cookie sent over plain http, which silently
       // made the dismissal a no-op on every dev origin.
