@@ -25,7 +25,7 @@
     "typegen": "SKIP_ENV_VALIDATION=1 next typegen"
   },
   "dependencies": {
-    "@khanacademy/simple-markdown": "2.2.3",
+    "@khanacademy/simple-markdown": "3.0.1",
     "@next/third-parties": "16.3.3",
     "@react-spring/web": "10.1.2",
     "@upstash/ratelimit": "2.0.8",
