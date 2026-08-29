@@ -2,7 +2,7 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
   claude-review:
@@ -17,67 +17,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 1
+          # Full history so the review can diff the branch against its base.
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@a874e9ecd7bb36efdad65429c6b35815f5a08f10 # v1.0.210
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          track_progress: true
-          use_sticky_comment: true
           allowed_bots: renovate[bot],claude[bot]
-          prompt: |
-            You are performing a code review. Your job is to find real bugs and AGENTS.md violations. Skip anything a linter, typechecker, or CI pipeline would catch. Do not implement changes.
-
-            ## Gather context
-
-            - Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff (the changed files list above only has paths, not content)
-            - Read AGENTS.md at the repo root for project conventions
-
-            ## Review the changes
-
-            Focus on the diff. For each change, check:
-
-            1. **Bugs**: Logic errors, off-by-one, null/undefined access, race conditions, incorrect async handling, wrong return types
-            2. **AGENTS.md compliance**: Violations of documented patterns and conventions (eg. "use cache" patterns, discriminated union returns, server-only imports, typed routes, Zod v4 API usage, private fields, Promise props with use())
-            3. **Security**: XSS, injection, leaked secrets, unsafe data handling — only flag concrete vulnerabilities in the changed code
-            4. **Code reuse**: Duplicated logic where an existing utility or helper already exists in the codebase
-            5. **Efficiency**: N+1 patterns, unnecessary work in hot paths, unbounded data structures, missing cleanup
-
-            Do NOT flag:
-            - Pre-existing issues (only review changed lines)
-            - Missing tests or documentation (unless AGENTS.md requires it)
-            - Stylistic preferences or nitpicks
-            - Import ordering, formatting, naming conventions (linter handles these)
-            - General suggestions like "consider adding error handling" without a concrete bug
-            - Intentional functionality changes that align with the PR's purpose
-            - Issues silenced by lint-ignore comments
-
-            ## Score and filter
-
-            For each potential issue, assign a confidence score (0-100):
-            - **0-24**: Likely false positive, unverified, or stylistic
-            - **25-49**: Might be real but is a nitpick or rarely hit in practice
-            - **50-74**: Likely real, verified against the code, but lower impact
-            - **75-100**: Definitely real, verified, will impact functionality or directly violates AGENTS.md
-
-            Discard any issue scoring below 75.
-
-            ## Post results
-
-            For each issue that scored 75+, use `mcp__github_inline_comment__create_inline_comment` to place a comment on the relevant line in the diff. Keep inline comments brief: the issue and why it matters in 1-3 sentences.
-
-            Then update the tracking comment with a summary. No emojis. Use this format:
-
-            ### Code review
-
-            Found N issues (posted as inline comments):
-
-            1. **file.ts:L42** — Brief description (AGENTS.md says "...", or bug due to `<snippet>`)
-            2. ...
-
-            If no issues scored 75+, just write: "No issues found. Checked for bugs and AGENTS.md compliance."
-
-          claude_args: |
-            --allowed-tools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          # Built-in skill: correctness bugs plus reuse/simplification/efficiency
+          # cleanups, following AGENTS.md via the CLAUDE.md symlink. "medium" keeps
+          # to high-confidence findings; raise to "high" for broader, noisier coverage.
+          prompt: "/code-review medium --comment ${{ github.event.pull_request.number }}"
+          # The action only starts the inline comment MCP server when --allowedTools
+          # names it, and the built-in skill has no frontmatter granting the gh calls.
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
