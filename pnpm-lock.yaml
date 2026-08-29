@@ -90,9 +90,6 @@ importers:
       '@vitest/ui':
         specifier: 4.1.11
         version: 4.1.11(vitest@4.1.11)
-      babel-plugin-react-compiler:
-        specifier: 1.0.0
-        version: 1.0.0
       concurrently:
         specifier: 10.0.5
         version: 10.0.5
@@ -4097,6 +4094,7 @@ snapshots:
   babel-plugin-react-compiler@1.0.0:
     dependencies:
       '@babel/types': 7.29.8
+    optional: true
 
   balanced-match@1.0.2: {}
 
