@@ -1,8 +1,10 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# Next.js: ALWAYS read docs before coding
+# This is NOT the Next.js you know
 
-Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
 
@@ -88,9 +90,11 @@ Key settings in `next.config.ts`:
 
 - `output: "standalone"` — self-contained build for Docker deployment
 - `cacheComponents: true` — Next.js 16 Cache Components
+- `partialPrefetching: true` — one reusable App Shell prefetch per route instead of one per link
 - `reactCompiler: true` — React Compiler (auto-memoization)
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
+- `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
 
 ### Typed Routes
 
@@ -206,7 +210,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 - **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
-> The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js still runs the compiler through `babel-plugin-react-compiler` (`reactCompiler: true` in `next.config.ts`) — the two are configured independently, so keep both dependencies.
+> The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.
 
 ### Best Practices
 

@@ -7,10 +7,10 @@ import { config } from "@/config";
 
 interface GlobalErrorProps {
   error: Error;
-  reset: () => void;
+  retry: () => void;
 }
 
-export default function GlobalError({ error, reset }: GlobalErrorProps) {
+export default function GlobalError({ error, retry }: GlobalErrorProps) {
   return (
     <Layout>
       <title>{`Error - ${config.title}`}</title>
@@ -18,7 +18,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
         <section>
           <Heading level={2}>Something went wrong!</Heading>
           <p className="subtitle">{error.message}</p>
-          <button className="link" onClick={() => reset()}>
+          <button className="link" onClick={() => retry()}>
             Try again
           </button>
         </section>

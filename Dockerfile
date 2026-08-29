@@ -29,10 +29,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Use cache mount for Next.js build cache, then copy it out of the
-# mount so it's available in the layer for the runner stage.
+# mount so it's available in the layer for the runner stage. Turbopack's
+# FileSystem cache (on by default since Next.js 16.3) is only read by the
+# builder, so it stays in the mount instead of shipping in the image.
 RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/app/.next/cache,target=/app/.next/cache \
     node --run build && \
-    cp -r /app/.next/cache /app/.next/build-cache
+    cp -r /app/.next/cache /app/.next/build-cache && \
+    rm -rf /app/.next/build-cache/turbopack
 
 # Production server
 FROM base AS runner
