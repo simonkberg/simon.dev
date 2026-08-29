@@ -17,7 +17,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 1
+          # Full history so the review can diff the branch against its base.
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         id: claude-review
@@ -25,9 +26,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: renovate[bot],claude[bot]
-          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
-          plugins: "code-review@claude-code-plugins"
-          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-          # Required even though the skill's own allowed-tools names it: the
-          # action only starts the inline comment MCP server when --allowedTools does.
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # Built-in skill: correctness bugs plus reuse/simplification/efficiency
+          # cleanups, following AGENTS.md via the CLAUDE.md symlink. "medium" keeps
+          # to high-confidence findings; raise to "high" for broader, noisier coverage.
+          prompt: "/code-review medium --comment ${{ github.event.pull_request.number }}"
+          # The action only starts the inline comment MCP server when --allowedTools
+          # names it, and the built-in skill has no frontmatter granting the gh calls.
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
