@@ -122,10 +122,11 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
-- **simon-bot:** `app/lib/anthropic.ts` calls the API with raw `fetch`, no SDK, and is
-  triggered by a "simon-bot" mention. It starts once at server boot from
-  `instrumentation.ts` — one long-lived Gateway subscription, not per-request — and dedupes
-  through Redis (60s TTL) so multiple instances don't double-reply.
+- **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `low`
+  effort) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
+  server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
+  per-request — and dedupes through Redis (60s TTL) so multiple instances don't
+  double-reply.
 
 ## Patterns
 
