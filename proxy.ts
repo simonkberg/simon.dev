@@ -1,9 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { cookieOptions } from "@/lib/cookies";
 import { randomName } from "@/lib/randomName";
 import { decrypt, encrypt, UsernameSchema } from "@/lib/session";
-
-const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
@@ -14,13 +13,7 @@ export async function proxy(request: NextRequest) {
   response.cookies.set(
     "session",
     await encrypt(session ?? { username: UsernameSchema.parse(randomName()) }),
-    {
-      httpOnly: true,
-      secure: true,
-      maxAge: ONE_YEAR_SECONDS,
-      sameSite: "strict",
-      path: "/",
-    },
+    cookieOptions,
   );
 
   return response;
