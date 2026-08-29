@@ -269,8 +269,7 @@ export async function* createMessage(
 
     const result = createMessageResponseSchema.parse(await response.json());
 
-    // Checked before reading content - a refusal isn't guaranteed to come with
-    // empty content, and yielding both would post two contradictory replies.
+    // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
       log.warn("simon-bot response was refused");
       yield "yeah I'm not touching that one, sorry";
@@ -285,8 +284,6 @@ export async function* createMessage(
       }
     }
 
-    // Thinking shares MAX_TOKENS with the reply, so a truncated response is
-    // worth a log line - the partial text has already gone out.
     if (result.stop_reason === "max_tokens") {
       log.warn("simon-bot response hit the token limit");
     }
