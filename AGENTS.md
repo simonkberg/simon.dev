@@ -93,6 +93,15 @@ Key settings in `next.config.ts`:
 - `reactCompiler: true` — React Compiler (auto-memoization)
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
+- `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
+
+> **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: the URL and
+> the surrounding page update on a client navigation, but the statistics stay on whichever
+> period was first loaded. All six period links point at the same route with different
+> params, and under Partial Prefetching they share one App Shell, so the params-dependent
+> content does not re-resolve. Confirmed by bisect in #1997 — it is the only difference
+> between a broken and a working preview deploy. Note it does not reproduce in a local
+> `next build` + standalone server, only in the deployed Docker image.
 
 ### Typed Routes
 
@@ -209,8 +218,6 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.
->
-> `experimental.turbopackRustReactCompiler` (Next.js 16.3) unifies both on the native compiler and removes the Babel dependency.
 
 ### Best Practices
 
