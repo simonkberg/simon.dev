@@ -21,6 +21,15 @@ describe("ChatTip", () => {
     ).toBeInTheDocument();
   });
 
+  it("marks the info glyph with a codepoint Iosevka actually covers", () => {
+    const { container } = render(<ChatTip />);
+    const glyph = container.querySelector("[aria-hidden]");
+
+    // U+1F6C8 is absent from the font and would fall back to a system face.
+    expect(glyph).toHaveTextContent("\u24D8");
+    expect(container.textContent).not.toContain("\u{1F6C8}");
+  });
+
   it("does not submit the form it sits inside", () => {
     const onSubmit = vi.fn();
     render(

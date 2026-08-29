@@ -15,7 +15,7 @@ describe("ChatInput", () => {
     tipDismissed: false,
   };
 
-  const TIP_TEXT = "Tip: mention \u201Csimon bot\u201D to chat with a clanker.";
+  const TIP_TEXT = /mention .simon bot. to chat with a clanker/;
 
   afterEach(() => {
     vi.clearAllMocks();
