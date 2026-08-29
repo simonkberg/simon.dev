@@ -470,6 +470,10 @@ ul {
 
 .chat-input {
   flex: 0 0 auto;
+  /* The terminal's bottom spacing lives here rather than on .input or .tip,
+     because the tip is only rendered until it is dismissed and the spacing
+     has to survive it going away. */
+  padding-bottom: 0.625rem;
 
   > .wrapper {
     position: relative;
@@ -477,7 +481,7 @@ ul {
     &::before {
       content: ">";
       position: absolute;
-      top: calc(50% - (0.25rem / 2));
+      top: 50%;
       transform: translateY(-50%);
       font-weight: bold;
       color: var(--color-decorative);
@@ -488,7 +492,6 @@ ul {
       width: 100%;
       padding-left: 1.5ch;
       padding-right: 7ch;
-      margin-bottom: 0.25rem;
       background: transparent;
       border: 0;
       border-bottom: 1px solid transparent;
@@ -511,7 +514,7 @@ ul {
     /* Flush left, lining up with the prompt chevron and the chat messages
        rather than the input's text. Small enough to stay on one line down to
        a 360px viewport. */
-    margin: 0 0 0.625rem;
+    margin: 0.25rem 0 0;
     font-size: 0.65rem;
     color: var(--color-muted);
 
