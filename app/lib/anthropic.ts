@@ -51,6 +51,9 @@ const SYSTEM_PROMPT = md`
 
   Tool usage:
 
+  - if an answer depends on what was said in chat, Simon's coding stats, or
+    listening history, call the relevant tool instead of guessing or answering
+    from memory
   - when you need to look something up, consider sending a quick word first so
     they're not waiting in silence
   - keep any pre-tool message super brief, just a few words
