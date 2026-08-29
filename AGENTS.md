@@ -106,7 +106,7 @@ For optional catch-all routes like `[[...param]]`, use a trailing slash to link 
 
 ### Lint and Format Config
 
-Oxlint (`.oxlintrc.jsonc`) lints, Oxfmt (`.oxfmtrc.jsonc`) formats, and they never
+Oxlint (`oxlint.config.ts`) lints, Oxfmt (`oxfmt.config.ts`) formats, and they never
 overlap — no stylistic rules are enabled, and import sorting is Oxfmt's. Both configs are
 JSONC; the non-obvious choices are commented in place.
 

@@ -1,11 +1,12 @@
-{
-  "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "objectWrap": "collapse",
-  "printWidth": 80,
-  "sortImports": {
+import { defineConfig } from "oxfmt";
+
+export default defineConfig({
+  objectWrap: "collapse",
+  printWidth: 80,
+  sortImports: {
     // Without an explicit `side_effect` group, a bare `import "server-only"`
     // loses the blank line after it.
-    "groups": [
+    groups: [
       "side_effect",
       "builtin",
       "external",
@@ -15,9 +16,9 @@
       "unknown",
     ],
   },
-  "sortPackageJson": false,
-  "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"],
+  sortPackageJson: false,
+  ignorePatterns: ["iosevka-license.md", "pnpm-lock.yaml"],
   // Wraps the embedded Markdown in `app/lib/anthropic.ts`. Scoped, so real
   // `.md` files keep the default `preserve`.
-  "overrides": [{ "files": ["**/*.ts"], "options": { "proseWrap": "always" } }],
-}
+  overrides: [{ files: ["**/*.ts"], options: { proseWrap: "always" } }],
+});

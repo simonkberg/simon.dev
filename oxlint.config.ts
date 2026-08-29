@@ -1,6 +1,7 @@
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
+import { defineConfig } from "oxlint";
+
+export default defineConfig({
+  plugins: [
     "eslint",
     "typescript",
     "unicorn",
@@ -10,12 +11,12 @@
     "jsx-a11y",
     "import",
   ],
-  "categories": { "correctness": "error" },
-  "options": { "typeAware": true },
-  "env": { "browser": true, "node": true, "es2024": true },
-  "settings": { "react": { "version": "19" } },
+  categories: { correctness: "error" },
+  options: { typeAware: true },
+  env: { browser: true, node: true, es2024: true },
+  settings: { react: { version: "19" } },
   // Rules we want that oxlint files outside `correctness`.
-  "rules": {
+  rules: {
     "typescript/ban-ts-comment": "error",
     "typescript/no-empty-object-type": "error",
     "typescript/no-explicit-any": "error",
@@ -35,10 +36,10 @@
     "react/unsupported-syntax": "warn",
     "import/no-anonymous-default-export": "warn",
     // `Image` here is `next/image`.
-    "jsx-a11y/alt-text": ["error", { "elements": ["img"], "img": ["Image"] }],
+    "jsx-a11y/alt-text": ["error", { elements: ["img"], img: ["Image"] }],
     // `<output>` only takes phrasing content, so it can't replace the
     // `role="status"` on `.chat-replying-to`.
     "jsx-a11y/prefer-tag-over-role": "off",
   },
-  "ignorePatterns": [".next/**", ".worktrees/**", "coverage/**", "junit.xml"],
-}
+  ignorePatterns: [".next/**", ".worktrees/**", "coverage/**", "junit.xml"],
+});
