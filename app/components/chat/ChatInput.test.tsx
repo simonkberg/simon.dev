@@ -9,7 +9,13 @@ import { ChatInput } from "./ChatInput";
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 
 describe("ChatInput", () => {
-  const defaultReplyProps = { replyToId: null, setReplyToId: vi.fn() };
+  const defaultReplyProps = {
+    replyToId: null,
+    setReplyToId: vi.fn(),
+    hasPosted: false,
+  };
+
+  const TIP_TEXT = "Tip: mention \u201Csimon bot\u201D to chat with a clanker.";
 
   afterEach(() => {
     vi.clearAllMocks();
@@ -28,11 +34,13 @@ describe("ChatInput", () => {
   it("renders the simon-bot tip", () => {
     render(<ChatInput {...defaultReplyProps} />);
 
-    expect(
-      screen.getByText(
-        "Tip: mention \u201Csimon bot\u201D to chat with a clanker.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(TIP_TEXT)).toBeInTheDocument();
+  });
+
+  it("hides the simon-bot tip once the visitor has posted", () => {
+    render(<ChatInput {...defaultReplyProps} hasPosted />);
+
+    expect(screen.queryByText(TIP_TEXT)).not.toBeInTheDocument();
   });
 
   it("input is not disabled initially", () => {
@@ -199,7 +207,13 @@ describe("ChatInput", () => {
 
   describe("reply mode", () => {
     it("shows 'Write a reply...' placeholder when replying", () => {
-      render(<ChatInput replyToId="some-message-id" setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput
+          replyToId="some-message-id"
+          setReplyToId={vi.fn()}
+          hasPosted={false}
+        />,
+      );
       const input = screen.getByRole("textbox");
 
       expect(input).toHaveAttribute("placeholder", "Write a reply...");
@@ -207,13 +221,19 @@ describe("ChatInput", () => {
 
     it("focuses input when replyToId changes to non-null", () => {
       const { rerender } = render(
-        <ChatInput replyToId={null} setReplyToId={vi.fn()} />,
+        <ChatInput replyToId={null} setReplyToId={vi.fn()} hasPosted={false} />,
       );
 
       const input = screen.getByRole("textbox");
       expect(input).not.toHaveFocus();
 
-      rerender(<ChatInput replyToId="message-id" setReplyToId={vi.fn()} />);
+      rerender(
+        <ChatInput
+          replyToId="message-id"
+          setReplyToId={vi.fn()}
+          hasPosted={false}
+        />,
+      );
 
       expect(input).toHaveFocus();
     });
@@ -222,7 +242,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       const setReplyToId = vi.fn();
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+          hasPosted={false}
+        />,
+      );
 
       await user.keyboard("{Escape}");
 
@@ -233,7 +259,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       const setReplyToId = vi.fn();
 
-      render(<ChatInput replyToId={null} setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          replyToId={null}
+          setReplyToId={setReplyToId}
+          hasPosted={false}
+        />,
+      );
 
       await user.keyboard("{Escape}");
 
@@ -244,7 +276,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId="reply-target-id" setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput
+          replyToId="reply-target-id"
+          setReplyToId={vi.fn()}
+          hasPosted={false}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply text");
       await user.keyboard("{Enter}");
@@ -263,7 +301,9 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId={null} setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput replyToId={null} setReplyToId={vi.fn()} hasPosted={false} />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Normal message");
       await user.keyboard("{Enter}");
@@ -278,7 +318,13 @@ describe("ChatInput", () => {
       const setReplyToId = vi.fn();
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+          hasPosted={false}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply");
       await user.keyboard("{Enter}");
@@ -296,7 +342,13 @@ describe("ChatInput", () => {
         error: "Failed",
       });
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+          hasPosted={false}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply");
       await user.keyboard("{Enter}");
@@ -335,7 +387,11 @@ const getBuddyExpression = () => {
 };
 
 describe("CaretBuddy integration", () => {
-  const defaultReplyProps = { replyToId: null, setReplyToId: vi.fn() };
+  const defaultReplyProps = {
+    replyToId: null,
+    setReplyToId: vi.fn(),
+    hasPosted: false,
+  };
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

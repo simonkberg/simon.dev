@@ -12,6 +12,7 @@ import {
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
+import { setHasPosted } from "@/lib/hasPosted";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
@@ -49,6 +50,10 @@ vi.mock(import("@/lib/session"), () => ({
   getSession: vi.fn(() =>
     Promise.resolve({ username: "test-user" as Username }),
   ),
+}));
+vi.mock(import("@/lib/hasPosted"), () => ({
+  getHasPosted: vi.fn(),
+  setHasPosted: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock(import("@/lib/discord/api"));
 vi.mock(import("@/lib/redis"));
@@ -169,6 +174,43 @@ describe("postChatMessage", () => {
       ip: undefined,
       userAgent: "vitest",
     });
+  });
+
+  it("records the first post and refreshes so the tip disappears", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    mockRateLimitSuccess();
+    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
+    vi.mocked(setHasPosted).mockResolvedValue(true);
+    const formData = new FormData();
+    formData.set("text", "Hello!");
+
+    await postChatMessage(formData);
+
+    expect(setHasPosted).toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("does not refresh when the visitor had already posted", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    mockRateLimitSuccess();
+    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
+    vi.mocked(setHasPosted).mockResolvedValue(false);
+    const formData = new FormData();
+    formData.set("text", "Hello again!");
+
+    await postChatMessage(formData);
+
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("does not record a post that failed", async () => {
+    mockRateLimitExceeded(10000);
+    const formData = new FormData();
+    formData.set("text", "Hello!");
+
+    await postChatMessage(formData);
+
+    expect(setHasPosted).not.toHaveBeenCalled();
   });
 
   it("posts message to Discord and returns ok on success", async () => {

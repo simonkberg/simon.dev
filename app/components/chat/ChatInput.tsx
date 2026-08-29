@@ -18,9 +18,14 @@ import { ChatToast } from "./ChatToast";
 export interface ChatInputProps {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
+  hasPosted: boolean;
 }
 
-export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
+export const ChatInput = ({
+  replyToId,
+  setReplyToId,
+  hasPosted,
+}: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<PostChatMessageResult>({
     status: "initial",
@@ -106,9 +111,11 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             resultStatus={result.status}
           />
         </div>
-        <p className="tip">
-          Tip: mention &ldquo;simon bot&rdquo; to chat with a clanker.
-        </p>
+        {!hasPosted && (
+          <p className="tip">
+            Tip: mention &ldquo;simon bot&rdquo; to chat with a clanker.
+          </p>
+        )}
       </form>
     </>
   );

@@ -15,6 +15,7 @@ import { StatsList } from "@/components/StatsList";
 import { Subtitle } from "@/components/Subtitle";
 import { Terminal } from "@/components/Terminal";
 import { config } from "@/config";
+import { getHasPosted } from "@/lib/hasPosted";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -27,6 +28,7 @@ export default function RootPage() {
   const stats = getWakaTimeStats();
   const history = getChatHistory();
   const recentTracks = getRecentTracks();
+  const hasPosted = getHasPosted();
 
   return (
     <Page>
@@ -98,7 +100,7 @@ export default function RootPage() {
         </Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
-            <Chat history={history} />
+            <Chat history={history} hasPosted={hasPosted} />
           </Suspense>
         </Terminal>
       </section>

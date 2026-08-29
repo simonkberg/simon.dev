@@ -10,6 +10,7 @@ import {
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
+import { setHasPosted } from "@/lib/hasPosted";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
@@ -85,6 +86,11 @@ export async function postChatMessage(
     }
 
     const messageId = await postChannelMessage(text, username, replyToId);
+
+    // Only refreshes on the first message, when it actually drops the tip.
+    if (await setHasPosted()) {
+      refresh();
+    }
 
     log.info(
       { username, messageId, ip: request.ip, action: "postChatMessage" },

@@ -39,7 +39,12 @@ describe("Chat", () => {
     };
 
     await act(async () =>
-      render(<Chat history={Promise.resolve(errorResult)} />),
+      render(
+        <Chat
+          history={Promise.resolve(errorResult)}
+          hasPosted={Promise.resolve(false)}
+        />,
+      ),
     );
 
     expect(
@@ -54,7 +59,12 @@ describe("Chat", () => {
     };
 
     await act(async () =>
-      render(<Chat history={Promise.resolve(successResult)} />),
+      render(
+        <Chat
+          history={Promise.resolve(successResult)}
+          hasPosted={Promise.resolve(false)}
+        />,
+      ),
     );
 
     expect(screen.getByText("Hello world")).toBeInTheDocument();
@@ -70,7 +80,12 @@ describe("Chat", () => {
       };
 
       await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
+        render(
+          <Chat
+            history={Promise.resolve(successResult)}
+            hasPosted={Promise.resolve(false)}
+          />,
+        ),
       );
 
       expect(screen.queryByText("Replying to")).not.toBeInTheDocument();
@@ -97,7 +112,12 @@ describe("Chat", () => {
       };
 
       await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
+        render(
+          <Chat
+            history={Promise.resolve(successResult)}
+            hasPosted={Promise.resolve(false)}
+          />,
+        ),
       );
 
       const replyButtons = screen.getAllByRole("button", { name: "Reply" });
@@ -115,7 +135,12 @@ describe("Chat", () => {
       };
 
       await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
+        render(
+          <Chat
+            history={Promise.resolve(successResult)}
+            hasPosted={Promise.resolve(false)}
+          />,
+        ),
       );
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
@@ -137,7 +162,12 @@ describe("Chat", () => {
       };
 
       const { rerender } = await act(async () =>
-        render(<Chat history={Promise.resolve(initialResult)} />),
+        render(
+          <Chat
+            history={Promise.resolve(initialResult)}
+            hasPosted={Promise.resolve(false)}
+          />,
+        ),
       );
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
@@ -152,7 +182,12 @@ describe("Chat", () => {
       };
 
       await act(async () =>
-        rerender(<Chat history={Promise.resolve(updatedResult)} />),
+        rerender(
+          <Chat
+            history={Promise.resolve(updatedResult)}
+            hasPosted={Promise.resolve(false)}
+          />,
+        ),
       );
 
       // Reply preview should be hidden since the message no longer exists
