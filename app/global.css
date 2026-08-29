@@ -509,7 +509,9 @@ ul {
 
   > .tip {
     margin: 0 0 0.625rem;
-    padding-left: 1.5ch;
+    /* ch scales with font-size, so matching the input's 1.5ch indent at 1rem
+       takes 2ch at the tip's 0.75rem (1.5 / 0.75). */
+    padding-left: 2ch;
     font-size: 0.75rem;
     color: var(--color-muted);
   }
