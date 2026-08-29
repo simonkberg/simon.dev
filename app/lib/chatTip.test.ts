@@ -1,42 +1,42 @@
 import { cookies } from "next/headers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getChatTipDismissed, setChatTipDismissed } from "@/lib/chatTip";
+import { MockCookies } from "@/mocks/headers";
+
+import { getChatTipDismissed, setChatTipDismissed } from "./chatTip";
 
 vi.mock(import("server-only"), () => ({}));
+
 vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
-
-const mockCookieJar = (value?: string) => {
-  const set = vi.fn();
-
-  vi.mocked(cookies).mockResolvedValue({
-    get: vi.fn(() => (value === undefined ? undefined : { name: "x", value })),
-    set,
-  } as unknown as Awaited<ReturnType<typeof cookies>>);
-
-  return set;
-};
 
 describe("chatTip", () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
+
+  /** Returns the headers so tests can read back what was set. */
+  const mockCookies = (cookie?: string) => {
+    const headers = new Headers(cookie ? { cookie } : undefined);
+    vi.mocked(cookies).mockResolvedValue(new MockCookies(headers));
+
+    return headers;
+  };
 
   describe("getChatTipDismissed", () => {
     it("is true when the cookie is set", async () => {
-      mockCookieJar("true");
+      mockCookies("chatTipDismissed=true");
 
       await expect(getChatTipDismissed()).resolves.toBe(true);
     });
 
     it("is false when the cookie is absent", async () => {
-      mockCookieJar();
+      mockCookies();
 
       await expect(getChatTipDismissed()).resolves.toBe(false);
     });
 
     it("is false for any other cookie value", async () => {
-      mockCookieJar("nope");
+      mockCookies("chatTipDismissed=nope");
 
       await expect(getChatTipDismissed()).resolves.toBe(false);
     });
@@ -44,21 +44,21 @@ describe("chatTip", () => {
 
   describe("setChatTipDismissed", () => {
     it("writes an httpOnly cookie and reports the change", async () => {
-      const set = mockCookieJar();
+      const headers = mockCookies();
 
       await expect(setChatTipDismissed()).resolves.toBe(true);
-      expect(set).toHaveBeenCalledWith(
-        "chatTipDismissed",
-        "true",
-        expect.objectContaining({ httpOnly: true, path: "/" }),
-      );
+
+      const setCookie = headers.get("set-cookie");
+      expect(setCookie).toContain("chatTipDismissed=true");
+      expect(setCookie).toContain("HttpOnly");
+      expect(setCookie).toContain("Path=/");
     });
 
-    it("does nothing when already recorded", async () => {
-      const set = mockCookieJar("true");
+    it("does nothing when already dismissed", async () => {
+      const headers = mockCookies("chatTipDismissed=true");
 
       await expect(setChatTipDismissed()).resolves.toBe(false);
-      expect(set).not.toHaveBeenCalled();
+      expect(headers.get("set-cookie")).toBeNull();
     });
   });
 });
