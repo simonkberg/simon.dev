@@ -12,7 +12,7 @@ describe("ChatInput", () => {
   const defaultReplyProps = {
     replyToId: null,
     setReplyToId: vi.fn(),
-    hasPosted: false,
+    tipDismissed: false,
   };
 
   const TIP_TEXT = "Tip: mention \u201Csimon bot\u201D to chat with a clanker.";
@@ -37,8 +37,8 @@ describe("ChatInput", () => {
     expect(screen.getByText(TIP_TEXT)).toBeInTheDocument();
   });
 
-  it("hides the simon-bot tip once the visitor has posted", () => {
-    render(<ChatInput {...defaultReplyProps} hasPosted />);
+  it("hides the simon-bot tip once it has been dismissed", () => {
+    render(<ChatInput {...defaultReplyProps} tipDismissed />);
 
     expect(screen.queryByText(TIP_TEXT)).not.toBeInTheDocument();
   });
@@ -211,7 +211,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="some-message-id"
           setReplyToId={vi.fn()}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
       const input = screen.getByRole("textbox");
@@ -221,7 +221,11 @@ describe("ChatInput", () => {
 
     it("focuses input when replyToId changes to non-null", () => {
       const { rerender } = render(
-        <ChatInput replyToId={null} setReplyToId={vi.fn()} hasPosted={false} />,
+        <ChatInput
+          replyToId={null}
+          setReplyToId={vi.fn()}
+          tipDismissed={false}
+        />,
       );
 
       const input = screen.getByRole("textbox");
@@ -231,7 +235,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="message-id"
           setReplyToId={vi.fn()}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -246,7 +250,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="message-id"
           setReplyToId={setReplyToId}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -263,7 +267,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId={null}
           setReplyToId={setReplyToId}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -280,7 +284,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="reply-target-id"
           setReplyToId={vi.fn()}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -302,7 +306,11 @@ describe("ChatInput", () => {
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
       render(
-        <ChatInput replyToId={null} setReplyToId={vi.fn()} hasPosted={false} />,
+        <ChatInput
+          replyToId={null}
+          setReplyToId={vi.fn()}
+          tipDismissed={false}
+        />,
       );
 
       await user.type(screen.getByRole("textbox"), "Normal message");
@@ -322,7 +330,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="message-id"
           setReplyToId={setReplyToId}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -346,7 +354,7 @@ describe("ChatInput", () => {
         <ChatInput
           replyToId="message-id"
           setReplyToId={setReplyToId}
-          hasPosted={false}
+          tipDismissed={false}
         />,
       );
 
@@ -390,7 +398,7 @@ describe("CaretBuddy integration", () => {
   const defaultReplyProps = {
     replyToId: null,
     setReplyToId: vi.fn(),
-    hasPosted: false,
+    tipDismissed: false,
   };
 
   beforeEach(() => {

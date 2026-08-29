@@ -3,16 +3,17 @@ import { after } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  dismissChatTip,
   getChatHistory,
   postChatMessage,
   refreshChatHistory,
 } from "@/actions/chat";
+import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   getChannelMessages,
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
-import { setHasPosted } from "@/lib/hasPosted";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
@@ -51,9 +52,9 @@ vi.mock(import("@/lib/session"), () => ({
     Promise.resolve({ username: "test-user" as Username }),
   ),
 }));
-vi.mock(import("@/lib/hasPosted"), () => ({
-  getHasPosted: vi.fn(),
-  setHasPosted: vi.fn(() => Promise.resolve(true)),
+vi.mock(import("@/lib/chatTip"), () => ({
+  getChatTipDismissed: vi.fn(),
+  setChatTipDismissed: vi.fn(() => Promise.resolve(true)),
 }));
 vi.mock(import("@/lib/discord/api"));
 vi.mock(import("@/lib/redis"));
@@ -180,13 +181,13 @@ describe("postChatMessage", () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     mockRateLimitSuccess();
     vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    vi.mocked(setHasPosted).mockResolvedValue(true);
+    vi.mocked(setChatTipDismissed).mockResolvedValue(true);
     const formData = new FormData();
     formData.set("text", "Hello!");
 
     await postChatMessage(formData);
 
-    expect(setHasPosted).toHaveBeenCalled();
+    expect(setChatTipDismissed).toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
   });
 
@@ -194,7 +195,7 @@ describe("postChatMessage", () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     mockRateLimitSuccess();
     vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    vi.mocked(setHasPosted).mockResolvedValue(false);
+    vi.mocked(setChatTipDismissed).mockResolvedValue(false);
     const formData = new FormData();
     formData.set("text", "Hello again!");
 
@@ -210,7 +211,7 @@ describe("postChatMessage", () => {
 
     await postChatMessage(formData);
 
-    expect(setHasPosted).not.toHaveBeenCalled();
+    expect(setChatTipDismissed).not.toHaveBeenCalled();
   });
 
   it("posts message to Discord and returns ok on success", async () => {
@@ -289,5 +290,24 @@ describe("postChatMessage", () => {
     const result = await postChatMessage(formData);
 
     expect(result.status).toBe("error");
+  });
+});
+
+describe("dismissChatTip", () => {
+  it("dismisses the tip and refreshes", async () => {
+    vi.mocked(setChatTipDismissed).mockResolvedValue(true);
+
+    await dismissChatTip();
+
+    expect(setChatTipDismissed).toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("does not refresh when already dismissed", async () => {
+    vi.mocked(setChatTipDismissed).mockResolvedValue(false);
+
+    await dismissChatTip();
+
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

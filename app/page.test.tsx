@@ -9,7 +9,7 @@ import type { ChatProps } from "@/components/chat/Chat";
 import type { RecentTracksListProps } from "@/components/RecentTracksList";
 import type { StatsListProps } from "@/components/StatsList";
 import { config } from "@/config";
-import { getHasPosted } from "@/lib/hasPosted";
+import { getChatTipDismissed } from "@/lib/chatTip";
 
 import RootPage, { viewport } from "./page";
 
@@ -21,8 +21,8 @@ vi.mock(import("@/actions/chat"), () => ({
   ),
 }));
 
-vi.mock(import("@/lib/hasPosted"), () => ({
-  getHasPosted: vi.fn(() => Promise.resolve(false)),
+vi.mock(import("@/lib/chatTip"), () => ({
+  getChatTipDismissed: vi.fn(() => Promise.resolve(false)),
 }));
 
 vi.mock(import("@/actions/lastfm"), () => ({
@@ -39,9 +39,9 @@ vi.mock(import("@/actions/wakaTime"), () => ({
 
 // Mock components that use() their promise props to trigger Suspense
 vi.mock(import("@/components/chat/Chat"), () => ({
-  Chat: ({ history, hasPosted }: ChatProps) => {
+  Chat: ({ history, tipDismissed }: ChatProps) => {
     use(history);
-    use(hasPosted);
+    use(tipDismissed);
     return <div data-testid="chat" />;
   },
 }));
@@ -239,10 +239,10 @@ describe("RootPage", () => {
       expect(screen.getByRole("region", { name: /Chat/ })).toBeInTheDocument();
     });
 
-    it("should read whether the visitor has posted before", async () => {
+    it("should read whether the tip has been dismissed", async () => {
       await act(async () => render(<RootPage />));
 
-      expect(getHasPosted).toHaveBeenCalled();
+      expect(getChatTipDismissed).toHaveBeenCalled();
     });
 
     it("should show loader while chat history is loading", async () => {

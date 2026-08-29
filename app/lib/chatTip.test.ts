@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getHasPosted, setHasPosted } from "@/lib/hasPosted";
+import { getChatTipDismissed, setChatTipDismissed } from "@/lib/chatTip";
 
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
@@ -17,38 +17,38 @@ const mockCookieJar = (value?: string) => {
   return set;
 };
 
-describe("hasPosted", () => {
+describe("chatTip", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("getHasPosted", () => {
+  describe("getChatTipDismissed", () => {
     it("is true when the cookie is set", async () => {
       mockCookieJar("true");
 
-      await expect(getHasPosted()).resolves.toBe(true);
+      await expect(getChatTipDismissed()).resolves.toBe(true);
     });
 
     it("is false when the cookie is absent", async () => {
       mockCookieJar();
 
-      await expect(getHasPosted()).resolves.toBe(false);
+      await expect(getChatTipDismissed()).resolves.toBe(false);
     });
 
     it("is false for any other cookie value", async () => {
       mockCookieJar("nope");
 
-      await expect(getHasPosted()).resolves.toBe(false);
+      await expect(getChatTipDismissed()).resolves.toBe(false);
     });
   });
 
-  describe("setHasPosted", () => {
+  describe("setChatTipDismissed", () => {
     it("writes an httpOnly cookie and reports the change", async () => {
       const set = mockCookieJar();
 
-      await expect(setHasPosted()).resolves.toBe(true);
+      await expect(setChatTipDismissed()).resolves.toBe(true);
       expect(set).toHaveBeenCalledWith(
-        "hasPosted",
+        "chatTipDismissed",
         "true",
         expect.objectContaining({ httpOnly: true, path: "/" }),
       );
@@ -57,7 +57,7 @@ describe("hasPosted", () => {
     it("does nothing when already recorded", async () => {
       const set = mockCookieJar("true");
 
-      await expect(setHasPosted()).resolves.toBe(false);
+      await expect(setChatTipDismissed()).resolves.toBe(false);
       expect(set).not.toHaveBeenCalled();
     });
   });

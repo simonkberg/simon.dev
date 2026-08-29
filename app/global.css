@@ -517,6 +517,20 @@ ul {
     padding-left: calc(1.5ch * (1rem / var(--tip-font-size)));
     font-size: var(--tip-font-size);
     color: var(--color-muted);
+
+    > .clear {
+      color: inherit;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--terminal--content-color);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
   }
 }
 

@@ -2,21 +2,24 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-const COOKIE_NAME = "hasPosted";
+const COOKIE_NAME = "chatTipDismissed";
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-/** Whether this visitor has sent a chat message before. */
-export async function getHasPosted() {
+/**
+ * Whether the "mention simon bot" tip has been dismissed, either by sending a
+ * message or by clicking it away.
+ */
+export async function getChatTipDismissed() {
   const cookieJar = await cookies();
 
   return cookieJar.get(COOKIE_NAME)?.value === "true";
 }
 
 /**
- * Records that the visitor has posted. Returns false when it was already
- * recorded, so callers can skip refreshing a tree that would render the same.
+ * Dismisses the tip. Returns false when it was already dismissed, so callers
+ * can skip refreshing a tree that would render the same.
  */
-export async function setHasPosted() {
+export async function setChatTipDismissed() {
   const cookieJar = await cookies();
 
   if (cookieJar.get(COOKIE_NAME)?.value === "true") {

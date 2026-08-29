@@ -13,18 +13,19 @@ import { requestFormReset } from "react-dom";
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
 import { CaretBuddy } from "./CaretBuddy";
+import { ChatTip } from "./ChatTip";
 import { ChatToast } from "./ChatToast";
 
 export interface ChatInputProps {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
-  hasPosted: boolean;
+  tipDismissed: boolean;
 }
 
 export const ChatInput = ({
   replyToId,
   setReplyToId,
-  hasPosted,
+  tipDismissed,
 }: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<PostChatMessageResult>({
@@ -111,11 +112,7 @@ export const ChatInput = ({
             resultStatus={result.status}
           />
         </div>
-        {!hasPosted && (
-          <p className="tip">
-            Tip: mention &ldquo;simon bot&rdquo; to chat with a clanker.
-          </p>
-        )}
+        {!tipDismissed && <ChatTip />}
       </form>
     </>
   );

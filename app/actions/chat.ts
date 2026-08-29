@@ -5,12 +5,12 @@ import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   getChannelMessages,
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
-import { setHasPosted } from "@/lib/hasPosted";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
@@ -88,7 +88,7 @@ export async function postChatMessage(
     const messageId = await postChannelMessage(text, username, replyToId);
 
     // Only refreshes on the first message, when it actually drops the tip.
-    if (await setHasPosted()) {
+    if (await setChatTipDismissed()) {
       refresh();
     }
 
@@ -101,5 +101,11 @@ export async function postChatMessage(
   } catch (err) {
     log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };
+  }
+}
+
+export async function dismissChatTip() {
+  if (await setChatTipDismissed()) {
+    refresh();
   }
 }

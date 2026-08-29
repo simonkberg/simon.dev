@@ -42,7 +42,7 @@ describe("Chat", () => {
       render(
         <Chat
           history={Promise.resolve(errorResult)}
-          hasPosted={Promise.resolve(false)}
+          tipDismissed={Promise.resolve(false)}
         />,
       ),
     );
@@ -62,7 +62,7 @@ describe("Chat", () => {
       render(
         <Chat
           history={Promise.resolve(successResult)}
-          hasPosted={Promise.resolve(false)}
+          tipDismissed={Promise.resolve(false)}
         />,
       ),
     );
@@ -83,7 +83,7 @@ describe("Chat", () => {
         render(
           <Chat
             history={Promise.resolve(successResult)}
-            hasPosted={Promise.resolve(false)}
+            tipDismissed={Promise.resolve(false)}
           />,
         ),
       );
@@ -115,7 +115,7 @@ describe("Chat", () => {
         render(
           <Chat
             history={Promise.resolve(successResult)}
-            hasPosted={Promise.resolve(false)}
+            tipDismissed={Promise.resolve(false)}
           />,
         ),
       );
@@ -138,7 +138,7 @@ describe("Chat", () => {
         render(
           <Chat
             history={Promise.resolve(successResult)}
-            hasPosted={Promise.resolve(false)}
+            tipDismissed={Promise.resolve(false)}
           />,
         ),
       );
@@ -165,7 +165,7 @@ describe("Chat", () => {
         render(
           <Chat
             history={Promise.resolve(initialResult)}
-            hasPosted={Promise.resolve(false)}
+            tipDismissed={Promise.resolve(false)}
           />,
         ),
       );
@@ -185,7 +185,7 @@ describe("Chat", () => {
         rerender(
           <Chat
             history={Promise.resolve(updatedResult)}
-            hasPosted={Promise.resolve(false)}
+            tipDismissed={Promise.resolve(false)}
           />,
         ),
       );
