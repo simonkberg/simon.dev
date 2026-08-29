@@ -106,6 +106,9 @@ export const ChatInput = ({ replyToId, setReplyToId }: ChatInputProps) => {
             resultStatus={result.status}
           />
         </div>
+        <p className="tip">
+          Tip: mention &ldquo;simon bot&rdquo; if you wanna chat with a clanker.
+        </p>
       </form>
     </>
   );

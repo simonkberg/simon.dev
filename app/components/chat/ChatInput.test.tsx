@@ -25,6 +25,16 @@ describe("ChatInput", () => {
     expect(input).toHaveAttribute("placeholder", "Write a message...");
   });
 
+  it("renders the simon-bot tip", () => {
+    render(<ChatInput {...defaultReplyProps} />);
+
+    expect(
+      screen.getByText(
+        "Tip: mention \u201Csimon bot\u201D if you wanna chat with a clanker.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("input is not disabled initially", () => {
     render(<ChatInput {...defaultReplyProps} />);
     const input = screen.getByRole("textbox");
