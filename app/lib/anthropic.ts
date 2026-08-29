@@ -270,18 +270,20 @@ export async function* createMessage(
 
     const result = createMessageResponseSchema.parse(await response.json());
 
+    // Checked before reading content - a refusal isn't guaranteed to come with
+    // empty content, and yielding both would post two contradictory replies.
+    if (result.stop_reason === "refusal") {
+      log.warn("simon-bot response was refused");
+      yield "yeah I'm not touching that one, sorry";
+      return;
+    }
+
     // Log and yield text blocks
     for (const block of result.content) {
       if (block.type === "text") {
         log.info({ text: block.text }, "simon-bot response");
         yield block.text;
       }
-    }
-
-    if (result.stop_reason === "refusal") {
-      log.warn("simon-bot response was refused");
-      yield "yeah I'm not touching that one, sorry";
-      return;
     }
 
     // If not a tool use, we're done

@@ -253,6 +253,27 @@ describe("createMessage", () => {
     expect(warn).toHaveBeenCalledWith("simon-bot response was refused");
   });
 
+  it("should yield only the fallback when a refusal carries text", async () => {
+    vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [{ type: "text", text: "here's how you do it" }],
+          stop_reason: "refusal",
+        }),
+      ),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
+    );
+
+    expect(responses).toEqual(["yeah I'm not touching that one, sorry"]);
+  });
+
   it("should preserve all content blocks in assistant message history", async () => {
     let callCount = 0;
 
