@@ -9,7 +9,11 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   turbopack: { root: import.meta.dirname },
   typedRoutes: true,
-  experimental: { globalNotFound: true, turbopackRustReactCompiler: true },
+  experimental: {
+    globalNotFound: true,
+    turbopackRustReactCompiler: true,
+    useTypeScriptCli: false,
+  },
 };
 
 export default nextConfig;

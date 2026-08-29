@@ -94,6 +94,7 @@ Key settings in `next.config.ts`:
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
 - `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
+- `experimental: { useTypeScriptCli: false }` — type check through the TS 6 compiler API (see [TypeScript 7 and 6 side by side](#typescript-7-and-6-side-by-side))
 
 > **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: on a client
 > navigation the URL updates but the statistics stay on the period first loaded. All six
@@ -228,6 +229,10 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 ## TypeScript
 
 Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromIndexSignature`. Always use optional chaining when accessing arrays/objects.
+
+### TypeScript 7 and 6 side by side
+
+TS 7 (native) ships a `tsc` CLI but no JS compiler API until 7.1, and typescript-eslint refuses to load without one. So `package.json` aliases both: `typescript` → `@typescript/typescript6` (what tools import), `@typescript/native` → `typescript@7` (the `tsc` behind `pnpm lint`). Neither is a mistake — don't "fix" them. The shim declares no `tsc` bin, so `experimental.useTypeScriptCli: false` is required; without it `next build` and `next typegen` fail to resolve one. Collapse both entries back into a plain `typescript` once 7.1 ships the API.
 
 ## Non-Obvious Patterns
 
