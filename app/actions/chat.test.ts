@@ -52,10 +52,7 @@ vi.mock(import("@/lib/session"), () => ({
     Promise.resolve({ username: "test-user" as Username }),
   ),
 }));
-vi.mock(import("@/lib/chatTip"), () => ({
-  getChatTipDismissed: vi.fn(),
-  setChatTipDismissed: vi.fn(() => Promise.resolve(true)),
-}));
+vi.mock(import("@/lib/chatTip"), () => ({ setChatTipDismissed: vi.fn() }));
 vi.mock(import("@/lib/discord/api"));
 vi.mock(import("@/lib/redis"));
 

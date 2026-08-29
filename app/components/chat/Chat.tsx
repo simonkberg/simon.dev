@@ -9,6 +9,7 @@ import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
 import { ChatInput } from "./ChatInput";
+import { ChatTip } from "./ChatTip";
 
 const findMessageById = (messages: Message[], id: string): Message | null => {
   for (const message of messages) {
@@ -67,11 +68,9 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
           </button>
         </div>
       )}
-      <ChatInput
-        replyToId={replyToId}
-        setReplyToId={setReplyToId}
-        tipDismissed={dismissed}
-      />
+      <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
+        {!dismissed && <ChatTip />}
+      </ChatInput>
     </>
   );
 };

@@ -21,30 +21,16 @@ describe("ChatTip", () => {
     ).toBeInTheDocument();
   });
 
-  it("marks the info glyph with a codepoint Iosevka actually covers", () => {
+  it("uses an info glyph the font actually covers", () => {
     const { container } = render(<ChatTip />);
-    const glyph = container.querySelector("[aria-hidden]");
 
-    // U+1F6C8 is absent from the font and would fall back to a system face.
-    expect(glyph).toHaveTextContent("\u24D8");
-    expect(container.textContent).not.toContain("\u{1F6C8}");
-  });
-
-  it("does not submit the form it sits inside", () => {
-    const onSubmit = vi.fn();
-    render(
-      <form onSubmit={onSubmit}>
-        <ChatTip />
-      </form>,
-    );
-
-    expect(screen.getByRole("button", { name: "Dismiss tip" })).toHaveAttribute(
-      "type",
-      "button",
+    // U+1F6C8 is absent from Iosevka and would fall back to a system face.
+    expect(container.querySelector("[aria-hidden]")).toHaveTextContent(
+      "\u24D8",
     );
   });
 
-  it("dismisses the tip when clicked", async () => {
+  it("dismisses the tip without submitting the form it sits inside", async () => {
     const user = userEvent.setup({ delay: null });
     const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
 

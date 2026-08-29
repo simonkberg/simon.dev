@@ -54,6 +54,13 @@ export async function refreshChatHistory() {
   refresh();
 }
 
+/** Refreshes only when the cookie actually changed, i.e. the first time. */
+export async function dismissChatTip() {
+  if (await setChatTipDismissed()) {
+    refresh();
+  }
+}
+
 export type PostChatMessageResult =
   { status: "initial" } | { status: "ok" } | { status: "error"; error: string };
 
@@ -87,10 +94,7 @@ export async function postChatMessage(
 
     const messageId = await postChannelMessage(text, username, replyToId);
 
-    // Only refreshes on the first message, when it actually drops the tip.
-    if (await setChatTipDismissed()) {
-      refresh();
-    }
+    await dismissChatTip();
 
     log.info(
       { username, messageId, ip: request.ip, action: "postChatMessage" },
@@ -101,11 +105,5 @@ export async function postChatMessage(
   } catch (err) {
     log.error({ err, action: "postChatMessage" }, "Error posting chat message");
     return { status: "error", error: "Failed to post chat message" };
-  }
-}
-
-export async function dismissChatTip() {
-  if (await setChatTipDismissed()) {
-    refresh();
   }
 }

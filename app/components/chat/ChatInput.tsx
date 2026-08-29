@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   FormEvent,
+  type PropsWithChildren,
   useEffect,
   useRef,
   useState,
@@ -13,19 +14,17 @@ import { requestFormReset } from "react-dom";
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 
 import { CaretBuddy } from "./CaretBuddy";
-import { ChatTip } from "./ChatTip";
 import { ChatToast } from "./ChatToast";
 
-export interface ChatInputProps {
+export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
-  tipDismissed: boolean;
 }
 
 export const ChatInput = ({
   replyToId,
   setReplyToId,
-  tipDismissed,
+  children,
 }: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<PostChatMessageResult>({
@@ -112,7 +111,7 @@ export const ChatInput = ({
             resultStatus={result.status}
           />
         </div>
-        {!tipDismissed && <ChatTip />}
+        {children}
       </form>
     </>
   );

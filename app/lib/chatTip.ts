@@ -20,11 +20,11 @@ export async function getChatTipDismissed() {
  * can skip refreshing a tree that would render the same.
  */
 export async function setChatTipDismissed() {
-  const cookieJar = await cookies();
-
-  if (cookieJar.get(COOKIE_NAME)?.value === "true") {
+  if (await getChatTipDismissed()) {
     return false;
   }
+
+  const cookieJar = await cookies();
 
   cookieJar.set(COOKIE_NAME, "true", {
     httpOnly: true,
