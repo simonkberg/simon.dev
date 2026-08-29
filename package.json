@@ -55,7 +55,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "@vitest/ui": "4.1.10",
     "babel-plugin-react-compiler": "1.0.0",
-    "concurrently": "10.0.4",
+    "concurrently": "10.0.5",
     "eslint": "10.8.0",
     "eslint-config-next": "16.2.12",
     "eslint-config-prettier": "10.1.8",
