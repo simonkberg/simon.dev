@@ -208,9 +208,9 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 - **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
-> The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js still runs the compiler through `babel-plugin-react-compiler` (`reactCompiler: true` in `next.config.ts`) — the two are configured independently, so keep both dependencies.
+> The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.
 >
-> `experimental.turbopackRustReactCompiler` (Next.js 16.3) would unify both on the native compiler and remove the Babel dependency. It was enabled and then reverted in #1997 while investigating stale content on the listening page — don't re-enable it without verifying client-side navigation between periods in a production build.
+> `experimental.turbopackRustReactCompiler` (Next.js 16.3) unifies both on the native compiler and removes the Babel dependency.
 
 ### Best Practices
 
