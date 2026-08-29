@@ -247,6 +247,16 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 Components use React's recommended [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders) pattern to adjust state based on changing props (e.g. `ChatToast`, `CaretBuddy`, `RelativeTime`). This is NOT an anti-pattern — do not suggest `useEffect` or `useMemo` as replacements.
 
+### Markdown Rendering
+
+Discord message content is stored and returned as **raw markdown** — `getChannelMessages()` does not pre-render it. `app/components/Markdown.tsx` parses it with `SimpleMarkdown.defaultInlineParse()` and walks the AST itself to emit React elements.
+
+Do not replace that walk with simple-markdown's own React output (`defaultReactOutput`, `markdownToReact`, `reactFor`). It hand-rolls elements as `{ $$typeof: Symbol.for("react.element"), … }`, and React 19 renamed that brand to `react.transitional.element`, so those objects throw "Objects are not valid as a React child". This is still true on the latest release (3.0.1) and on upstream `main`.
+
+The package is pinned to 2.2.3 because 3.x removed the html output. Only the parser is used, so the pin is not blocking — but 3.x is not a drop-in upgrade until upstream fixes element creation.
+
+`sanitizeUrl()` must stay applied to every `link`/`image` target; it is what strips `javascript:`, `vbscript:` and `data:` URLs.
+
 ## Maintaining This Document
 
 When making changes that affect documented patterns, architecture, commands, or conventions, update this file accordingly. Examples:

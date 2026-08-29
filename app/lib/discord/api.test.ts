@@ -70,7 +70,7 @@ describe("getChannelMessages", () => {
     ]);
   });
 
-  it("should parse markdown to HTML in content", async () => {
+  it("should leave markdown in content untouched", async () => {
     server.use(
       http.get(`${DISCORD_BASE_URL}/channels/:channelId/messages`, () =>
         HttpResponse.json([
@@ -88,9 +88,7 @@ describe("getChannelMessages", () => {
 
     const messages = await getChannelMessages();
 
-    expect(messages).toMatchObject([
-      { content: "<strong>Bold</strong> and <em>italic</em>" },
-    ]);
+    expect(messages).toMatchObject([{ content: "**Bold** and *italic*" }]);
   });
 
   it("should not parse username prefix from non-bot messages", async () => {
@@ -124,8 +122,7 @@ describe("getChannelMessages", () => {
     expect(messages).toMatchObject([
       {
         id: "1",
-        content:
-          'the source is here: <a href="https://github.com/example/repo">https://github.com/example/repo</a>',
+        content: "the source is here: https://github.com/example/repo",
         user: { name: "simon" },
       },
     ]);
