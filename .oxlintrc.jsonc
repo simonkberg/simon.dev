@@ -8,7 +8,7 @@
     "react",
     "nextjs",
     "jsx-a11y",
-    "import"
+    "import",
   ],
   "categories": { "correctness": "error" },
   "options": { "typeAware": true },
@@ -38,7 +38,7 @@
     "jsx-a11y/alt-text": ["error", { "elements": ["img"], "img": ["Image"] }],
     // `<output>` only takes phrasing content, so it can't replace the
     // `role="status"` on `.chat-replying-to`.
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
   },
-  "ignorePatterns": [".next/**", ".worktrees/**", "coverage/**", "junit.xml"]
+  "ignorePatterns": [".next/**", ".worktrees/**", "coverage/**", "junit.xml"],
 }

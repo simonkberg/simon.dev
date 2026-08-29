@@ -12,12 +12,12 @@
       ["internal", "subpath"],
       ["parent", "sibling", "index"],
       "style",
-      "unknown"
-    ]
+      "unknown",
+    ],
   },
   "sortPackageJson": false,
   "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"],
   // Wraps the embedded Markdown in `app/lib/anthropic.ts`. Scoped, so real
   // `.md` files keep the default `preserve`.
-  "overrides": [{ "files": ["**/*.ts"], "options": { "proseWrap": "always" } }]
+  "overrides": [{ "files": ["**/*.ts"], "options": { "proseWrap": "always" } }],
 }
