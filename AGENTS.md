@@ -156,7 +156,7 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ### Anthropic Integration (simon-bot)
 
-- `app/lib/anthropic.ts`: Claude Haiku 4.5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, message search, WakaTime, Last.fm)
+- `app/lib/anthropic.ts`: Claude Sonnet 5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, message search, WakaTime, Last.fm)
 - `app/lib/discord/bot.ts`: Bot logic — triggered by "simon-bot" mention (regex: `/\bsimon[- ]?bot\b/i`)
 - Started at server boot via `instrumentation.ts` → `startBotSubscription()` (long-lived Gateway WebSocket subscription, not per-request)
 - 5-second timeout per API call, Redis-based message deduplication (60s TTL) across instances

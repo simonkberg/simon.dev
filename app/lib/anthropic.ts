@@ -18,7 +18,7 @@ import { log } from "@/lib/log";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-haiku-4-5" as const;
+const MODEL = "claude-sonnet-5" as const;
 const MAX_TOKENS = 500;
 const MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
@@ -74,7 +74,13 @@ const contentBlockSchema = z.discriminatedUnion("type", [
 
 const createMessageResponseSchema = z.object({
   content: z.array(contentBlockSchema),
-  stop_reason: z.enum(["end_turn", "tool_use", "max_tokens", "stop_sequence"]),
+  stop_reason: z.enum([
+    "end_turn",
+    "tool_use",
+    "max_tokens",
+    "stop_sequence",
+    "refusal",
+  ]),
 });
 
 // Tool input schemas
@@ -245,6 +251,10 @@ export async function* createMessage(
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
+        // Sonnet 5 thinks adaptively unless told not to, and its thinking
+        // tokens come out of MAX_TOKENS - which is far too small a budget to
+        // share. One-sentence replies don't need it.
+        thinking: { type: "disabled" },
         system: SYSTEM_PROMPT,
         messages,
         tools: TOOLS,
@@ -266,6 +276,12 @@ export async function* createMessage(
         log.info({ text: block.text }, "simon-bot response");
         yield block.text;
       }
+    }
+
+    if (result.stop_reason === "refusal") {
+      log.warn("simon-bot response was refused");
+      yield "yeah I'm not touching that one, sorry";
+      return;
     }
 
     // If not a tool use, we're done

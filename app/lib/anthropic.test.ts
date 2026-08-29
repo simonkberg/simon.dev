@@ -61,7 +61,8 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         expect(await request.json()).toMatchObject({
-          model: "claude-haiku-4-5",
+          model: "claude-sonnet-5",
+          thinking: { type: "disabled" },
           max_tokens: 500,
           system: expect.stringContaining("simon-bot"),
           messages: [
@@ -231,6 +232,25 @@ describe("createMessage", () => {
       ]),
     );
     expect(responses).toEqual([]);
+  });
+
+  it("should handle a refused response", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({ content: [], stop_reason: "refusal" }),
+      ),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
+    );
+
+    expect(responses).toEqual(["yeah I'm not touching that one, sorry"]);
+    expect(warn).toHaveBeenCalledWith("simon-bot response was refused");
   });
 
   it("should preserve all content blocks in assistant message history", async () => {
