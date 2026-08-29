@@ -54,11 +54,8 @@ export async function refreshChatHistory() {
   refresh();
 }
 
-/** Refreshes only when the cookie actually changed, i.e. the first time. */
 export async function dismissChatTip() {
-  if (await setChatTipDismissed()) {
-    refresh();
-  }
+  await setChatTipDismissed();
 }
 
 export type PostChatMessageResult =

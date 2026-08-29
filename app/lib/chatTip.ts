@@ -15,13 +15,10 @@ export async function getChatTipDismissed() {
   return cookieJar.get(COOKIE_NAME)?.value === "true";
 }
 
-/**
- * Dismisses the tip. Returns false when it was already dismissed, so callers
- * can skip refreshing a tree that would render the same.
- */
+/** Dismisses the tip, leaving an already-dismissed cookie untouched. */
 export async function setChatTipDismissed() {
   if (await getChatTipDismissed()) {
-    return false;
+    return;
   }
 
   const cookieJar = await cookies();
@@ -33,6 +30,4 @@ export async function setChatTipDismissed() {
     sameSite: "strict",
     path: "/",
   });
-
-  return true;
 }

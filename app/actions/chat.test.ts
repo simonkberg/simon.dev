@@ -174,31 +174,16 @@ describe("postChatMessage", () => {
     });
   });
 
-  it("records the first post and refreshes so the tip disappears", async () => {
+  it("dismisses the tip on a successful post", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     mockRateLimitSuccess();
     vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    vi.mocked(setChatTipDismissed).mockResolvedValue(true);
     const formData = new FormData();
     formData.set("text", "Hello!");
 
     await postChatMessage(formData);
 
     expect(setChatTipDismissed).toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalled();
-  });
-
-  it("does not refresh when the visitor had already posted", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    mockRateLimitSuccess();
-    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    vi.mocked(setChatTipDismissed).mockResolvedValue(false);
-    const formData = new FormData();
-    formData.set("text", "Hello again!");
-
-    await postChatMessage(formData);
-
-    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("does not record a post that failed", async () => {
@@ -291,20 +276,9 @@ describe("postChatMessage", () => {
 });
 
 describe("dismissChatTip", () => {
-  it("dismisses the tip and refreshes", async () => {
-    vi.mocked(setChatTipDismissed).mockResolvedValue(true);
-
+  it("dismisses the tip", async () => {
     await dismissChatTip();
 
     expect(setChatTipDismissed).toHaveBeenCalled();
-    expect(refresh).toHaveBeenCalled();
-  });
-
-  it("does not refresh when already dismissed", async () => {
-    vi.mocked(setChatTipDismissed).mockResolvedValue(false);
-
-    await dismissChatTip();
-
-    expect(refresh).not.toHaveBeenCalled();
   });
 });

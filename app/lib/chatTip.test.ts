@@ -43,10 +43,10 @@ describe("chatTip", () => {
   });
 
   describe("setChatTipDismissed", () => {
-    it("writes an httpOnly cookie and reports the change", async () => {
+    it("writes an httpOnly cookie", async () => {
       const headers = mockCookies();
 
-      await expect(setChatTipDismissed()).resolves.toBe(true);
+      await setChatTipDismissed();
 
       const setCookie = headers.get("set-cookie");
       expect(setCookie).toContain("chatTipDismissed=true");
@@ -54,10 +54,11 @@ describe("chatTip", () => {
       expect(setCookie).toContain("Path=/");
     });
 
-    it("does nothing when already dismissed", async () => {
+    it("does not rewrite an already-dismissed cookie", async () => {
       const headers = mockCookies("chatTipDismissed=true");
 
-      await expect(setChatTipDismissed()).resolves.toBe(false);
+      await setChatTipDismissed();
+
       expect(headers.get("set-cookie")).toBeNull();
     });
   });
