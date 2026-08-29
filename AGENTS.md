@@ -53,26 +53,7 @@ BuildKit cache mounts are used for pnpm store and Next.js build cache. Build arg
 
 ## Directory Structure
 
-```
-app/                          # Next.js App Router (all source code)
-├── actions/                  # Server actions (chat, WakaTime, Last.fm)
-├── api/chat/sse/             # SSE endpoint for real-time chat updates
-├── assets/                   # Static assets (fonts, images)
-├── components/               # Shared React components (with co-located tests)
-├── config.ts                 # Site metadata, links, external usernames
-├── health/                   # Health check endpoint for monitoring
-├── lib/                      # Utility libraries and core logic
-│   └── discord/              # Discord API, Gateway, bot, and shared schemas
-├── listening/[[...period]]/  # Listening stats page (optional catch-all)
-│   └── components/           # Route-specific components
-├── layout.tsx                # Root layout
-├── page.tsx                  # Home page
-├── global-error.tsx          # Global error boundary
-└── global-not-found.tsx      # Global 404 page
-
-instrumentation.ts            # Server startup hooks (bot subscription)
-mocks/                        # Test mocks (MSW handlers, env vars, cookies)
-```
+All source lives in `app/` (App Router); test mocks in `mocks/`.
 
 **Convention:** Route-specific components live in `{route}/components/` rather than `app/components/`.
 
@@ -134,53 +115,31 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ## Architecture
 
-### Discord Integration
+Integrations live in `app/lib/` — Discord (REST + Gateway WebSocket, streamed to clients
+from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious parts:
 
-- **REST API** (`app/lib/discord/api.ts`): Discord API v10 for reading/posting messages
-- **Gateway** (`app/lib/discord/gateway.ts`): WebSocket for real-time notifications with auto-reconnect and heartbeat
-- **SSE** (`app/api/chat/sse/route.ts`): Streams chat updates to clients
-- DataLoader with LRU cache (100 entries) batches user info requests
-- Rate limit "gate" system prevents retry storms when Discord returns 429s
-- Messages from site use "username: content" prefix format for attribution
-
-### WakaTime Integration
-
-- `app/lib/wakaTime.ts`: Fetches coding stats from public share URL (no API key)
-- 3-second timeout, period filtering (`last_7_days`, `last_30_days`, `last_year`, `all_time`)
-
-### Last.fm Integration
-
-- `app/lib/lastfm.ts`: Wraps Last.fm Web Services API
-- Methods: `user.getRecentTracks`, `user.getTopTracks`, `user.getTopArtists`, `user.getTopAlbums`
-- 10-second timeout, period filtering (`7day`, `1month`, `3month`, `6month`, `12month`, `overall`)
-
-### Anthropic Integration (simon-bot)
-
-- `app/lib/anthropic.ts`: Claude Haiku 4.5 via raw `fetch` (no SDK) — async generator yielding text with tool use loop (chat history, message search, WakaTime, Last.fm)
-- `app/lib/discord/bot.ts`: Bot logic — triggered by "simon-bot" mention (regex: `/\bsimon[- ]?bot\b/i`)
-- Started at server boot via `instrumentation.ts` → `startBotSubscription()` (long-lived Gateway WebSocket subscription, not per-request)
-- 5-second timeout per API call, Redis-based message deduplication (60s TTL) across instances
-- Responses posted as threaded Discord replies
+- **Discord:** a DataLoader with a 100-entry LRU batches user lookups, and a rate-limit
+  "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
+  `username: content` prefix for attribution.
+- **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
+- **simon-bot:** `app/lib/anthropic.ts` calls the API with raw `fetch`, no SDK, and is
+  triggered by a "simon-bot" mention. It starts once at server boot from
+  `instrumentation.ts` — one long-lived Gateway subscription, not per-request — and dedupes
+  through Redis (60s TTL) so multiple instances don't double-reply.
 
 ## Patterns
 
 ### Comments
 
-**Don't write comments by default.** Well-named code explains itself; a comment that
-restates it goes stale and earns nothing. If a block needs prose to be followed, that is
-usually a signal to extract a function or rename a variable instead.
-
-The bar for keeping one: it explains _why_, not _what_ — a workaround, a non-obvious
-constraint, a deliberate deviation someone would otherwise "fix". When that bar is met,
-write one short line and move on.
+**Don't write comments by default.** A comment that restates the code goes stale and earns
+nothing; if a block needs prose to follow, extract a function or rename a variable instead.
+Keep one only when it explains _why_ — a workaround, a non-obvious constraint, a deliberate
+deviation someone would otherwise "fix". One short line.
 
 ### Server Actions
 
-All in `app/actions/`, marked with `"use server"`. Return discriminated unions:
-
-```typescript
-type Result = { status: "ok"; data: T } | { status: "error"; error: string };
-```
+All in `app/actions/`, marked `"use server"`, returning a discriminated union on `status`
+(`"ok"` with `data`, `"error"` with `error`).
 
 ### Caching with `"use cache"`
 
@@ -204,19 +163,8 @@ Use `"minutes"` for frequently-changing data (recent tracks), `"hours"` for aggr
 
 ### Promise Props with `use()` Hook
 
-Components accept `Promise<T>` props and unwrap with `use()`. Always wrap in `<Suspense>`:
-
-```tsx
-<Suspense fallback={<Loader />}>
-    <DataTable data={fetchData()} />
-</Suspense>;
-
-// Component
-const DataTable = ({ data }: { data: Promise<Data> }) => {
-    const result = use(data);
-    return <table>...</table>;
-};
-```
+Components take `Promise<T>` props and unwrap them with `use()`. Always wrap the call site
+in `<Suspense>`.
 
 ### Page Metadata
 
