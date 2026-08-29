@@ -37,9 +37,6 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 
 > **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:oxfmt`). They run all checks in parallel and complete in seconds.
 
-To lint a single file, run `npx oxlint <file>` directly — it finishes in milliseconds, so
-there is no lint server to go through.
-
 ### MCP Tools
 
 MCP servers are configured in `.mcp.json`:
@@ -107,55 +104,14 @@ Key settings in `next.config.ts`:
 
 For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
 
-### Lint Config
+### Lint and Format Config
 
-Linting is [Oxlint](https://oxc.rs/docs/guide/usage/linter), configured in `.oxlintrc.json`
-(JSONC — comments are allowed, and Oxfmt preserves them).
+Oxlint (`.oxlintrc.json`) lints, Oxfmt (`.oxfmtrc.json`) formats, and they never
+overlap — no stylistic rules are enabled, and import sorting is Oxfmt's. Both configs are
+JSONC; the non-obvious choices are commented in place.
 
-- The `correctness` category is the baseline, with the `eslint`, `typescript`, `unicorn`,
-  `oxc`, `react`, `nextjs`, `jsx-a11y` and `import` plugins enabled. Note that listing
-  `plugins` **replaces** the default set, so the four defaults are listed explicitly.
-- `rules` only restores what `eslint-config-next` used to enforce but oxlint files under a
-  non-`correctness` category. Don't add rules there without a reason — reach for a whole
-  category first.
-- The React Compiler rules (`react/purity`, `react/preserve-manual-memoization`,
-  `react/immutability`, …) come from `correctness` and run the compiler's own validation
-  passes, so they replace `eslint-plugin-react-hooks` v7 one-for-one.
-- `options.typeAware` turns on the
-  [type-aware rules](https://oxc.rs/docs/guide/usage/linter/type-aware), which run through
-  the `oxlint-tsgolint` binary. It builds on TypeScript 7 directly, so it needs no
-  `tsconfig` of its own — but legacy options like `baseUrl` would break it.
-- No stylistic rules are enabled — formatting is Oxfmt's job, and the two never overlap.
-  Import sorting lives in `.oxfmtrc.json`, not here.
-- Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`.
-
-`lint:tsc` stays: `oxlint --type-check` can report compiler diagnostics too, but it is
-experimental, and `next typegen` has to run first regardless.
-
-### Format Config
-
-Formatting is [Oxfmt](https://oxc.rs/docs/guide/usage/formatter), configured in
-`.oxfmtrc.json`. It covers every file type Prettier did here — TS/TSX, JSON, JSONC, JSON5,
-YAML, Markdown, CSS — and matches Prettier's output apart from putting a leading `|` on
-wrapped union types.
-
-- `printWidth` is pinned to `80`. Oxfmt's own default is `100`, so dropping it would
-  reflow the entire codebase.
-- `sortImports.groups` names `side_effect` first. Everything after it is Oxfmt's default
-  group order, which already matches what `eslint-plugin-simple-import-sort` produced;
-  without the explicit `side_effect` group a bare `import "server-only"` loses its blank
-  line.
-- The `proseWrap: "always"` override exists for the `SYSTEM_PROMPT` in
-  `app/lib/anthropic.ts`. `string-dedent` is imported as `md` so that the tag marks the
-  template as embedded Markdown, which Oxfmt then wraps to `printWidth`. Keep the alias —
-  rename it and the prompt silently stops being formatted. The override is scoped so the
-  setting does not reach real `.md` files, which stay on `preserve`.
-- That override needs `files` as an **array** and a `**/*.ts` glob. Oxfmt rejects
-  Prettier's bare string form outright, and a plain `*.ts` will not match nested files.
-- Oxfmt reads `.gitignore` on its own, so `ignorePatterns` only lists the two files
-  `.prettierignore` used to carry.
-- It exits `2` when handed only file types it doesn't format, which is why
-  `lint-staged.config.ts` passes `--no-error-on-unmatched-pattern` (Prettier's `-u`).
+Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`, not
+the `eslint-` prefix.
 
 ### Environment Variables
 
