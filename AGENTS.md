@@ -96,7 +96,6 @@ Key settings in `next.config.ts`:
 - `typedRoutes: true` — type-safe `<Link>` hrefs
 - `experimental: { globalNotFound: true }` — top-level 404 page
 - `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
-- `experimental: { useTypeScriptCli: false }` — type check through the TS 6 compiler API (see [TypeScript 7 and 6 side by side](#typescript-7-and-6-side-by-side))
 
 > **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: on a client
 > navigation the URL updates but the statistics stay on the period first loaded. All six
@@ -122,17 +121,22 @@ Linting is [Oxlint](https://oxc.rs/docs/guide/usage/linter), configured in `.oxl
 - The React Compiler rules (`react/purity`, `react/preserve-manual-memoization`,
   `react/immutability`, …) come from `correctness` and run the compiler's own validation
   passes, so they replace `eslint-plugin-react-hooks` v7 one-for-one.
-- Import sorting still comes from `eslint-plugin-simple-import-sort`, loaded through
-  oxlint's [JS plugin](https://oxc.rs/docs/guide/usage/linter/js-plugins) support
-  (`jsPlugins`). Oxlint has no native equivalent. The plugin peer-depends on `eslint`, so
-  pnpm still auto-installs ESLint itself — nothing ever runs it.
+- `options.typeAware` turns on the
+  [type-aware rules](https://oxc.rs/docs/guide/usage/linter/type-aware), which run through
+  the `oxlint-tsgolint` binary. It builds on TypeScript 7 directly, so it needs no
+  `tsconfig` of its own — but legacy options like `baseUrl` would break it.
+- Import sorting is the one thing with no native equivalent, so
+  `eslint-plugin-simple-import-sort` runs through oxlint's
+  [JS plugin](https://oxc.rs/docs/guide/usage/linter/js-plugins) support (`jsPlugins`) —
+  the only remaining ESLint-shaped dependency. It costs ~200ms per full run, and its
+  `eslint` peer means pnpm still auto-installs ESLint, which nothing ever runs. The only
+  way out is `oxfmt`'s `sortImports`, which means replacing Prettier.
 - No stylistic rules are enabled, so nothing conflicts with Prettier — there is no
   `eslint-config-prettier` equivalent to install.
 - Suppress a single diagnostic with `// oxlint-disable-next-line <rule> -- <reason>`.
 
-Type-aware rules (`oxlint --type-aware`) are **not** enabled: they need
-[`oxlint-tsgolint`](https://oxc.rs/docs/guide/usage/linter/type-aware), which requires
-TypeScript 7. `tsc --noEmit` covers this today via `pnpm lint:tsc`.
+`lint:tsc` stays: `oxlint --type-check` can report compiler diagnostics too, but it is
+experimental, and `next typegen` has to run first regardless.
 
 ### Environment Variables
 
@@ -257,10 +261,6 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 ## TypeScript
 
 Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromIndexSignature`. Always use optional chaining when accessing arrays/objects.
-
-### TypeScript 7 and 6 side by side
-
-TS 7 (native) ships a `tsc` CLI but no JS compiler API until 7.1, and typescript-eslint refuses to load without one. So `package.json` aliases both: `typescript` → `@typescript/typescript6` (what tools import), `@typescript/native` → `typescript@7` (the `tsc` behind `pnpm lint`). Neither is a mistake — don't "fix" them. The shim declares no `tsc` bin, so `experimental.useTypeScriptCli: false` is required; without it `next build` and `next typegen` fail to resolve one. Collapse both entries back into a plain `typescript` once 7.1 ships the API.
 
 ## Non-Obvious Patterns
 

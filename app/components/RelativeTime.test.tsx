@@ -157,7 +157,9 @@ describe("RelativeTime", () => {
 
     expect(screen.getByText(/5 minutes ago/)).toBeInTheDocument();
 
-    await act(() => rerender(<RelativeTime date={date} style="narrow" />));
+    await act(async () => {
+      rerender(<RelativeTime date={date} style="narrow" />);
+    });
 
     expect(screen.getByText(/5m ago/)).toBeInTheDocument();
 

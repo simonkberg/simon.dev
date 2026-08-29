@@ -30,6 +30,9 @@ vi.mock("@upstash/ratelimit", async (importOriginal) => {
     Ratelimit: vi.fn(
       class {
         limit = limitMock;
+        // Re-exports a static factory; binding it trips TS7022 on the
+        // self-referential type.
+        // oxlint-disable-next-line typescript/unbound-method
         static slidingWindow = actual.Ratelimit.slidingWindow;
       },
     ),
@@ -133,8 +136,8 @@ describe("getChatHistory", () => {
 });
 
 describe("refreshChatHistory", () => {
-  it("calls updateTag and refresh", () => {
-    refreshChatHistory();
+  it("calls updateTag and refresh", async () => {
+    await refreshChatHistory();
     expect(updateTag).toHaveBeenCalledWith("getChatHistory");
     expect(refresh).toHaveBeenCalled();
   });
