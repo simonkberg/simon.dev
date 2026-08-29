@@ -251,9 +251,6 @@ export async function* createMessage(
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        // Sonnet 5 thinks adaptively unless told not to, and its thinking
-        // tokens come out of MAX_TOKENS - which is far too small a budget to
-        // share. One-sentence replies don't need it.
         thinking: { type: "disabled" },
         system: SYSTEM_PROMPT,
         messages,
