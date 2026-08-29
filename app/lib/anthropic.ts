@@ -1,8 +1,7 @@
 import "server-only";
 
-// Aliased to `md` on purpose: the tag is what marks a template as embedded
-// Markdown, so Oxfmt wraps `SYSTEM_PROMPT` below to `printWidth`. Renaming it
-// silently stops that formatting.
+// The `md` name is what marks `SYSTEM_PROMPT` as Markdown for Oxfmt; renaming
+// it silently stops the prompt being wrapped.
 import md from "string-dedent";
 import { z } from "zod";
 

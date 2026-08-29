@@ -3,8 +3,8 @@
   "objectWrap": "collapse",
   "printWidth": 80,
   "sortImports": {
-    // Oxfmt's default order, except `side_effect` has to be named explicitly
-    // or a bare `import "server-only"` loses the blank line after it.
+    // Without an explicit `side_effect` group, a bare `import "server-only"`
+    // loses the blank line after it.
     "groups": [
       "side_effect",
       "builtin",
@@ -17,9 +17,7 @@
   },
   "sortPackageJson": false,
   "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"],
-  // Wraps the embedded Markdown in `app/lib/anthropic.ts` — see the note there.
-  // Scoped rather than top-level so real `.md` files stay on `preserve`.
-  // `files` must be an array (Prettier's bare string is rejected) and the glob
-  // must be `**/*.ts` — a plain `*.ts` matches nothing nested.
+  // Wraps the embedded Markdown in `app/lib/anthropic.ts`. Scoped, so real
+  // `.md` files keep the default `preserve`.
   "overrides": [{ "files": ["**/*.ts"], "options": { "proseWrap": "always" } }]
 }
