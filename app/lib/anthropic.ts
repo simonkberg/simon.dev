@@ -286,6 +286,7 @@ export async function* createMessage(
 
     if (result.stop_reason === "max_tokens") {
       log.warn("simon-bot response hit the token limit");
+      yield "...welp, ran out of words there";
     }
 
     // If not a tool use, we're done

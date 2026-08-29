@@ -293,8 +293,32 @@ describe("createMessage", () => {
       ]),
     );
 
-    expect(responses).toEqual(["so anyway I was thinking abo"]);
+    expect(responses).toEqual([
+      "so anyway I was thinking abo",
+      "...welp, ran out of words there",
+    ]);
     expect(warn).toHaveBeenCalledWith("simon-bot response hit the token limit");
+  });
+
+  it("should still say something when the limit leaves no text", async () => {
+    vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [{ type: "thinking", thinking: "...", signature: "sig" }],
+          stop_reason: "max_tokens",
+        }),
+      ),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
+    );
+
+    expect(responses).toEqual(["...welp, ran out of words there"]);
   });
 
   it("should preserve all content blocks in assistant message history", async () => {
