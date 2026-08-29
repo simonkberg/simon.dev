@@ -95,13 +95,11 @@ Key settings in `next.config.ts`:
 - `experimental: { globalNotFound: true }` — top-level 404 page
 - `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
 
-> **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: the URL and
-> the surrounding page update on a client navigation, but the statistics stay on whichever
-> period was first loaded. All six period links point at the same route with different
-> params, and under Partial Prefetching they share one App Shell, so the params-dependent
-> content does not re-resolve. Confirmed by bisect in #1997 — it is the only difference
-> between a broken and a working preview deploy. Note it does not reproduce in a local
-> `next build` + standalone server, only in the deployed Docker image.
+> **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: on a client
+> navigation the URL updates but the statistics stay on the period first loaded. All six
+> period links share one route, so they share one App Shell and the params-dependent content
+> never re-resolves. Only reproduces in the deployed image, not a local production build.
+> See #1997.
 
 ### Typed Routes
 
