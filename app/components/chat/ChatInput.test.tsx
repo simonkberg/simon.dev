@@ -30,7 +30,7 @@ describe("ChatInput", () => {
 
     expect(
       screen.getByText(
-        "Tip: mention \u201Csimon bot\u201D if you wanna chat with a clanker.",
+        "Tip: mention \u201Csimon bot\u201D to chat with a clanker.",
       ),
     ).toBeInTheDocument();
   });

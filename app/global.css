@@ -508,11 +508,14 @@ ul {
   }
 
   > .tip {
+    /* Small enough that the tip stays on one line down to a 375px viewport;
+       at 0.6875rem and up it wraps to two and doubles in height. */
+    --tip-font-size: 0.65rem;
+
     margin: 0 0 0.625rem;
-    /* ch scales with font-size, so matching the input's 1.5ch indent at 1rem
-       takes 2ch at the tip's 0.75rem (1.5 / 0.75). */
-    padding-left: 2ch;
-    font-size: 0.75rem;
+    /* ch scales with font-size, so scale the input's 1.5ch indent to match. */
+    padding-left: calc(1.5ch * (1rem / var(--tip-font-size)));
+    font-size: var(--tip-font-size);
     color: var(--color-muted);
   }
 }
