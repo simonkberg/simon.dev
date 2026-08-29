@@ -25,12 +25,18 @@ jobs:
         uses: anthropics/claude-code-action@a874e9ecd7bb36efdad65429c6b35815f5a08f10 # v1.0.210
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+          use_sticky_comment: true
           allowed_bots: renovate[bot],claude[bot]
           # Built-in skill: correctness bugs plus reuse/simplification/efficiency
           # cleanups, following AGENTS.md via the CLAUDE.md symlink. "medium" keeps
           # to high-confidence findings; raise to "high" for broader, noisier coverage.
           prompt: "/code-review medium --comment ${{ github.event.pull_request.number }}"
-          # The action only starts the inline comment MCP server when --allowedTools
-          # names it, and the built-in skill has no frontmatter granting the gh calls.
+          # Auto mode rather than an enumerated allowlist: the skill forks subagents
+          # and reads the tree, so listing its tools by hand starves it (a narrow
+          # list produced 15 permission denials and no review). --allowedTools is
+          # still needed for the inline comment MCP server, which the action only
+          # starts when that flag names it.
           claude_args: >-
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
+            --permission-mode auto
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
