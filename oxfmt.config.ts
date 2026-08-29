@@ -6,7 +6,6 @@ export default defineConfig({
   sortImports: true,
   sortPackageJson: false,
   ignorePatterns: ["iosevka-license.md", "pnpm-lock.yaml"],
-  // Wraps the embedded Markdown in `app/lib/anthropic.ts`. Scoped, so real
-  // `.md` files keep the default `preserve`.
+  // Wraps the embedded Markdown in `app/lib/anthropic.ts`.
   overrides: [{ files: ["**/*.ts"], options: { proseWrap: "always" } }],
 });

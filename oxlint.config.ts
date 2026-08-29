@@ -12,8 +12,6 @@ export default defineConfig({
     "import",
   ],
   categories: { correctness: "error" },
-  // A suppression that stops suppressing anything fails the build, so they
-  // can't quietly outlive the problem they were added for.
   options: { typeAware: true, reportUnusedDisableDirectives: "error" },
   env: { browser: true, node: true, es2024: true },
   settings: { react: { version: "19" } },
@@ -37,7 +35,6 @@ export default defineConfig({
     "react/no-unescaped-entities": "error",
     "react/unsupported-syntax": "warn",
     "import/no-anonymous-default-export": "warn",
-    // A suppression must at least name the rule it silences.
     "unicorn/no-abusive-eslint-disable": "error",
     // `Image` here is `next/image`.
     "jsx-a11y/alt-text": ["error", { elements: ["img"], img: ["Image"] }],
