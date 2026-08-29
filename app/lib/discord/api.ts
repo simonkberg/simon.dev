@@ -1,6 +1,5 @@
 import "server-only";
 
-import SimpleMarkdown from "@khanacademy/simple-markdown";
 import { comparing, stringComparator } from "comparator.ts";
 import DataLoader from "dataloader";
 import { z } from "zod";
@@ -169,12 +168,6 @@ function toUser(name: string): User {
   return UserSchema.decode({ name, color: stringToColor(name) });
 }
 
-function parseMarkdown(content: string): string {
-  return SimpleMarkdown.defaultHtmlOutput(
-    SimpleMarkdown.defaultInlineParse(content),
-  );
-}
-
 const USERNAME_PREFIX_PATTERN = /^(.+?):(?:\s(.*))?$/s;
 
 function parseUsernamePrefix(content: string): [string, string] | undefined {
@@ -225,6 +218,7 @@ const GetMessagesResponseSchema = z.array(DiscordMessageSchema);
 const MessageSchema = z.object({
   id: z.string(),
   user: UserSchema,
+  /** Raw Discord markdown, never HTML — render with `<Markdown>`, never `dangerouslySetInnerHTML`. */
   content: z.string(),
   edited: z.boolean(),
   timestamp: z.string().pipe(z.coerce.date()),
@@ -265,7 +259,7 @@ export async function getChannelMessages(limit = 100): Promise<Message[]> {
       return MessageSchema.decode({
         id: discordMessage.id,
         user: toUser(username),
-        content: parseMarkdown(content),
+        content,
         edited: discordMessage.edited_timestamp !== null,
         timestamp: discordMessage.timestamp,
         replies: [],

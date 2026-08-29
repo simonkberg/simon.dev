@@ -247,6 +247,18 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 Components use React's recommended [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders) pattern to adjust state based on changing props (e.g. `ChatToast`, `CaretBuddy`, `RelativeTime`). This is NOT an anti-pattern — do not suggest `useEffect` or `useMemo` as replacements.
 
+### Markdown Rendering
+
+Discord message content is stored and returned as **raw markdown** — `getChannelMessages()` does not pre-render it. `app/components/Markdown.tsx` parses it with `SimpleMarkdown.defaultInlineParse()` and walks the AST itself to emit React elements.
+
+Do not replace that walk with simple-markdown's own React output (`defaultReactOutput`, `markdownToReact`, `reactFor`). It hand-rolls elements as `{ $$typeof: Symbol.for("react.element"), … }`, and React 19 renamed that brand to `react.transitional.element`, so those objects throw "Objects are not valid as a React child". Still unfixed upstream as of 2026-08 (3.0.1 and `main`); re-check the element brand before assuming a newer release helps.
+
+The package is pinned to 2.2.3. Only the parser is used, so the major version is not load-bearing and the pin costs nothing — but 3.x is still not a drop-in until upstream fixes element creation. (3.x also dropped the html output, which is what this code used before it walked the AST itself.)
+
+`sanitizeUrl()` must stay applied to every `link` target; it is what strips `javascript:`, `vbscript:` and `data:` URLs. A target it rejects renders as plain text, not as an `href`-less anchor — such an anchor is unclickable and has no link role, so styling it as a link would misrepresent it.
+
+Markdown images are **deliberately not embedded** — an `image` node renders as its alt text. Message content is user-supplied, so an `<img>` would let anyone posting in the channel load an arbitrary remote URL in every visitor's browser (tracking pixel, IP logger, unmoderated imagery). Discord does not render markdown images either. Do not "fix" this by adding an `<img>`.
+
 ## Maintaining This Document
 
 When making changes that affect documented patterns, architecture, commands, or conventions, update this file accordingly. Examples:

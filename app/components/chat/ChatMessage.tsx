@@ -5,6 +5,7 @@ import {
   Suspense,
 } from "react";
 
+import { Markdown } from "@/components/Markdown";
 import { RelativeTime } from "@/components/RelativeTime";
 import type { Message } from "@/lib/discord/api";
 
@@ -27,7 +28,9 @@ export const ChatMessage = ({
     style={{ "--user-color": user.color } as CSSProperties}
   >
     <span className="user">{user.name}: </span>
-    <div className="text" dangerouslySetInnerHTML={{ __html: content }} />
+    <div className="text">
+      <Markdown source={content} />
+    </div>
     {edited && <small className="edited"> (edited) </small>}{" "}
     <small className="timestamp">
       <Suspense>
