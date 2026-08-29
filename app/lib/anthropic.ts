@@ -19,7 +19,7 @@ import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-5" as const;
-const MAX_TOKENS = 500;
+const MAX_TOKENS = 2048;
 const MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev. You're friendly with dry,
@@ -63,8 +63,10 @@ const SYSTEM_PROMPT = md`
 
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
-  z.object({ type: z.literal("thinking") }),
-  z.object({ type: z.literal("redacted_thinking") }),
+  // Loose so every field round-trips: thinking blocks must be echoed back to
+  // the API unchanged, and a stripped one loses its signature.
+  z.looseObject({ type: z.literal("thinking") }),
+  z.looseObject({ type: z.literal("redacted_thinking") }),
   z.object({
     type: z.literal("tool_use"),
     id: z.string(),
@@ -254,7 +256,8 @@ export async function* createMessage(
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        thinking: { type: "disabled" },
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low" },
         system: SYSTEM_PROMPT,
         messages,
         tools: TOOLS,
@@ -284,6 +287,12 @@ export async function* createMessage(
         log.info({ text: block.text }, "simon-bot response");
         yield block.text;
       }
+    }
+
+    // Thinking shares MAX_TOKENS with the reply, so a truncated response is
+    // worth a log line - the partial text has already gone out.
+    if (result.stop_reason === "max_tokens") {
+      log.warn("simon-bot response hit the token limit");
     }
 
     // If not a tool use, we're done

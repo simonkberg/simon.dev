@@ -62,8 +62,9 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         expect(await request.json()).toMatchObject({
           model: "claude-sonnet-5",
-          thinking: { type: "disabled" },
-          max_tokens: 500,
+          thinking: { type: "adaptive" },
+          output_config: { effort: "low" },
+          max_tokens: 2048,
           system: expect.stringContaining("simon-bot"),
           messages: [
             { role: "user", content: `${TEST_USERNAME}: Hello, bot!` },
@@ -274,6 +275,28 @@ describe("createMessage", () => {
     expect(responses).toEqual(["yeah I'm not touching that one, sorry"]);
   });
 
+  it("should warn when the response hits the token limit", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [{ type: "text", text: "so anyway I was thinking abo" }],
+          stop_reason: "max_tokens",
+        }),
+      ),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Test" },
+      ]),
+    );
+
+    expect(responses).toEqual(["so anyway I was thinking abo"]);
+    expect(warn).toHaveBeenCalledWith("simon-bot response hit the token limit");
+  });
+
   it("should preserve all content blocks in assistant message history", async () => {
     let callCount = 0;
 
@@ -281,7 +304,11 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         callCount++;
 
-        const thinkingBlock = { type: "thinking" };
+        const thinkingBlock = {
+          type: "thinking",
+          thinking: "hmm, they want stats",
+          signature: "sig_abc123",
+        };
         const textBlock = { type: "text", text: "let me check..." };
         const toolUse = {
           type: "tool_use",
