@@ -3,10 +3,12 @@ import { after } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  dismissChatTip,
   getChatHistory,
   postChatMessage,
   refreshChatHistory,
 } from "@/actions/chat";
+import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   getChannelMessages,
   type Message,
@@ -50,6 +52,7 @@ vi.mock(import("@/lib/session"), () => ({
     Promise.resolve({ username: "test-user" as Username }),
   ),
 }));
+vi.mock(import("@/lib/chatTip"), () => ({ setChatTipDismissed: vi.fn() }));
 vi.mock(import("@/lib/discord/api"));
 vi.mock(import("@/lib/redis"));
 
@@ -171,6 +174,28 @@ describe("postChatMessage", () => {
     });
   });
 
+  it("dismisses the tip on a successful post", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    mockRateLimitSuccess();
+    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
+    const formData = new FormData();
+    formData.set("text", "Hello!");
+
+    await postChatMessage(formData);
+
+    expect(setChatTipDismissed).toHaveBeenCalled();
+  });
+
+  it("does not record a post that failed", async () => {
+    mockRateLimitExceeded(10000);
+    const formData = new FormData();
+    formData.set("text", "Hello!");
+
+    await postChatMessage(formData);
+
+    expect(setChatTipDismissed).not.toHaveBeenCalled();
+  });
+
   it("posts message to Discord and returns ok on success", async () => {
     const logInfoSpy = vi.spyOn(log, "info").mockImplementation(() => {});
     mockRateLimitSuccess();
@@ -247,5 +272,13 @@ describe("postChatMessage", () => {
     const result = await postChatMessage(formData);
 
     expect(result.status).toBe("error");
+  });
+});
+
+describe("dismissChatTip", () => {
+  it("dismisses the tip", async () => {
+    await dismissChatTip();
+
+    expect(setChatTipDismissed).toHaveBeenCalled();
   });
 });

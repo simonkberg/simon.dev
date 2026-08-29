@@ -5,6 +5,7 @@ import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   getChannelMessages,
   type Message,
@@ -53,6 +54,10 @@ export async function refreshChatHistory() {
   refresh();
 }
 
+export async function dismissChatTip() {
+  await setChatTipDismissed();
+}
+
 export type PostChatMessageResult =
   { status: "initial" } | { status: "ok" } | { status: "error"; error: string };
 
@@ -85,6 +90,8 @@ export async function postChatMessage(
     }
 
     const messageId = await postChannelMessage(text, username, replyToId);
+
+    await dismissChatTip();
 
     log.info(
       { username, messageId, ip: request.ip, action: "postChatMessage" },

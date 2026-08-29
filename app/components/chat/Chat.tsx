@@ -9,6 +9,7 @@ import type { Message } from "@/lib/discord/api";
 
 import { ChatHistory } from "./ChatHistory";
 import { ChatInput } from "./ChatInput";
+import { ChatTip } from "./ChatTip";
 
 const findMessageById = (messages: Message[], id: string): Message | null => {
   for (const message of messages) {
@@ -25,10 +26,12 @@ const findMessageById = (messages: Message[], id: string): Message | null => {
 
 export interface ChatProps {
   history: Promise<ChatHistoryResult>;
+  tipDismissed: Promise<boolean>;
 }
 
-export const Chat = ({ history }: ChatProps) => {
+export const Chat = ({ history, tipDismissed }: ChatProps) => {
   const result = use(history);
+  const dismissed = use(tipDismissed);
   const [replyToId, setReplyToId] = useState<string | null>(null);
 
   if (result.status === "error") {
@@ -65,7 +68,9 @@ export const Chat = ({ history }: ChatProps) => {
           </button>
         </div>
       )}
-      <ChatInput replyToId={replyToId} setReplyToId={setReplyToId} />
+      <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
+        {!dismissed && <ChatTip />}
+      </ChatInput>
     </>
   );
 };

@@ -470,6 +470,9 @@ ul {
 
 .chat-input {
   flex: 0 0 auto;
+  /* Bottom gutter for the terminal. Lives on the always-rendered form so it
+     survives the tip being dismissed. */
+  padding-bottom: 0.625rem;
 
   > .wrapper {
     position: relative;
@@ -477,7 +480,7 @@ ul {
     &::before {
       content: ">";
       position: absolute;
-      top: calc(50% - (0.625rem / 2));
+      top: 50%;
       transform: translateY(-50%);
       font-weight: bold;
       color: var(--color-decorative);
@@ -488,7 +491,6 @@ ul {
       width: 100%;
       padding-left: 1.5ch;
       padding-right: 7ch;
-      margin-bottom: 0.625rem;
       background: transparent;
       border: 0;
       border-bottom: 1px solid transparent;
@@ -504,6 +506,23 @@ ul {
       &:disabled {
         opacity: 0.5;
       }
+    }
+  }
+}
+
+.chat-tip {
+  /* Flush left, lining up with the prompt chevron and the chat messages
+     rather than the input's text. Small enough to stay on one line down to a
+     360px viewport. */
+  flex: 0 0 auto;
+  margin: 0.25rem 0 0;
+  font-size: 0.65rem;
+  color: var(--color-muted);
+
+  > .clear {
+    &:hover,
+    &:focus-visible {
+      color: var(--terminal--content-color);
     }
   }
 }

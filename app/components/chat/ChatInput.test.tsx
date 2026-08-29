@@ -189,7 +189,13 @@ describe("ChatInput", () => {
 
   describe("reply mode", () => {
     it("shows 'Write a reply...' placeholder when replying", () => {
-      render(<ChatInput replyToId="some-message-id" setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="some-message-id"
+          setReplyToId={vi.fn()}
+        />,
+      );
       const input = screen.getByRole("textbox");
 
       expect(input).toHaveAttribute("placeholder", "Write a reply...");
@@ -197,13 +203,23 @@ describe("ChatInput", () => {
 
     it("focuses input when replyToId changes to non-null", () => {
       const { rerender } = render(
-        <ChatInput replyToId={null} setReplyToId={vi.fn()} />,
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId={null}
+          setReplyToId={vi.fn()}
+        />,
       );
 
       const input = screen.getByRole("textbox");
       expect(input).not.toHaveFocus();
 
-      rerender(<ChatInput replyToId="message-id" setReplyToId={vi.fn()} />);
+      rerender(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="message-id"
+          setReplyToId={vi.fn()}
+        />,
+      );
 
       expect(input).toHaveFocus();
     });
@@ -212,7 +228,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       const setReplyToId = vi.fn();
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+        />,
+      );
 
       await user.keyboard("{Escape}");
 
@@ -223,7 +245,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       const setReplyToId = vi.fn();
 
-      render(<ChatInput replyToId={null} setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId={null}
+          setReplyToId={setReplyToId}
+        />,
+      );
 
       await user.keyboard("{Escape}");
 
@@ -234,7 +262,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId="reply-target-id" setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="reply-target-id"
+          setReplyToId={vi.fn()}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply text");
       await user.keyboard("{Enter}");
@@ -253,7 +287,13 @@ describe("ChatInput", () => {
       const user = userEvent.setup({ delay: null });
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId={null} setReplyToId={vi.fn()} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId={null}
+          setReplyToId={vi.fn()}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Normal message");
       await user.keyboard("{Enter}");
@@ -268,7 +308,13 @@ describe("ChatInput", () => {
       const setReplyToId = vi.fn();
       vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply");
       await user.keyboard("{Enter}");
@@ -286,7 +332,13 @@ describe("ChatInput", () => {
         error: "Failed",
       });
 
-      render(<ChatInput replyToId="message-id" setReplyToId={setReplyToId} />);
+      render(
+        <ChatInput
+          {...defaultReplyProps}
+          replyToId="message-id"
+          setReplyToId={setReplyToId}
+        />,
+      );
 
       await user.type(screen.getByRole("textbox"), "Reply");
       await user.keyboard("{Enter}");

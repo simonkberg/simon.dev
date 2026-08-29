@@ -22,6 +22,13 @@ describe("Chat", () => {
     );
   });
 
+  const chatElement = (result: ChatHistoryResult, dismissed = false) => (
+    <Chat
+      history={Promise.resolve(result)}
+      tipDismissed={Promise.resolve(dismissed)}
+    />
+  );
+
   const createMessage = (overrides?: Partial<Message>): Message => ({
     id: "msg-1",
     content: "Test message",
@@ -32,15 +39,31 @@ describe("Chat", () => {
     ...overrides,
   });
 
+  it("renders the simon-bot tip until it is dismissed", async () => {
+    await act(async () => render(chatElement({ status: "ok", messages: [] })));
+
+    expect(
+      screen.getByRole("button", { name: "Dismiss tip" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the simon-bot tip once it has been dismissed", async () => {
+    await act(async () =>
+      render(chatElement({ status: "ok", messages: [] }, true)),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Dismiss tip" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("displays error message when result status is error", async () => {
     const errorResult: ChatHistoryResult = {
       status: "error",
       error: "Failed to fetch",
     };
 
-    await act(async () =>
-      render(<Chat history={Promise.resolve(errorResult)} />),
-    );
+    await act(async () => render(chatElement(errorResult)));
 
     expect(
       screen.getByText("Chat is temporarily unavailable :("),
@@ -53,9 +76,7 @@ describe("Chat", () => {
       messages: [createMessage({ content: "Hello world" })],
     };
 
-    await act(async () =>
-      render(<Chat history={Promise.resolve(successResult)} />),
-    );
+    await act(async () => render(chatElement(successResult)));
 
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
@@ -69,9 +90,7 @@ describe("Chat", () => {
         messages: [message],
       };
 
-      await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
-      );
+      await act(async () => render(chatElement(successResult)));
 
       expect(screen.queryByText("Replying to")).not.toBeInTheDocument();
 
@@ -96,9 +115,7 @@ describe("Chat", () => {
         messages: [parentMessage],
       };
 
-      await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
-      );
+      await act(async () => render(chatElement(successResult)));
 
       const replyButtons = screen.getAllByRole("button", { name: "Reply" });
       await user.click(replyButtons[1]!); // Click nested message's reply button
@@ -114,9 +131,7 @@ describe("Chat", () => {
         messages: [message],
       };
 
-      await act(async () =>
-        render(<Chat history={Promise.resolve(successResult)} />),
-      );
+      await act(async () => render(chatElement(successResult)));
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
       expect(screen.getByText("Replying to")).toBeInTheDocument();
@@ -137,7 +152,7 @@ describe("Chat", () => {
       };
 
       const { rerender } = await act(async () =>
-        render(<Chat history={Promise.resolve(initialResult)} />),
+        render(chatElement(initialResult)),
       );
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
@@ -151,9 +166,7 @@ describe("Chat", () => {
         ],
       };
 
-      await act(async () =>
-        rerender(<Chat history={Promise.resolve(updatedResult)} />),
-      );
+      await act(async () => rerender(chatElement(updatedResult)));
 
       // Reply preview should be hidden since the message no longer exists
       expect(screen.queryByText("Replying to")).not.toBeInTheDocument();

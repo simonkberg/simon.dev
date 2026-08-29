@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { randomName } from "@/lib/randomName";
 import { decrypt, encrypt, UsernameSchema } from "@/lib/session";
 
+const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
@@ -15,7 +17,7 @@ export async function proxy(request: NextRequest) {
     {
       httpOnly: true,
       secure: true,
-      expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      maxAge: ONE_YEAR_SECONDS,
       sameSite: "strict",
       path: "/",
     },

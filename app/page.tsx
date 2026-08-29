@@ -15,6 +15,7 @@ import { StatsList } from "@/components/StatsList";
 import { Subtitle } from "@/components/Subtitle";
 import { Terminal } from "@/components/Terminal";
 import { config } from "@/config";
+import { getChatTipDismissed } from "@/lib/chatTip";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -27,6 +28,7 @@ export default function RootPage() {
   const stats = getWakaTimeStats();
   const history = getChatHistory();
   const recentTracks = getRecentTracks();
+  const tipDismissed = getChatTipDismissed();
 
   return (
     <Page>
@@ -98,7 +100,7 @@ export default function RootPage() {
         </Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
-            <Chat history={history} />
+            <Chat history={history} tipDismissed={tipDismissed} />
           </Suspense>
         </Terminal>
       </section>
