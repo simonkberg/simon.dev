@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "chatTipDismissed";
-const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 /**
  * Whether the "mention simon bot" tip has been dismissed, either by sending a
@@ -26,7 +26,7 @@ export async function setChatTipDismissed() {
   cookieJar.set(COOKIE_NAME, "true", {
     httpOnly: true,
     secure: true,
-    expires: new Date(Date.now() + ONE_YEAR_MS),
+    maxAge: ONE_YEAR_SECONDS,
     sameSite: "strict",
     path: "/",
   });
