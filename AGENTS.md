@@ -164,6 +164,16 @@ Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
 ## Patterns
 
+### Comments
+
+**Don't write comments by default.** Well-named code explains itself; a comment that
+restates it goes stale and earns nothing. If a block needs prose to be followed, that is
+usually a signal to extract a function or rename a variable instead.
+
+The bar for keeping one: it explains _why_, not _what_ — a workaround, a non-obvious
+constraint, a deliberate deviation someone would otherwise "fix". When that bar is met,
+write one short line and move on.
+
 ### Server Actions
 
 All in `app/actions/`, marked with `"use server"`. Return discriminated unions:
@@ -280,3 +290,9 @@ When making changes that affect documented patterns, architecture, commands, or 
 - Changing directory structure → update Directory Structure
 - Adding new patterns or conventions → document them
 - Modifying existing documented code → verify documentation still matches
+
+**Keep it short.** This file is loaded into context for every session, every task, every
+agent — every line here is paid for on every run. Document only what an agent cannot
+readily infer from the codebase: commands, conventions, and the non-obvious decisions
+behind them. Leave out anything the code, types, or tests already say. When adding a
+section, look for one that has since become obsolete and remove it.
