@@ -1,5 +1,4 @@
 import "server-only";
-
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "chatTipDismissed";
