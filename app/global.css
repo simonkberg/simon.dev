@@ -508,14 +508,11 @@ ul {
   }
 
   > .tip {
-    /* Small enough that the tip stays on one line down to a 375px viewport;
-       at 0.6875rem and up it wraps to two and doubles in height. */
-    --tip-font-size: 0.65rem;
-
+    /* Flush left, lining up with the prompt chevron and the chat messages
+       rather than the input's text. Small enough to stay on one line down to
+       a 360px viewport. */
     margin: 0 0 0.625rem;
-    /* ch scales with font-size, so scale the input's 1.5ch indent to match. */
-    padding-left: calc(1.5ch * (1rem / var(--tip-font-size)));
-    font-size: var(--tip-font-size);
+    font-size: 0.65rem;
     color: var(--color-muted);
 
     > .clear {
