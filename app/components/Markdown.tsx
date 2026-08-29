@@ -56,16 +56,13 @@ const renderNode = (node: InlineNode, key: string): ReactNode => {
           {renderNodes(node.content)}
         </a>
       );
+    // Deliberately not embedded. Message content is user-supplied, so an
+    // `<img>` would let anyone posting in the channel load an arbitrary remote
+    // URL in every visitor's browser — a tracking pixel, an IP logger, or
+    // unmoderated imagery. Discord does not render markdown images either, so
+    // nothing legitimate is lost. The alt text is kept so the message reads.
     case "image":
-      return (
-        // eslint-disable-next-line @next/next/no-img-element -- chat images are arbitrary remote URLs, which `next/image` can only serve behind an open `remotePatterns`
-        <img
-          key={key}
-          src={sanitizeUrl(node.target)}
-          alt={node.alt}
-          title={node.title}
-        />
-      );
+      return node.alt;
   }
 };
 

@@ -255,7 +255,9 @@ Do not replace that walk with simple-markdown's own React output (`defaultReactO
 
 The package is pinned to 2.2.3 because 3.x removed the html output. Only the parser is used, so the pin is not blocking — but 3.x is not a drop-in upgrade until upstream fixes element creation.
 
-`sanitizeUrl()` must stay applied to every `link`/`image` target; it is what strips `javascript:`, `vbscript:` and `data:` URLs.
+`sanitizeUrl()` must stay applied to every `link` target; it is what strips `javascript:`, `vbscript:` and `data:` URLs.
+
+Markdown images are **deliberately not embedded** — an `image` node renders as its alt text. Message content is user-supplied, so an `<img>` would let anyone posting in the channel load an arbitrary remote URL in every visitor's browser (tracking pixel, IP logger, unmoderated imagery). Discord does not render markdown images either. Do not "fix" this by adding an `<img>`.
 
 ## Maintaining This Document
 

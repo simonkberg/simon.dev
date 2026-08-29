@@ -49,10 +49,9 @@ describe("Markdown", () => {
     );
   });
 
-  it("renders images", () => {
-    expect(html("![alt](https://simon.dev/a.png)")).toBe(
-      '<img alt="alt" src="https://simon.dev/a.png">',
-    );
+  it("does not embed images, keeping only the alt text", () => {
+    expect(html("![alt](https://simon.dev/a.png)")).toBe("alt");
+    expect(document.querySelector("img")).toBeNull();
   });
 
   it("honours backslash escapes", () => {
@@ -87,8 +86,8 @@ describe("Markdown", () => {
       expect(html("[undefined-ref][9]")).toBe("<a>undefined-ref</a>");
     });
 
-    it("renders an image with no src", () => {
-      expect(html("![undefined-ref][9]")).toBe('<img alt="undefined-ref">');
+    it("renders an image as its alt text", () => {
+      expect(html("![undefined-ref][9]")).toBe("undefined-ref");
     });
   });
 
@@ -97,10 +96,8 @@ describe("Markdown", () => {
       expect(html("[xss](javascript:alert(1))")).toBe("<a>xss</a>");
     });
 
-    it("drops data: image targets", () => {
-      expect(html("![x](data:text/html;base64,PHN2Zz4=)")).toBe(
-        '<img alt="x">',
-      );
+    it("drops data: link targets", () => {
+      expect(html("[x](data:text/html;base64,PHN2Zz4=)")).toBe("<a>x</a>");
     });
   });
 });
