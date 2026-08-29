@@ -1,6 +1,4 @@
-import SimpleMarkdown, {
-  type SingleASTNode,
-} from "@khanacademy/simple-markdown";
+import SimpleMarkdown from "@khanacademy/simple-markdown";
 import type { ReactNode } from "react";
 
 /**
@@ -10,53 +8,52 @@ import type { ReactNode } from "react";
  * `Symbol.for("react.element")`. React 19 renamed that brand to
  * `react.transitional.element`, so those objects are rejected as children. Its
  * parser is pure, though, so we take the AST and do the output ourselves.
- *
- * `defaultInlineParse` only ever yields inline nodes — block rules (headings,
- * lists, tables, …) bail out while `state.inline` is set, and the inline rules
- * normalise into the set below: `escape` collapses into `text`, and `autolink`,
- * `mailto`, `url` and `reflink` all collapse into `link`.
  */
 
-/** Nodes are `{ type: string; [key: string]: any }`, so fields are narrowed rather than cast. */
-const asNodes = (value: unknown): SingleASTNode[] =>
-  Array.isArray(value) ? value : [];
-
-const asString = (value: unknown): string | undefined =>
-  typeof value === "string" ? value : undefined;
+/**
+ * Every node `defaultInlineParse()` can produce. Block rules bail out while
+ * `state.inline` is set, and the inline rules normalise into this set: `escape`
+ * collapses into `text`, and `autolink`, `mailto`, `url` and `reflink` collapse
+ * into `link`. `target` is optional because a `reflink`/`refimage` whose
+ * definition never appears is parsed without one.
+ *
+ * simple-markdown types every node as `{ type: string; [key: string]: any }`,
+ * so this is the shape the parser guarantees rather than one it declares.
+ */
+type InlineNode =
+  | { type: "text" | "inlineCode"; content: string }
+  | { type: "br" }
+  | { type: "em" | "strong" | "u" | "del"; content: InlineNode[] }
+  | { type: "link"; content: InlineNode[]; target?: string; title?: string }
+  | { type: "image"; alt: string; target?: string; title?: string };
 
 /** Strips `javascript:`, `vbscript:` and `data:` targets, as the html output did. */
-const asUrl = (value: unknown): string | undefined =>
-  SimpleMarkdown.sanitizeUrl(asString(value)) ?? undefined;
+const sanitizeUrl = (target?: string): string | undefined =>
+  SimpleMarkdown.sanitizeUrl(target) ?? undefined;
 
-const renderNodes = (nodes: SingleASTNode[]): ReactNode[] =>
+const renderNodes = (nodes: InlineNode[]): ReactNode[] =>
   nodes.map((node, index) => renderNode(node, String(index)));
 
-const renderNode = (node: SingleASTNode, key: string): ReactNode => {
-  const children = () => renderNodes(asNodes(node["content"]));
-
+const renderNode = (node: InlineNode, key: string): ReactNode => {
   switch (node.type) {
     case "text":
-      return asString(node["content"]);
+      return node.content;
     case "br":
       return <br key={key} />;
     case "em":
-      return <em key={key}>{children()}</em>;
+      return <em key={key}>{renderNodes(node.content)}</em>;
     case "strong":
-      return <strong key={key}>{children()}</strong>;
+      return <strong key={key}>{renderNodes(node.content)}</strong>;
     case "u":
-      return <u key={key}>{children()}</u>;
+      return <u key={key}>{renderNodes(node.content)}</u>;
     case "del":
-      return <del key={key}>{children()}</del>;
+      return <del key={key}>{renderNodes(node.content)}</del>;
     case "inlineCode":
-      return <code key={key}>{asString(node["content"])}</code>;
+      return <code key={key}>{node.content}</code>;
     case "link":
       return (
-        <a
-          key={key}
-          href={asUrl(node["target"])}
-          title={asString(node["title"])}
-        >
-          {children()}
+        <a key={key} href={sanitizeUrl(node.target)} title={node.title}>
+          {renderNodes(node.content)}
         </a>
       );
     case "image":
@@ -64,13 +61,11 @@ const renderNode = (node: SingleASTNode, key: string): ReactNode => {
         // eslint-disable-next-line @next/next/no-img-element -- chat images are arbitrary remote URLs, which `next/image` can only serve behind an open `remotePatterns`
         <img
           key={key}
-          src={asUrl(node["target"])}
-          alt={asString(node["alt"]) ?? ""}
-          title={asString(node["title"])}
+          src={sanitizeUrl(node.target)}
+          alt={node.alt}
+          title={node.title}
         />
       );
-    default:
-      return null;
   }
 };
 
@@ -79,7 +74,7 @@ export interface MarkdownProps {
 }
 
 export const Markdown = ({ source }: MarkdownProps) => (
-  <>{renderNodes(SimpleMarkdown.defaultInlineParse(source))}</>
+  <>{renderNodes(SimpleMarkdown.defaultInlineParse(source) as InlineNode[])}</>
 );
 
 export default Markdown;

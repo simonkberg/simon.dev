@@ -82,6 +82,16 @@ describe("Markdown", () => {
     });
   });
 
+  describe("reference links without a definition", () => {
+    it("renders a link with no href", () => {
+      expect(html("[undefined-ref][9]")).toBe("<a>undefined-ref</a>");
+    });
+
+    it("renders an image with no src", () => {
+      expect(html("![undefined-ref][9]")).toBe('<img alt="undefined-ref">');
+    });
+  });
+
   describe("url sanitisation", () => {
     it("drops javascript: link targets", () => {
       expect(html("[xss](javascript:alert(1))")).toBe("<a>xss</a>");
