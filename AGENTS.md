@@ -145,6 +145,13 @@ wrapped union types.
   group order, which already matches what `eslint-plugin-simple-import-sort` produced;
   without the explicit `side_effect` group a bare `import "server-only"` loses its blank
   line.
+- The `proseWrap: "always"` override exists for the `SYSTEM_PROMPT` in
+  `app/lib/anthropic.ts`. `string-dedent` is imported as `md` so that the tag marks the
+  template as embedded Markdown, which Oxfmt then wraps to `printWidth`. Keep the alias —
+  rename it and the prompt silently stops being formatted. The override is scoped so the
+  setting does not reach real `.md` files, which stay on `preserve`.
+- That override needs `files` as an **array** and a `**/*.ts` glob. Oxfmt rejects
+  Prettier's bare string form outright, and a plain `*.ts` will not match nested files.
 - Oxfmt reads `.gitignore` on its own, so `ignorePatterns` only lists the two files
   `.prettierignore` used to carry.
 - It exits `2` when handed only file types it doesn't format, which is why

@@ -14,5 +14,6 @@
     ]
   },
   "sortPackageJson": false,
-  "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"]
+  "ignorePatterns": ["iosevka-license.md", "pnpm-lock.yaml"],
+  "overrides": [{ "files": ["**/*.ts"], "options": { "proseWrap": "always" } }]
 }
