@@ -1,8 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
 
-import { cookieOptions } from "@/lib/cookies";
-
 const COOKIE_NAME = "chatTipDismissed";
 
 /**
@@ -23,5 +21,5 @@ export async function setChatTipDismissed() {
 
   const cookieJar = await cookies();
 
-  cookieJar.set(COOKIE_NAME, "true", cookieOptions);
+  cookieJar.set(COOKIE_NAME, "true");
 }
