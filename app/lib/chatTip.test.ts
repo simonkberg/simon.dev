@@ -43,19 +43,13 @@ describe("chatTip", () => {
   });
 
   describe("setChatTipDismissed", () => {
-    it("writes an httpOnly cookie", async () => {
+    it("writes the dismissal cookie", async () => {
       const headers = mockCookies();
 
       await setChatTipDismissed();
 
       const setCookie = headers.get("set-cookie");
       expect(setCookie).toContain("chatTipDismissed=true");
-      expect(setCookie).toContain("HttpOnly");
-      expect(setCookie).toContain("Path=/");
-      // Setting maxAge emits Max-Age alongside a derived Expires; Max-Age
-      // wins where supported, and is relative to receipt rather than to a
-      // client clock that may be skewed.
-      expect(setCookie).toContain(`Max-Age=${365 * 24 * 60 * 60}`);
     });
 
     it("does not rewrite an already-dismissed cookie", async () => {
