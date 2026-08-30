@@ -18,7 +18,9 @@ export async function proxy(request: NextRequest) {
       httpOnly: true,
       secure: true,
       maxAge: ONE_YEAR_SECONDS,
-      sameSite: "strict",
+      // Strict withholds this on a link into the site from elsewhere, and the
+      // miss mints a new username over the old one.
+      sameSite: "lax",
       path: "/",
     },
   );
