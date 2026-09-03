@@ -48,12 +48,10 @@ describe("remember", () => {
   });
 
   it("should insert a normalised note and return it", async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce({ ...emptyResult, rows: [{ count: 3 }] })
-      .mockResolvedValueOnce({
-        ...emptyResult,
-        rows: [row(9, "self", "i like trains")],
-      });
+    vi.mocked(query).mockResolvedValueOnce({
+      ...emptyResult,
+      rows: [row(9, "self", "i like trains")],
+    });
 
     await expect(
       remember({ category: "  Self ", content: "  i like trains  " }),
@@ -64,16 +62,19 @@ describe("remember", () => {
       createdAt: "2025-01-01T00:00:00.000Z",
     });
 
-    expect(query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining("SELECT COUNT(*)"),
-      ["self"],
+    expect(query).toHaveBeenCalledTimes(1);
+    const [sql, args] = vi.mocked(query).mock.calls[0] ?? [];
+    expect(sql).toContain("INSERT INTO memories");
+    expect(sql).toContain(
+      "WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?",
     );
-    expect(query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("INSERT INTO memories"),
-      ["self", "i like trains", expect.any(String)],
-    );
+    expect(args).toEqual([
+      "self",
+      "i like trains",
+      expect.any(String),
+      "self",
+      MAX_PER_CATEGORY,
+    ]);
   });
 
   it("should reject invalid categories", async () => {
@@ -100,10 +101,7 @@ describe("remember", () => {
   });
 
   it("should refuse when the category is full", async () => {
-    vi.mocked(query).mockResolvedValueOnce({
-      ...emptyResult,
-      rows: [{ count: MAX_PER_CATEGORY }],
-    });
+    vi.mocked(query).mockResolvedValueOnce(emptyResult);
 
     await expect(
       remember({ category: "jokes", content: "one more" }),

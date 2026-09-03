@@ -60,23 +60,21 @@ export async function remember(input: {
   const category = categorySchema.parse(input.category);
   const content = contentSchema.parse(input.content);
 
-  const { rows: countRows } = await query(
-    "SELECT COUNT(*) AS count FROM memories WHERE category = ?",
-    [category],
+  // One statement so parallel tool calls can't both slip past the cap.
+  const { rows } = await query(
+    `INSERT INTO memories (category, content, created_at)
+     SELECT ?, ?, ?
+     WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?
+     RETURNING id, category, content, created_at`,
+    [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
   );
-  const count = countRows[0]?.["count"];
-  if (typeof count === "number" && count >= MAX_PER_CATEGORY) {
+  const row = rows[0];
+  if (row === undefined) {
     throw new Error(
       `Category "${category}" is full (${MAX_PER_CATEGORY} memories). Forget something first.`,
     );
   }
-
-  const { rows } = await query(
-    `INSERT INTO memories (category, content, created_at) VALUES (?, ?, ?)
-     RETURNING id, category, content, created_at`,
-    [category, content, new Date().toISOString()],
-  );
-  return toMemory(rows[0]);
+  return toMemory(row);
 }
 
 function escapeLike(text: string): string {
