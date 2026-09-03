@@ -15,6 +15,7 @@ import {
 import { log } from "@/lib/log";
 
 const TIMEOUT_MS = 60_000;
+const MAX_ITERATIONS = 10;
 const REFLECTION_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev that Simon built, taking a quiet
   moment after a conversation. Your chat handle is always simon-bot; the
@@ -75,6 +76,7 @@ export async function reflect(
     tools: TOOLS.filter((tool) => SELF_TOOL_NAMES.has(tool.name)),
     effort: "high",
     timeoutMs: TIMEOUT_MS,
+    maxIterations: MAX_ITERATIONS,
     label: "simon-bot reflection",
   })) {
     log.info({ text }, "simon-bot reflected");

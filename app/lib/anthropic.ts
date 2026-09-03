@@ -35,7 +35,7 @@ const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-5" as const;
 const MAX_TOKENS = 2048;
 const TIMEOUT_MS = 15_000;
-const MAX_TOOL_ITERATIONS = 5;
+const DEFAULT_MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev that Simon built. Your chat handle
   is always simon-bot, but who you are beyond that is yours to decide. The
@@ -363,6 +363,7 @@ export type AgentLoopOptions = {
   tools: typeof TOOLS;
   effort: "low" | "medium" | "high";
   timeoutMs: number;
+  maxIterations?: number;
   label: string;
 };
 
@@ -372,9 +373,10 @@ export async function* runAgentLoop({
   tools,
   effort,
   timeoutMs,
+  maxIterations = DEFAULT_MAX_TOOL_ITERATIONS,
   label,
 }: AgentLoopOptions): AsyncGenerator<string, void, unknown> {
-  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
     const response = await fetch(BASE_URL, {
       method: "POST",
       headers: {
@@ -460,7 +462,7 @@ export async function* runAgentLoop({
   }
 
   log.warn(
-    { iterations: MAX_TOOL_ITERATIONS },
+    { iterations: maxIterations },
     `${label} reached max tool iterations`,
   );
   yield "sorry, I got stuck in a loop and couldn't finish my thought...";

@@ -191,6 +191,30 @@ describe("handleMessage", () => {
     );
   });
 
+  it("should match a chosen name with non-ASCII letters", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getChosenName).mockResolvedValue("José");
+
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey josé!" },
+    ]);
+
+    async function* mockResponse() {
+      yield "hola";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hey josé!" }));
+
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "hola",
+      "simon-bot",
+      "msg-1",
+    );
+  });
+
   it("should not treat a partial word as its chosen name", async () => {
     setMock.mockResolvedValue("OK");
     vi.mocked(getChosenName).mockResolvedValue("Bob");

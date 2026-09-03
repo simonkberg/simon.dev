@@ -64,6 +64,7 @@ describe("reflect", () => {
       ),
       effort: "high",
       timeoutMs: 60_000,
+      maxIterations: 10,
       label: "simon-bot reflection",
     });
     expect(log.info).toHaveBeenCalledWith(

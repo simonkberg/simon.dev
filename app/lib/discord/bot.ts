@@ -26,7 +26,12 @@ function escapeRegExp(text: string): string {
 function mentionsBot(content: string, chosenName: string): boolean {
   if (BOT_MENTION_PATTERN.test(content)) return true;
   if (!chosenName) return false;
-  return new RegExp(`\\b${escapeRegExp(chosenName)}\\b`, "i").test(content);
+  // \b is ASCII-only, so use Unicode-aware boundaries for names like "José".
+  const boundary = String.raw`[\p{L}\p{N}_]`;
+  return new RegExp(
+    `(?<!${boundary})${escapeRegExp(chosenName)}(?!${boundary})`,
+    "iu",
+  ).test(content);
 }
 
 const SEEN_PREFIX = "discord:seen:";

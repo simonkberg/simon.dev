@@ -32,7 +32,15 @@ export const DEFAULT_PROFILE: Profile = {
 };
 
 export const profileChangesSchema = z.object({
-  name: z.string().trim().min(1).max(40).optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .refine((name) => name.toLowerCase() !== "simon", {
+      message: "Simon is the human who built you; pick another name",
+    })
+    .optional(),
   pronouns: z.string().trim().min(1).max(30).optional(),
   system_prompt: z
     .string()

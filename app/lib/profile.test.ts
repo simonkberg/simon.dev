@@ -143,6 +143,13 @@ describe("updateProfile", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it("should refuse the name Simon", async () => {
+    await expect(updateProfile({ name: " SIMON " })).rejects.toThrow(
+      "pick another name",
+    );
+    expect(query).not.toHaveBeenCalled();
+  });
+
   it("should reject values over their caps", async () => {
     await expect(
       updateProfile({ system_prompt: "x".repeat(MAX_SELF_PROMPT_LENGTH + 1) }),
