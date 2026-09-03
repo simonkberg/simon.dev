@@ -143,6 +143,25 @@ describe("updateProfile", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it("should drop the cached profile even when a write fails", async () => {
+    vi.mocked(query).mockResolvedValueOnce({
+      ...emptyResult,
+      rows: [{ key: "name", value: "bob" }],
+    });
+    await getProfile();
+    vi.mocked(query).mockRejectedValueOnce(new Error("write failed"));
+
+    await expect(updateProfile({ name: "alice" })).rejects.toThrow(
+      "write failed",
+    );
+
+    vi.mocked(query).mockResolvedValueOnce({
+      ...emptyResult,
+      rows: [{ key: "name", value: "alice" }],
+    });
+    await expect(getProfile()).resolves.toMatchObject({ name: "alice" });
+  });
+
   it("should refuse the name Simon", async () => {
     await expect(updateProfile({ name: " SIMON " })).rejects.toThrow(
       "pick another name",

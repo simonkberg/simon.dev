@@ -105,19 +105,25 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
 
   const before = await getProfile();
   const updatedAt = new Date().toISOString();
-  await Promise.all(
-    changes.map(([key, value]) =>
-      query(
-        `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
-         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-        [key, value, updatedAt],
+  // Cleared on both sides of the writes so a partial failure can't leave a
+  // stale profile cached for a minute.
+  cached = undefined;
+  try {
+    await Promise.all(
+      changes.map(([key, value]) =>
+        query(
+          `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
+           ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+          [key, value, updatedAt],
+        ),
       ),
-    ),
-  );
+    );
+  } finally {
+    cached = undefined;
+  }
   for (const [key, value] of changes) {
     log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
   }
-  cached = undefined;
   return { ...before, ...Object.fromEntries(changes) };
 }
 

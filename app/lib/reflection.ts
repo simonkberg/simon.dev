@@ -50,9 +50,7 @@ export async function reflect(
   replies: string[],
 ): Promise<void> {
   const transcript = [
-    ...chatMessages.map((m) =>
-      m.role === "assistant" ? `simon-bot: ${m.content}` : formatChatLine(m),
-    ),
+    ...chatMessages.map(formatChatLine),
     ...replies.map((reply) => `simon-bot: ${reply}`),
   ].join("\n");
 
