@@ -1,7 +1,9 @@
 import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
+import { getProfile } from "@/lib/profile";
 import { getRedis } from "@/lib/redis";
+import { reflect } from "@/lib/reflection";
 
 import type { Username } from "../session";
 import { getMessageChain, postChannelMessage } from "./api";
@@ -17,8 +19,33 @@ function isBotMessage(content: string): boolean {
   return content.startsWith(BOT_PREFIX);
 }
 
-function mentionsBot(content: string): boolean {
-  return BOT_MENTION_PATTERN.test(content);
+const NAME_CACHE_TTL_MS = 60_000;
+let cachedName: { value: string; expires: number } | undefined;
+
+async function getChosenName(): Promise<string> {
+  if (cachedName && cachedName.expires > Date.now()) return cachedName.value;
+  try {
+    const { name } = await getProfile();
+    cachedName = { value: name, expires: Date.now() + NAME_CACHE_TTL_MS };
+  } catch (err) {
+    log.error({ err }, "Failed to load the bot's chosen name");
+    cachedName = { value: "", expires: Date.now() + NAME_CACHE_TTL_MS };
+  }
+  return cachedName.value;
+}
+
+export function _resetNameCache(): void {
+  cachedName = undefined;
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function mentionsBot(content: string, chosenName: string): boolean {
+  if (BOT_MENTION_PATTERN.test(content)) return true;
+  if (!chosenName) return false;
+  return new RegExp(`\\b${escapeRegExp(chosenName)}\\b`, "i").test(content);
 }
 
 const SEEN_PREFIX = "discord:seen:";
@@ -49,7 +76,8 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     if (chain.length === 0) return;
 
     // Check if bot is mentioned anywhere in chain
-    if (!chain.some((m) => mentionsBot(m.content))) return;
+    const chosenName = await getChosenName();
+    if (!chain.some((m) => mentionsBot(m.content, chosenName))) return;
 
     // Past this point, we're committed to responding
     const messages = chain.map((m) => ({
@@ -59,13 +87,21 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
           : ("user" as const),
       username: m.username,
       content: m.content,
+      owner: m.fromOwner,
     })) as [ChatMessage, ...ChatMessage[]];
 
     try {
+      const replies: string[] = [];
       for await (const response of createMessage(messages)) {
         await postChannelMessage(response, BOT_USERNAME, message.id);
+        replies.push(response);
       }
       log.info({ messageId: message.id }, "Bot responded to message");
+
+      // Deliberately not awaited: reflection must never delay or fail a reply.
+      reflect(messages, replies).catch((err) => {
+        log.error({ err, messageId: message.id }, "Bot reflection failed");
+      });
     } catch (err) {
       log.error({ err, messageId: message.id }, "Bot response failed");
       await postChannelMessage(

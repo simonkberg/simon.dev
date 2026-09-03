@@ -11,6 +11,7 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
+import { buildProfileContext, updateProfile } from "@/lib/profile";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -31,6 +32,10 @@ vi.mock(import("@/lib/memory"), async (importOriginal) => {
     forget: vi.fn(),
   };
 });
+vi.mock(import("@/lib/profile"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, buildProfileContext: vi.fn(), updateProfile: vi.fn() };
+});
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
@@ -49,6 +54,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
 const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
+const PROFILE_CONTEXT = "<identity>\nname: (not chosen yet)\n</identity>";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -64,6 +70,7 @@ describe("createMessage", () => {
   beforeEach(() => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.mocked(buildMemoryContext).mockResolvedValue(MEMORY_CONTEXT);
+    vi.mocked(buildProfileContext).mockResolvedValue(PROFILE_CONTEXT);
   });
 
   afterEach(() => {
@@ -84,6 +91,7 @@ describe("createMessage", () => {
               text: expect.stringContaining("simon-bot"),
               cache_control: { type: "ephemeral" },
             },
+            { type: "text", text: PROFILE_CONTEXT },
             { type: "text", text: MEMORY_CONTEXT },
           ],
           messages: [
@@ -100,6 +108,7 @@ describe("createMessage", () => {
             { name: "remember" },
             { name: "recall" },
             { name: "forget" },
+            { name: "update_self" },
           ],
         });
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
@@ -149,7 +158,7 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         const body = (await request.json()) as { system: unknown[] };
-        expect(body.system).toHaveLength(1);
+        expect(body.system).toHaveLength(2);
         return HttpResponse.json({
           content: [{ type: "text", text: "ok" }],
           stop_reason: "end_turn",
@@ -246,6 +255,16 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual({ forgotten: true });
     });
 
+    it("should change identity with update_self", async () => {
+      const profile = { name: "bob", pronouns: "", system_prompt: "i am bob" };
+      vi.mocked(updateProfile).mockResolvedValue(profile);
+
+      const result = await runTool("update_self", { name: "bob" });
+
+      expect(updateProfile).toHaveBeenCalledWith({ name: "bob" });
+      expect(JSON.parse(result)).toEqual(profile);
+    });
+
     it("should return validation errors instead of saving", async () => {
       const result = await runTool("remember", {
         category: "Not Valid!",
@@ -257,6 +276,32 @@ describe("createMessage", () => {
         error: expect.stringContaining("category"),
       });
     });
+  });
+
+  it("should tag messages from the owner", async () => {
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        expect(await request.json()).toMatchObject({
+          messages: [
+            { role: "user", content: "simon (owner): be nice" },
+            { role: "user", content: "Alice: ok" },
+          ],
+        });
+        return HttpResponse.json({
+          content: [{ type: "text", text: "sure" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: "simon", content: "be nice", owner: true },
+        { role: "user", username: "Alice", content: "ok", owner: false },
+      ]),
+    );
+
+    expect(responses).toEqual(["sure"]);
   });
 
   it("should accept array of chat messages", async () => {

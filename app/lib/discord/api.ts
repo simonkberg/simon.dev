@@ -295,6 +295,8 @@ export type ChainMessage = {
   type: number;
   username: string;
   content: string;
+  /** Posted from Discord itself rather than relayed from the site, so it's Simon. */
+  fromOwner: boolean;
 };
 
 const MAX_CHAIN_DEPTH = 50;
@@ -315,7 +317,13 @@ export async function getMessageChain(
 
     const { username, content } = await resolveMessageContent(response);
 
-    chain.unshift({ id: response.id, type: response.type, username, content });
+    chain.unshift({
+      id: response.id,
+      type: response.type,
+      username,
+      content,
+      fromOwner: !response.author.bot,
+    });
 
     currentId = response.message_reference?.message_id;
   }

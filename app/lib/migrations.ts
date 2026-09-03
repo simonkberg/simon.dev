@@ -13,6 +13,11 @@ export const MIGRATIONS: readonly string[] = [
     created_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS memories_category ON memories (category)`,
+  `CREATE TABLE IF NOT EXISTS profile (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
 ];
 
 const LOCK_KEY = "turso:migrations:lock";
