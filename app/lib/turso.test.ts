@@ -133,6 +133,42 @@ describe("query", () => {
     );
   });
 
+  it("should throw when the first result is not an execute result", async () => {
+    server.use(
+      http.post(PIPELINE_URL, () =>
+        HttpResponse.json({
+          results: [{ type: "ok", response: { type: "close" } }],
+        }),
+      ),
+    );
+
+    await expect(query("SELECT 1")).rejects.toThrow(
+      "Turso returned unexpected close result",
+    );
+  });
+
+  it("should fall back to the column index when a value has no column", async () => {
+    server.use(
+      http.post(PIPELINE_URL, () =>
+        HttpResponse.json(
+          pipelineResponse({
+            cols: [{ name: "id" }],
+            rows: [
+              [
+                { type: "integer", value: "1" },
+                { type: "text", value: "extra" },
+              ],
+            ],
+          }),
+        ),
+      ),
+    );
+
+    await expect(query("SELECT 1")).resolves.toMatchObject({
+      rows: [{ id: 1, 1: "extra" }],
+    });
+  });
+
   it("should throw when the response has no results", async () => {
     server.use(
       http.post(PIPELINE_URL, () => HttpResponse.json({ results: [] })),
