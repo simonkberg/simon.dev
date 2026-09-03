@@ -36,15 +36,19 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function mentionsBot(content: string, name: string): boolean {
-  if (HANDLE_PATTERN.test(content)) return true;
-  if (name === HANDLE) return false;
+function mentionsName(content: string, name: string): boolean {
   // \b is ASCII-only, so use Unicode-aware boundaries for names like "José".
   const boundary = String.raw`[\p{L}\p{N}_]`;
   return new RegExp(
     `(?<!${boundary})${escapeRegExp(name)}(?!${boundary})`,
     "iu",
   ).test(content);
+}
+
+// Former names still work: the chat tip can lag a rename by a minute or so.
+function mentionsBot(content: string, names: string[]): boolean {
+  if (HANDLE_PATTERN.test(content)) return true;
+  return names.some((name) => name !== HANDLE && mentionsName(content, name));
 }
 
 const SEEN_PREFIX = "discord:seen:";
@@ -79,8 +83,9 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     if (chain.length === 0) return;
 
     // Check if bot is mentioned anywhere in chain
+    if (!chain.some((m) => mentionsBot(m.content, names))) return;
+
     const name = displayName(profile);
-    if (!chain.some((m) => mentionsBot(m.content, name))) return;
 
     // Past this point, we're committed to responding
     const messages = chain.map((m) => ({

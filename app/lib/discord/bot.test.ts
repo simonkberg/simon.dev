@@ -258,6 +258,33 @@ describe("handleMessage", () => {
     expect(postChannelMessage).toHaveBeenCalledWith("np", "Ivo", "msg-3");
   });
 
+  it("should still answer to a former name", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "Ivo",
+      former_names: JSON.stringify(["Mabel"]),
+    });
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hi mabel" },
+    ]);
+
+    async function* mockResponse() {
+      yield "it's ivo now, but hi";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hi mabel" }));
+
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "it's ivo now, but hi",
+      "Ivo",
+      "msg-1",
+    );
+  });
+
   it("should fall back to the handle when the profile can't be loaded", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
