@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMessage as createAnthropicMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { getProfile } from "@/lib/profile";
+import { getChosenName } from "@/lib/profile";
 import { reflect } from "@/lib/reflection";
 
 import { getMessageChain, postChannelMessage } from "./api";
-import { _resetNameCache, handleMessage, startBotSubscription } from "./bot";
+import { handleMessage, startBotSubscription } from "./bot";
 import { subscribeToMessages } from "./gateway";
 import type { DiscordMessage } from "./schemas";
 
@@ -22,7 +22,7 @@ vi.mock(import("@/lib/redis"), () => ({
 
 vi.mock(import("@/lib/profile"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, getProfile: vi.fn() };
+  return { ...actual, getChosenName: vi.fn() };
 });
 vi.mock(import("@/lib/reflection"), () => ({ reflect: vi.fn() }));
 
@@ -56,13 +56,10 @@ function createMessage(
   };
 }
 
-const blankProfile = { name: "", pronouns: "", system_prompt: "" };
-
 describe("handleMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    _resetNameCache();
-    vi.mocked(getProfile).mockResolvedValue(blankProfile);
+    vi.mocked(getChosenName).mockResolvedValue("");
     vi.mocked(reflect).mockResolvedValue(undefined);
   });
 
@@ -247,7 +244,7 @@ describe("handleMessage", () => {
   it("should respond when addressed by its chosen name", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    vi.mocked(getProfile).mockResolvedValue({ ...blankProfile, name: "Bob" });
+    vi.mocked(getChosenName).mockResolvedValue("Bob");
 
     vi.mocked(getMessageChain).mockResolvedValue([
       {
@@ -276,33 +273,9 @@ describe("handleMessage", () => {
     );
   });
 
-  it("should cache the chosen name between messages", async () => {
-    setMock.mockResolvedValue("OK");
-    vi.mocked(getProfile).mockResolvedValue({ ...blankProfile, name: "Bob" });
-    vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "just chatting",
-        fromOwner: false,
-      },
-    ]);
-
-    await handleMessage(
-      createMessage({ id: "msg-1", content: "User1: just chatting" }),
-    );
-    await handleMessage(
-      createMessage({ id: "msg-2", content: "User1: still chatting" }),
-    );
-
-    expect(getProfile).toHaveBeenCalledTimes(1);
-    expect(createAnthropicMessage).not.toHaveBeenCalled();
-  });
-
   it("should not treat a partial word as its chosen name", async () => {
     setMock.mockResolvedValue("OK");
-    vi.mocked(getProfile).mockResolvedValue({ ...blankProfile, name: "Bob" });
+    vi.mocked(getChosenName).mockResolvedValue("Bob");
 
     vi.mocked(getMessageChain).mockResolvedValue([
       {
@@ -319,11 +292,10 @@ describe("handleMessage", () => {
     expect(createAnthropicMessage).not.toHaveBeenCalled();
   });
 
-  it("should still respond to its handle when the name lookup fails", async () => {
+  it("should still respond to its handle when no name is chosen", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    vi.mocked(getProfile).mockRejectedValue(new Error("db down"));
+    vi.mocked(getChosenName).mockResolvedValue("");
 
     vi.mocked(getMessageChain).mockResolvedValue([
       {
@@ -347,10 +319,6 @@ describe("handleMessage", () => {
       "hello",
       "simon-bot",
       "msg-1",
-    );
-    expect(errorSpy).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      "Failed to load the bot's chosen name",
     );
   });
 

@@ -4,8 +4,10 @@ import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
 import {
+  _resetNameCache,
   buildProfileContext,
   DEFAULT_SELF_PROMPT,
+  getChosenName,
   getProfile,
   MAX_SELF_PROMPT_LENGTH,
   updateProfile,
@@ -78,6 +80,23 @@ describe("updateProfile", () => {
     );
   });
 
+  it("should write the changed keys in parallel", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.mocked(query).mockImplementation(async (sql) => {
+      if (!sql.includes("INSERT")) return emptyResult;
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight--;
+      return emptyResult;
+    });
+
+    await updateProfile({ name: "a", pronouns: "b", system_prompt: "c" });
+
+    expect(maxInFlight).toBe(3);
+  });
+
   it("should refuse an empty update", async () => {
     await expect(updateProfile({})).rejects.toThrow("Nothing to update");
     expect(query).not.toHaveBeenCalled();
@@ -142,5 +161,72 @@ describe("buildProfileContext", () => {
       { err: expect.any(Error) },
       "Failed to load profile, using defaults",
     );
+  });
+});
+
+describe("getChosenName", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _resetNameCache();
+    vi.useRealTimers();
+  });
+
+  it("should cache the name for a minute", async () => {
+    vi.useFakeTimers();
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [{ key: "name", value: "bob" }],
+    });
+
+    await expect(getChosenName()).resolves.toBe("bob");
+    await expect(getChosenName()).resolves.toBe("bob");
+    expect(query).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60_001);
+    await expect(getChosenName()).resolves.toBe("bob");
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it("should forget the cached name when the profile changes", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [{ key: "name", value: "bob" }],
+    });
+    await expect(getChosenName()).resolves.toBe("bob");
+
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [{ key: "name", value: "alice" }],
+    });
+    await updateProfile({ name: "alice" });
+
+    await expect(getChosenName()).resolves.toBe("alice");
+  });
+
+  it("should keep the last known name when the lookup fails", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.useFakeTimers();
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [{ key: "name", value: "bob" }],
+    });
+    await expect(getChosenName()).resolves.toBe("bob");
+
+    vi.advanceTimersByTime(60_001);
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    await expect(getChosenName()).resolves.toBe("bob");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to load the bot's chosen name",
+    );
+  });
+
+  it("should fall back to no name when nothing was ever loaded", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    await expect(getChosenName()).resolves.toBe("");
   });
 });

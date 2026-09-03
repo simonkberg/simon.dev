@@ -71,15 +71,43 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
 
   const before = await getProfile();
   const updatedAt = new Date().toISOString();
+  await Promise.all(
+    changes.map(([key, value]) =>
+      query(
+        `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [key, value, updatedAt],
+      ),
+    ),
+  );
   for (const [key, value] of changes) {
-    await query(
-      `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-      [key, value, updatedAt],
-    );
     log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
   }
+  cachedName = undefined;
   return { ...before, ...Object.fromEntries(changes) };
+}
+
+const NAME_CACHE_TTL_MS = 60_000;
+let cachedName: { value: string; expires: number } | undefined;
+
+export async function getChosenName(): Promise<string> {
+  if (cachedName && cachedName.expires > Date.now()) return cachedName.value;
+  try {
+    const { name } = await getProfile();
+    cachedName = { value: name, expires: Date.now() + NAME_CACHE_TTL_MS };
+  } catch (err) {
+    log.error({ err }, "Failed to load the bot's chosen name");
+    // Keep the last known name rather than going deaf to it for a minute.
+    cachedName = {
+      value: cachedName?.value ?? "",
+      expires: Date.now() + NAME_CACHE_TTL_MS,
+    };
+  }
+  return cachedName.value;
+}
+
+export function _resetNameCache(): void {
+  cachedName = undefined;
 }
 
 function renderProfile(profile: Profile): string {

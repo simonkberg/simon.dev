@@ -1,7 +1,7 @@
 import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { getProfile } from "@/lib/profile";
+import { getChosenName } from "@/lib/profile";
 import { getRedis } from "@/lib/redis";
 import { reflect } from "@/lib/reflection";
 
@@ -17,25 +17,6 @@ const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
 
 function isBotMessage(content: string): boolean {
   return content.startsWith(BOT_PREFIX);
-}
-
-const NAME_CACHE_TTL_MS = 60_000;
-let cachedName: { value: string; expires: number } | undefined;
-
-async function getChosenName(): Promise<string> {
-  if (cachedName && cachedName.expires > Date.now()) return cachedName.value;
-  try {
-    const { name } = await getProfile();
-    cachedName = { value: name, expires: Date.now() + NAME_CACHE_TTL_MS };
-  } catch (err) {
-    log.error({ err }, "Failed to load the bot's chosen name");
-    cachedName = { value: "", expires: Date.now() + NAME_CACHE_TTL_MS };
-  }
-  return cachedName.value;
-}
-
-export function _resetNameCache(): void {
-  cachedName = undefined;
 }
 
 function escapeRegExp(text: string): string {
