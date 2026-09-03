@@ -88,6 +88,8 @@ export function selfNames(profile: Profile): string[] {
   return [...new Set([displayName(profile), HANDLE, ...formerNames(profile)])];
 }
 
+let lastKnown = DEFAULT_PROFILE;
+
 export async function getProfile(): Promise<Profile> {
   const { rows } = await query("SELECT key, value FROM profile");
   const profile = { ...DEFAULT_PROFILE };
@@ -98,7 +100,13 @@ export async function getProfile(): Promise<Profile> {
       profile[key] = value;
     }
   }
+  lastKnown = profile;
   return profile;
+}
+
+/** What to fall back on when a read fails, so a hiccup doesn't cost the bot its name. */
+export function lastKnownProfile(): Profile {
+  return lastKnown;
 }
 
 export async function updateProfile(input: ProfileChanges): Promise<Profile> {
@@ -143,7 +151,8 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
       { cause },
     );
   }
-  return { ...before, ...Object.fromEntries(writes) };
+  lastKnown = { ...before, ...Object.fromEntries(writes) };
+  return lastKnown;
 }
 
 function renderProfile(profile: Profile): string {
@@ -165,7 +174,7 @@ export async function buildProfileContext(): Promise<string> {
   try {
     return renderProfile(await getProfile());
   } catch (err) {
-    log.error({ err }, "Failed to load profile, using defaults");
-    return renderProfile(DEFAULT_PROFILE);
+    log.error({ err }, "Failed to load profile, using the last known one");
+    return renderProfile(lastKnownProfile());
   }
 }

@@ -2,10 +2,10 @@ import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 import {
-  DEFAULT_PROFILE,
   displayName,
   getProfile,
   HANDLE,
+  lastKnownProfile,
   type Profile,
   selfNames,
 } from "@/lib/profile";
@@ -23,8 +23,11 @@ async function loadProfile(): Promise<Profile> {
   try {
     return await getProfile();
   } catch (err) {
-    log.error({ err }, "Failed to load the bot's profile, using defaults");
-    return DEFAULT_PROFILE;
+    log.error(
+      { err },
+      "Failed to load the bot's profile, using the last known one",
+    );
+    return lastKnownProfile();
   }
 }
 
@@ -67,8 +70,8 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Only respond to default messages (0) and replies (19)
     if (message.type !== 0 && message.type !== 19) return;
 
-    // Our own messages under the default handle need no lookups to skip
-    if (message.content.startsWith(`${HANDLE}: `)) return;
+    // Our own messages need no lookups to skip
+    if (isOwnMessage(message.content, selfNames(lastKnownProfile()))) return;
 
     // Dedup across instances
     const isNew = await markSeen(message.id);
@@ -85,8 +88,6 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content, names))) return;
 
-    const name = displayName(profile);
-
     // Past this point, we're committed to responding
     const messages = chain.map((m) => ({
       role: names.includes(m.username)
@@ -96,10 +97,13 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       content: m.content,
     })) as [ChatMessage, ...ChatMessage[]];
 
+    // The bot can rename itself mid-reply, so the name is read at each post.
+    const currentName = () => displayName(lastKnownProfile()) as Username;
     const replies: ChatMessage[] = [];
     try {
       for await (const response of createMessage(messages)) {
-        await postChannelMessage(response, name as Username, message.id);
+        const name = currentName();
+        await postChannelMessage(response, name, message.id);
         replies.push({ role: "assistant", username: name, content: response });
       }
       log.info({ messageId: message.id }, "Bot responded to message");
@@ -107,7 +111,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       log.error({ err, messageId: message.id }, "Bot response failed");
       await postChannelMessage(
         "oops, something went wrong... try again later!",
-        name as Username,
+        currentName(),
         message.id,
       );
     }

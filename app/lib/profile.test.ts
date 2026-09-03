@@ -10,6 +10,7 @@ import {
   displayName,
   formerNames,
   getProfile,
+  lastKnownProfile,
   MAX_SELF_PROMPT_LENGTH,
   selfNames,
   updateProfile,
@@ -79,6 +80,13 @@ describe("getProfile", () => {
       ...DEFAULT_PROFILE,
       name: "bob",
     });
+  });
+
+  it("should remember the last profile that loaded", async () => {
+    vi.mocked(query).mockResolvedValueOnce(profileRows({ name: "bob" }));
+    await getProfile();
+
+    expect(lastKnownProfile()).toEqual({ ...DEFAULT_PROFILE, name: "bob" });
   });
 
   it("should read the table every time", async () => {
@@ -275,17 +283,30 @@ describe("buildProfileContext", () => {
     expect(context).toContain("<own-prompt>\ni am bob\n</own-prompt>");
   });
 
-  it("should fall back to defaults and log when the database fails", async () => {
+  it("should fall back to the last known profile and log when the database fails", async () => {
     vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.mocked(query).mockResolvedValueOnce(profileRows({ name: "bob" }));
+    await getProfile();
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    const context = await buildProfileContext();
+
+    expect(context).toContain("name: bob");
+    expect(context).toContain(DEFAULT_SELF_PROMPT);
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to load profile, using the last known one",
+    );
+  });
+
+  it("should fall back to defaults when nothing has loaded yet", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.mocked(query).mockResolvedValueOnce(emptyResult);
+    await getProfile();
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
     const context = await buildProfileContext();
 
     expect(context).toContain("name: simon-bot (the default");
-    expect(context).toContain(DEFAULT_SELF_PROMPT);
-    expect(log.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      "Failed to load profile, using defaults",
-    );
   });
 });
