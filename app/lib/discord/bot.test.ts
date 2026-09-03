@@ -350,6 +350,51 @@ describe("handleMessage", () => {
     ]);
   });
 
+  it("should still reflect when a later reply fails", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
+    ]);
+
+    async function* mockResponse() {
+      yield "one sec";
+      throw new Error("model timed out");
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
+
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "oops, something went wrong... try again later!",
+      "simon-bot",
+      "msg-1",
+    );
+    expect(reflect).toHaveBeenCalledWith([
+      { role: "user", username: "User1", content: "hey simon-bot" },
+      { role: "assistant", username: "simon-bot", content: "one sec" },
+    ]);
+  });
+
+  it("should not reflect when nothing was said", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
+    ]);
+
+    vi.mocked(createAnthropicMessage).mockImplementation(() => {
+      throw new Error("model down");
+    });
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
+
+    expect(reflect).not.toHaveBeenCalled();
+  });
+
   it("should log a failed reflection without affecting the reply", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});

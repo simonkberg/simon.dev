@@ -91,18 +91,13 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       content: m.content,
     })) as [ChatMessage, ...ChatMessage[]];
 
+    const replies: ChatMessage[] = [];
     try {
-      const replies: ChatMessage[] = [];
       for await (const response of createMessage(messages)) {
         await postChannelMessage(response, name as Username, message.id);
         replies.push({ role: "assistant", username: name, content: response });
       }
       log.info({ messageId: message.id }, "Bot responded to message");
-
-      // Deliberately not awaited: reflection must never delay or fail a reply.
-      reflect([...messages, ...replies]).catch((err) => {
-        log.error({ err, messageId: message.id }, "Bot reflection failed");
-      });
     } catch (err) {
       log.error({ err, messageId: message.id }, "Bot response failed");
       await postChannelMessage(
@@ -110,6 +105,14 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
         name as Username,
         message.id,
       );
+    }
+
+    // Deliberately not awaited: reflection must never delay or fail a reply.
+    // A partial exchange still counts as long as the bot said something.
+    if (replies.length > 0) {
+      reflect([...messages, ...replies]).catch((err) => {
+        log.error({ err, messageId: message.id }, "Bot reflection failed");
+      });
     }
   } catch (err) {
     log.error({ err, messageId: message.id }, "Bot message handling failed");

@@ -169,7 +169,7 @@ const forgetInputSchema = z.object({
 });
 const updateSelfInputSchema = z.object({
   name: profileChangesSchema.shape.name.describe(
-    "What you post under and what people call you, everywhere at once - a real decision, not a costume. simon-bot stays as a fallback handle.",
+    "What you post under and what people call you, everywhere at once - a real decision, not a costume. Saying it is what gets your attention, so pick something people won't say by accident. simon-bot stays as a fallback handle.",
   ),
   pronouns: profileChangesSchema.shape.pronouns.describe(
     'Your pronouns, e.g. "she/her" or "they/them"',

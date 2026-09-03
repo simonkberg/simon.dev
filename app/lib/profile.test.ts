@@ -132,7 +132,7 @@ describe("updateProfile", () => {
       return emptyResult;
     });
 
-    await updateProfile({ name: "a", pronouns: "b", system_prompt: "c" });
+    await updateProfile({ name: "abc", pronouns: "b", system_prompt: "c" });
 
     expect(maxInFlight).toBe(3);
   });
@@ -165,6 +165,33 @@ describe("updateProfile", () => {
       expect.anything(),
       expect.arrayContaining(["former_names"]),
     );
+  });
+
+  it("should report which keys landed when a write fails", async () => {
+    vi.mocked(query).mockImplementation(async (sql, args) => {
+      if (!sql.includes("INSERT")) return emptyResult;
+      if (args?.[0] === "pronouns") throw new Error("write failed");
+      return emptyResult;
+    });
+
+    await expect(
+      updateProfile({ name: "Bob", pronouns: "he/him" }),
+    ).rejects.toThrow("Failed to save pronouns (name saved)");
+    expect(log.info).toHaveBeenCalledWith(
+      { key: "name", from: "", to: "Bob" },
+      "simon-bot updated itself",
+    );
+    expect(log.info).not.toHaveBeenCalledWith(
+      expect.objectContaining({ key: "pronouns" }),
+      expect.anything(),
+    );
+  });
+
+  it("should refuse names too short to be a safe trigger", async () => {
+    await expect(updateProfile({ name: "ok" })).rejects.toThrow(
+      "at least 3 characters",
+    );
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("should refuse an empty update", async () => {

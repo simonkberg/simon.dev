@@ -45,7 +45,10 @@ export const profileChangesSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1)
+    .min(
+      3,
+      "A name needs at least 3 characters, or it'll fire on ordinary chat",
+    )
     .max(40)
     .regex(/^[^:\r\n]+$/, "A name can't contain colons or line breaks")
     .refine((name) => name.toLowerCase() !== "simon", {
@@ -118,7 +121,7 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
   }
 
   const updatedAt = new Date().toISOString();
-  await Promise.all(
+  const results = await Promise.allSettled(
     writes.map(([key, value]) =>
       query(
         `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
@@ -127,8 +130,18 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
       ),
     ),
   );
-  for (const [key, value] of changes) {
+  const saved = writes.filter((_, i) => results[i]?.status === "fulfilled");
+  const failed = writes.filter((_, i) => results[i]?.status === "rejected");
+  for (const [key, value] of saved) {
     log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
+  }
+  if (failed.length > 0) {
+    const cause = results.find((r) => r.status === "rejected")?.reason;
+    const savedKeys = saved.map(([key]) => key).join(", ") || "nothing";
+    throw new Error(
+      `Failed to save ${failed.map(([key]) => key).join(", ")} (${savedKeys} saved)`,
+      { cause },
+    );
   }
   return { ...before, ...Object.fromEntries(writes) };
 }
