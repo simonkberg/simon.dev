@@ -4,7 +4,7 @@ import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
 import {
-  _resetNameCache,
+  _resetProfileCache,
   buildProfileContext,
   DEFAULT_SELF_PROMPT,
   getChosenName,
@@ -21,6 +21,8 @@ const emptyResult = { rows: [], rowsAffected: 0, lastInsertRowId: null };
 describe("getProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetProfileCache();
+    vi.useRealTimers();
   });
 
   it("should fall back to defaults for missing keys", async () => {
@@ -49,11 +51,50 @@ describe("getProfile", () => {
       system_prompt: DEFAULT_SELF_PROMPT,
     });
   });
+
+  it("should cache the profile for a minute", async () => {
+    vi.useFakeTimers();
+    vi.mocked(query).mockResolvedValue(emptyResult);
+
+    await getProfile();
+    await getProfile();
+    expect(query).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60_001);
+    await getProfile();
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  it("should keep the last known profile when a refresh fails", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.useFakeTimers();
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [{ key: "name", value: "bob" }],
+    });
+    await getProfile();
+
+    vi.advanceTimersByTime(60_001);
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    await expect(getProfile()).resolves.toMatchObject({ name: "bob" });
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to refresh the profile, keeping the last known one",
+    );
+  });
+
+  it("should throw when nothing was ever loaded", async () => {
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    await expect(getProfile()).rejects.toThrow("db down");
+  });
 });
 
 describe("updateProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetProfileCache();
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.mocked(query).mockResolvedValue(emptyResult);
   });
@@ -114,6 +155,7 @@ describe("updateProfile", () => {
 describe("buildProfileContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetProfileCache();
   });
 
   it("should render placeholders and the default prompt on a blank slate", async () => {
@@ -167,12 +209,11 @@ describe("buildProfileContext", () => {
 describe("getChosenName", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    _resetNameCache();
+    _resetProfileCache();
     vi.useRealTimers();
   });
 
-  it("should cache the name for a minute", async () => {
-    vi.useFakeTimers();
+  it("should read the name through the cached profile", async () => {
     vi.mocked(query).mockResolvedValue({
       ...emptyResult,
       rows: [{ key: "name", value: "bob" }],
@@ -181,10 +222,6 @@ describe("getChosenName", () => {
     await expect(getChosenName()).resolves.toBe("bob");
     await expect(getChosenName()).resolves.toBe("bob");
     expect(query).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(60_001);
-    await expect(getChosenName()).resolves.toBe("bob");
-    expect(query).toHaveBeenCalledTimes(2);
   });
 
   it("should forget the cached name when the profile changes", async () => {
@@ -202,25 +239,6 @@ describe("getChosenName", () => {
     await updateProfile({ name: "alice" });
 
     await expect(getChosenName()).resolves.toBe("alice");
-  });
-
-  it("should keep the last known name when the lookup fails", async () => {
-    vi.spyOn(log, "error").mockImplementation(() => {});
-    vi.useFakeTimers();
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [{ key: "name", value: "bob" }],
-    });
-    await expect(getChosenName()).resolves.toBe("bob");
-
-    vi.advanceTimersByTime(60_001);
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
-
-    await expect(getChosenName()).resolves.toBe("bob");
-    expect(log.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      "Failed to load the bot's chosen name",
-    );
   });
 
   it("should fall back to no name when nothing was ever loaded", async () => {

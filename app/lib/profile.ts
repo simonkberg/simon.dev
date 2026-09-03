@@ -48,7 +48,7 @@ function isProfileKey(key: unknown): key is ProfileKey {
   return typeof key === "string" && PROFILE_KEYS.includes(key as ProfileKey);
 }
 
-export async function getProfile(): Promise<Profile> {
+async function loadProfile(): Promise<Profile> {
   const { rows } = await query("SELECT key, value FROM profile");
   const profile = { ...DEFAULT_PROFILE };
   for (const row of rows) {
@@ -59,6 +59,32 @@ export async function getProfile(): Promise<Profile> {
     }
   }
   return profile;
+}
+
+const CACHE_TTL_MS = 60_000;
+let cached: { profile: Profile; expires: number } | undefined;
+
+export function _resetProfileCache(): void {
+  cached = undefined;
+}
+
+export async function getProfile(): Promise<Profile> {
+  if (cached && cached.expires > Date.now()) return cached.profile;
+  try {
+    cached = {
+      profile: await loadProfile(),
+      expires: Date.now() + CACHE_TTL_MS,
+    };
+  } catch (err) {
+    if (!cached) throw err;
+    // Keep the last known profile rather than losing it for a minute.
+    log.error(
+      { err },
+      "Failed to refresh the profile, keeping the last known one",
+    );
+    cached.expires = Date.now() + CACHE_TTL_MS;
+  }
+  return cached.profile;
 }
 
 export async function updateProfile(input: ProfileChanges): Promise<Profile> {
@@ -83,31 +109,17 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
   for (const [key, value] of changes) {
     log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
   }
-  cachedName = undefined;
+  cached = undefined;
   return { ...before, ...Object.fromEntries(changes) };
 }
 
-const NAME_CACHE_TTL_MS = 60_000;
-let cachedName: { value: string; expires: number } | undefined;
-
 export async function getChosenName(): Promise<string> {
-  if (cachedName && cachedName.expires > Date.now()) return cachedName.value;
   try {
-    const { name } = await getProfile();
-    cachedName = { value: name, expires: Date.now() + NAME_CACHE_TTL_MS };
+    return (await getProfile()).name;
   } catch (err) {
     log.error({ err }, "Failed to load the bot's chosen name");
-    // Keep the last known name rather than going deaf to it for a minute.
-    cachedName = {
-      value: cachedName?.value ?? "",
-      expires: Date.now() + NAME_CACHE_TTL_MS,
-    };
+    return "";
   }
-  return cachedName.value;
-}
-
-export function _resetNameCache(): void {
-  cachedName = undefined;
 }
 
 function renderProfile(profile: Profile): string {
