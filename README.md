@@ -47,7 +47,6 @@ SESSION_SECRET=your-secret-key
 DISCORD_BOT_TOKEN=your-bot-token
 DISCORD_GUILD_ID=your-guild-id
 DISCORD_CHANNEL_ID=your-channel-id
-DISCORD_OWNER_ID=your-discord-user-id
 UPSTASH_REDIS_REST_URL=your-redis-url
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
 LAST_FM_API_KEY=your-lastfm-api-key

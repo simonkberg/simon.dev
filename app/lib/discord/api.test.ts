@@ -608,42 +608,6 @@ describe("getMessageChain", () => {
     });
   });
 
-  it("should flag messages from the configured owner", async () => {
-    server.use(
-      http.get(
-        `${DISCORD_BASE_URL}/channels/:channelId/messages/:messageId`,
-        ({ params }) =>
-          HttpResponse.json({
-            type: 0,
-            id: params["messageId"],
-            author: {
-              id:
-                params["messageId"] === "owner-1"
-                  ? "test-discord-owner-id"
-                  : "user999",
-            },
-            content: "hello",
-            timestamp: "2025-01-01T00:00:00.000000+00:00",
-            edited_timestamp: null,
-            message_reference:
-              params["messageId"] === "other-2"
-                ? { message_id: "owner-1" }
-                : undefined,
-          }),
-      ),
-      http.get(`${DISCORD_BASE_URL}/guilds/:guildId/members/:userId`, () =>
-        HttpResponse.json({
-          user: { username: "someone", global_name: null },
-          nick: null,
-        }),
-      ),
-    );
-
-    const chain = await getMessageChain("other-2");
-
-    expect(chain.map((m) => m.fromOwner)).toEqual([true, false]);
-  });
-
   it("should stop on circular reference", async () => {
     server.use(
       http.get(
