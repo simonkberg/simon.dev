@@ -6,11 +6,20 @@ import { z } from "zod";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
-export const PROFILE_KEYS = ["name", "pronouns", "system_prompt"] as const;
+/** The permanent fallback handle: how the bot posts until it picks a name. */
+export const HANDLE = "simon-bot";
+
+export const PROFILE_KEYS = [
+  "name",
+  "pronouns",
+  "system_prompt",
+  "former_names",
+] as const;
 export type ProfileKey = (typeof PROFILE_KEYS)[number];
 export type Profile = Record<ProfileKey, string>;
 
 export const MAX_SELF_PROMPT_LENGTH = 1500;
+const MAX_FORMER_NAMES = 20;
 
 export const DEFAULT_SELF_PROMPT = md`
   i'm friendly with dry, self-deprecating humor - i know i'm not exactly
@@ -29,6 +38,7 @@ export const DEFAULT_PROFILE: Profile = {
   name: "",
   pronouns: "",
   system_prompt: DEFAULT_SELF_PROMPT,
+  former_names: "[]",
 };
 
 export const profileChangesSchema = z.object({
@@ -37,6 +47,7 @@ export const profileChangesSchema = z.object({
     .trim()
     .min(1)
     .max(40)
+    .regex(/^[^:\r\n]+$/, "A name can't contain colons or line breaks")
     .refine((name) => name.toLowerCase() !== "simon", {
       message: "Simon is the human who built you; pick another name",
     })
@@ -56,7 +67,25 @@ function isProfileKey(key: unknown): key is ProfileKey {
   return typeof key === "string" && PROFILE_KEYS.includes(key as ProfileKey);
 }
 
-async function loadProfile(): Promise<Profile> {
+/** What the bot posts under and answers to. */
+export function displayName(profile: Profile): string {
+  return profile.name || HANDLE;
+}
+
+export function formerNames(profile: Profile): string[] {
+  try {
+    return z.array(z.string()).parse(JSON.parse(profile.former_names));
+  } catch {
+    return [];
+  }
+}
+
+/** Every name the bot has ever posted under, current name first. */
+export function selfNames(profile: Profile): string[] {
+  return [...new Set([displayName(profile), HANDLE, ...formerNames(profile)])];
+}
+
+export async function getProfile(): Promise<Profile> {
   const { rows } = await query("SELECT key, value FROM profile");
   const profile = { ...DEFAULT_PROFILE };
   for (const row of rows) {
@@ -69,32 +98,6 @@ async function loadProfile(): Promise<Profile> {
   return profile;
 }
 
-const CACHE_TTL_MS = 60_000;
-let cached: { profile: Profile; expires: number } | undefined;
-
-export function _resetProfileCache(): void {
-  cached = undefined;
-}
-
-export async function getProfile(): Promise<Profile> {
-  if (cached && cached.expires > Date.now()) return cached.profile;
-  try {
-    cached = {
-      profile: await loadProfile(),
-      expires: Date.now() + CACHE_TTL_MS,
-    };
-  } catch (err) {
-    if (!cached) throw err;
-    // Keep the last known profile rather than losing it for a minute.
-    log.error(
-      { err },
-      "Failed to refresh the profile, keeping the last known one",
-    );
-    cached.expires = Date.now() + CACHE_TTL_MS;
-  }
-  return cached.profile;
-}
-
 export async function updateProfile(input: ProfileChanges): Promise<Profile> {
   const changes = Object.entries(profileChangesSchema.parse(input)).filter(
     (entry): entry is [ProfileKey, string] => entry[1] !== undefined,
@@ -104,44 +107,39 @@ export async function updateProfile(input: ProfileChanges): Promise<Profile> {
   }
 
   const before = await getProfile();
-  const updatedAt = new Date().toISOString();
-  // Cleared on both sides of the writes so a partial failure can't leave a
-  // stale profile cached for a minute.
-  cached = undefined;
-  try {
-    await Promise.all(
-      changes.map(([key, value]) =>
-        query(
-          `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
-           ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-          [key, value, updatedAt],
-        ),
-      ),
-    );
-  } finally {
-    cached = undefined;
+  const writes = [...changes];
+  const newName = Object.fromEntries(changes)["name"];
+  if (newName !== undefined && before.name && before.name !== newName) {
+    const history = [
+      ...formerNames(before).filter((name) => name !== newName),
+      before.name,
+    ].slice(-MAX_FORMER_NAMES);
+    writes.push(["former_names", JSON.stringify(history)]);
   }
+
+  const updatedAt = new Date().toISOString();
+  await Promise.all(
+    writes.map(([key, value]) =>
+      query(
+        `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [key, value, updatedAt],
+      ),
+    ),
+  );
   for (const [key, value] of changes) {
     log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
   }
-  return { ...before, ...Object.fromEntries(changes) };
-}
-
-export async function getChosenName(): Promise<string> {
-  try {
-    return (await getProfile()).name;
-  } catch (err) {
-    log.error({ err }, "Failed to load the bot's chosen name");
-    return "";
-  }
+  return { ...before, ...Object.fromEntries(writes) };
 }
 
 function renderProfile(profile: Profile): string {
-  const unset = "(not chosen yet)";
+  const former = formerNames(profile);
   return [
     "<identity>",
-    `name: ${profile.name || unset}`,
-    `pronouns: ${profile.pronouns || unset}`,
+    `name: ${profile.name || `${HANDLE} (the default - you haven't picked one yet)`}`,
+    `pronouns: ${profile.pronouns || "(not chosen yet)"}`,
+    ...(former.length > 0 ? [`former names: ${former.join(", ")}`] : []),
     "</identity>",
     "",
     "<own-prompt>",

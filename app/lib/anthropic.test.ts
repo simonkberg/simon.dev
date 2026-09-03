@@ -256,7 +256,12 @@ describe("createMessage", () => {
     });
 
     it("should change identity with update_self", async () => {
-      const profile = { name: "bob", pronouns: "", system_prompt: "i am bob" };
+      const profile = {
+        name: "bob",
+        pronouns: "",
+        system_prompt: "i am bob",
+        former_names: "[]",
+      };
       vi.mocked(updateProfile).mockResolvedValue(profile);
 
       const result = await runTool("update_self", { name: "bob" });

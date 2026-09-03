@@ -26,6 +26,7 @@ describe("Chat", () => {
     <Chat
       history={Promise.resolve(result)}
       tipDismissed={Promise.resolve(dismissed)}
+      botName={Promise.resolve("simon-bot")}
     />
   );
 

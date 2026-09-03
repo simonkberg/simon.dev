@@ -16,6 +16,7 @@ import RootPage, { viewport } from "./page";
 vi.mock("server-only", () => ({}));
 
 vi.mock(import("@/actions/chat"), () => ({
+  getBotName: vi.fn(() => Promise.resolve("simon-bot")),
   getChatHistory: vi.fn(() =>
     Promise.resolve<ChatHistoryResult>({ status: "ok", messages: [] }),
   ),
@@ -39,9 +40,10 @@ vi.mock(import("@/actions/wakaTime"), () => ({
 
 // Mock components that use() their promise props to trigger Suspense
 vi.mock(import("@/components/chat/Chat"), () => ({
-  Chat: ({ history, tipDismissed }: ChatProps) => {
+  Chat: ({ history, tipDismissed, botName }: ChatProps) => {
     use(history);
     use(tipDismissed);
+    use(botName);
     return <div data-testid="chat" />;
   },
 }));

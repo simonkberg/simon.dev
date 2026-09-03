@@ -26,21 +26,19 @@ describe("reflect", () => {
     }
     vi.mocked(runAgentLoop).mockReturnValue(loop());
 
-    await reflect(
-      [
-        { role: "user", username: "alice", content: "i love cats" },
-        { role: "assistant", username: "simon-bot", content: "same" },
-        { role: "user", username: "Simon", content: "be nicer" },
-      ],
-      ["ok fine", "cats are great"],
-    );
+    await reflect([
+      { role: "user", username: "alice", content: "i love cats" },
+      { role: "assistant", username: "Mabel", content: "same" },
+      { role: "user", username: "Simon", content: "be nicer" },
+      { role: "assistant", username: "Mabel", content: "ok fine" },
+    ]);
 
     expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "Simon"]);
     expect(runAgentLoop).toHaveBeenCalledWith({
       system: [
         {
           type: "text",
-          text: expect.stringContaining("You are simon-bot"),
+          text: expect.stringContaining("taking a quiet moment"),
           cache_control: { type: "ephemeral" },
         },
         { type: "text", text: "<memory>\n</memory>" },
@@ -51,10 +49,9 @@ describe("reflect", () => {
           content: [
             "<conversation>",
             "alice: i love cats",
-            "simon-bot: same",
+            "Mabel: same",
             "Simon: be nicer",
-            "simon-bot: ok fine",
-            "simon-bot: cats are great",
+            "Mabel: ok fine",
             "</conversation>",
           ].join("\n"),
         },
@@ -77,7 +74,7 @@ describe("reflect", () => {
     async function* loop() {}
     vi.mocked(runAgentLoop).mockReturnValue(loop());
 
-    await reflect([{ role: "user", username: "a", content: "hi" }], []);
+    await reflect([{ role: "user", username: "a", content: "hi" }]);
 
     const { tools } = vi.mocked(runAgentLoop).mock.calls[0]?.[0] ?? {};
     expect(tools?.map((tool) => tool.name)).toEqual([

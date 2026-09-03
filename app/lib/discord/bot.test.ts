@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMessage as createAnthropicMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { getChosenName } from "@/lib/profile";
+import { DEFAULT_PROFILE, getProfile } from "@/lib/profile";
 import { reflect } from "@/lib/reflection";
 
 import { getMessageChain, postChannelMessage } from "./api";
@@ -22,7 +22,7 @@ vi.mock(import("@/lib/redis"), () => ({
 
 vi.mock(import("@/lib/profile"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, getChosenName: vi.fn() };
+  return { ...actual, getProfile: vi.fn() };
 });
 vi.mock(import("@/lib/reflection"), () => ({ reflect: vi.fn() }));
 
@@ -59,7 +59,7 @@ function createMessage(
 describe("handleMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getChosenName).mockResolvedValue("");
+    vi.mocked(getProfile).mockResolvedValue(DEFAULT_PROFILE);
     vi.mocked(reflect).mockResolvedValue(undefined);
   });
 
@@ -163,7 +163,10 @@ describe("handleMessage", () => {
   it("should respond when addressed by its chosen name", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    vi.mocked(getChosenName).mockResolvedValue("Bob");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "Bob",
+    });
 
     vi.mocked(getMessageChain).mockResolvedValue([
       {
@@ -184,17 +187,16 @@ describe("handleMessage", () => {
       createMessage({ content: "User1: hey bob, you there?" }),
     );
 
-    expect(postChannelMessage).toHaveBeenCalledWith(
-      "yep",
-      "simon-bot",
-      "msg-1",
-    );
+    expect(postChannelMessage).toHaveBeenCalledWith("yep", "Bob", "msg-1");
   });
 
   it("should match a chosen name with non-ASCII letters", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    vi.mocked(getChosenName).mockResolvedValue("José");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "José",
+    });
 
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey josé!" },
@@ -208,16 +210,88 @@ describe("handleMessage", () => {
 
     await handleMessage(createMessage({ content: "User1: hey josé!" }));
 
+    expect(postChannelMessage).toHaveBeenCalledWith("hola", "José", "msg-1");
+  });
+
+  it("should skip its own messages under its chosen name", async () => {
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "Bob",
+    });
+
+    await handleMessage(createMessage({ content: "Bob: hello there!" }));
+
+    expect(setMock).toHaveBeenCalled();
+    expect(getMessageChain).not.toHaveBeenCalled();
+  });
+
+  it("should treat messages under former names as its own", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "Ivo",
+      former_names: JSON.stringify(["Mabel"]),
+    });
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
+      { id: "msg-2", type: 19, username: "Mabel", content: "hi" },
+      { id: "msg-3", type: 19, username: "User1", content: "thanks ivo" },
+    ]);
+
+    async function* mockResponse() {
+      yield "np";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(
+      createMessage({ type: 19, id: "msg-3", content: "User1: thanks ivo" }),
+    );
+
+    expect(createAnthropicMessage).toHaveBeenCalledWith([
+      { role: "user", username: "User1", content: "hey simon-bot" },
+      { role: "assistant", username: "Mabel", content: "hi" },
+      { role: "user", username: "User1", content: "thanks ivo" },
+    ]);
+    expect(postChannelMessage).toHaveBeenCalledWith("np", "Ivo", "msg-3");
+  });
+
+  it("should fall back to the handle when the profile can't be loaded", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getProfile).mockRejectedValue(new Error("db down"));
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
+    ]);
+
+    async function* mockResponse() {
+      yield "hello";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
+
     expect(postChannelMessage).toHaveBeenCalledWith(
-      "hola",
+      "hello",
       "simon-bot",
       "msg-1",
+    );
+    expect(errorSpy).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to load the bot's profile, using defaults",
     );
   });
 
   it("should not treat a partial word as its chosen name", async () => {
     setMock.mockResolvedValue("OK");
-    vi.mocked(getChosenName).mockResolvedValue("Bob");
+    vi.mocked(getProfile).mockResolvedValue({
+      ...DEFAULT_PROFILE,
+      name: "Bob",
+    });
 
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "bobsleigh season" },
@@ -231,7 +305,7 @@ describe("handleMessage", () => {
   it("should still respond to its handle when no name is chosen", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
-    vi.mocked(getChosenName).mockResolvedValue("");
+    vi.mocked(getProfile).mockResolvedValue(DEFAULT_PROFILE);
 
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
@@ -269,10 +343,11 @@ describe("handleMessage", () => {
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
-    expect(reflect).toHaveBeenCalledWith(
-      [{ role: "user", username: "User1", content: "hey simon-bot" }],
-      ["one sec", "hello"],
-    );
+    expect(reflect).toHaveBeenCalledWith([
+      { role: "user", username: "User1", content: "hey simon-bot" },
+      { role: "assistant", username: "simon-bot", content: "one sec" },
+      { role: "assistant", username: "simon-bot", content: "hello" },
+    ]);
   });
 
   it("should log a failed reflection without affecting the reply", async () => {

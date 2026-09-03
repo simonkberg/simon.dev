@@ -4,12 +4,14 @@ import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
 import {
-  _resetProfileCache,
   buildProfileContext,
+  DEFAULT_PROFILE,
   DEFAULT_SELF_PROMPT,
-  getChosenName,
+  displayName,
+  formerNames,
   getProfile,
   MAX_SELF_PROMPT_LENGTH,
+  selfNames,
   updateProfile,
 } from "./profile";
 
@@ -18,21 +20,49 @@ vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 
 const emptyResult = { rows: [], rowsAffected: 0, lastInsertRowId: null };
 
+function profileRows(values: Record<string, string>) {
+  return {
+    ...emptyResult,
+    rows: Object.entries(values).map(([key, value]) => ({ key, value })),
+  };
+}
+
+describe("name helpers", () => {
+  it("should fall back to the handle until a name is chosen", () => {
+    expect(displayName(DEFAULT_PROFILE)).toBe("simon-bot");
+    expect(displayName({ ...DEFAULT_PROFILE, name: "Mabel" })).toBe("Mabel");
+  });
+
+  it("should list every name the bot has posted under, current first", () => {
+    expect(selfNames(DEFAULT_PROFILE)).toEqual(["simon-bot"]);
+    expect(
+      selfNames({
+        ...DEFAULT_PROFILE,
+        name: "Ivo",
+        former_names: JSON.stringify(["Mabel", "simon-bot"]),
+      }),
+    ).toEqual(["Ivo", "simon-bot", "Mabel"]);
+  });
+
+  it("should ignore unreadable former names", () => {
+    expect(formerNames({ ...DEFAULT_PROFILE, former_names: "nope" })).toEqual(
+      [],
+    );
+    expect(formerNames({ ...DEFAULT_PROFILE, former_names: "[1]" })).toEqual(
+      [],
+    );
+  });
+});
+
 describe("getProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    _resetProfileCache();
-    vi.useRealTimers();
   });
 
   it("should fall back to defaults for missing keys", async () => {
     vi.mocked(query).mockResolvedValue(emptyResult);
 
-    await expect(getProfile()).resolves.toEqual({
-      name: "",
-      pronouns: "",
-      system_prompt: DEFAULT_SELF_PROMPT,
-    });
+    await expect(getProfile()).resolves.toEqual(DEFAULT_PROFILE);
   });
 
   it("should overlay stored values and ignore unknown keys", async () => {
@@ -46,55 +76,24 @@ describe("getProfile", () => {
     });
 
     await expect(getProfile()).resolves.toEqual({
+      ...DEFAULT_PROFILE,
       name: "bob",
-      pronouns: "",
-      system_prompt: DEFAULT_SELF_PROMPT,
     });
   });
 
-  it("should cache the profile for a minute", async () => {
-    vi.useFakeTimers();
+  it("should read the table every time", async () => {
     vi.mocked(query).mockResolvedValue(emptyResult);
 
     await getProfile();
     await getProfile();
-    expect(query).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(60_001);
-    await getProfile();
     expect(query).toHaveBeenCalledTimes(2);
-  });
-
-  it("should keep the last known profile when a refresh fails", async () => {
-    vi.spyOn(log, "error").mockImplementation(() => {});
-    vi.useFakeTimers();
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [{ key: "name", value: "bob" }],
-    });
-    await getProfile();
-
-    vi.advanceTimersByTime(60_001);
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
-
-    await expect(getProfile()).resolves.toMatchObject({ name: "bob" });
-    expect(log.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      "Failed to refresh the profile, keeping the last known one",
-    );
-  });
-
-  it("should throw when nothing was ever loaded", async () => {
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
-
-    await expect(getProfile()).rejects.toThrow("db down");
   });
 });
 
 describe("updateProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    _resetProfileCache();
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.mocked(query).mockResolvedValue(emptyResult);
   });
@@ -103,9 +102,9 @@ describe("updateProfile", () => {
     const result = await updateProfile({ name: "  Bob ", pronouns: "he/him" });
 
     expect(result).toEqual({
+      ...DEFAULT_PROFILE,
       name: "Bob",
       pronouns: "he/him",
-      system_prompt: DEFAULT_SELF_PROMPT,
     });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("ON CONFLICT (key) DO UPDATE"),
@@ -138,28 +137,47 @@ describe("updateProfile", () => {
     expect(maxInFlight).toBe(3);
   });
 
+  it("should remember the previous name on a rename", async () => {
+    vi.mocked(query).mockResolvedValueOnce(
+      profileRows({ name: "Mabel", former_names: JSON.stringify(["Ivo"]) }),
+    );
+
+    const result = await updateProfile({ name: "Nils" });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT (key) DO UPDATE"),
+      ["former_names", JSON.stringify(["Ivo", "Mabel"]), expect.any(String)],
+    );
+    expect(result).toMatchObject({
+      name: "Nils",
+      former_names: JSON.stringify(["Ivo", "Mabel"]),
+    });
+  });
+
+  it("should not record a rename to the same name or from no name", async () => {
+    vi.mocked(query).mockResolvedValueOnce(profileRows({ name: "Mabel" }));
+    await updateProfile({ name: "Mabel" });
+
+    vi.mocked(query).mockResolvedValueOnce(emptyResult);
+    await updateProfile({ name: "Ivo" });
+
+    expect(query).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining(["former_names"]),
+    );
+  });
+
   it("should refuse an empty update", async () => {
     await expect(updateProfile({})).rejects.toThrow("Nothing to update");
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("should drop the cached profile even when a write fails", async () => {
-    vi.mocked(query).mockResolvedValueOnce({
-      ...emptyResult,
-      rows: [{ key: "name", value: "bob" }],
-    });
-    await getProfile();
-    vi.mocked(query).mockRejectedValueOnce(new Error("write failed"));
-
-    await expect(updateProfile({ name: "alice" })).rejects.toThrow(
-      "write failed",
+  it("should refuse names that can't work as a chat prefix", async () => {
+    await expect(updateProfile({ name: "me: too" })).rejects.toThrow(
+      "colons or line breaks",
     );
-
-    vi.mocked(query).mockResolvedValueOnce({
-      ...emptyResult,
-      rows: [{ key: "name", value: "alice" }],
-    });
-    await expect(getProfile()).resolves.toMatchObject({ name: "alice" });
+    await expect(updateProfile({ name: "two\nlines" })).rejects.toThrow();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("should refuse the name Simon", async () => {
@@ -181,16 +199,15 @@ describe("updateProfile", () => {
 describe("buildProfileContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    _resetProfileCache();
   });
 
-  it("should render placeholders and the default prompt on a blank slate", async () => {
+  it("should render the default identity and prompt on a blank slate", async () => {
     vi.mocked(query).mockResolvedValue(emptyResult);
 
     await expect(buildProfileContext()).resolves.toBe(
       [
         "<identity>",
-        "name: (not chosen yet)",
+        "name: simon-bot (the default - you haven't picked one yet)",
         "pronouns: (not chosen yet)",
         "</identity>",
         "",
@@ -201,19 +218,21 @@ describe("buildProfileContext", () => {
     );
   });
 
-  it("should render chosen values", async () => {
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [
-        { key: "name", value: "bob" },
-        { key: "pronouns", value: "they/them" },
-        { key: "system_prompt", value: "i am bob" },
-      ],
-    });
+  it("should render chosen values and former names", async () => {
+    vi.mocked(query).mockResolvedValue(
+      profileRows({
+        name: "bob",
+        pronouns: "they/them",
+        system_prompt: "i am bob",
+        former_names: JSON.stringify(["Mabel", "Ivo"]),
+      }),
+    );
 
     const context = await buildProfileContext();
 
-    expect(context).toContain("name: bob\npronouns: they/them");
+    expect(context).toContain(
+      "name: bob\npronouns: they/them\nformer names: Mabel, Ivo",
+    );
     expect(context).toContain("<own-prompt>\ni am bob\n</own-prompt>");
   });
 
@@ -223,54 +242,11 @@ describe("buildProfileContext", () => {
 
     const context = await buildProfileContext();
 
-    expect(context).toContain("name: (not chosen yet)");
+    expect(context).toContain("name: simon-bot (the default");
     expect(context).toContain(DEFAULT_SELF_PROMPT);
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Failed to load profile, using defaults",
     );
-  });
-});
-
-describe("getChosenName", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    _resetProfileCache();
-    vi.useRealTimers();
-  });
-
-  it("should read the name through the cached profile", async () => {
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [{ key: "name", value: "bob" }],
-    });
-
-    await expect(getChosenName()).resolves.toBe("bob");
-    await expect(getChosenName()).resolves.toBe("bob");
-    expect(query).toHaveBeenCalledTimes(1);
-  });
-
-  it("should forget the cached name when the profile changes", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [{ key: "name", value: "bob" }],
-    });
-    await expect(getChosenName()).resolves.toBe("bob");
-
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [{ key: "name", value: "alice" }],
-    });
-    await updateProfile({ name: "alice" });
-
-    await expect(getChosenName()).resolves.toBe("alice");
-  });
-
-  it("should fall back to no name when nothing was ever loaded", async () => {
-    vi.spyOn(log, "error").mockImplementation(() => {});
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
-
-    await expect(getChosenName()).resolves.toBe("");
   });
 });
