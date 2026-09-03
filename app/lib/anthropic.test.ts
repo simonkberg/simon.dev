@@ -10,6 +10,7 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -20,6 +21,16 @@ vi.mock(import("@/lib/discord/api"), () => ({
   getChannelMessages: vi.fn(),
   searchChannelMessages: vi.fn(),
 }));
+vi.mock(import("@/lib/memory"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    buildMemoryContext: vi.fn(),
+    remember: vi.fn(),
+    recall: vi.fn(),
+    forget: vi.fn(),
+  };
+});
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
@@ -37,6 +48,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
+const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -51,6 +63,7 @@ async function collectResponses(
 describe("createMessage", () => {
   beforeEach(() => {
     vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.mocked(buildMemoryContext).mockResolvedValue(MEMORY_CONTEXT);
   });
 
   afterEach(() => {
@@ -63,9 +76,16 @@ describe("createMessage", () => {
         expect(await request.json()).toMatchObject({
           model: "claude-sonnet-5",
           thinking: { type: "adaptive" },
-          output_config: { effort: "low" },
+          output_config: { effort: "medium" },
           max_tokens: 2048,
-          system: expect.stringContaining("simon-bot"),
+          system: [
+            {
+              type: "text",
+              text: expect.stringContaining("simon-bot"),
+              cache_control: { type: "ephemeral" },
+            },
+            { type: "text", text: MEMORY_CONTEXT },
+          ],
           messages: [
             { role: "user", content: `${TEST_USERNAME}: Hello, bot!` },
           ],
@@ -77,6 +97,9 @@ describe("createMessage", () => {
             { name: "get_top_artists" },
             { name: "get_top_albums" },
             { name: "search_messages" },
+            { name: "remember" },
+            { name: "recall" },
+            { name: "forget" },
           ],
         });
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
@@ -96,6 +119,144 @@ describe("createMessage", () => {
     );
 
     expect(responses).toEqual(["Hello! How can I help you?"]);
+    expect(buildMemoryContext).toHaveBeenCalledWith([TEST_USERNAME]);
+  });
+
+  it("should build memory context from the user participants only", async () => {
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [{ type: "text", text: "ok" }],
+          stop_reason: "end_turn",
+        }),
+      ),
+    );
+
+    await collectResponses(
+      createMessage([
+        { role: "user", username: "Alice", content: "Hello" },
+        { role: "assistant", username: "simon-bot", content: "Hi there!" },
+        { role: "user", username: "Bob", content: "How are you?" },
+      ]),
+    );
+
+    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+  });
+
+  it("should omit the memory block when there is no memory context", async () => {
+    vi.mocked(buildMemoryContext).mockResolvedValue("");
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        const body = (await request.json()) as { system: unknown[] };
+        expect(body.system).toHaveLength(1);
+        return HttpResponse.json({
+          content: [{ type: "text", text: "ok" }],
+          stop_reason: "end_turn",
+        });
+      }),
+    );
+
+    const responses = await collectResponses(
+      createMessage([
+        { role: "user", username: TEST_USERNAME, content: "Hello, bot!" },
+      ]),
+    );
+
+    expect(responses).toEqual(["ok"]);
+  });
+
+  describe("memory tools", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    async function runTool(
+      name: string,
+      input: Record<string, unknown>,
+    ): Promise<string> {
+      let toolResult = "";
+      let callCount = 0;
+
+      server.use(
+        http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json({
+              content: [{ type: "tool_use", id: "tool_1", name, input }],
+              stop_reason: "tool_use",
+            });
+          }
+
+          const body = (await request.json()) as {
+            messages: Array<{ content: Array<{ content: string }> }>;
+          };
+          toolResult = body.messages[2]?.content[0]?.content ?? "";
+          return HttpResponse.json({
+            content: [{ type: "text", text: "done" }],
+            stop_reason: "end_turn",
+          });
+        }),
+      );
+
+      await collectResponses(
+        createMessage([
+          { role: "user", username: TEST_USERNAME, content: "hi" },
+        ]),
+      );
+      return toolResult;
+    }
+
+    it("should save notes with remember", async () => {
+      const memory = {
+        id: 1,
+        category: "self",
+        content: "i like trains",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      };
+      vi.mocked(remember).mockResolvedValue(memory);
+
+      const result = await runTool("remember", {
+        category: "self",
+        content: "i like trains",
+      });
+
+      expect(remember).toHaveBeenCalledWith({
+        category: "self",
+        content: "i like trains",
+      });
+      expect(JSON.parse(result)).toEqual(memory);
+    });
+
+    it("should read notes with recall and apply defaults", async () => {
+      vi.mocked(recall).mockResolvedValue([]);
+
+      const result = await runTool("recall", { category: "jokes" });
+
+      expect(recall).toHaveBeenCalledWith({ category: "jokes", limit: 20 });
+      expect(JSON.parse(result)).toEqual([]);
+    });
+
+    it("should delete notes with forget", async () => {
+      vi.mocked(forget).mockResolvedValue(true);
+
+      const result = await runTool("forget", { id: 3 });
+
+      expect(forget).toHaveBeenCalledWith(3);
+      expect(JSON.parse(result)).toEqual({ forgotten: true });
+    });
+
+    it("should return validation errors instead of saving", async () => {
+      const result = await runTool("remember", {
+        category: "Not Valid!",
+        content: "x",
+      });
+
+      expect(remember).not.toHaveBeenCalled();
+      expect(JSON.parse(result)).toEqual({
+        error: expect.stringContaining("category"),
+      });
+    });
   });
 
   it("should accept array of chat messages", async () => {
@@ -160,7 +321,7 @@ describe("createMessage", () => {
     );
   });
 
-  it("should configure fetch with 5 second timeout", async () => {
+  it("should configure fetch with 15 second timeout", async () => {
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 
     server.use(
@@ -178,7 +339,7 @@ describe("createMessage", () => {
       ]),
     );
 
-    expect(timeoutSpy).toHaveBeenCalledWith(5000);
+    expect(timeoutSpy).toHaveBeenCalledWith(15_000);
     timeoutSpy.mockRestore();
   });
 

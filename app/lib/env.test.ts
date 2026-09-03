@@ -41,6 +41,8 @@ describe("env", () => {
         UPSTASH_REDIS_REST_TOKEN: string;
         LAST_FM_API_KEY: string;
         ANTHROPIC_API_KEY: string;
+        TURSO_DATABASE_URL: string;
+        TURSO_AUTH_TOKEN: string;
       }>();
     });
 

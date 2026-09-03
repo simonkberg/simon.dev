@@ -110,6 +110,8 @@ Validation via Zod in `app/lib/env.ts`. Required variables:
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                              |
 | `LAST_FM_API_KEY`          | Last.fm API key                                                  |
 | `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                  |
+| `TURSO_DATABASE_URL`       | Turso database URL, simon-bot's memory                           |
+| `TURSO_AUTH_TOKEN`         | Turso auth token                                                 |
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
@@ -127,6 +129,12 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
   per-request — and dedupes through Redis (60s TTL) so multiple instances don't
   double-reply.
+- **simon-bot memory:** `app/lib/turso.ts` calls Turso's HTTP pipeline endpoint with raw
+  `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
+  at boot under a Redis lock. `app/lib/memory.ts` owns the `memories` table and renders the
+  `<memory>` system-prompt block: `self`, `style`, `interests` and `people/<username>` for
+  the current participants in full, every other category as a name and count the bot reads
+  with `recall`. Memory failures degrade to a reply without memory, never to no reply.
 
 ## Patterns
 
