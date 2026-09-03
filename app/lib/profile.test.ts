@@ -187,6 +187,18 @@ describe("updateProfile", () => {
     );
   });
 
+  it("should say nothing was saved when every write fails", async () => {
+    vi.mocked(query).mockImplementation(async (sql) => {
+      if (!sql.includes("INSERT")) return emptyResult;
+      throw new Error("db down");
+    });
+
+    await expect(
+      updateProfile({ name: "Bob", pronouns: "he/him" }),
+    ).rejects.toThrow("Failed to save name, pronouns (nothing saved)");
+    expect(log.info).not.toHaveBeenCalled();
+  });
+
   it("should refuse names too short to be a safe trigger", async () => {
     await expect(updateProfile({ name: "ok" })).rejects.toThrow(
       "at least 3 characters",
