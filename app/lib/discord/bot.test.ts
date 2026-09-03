@@ -276,6 +276,30 @@ describe("handleMessage", () => {
     );
   });
 
+  it("should cache the chosen name between messages", async () => {
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getProfile).mockResolvedValue({ ...blankProfile, name: "Bob" });
+    vi.mocked(getMessageChain).mockResolvedValue([
+      {
+        id: "msg-1",
+        type: 0,
+        username: "User1",
+        content: "just chatting",
+        fromOwner: false,
+      },
+    ]);
+
+    await handleMessage(
+      createMessage({ id: "msg-1", content: "User1: just chatting" }),
+    );
+    await handleMessage(
+      createMessage({ id: "msg-2", content: "User1: still chatting" }),
+    );
+
+    expect(getProfile).toHaveBeenCalledTimes(1);
+    expect(createAnthropicMessage).not.toHaveBeenCalled();
+  });
+
   it("should not treat a partial word as its chosen name", async () => {
     setMock.mockResolvedValue("OK");
     vi.mocked(getProfile).mockResolvedValue({ ...blankProfile, name: "Bob" });
