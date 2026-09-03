@@ -100,18 +100,19 @@ suggests, and if you cannot find one, raise it rather than silencing it.
 
 Validation via Zod in `app/lib/env.ts`. Required variables:
 
-| Variable                   | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev) |
-| `DISCORD_BOT_TOKEN`        | Discord bot token                                                |
-| `DISCORD_GUILD_ID`         | Discord guild ID                                                 |
-| `DISCORD_CHANNEL_ID`       | Discord channel ID                                               |
-| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                              |
-| `LAST_FM_API_KEY`          | Last.fm API key                                                  |
-| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                  |
-| `TURSO_DATABASE_URL`       | Turso database URL, simon-bot's memory                           |
-| `TURSO_AUTH_TOKEN`         | Turso auth token                                                 |
+| Variable                   | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev)  |
+| `DISCORD_BOT_TOKEN`        | Discord bot token                                                 |
+| `DISCORD_GUILD_ID`         | Discord guild ID                                                  |
+| `DISCORD_CHANNEL_ID`       | Discord channel ID                                                |
+| `DISCORD_OWNER_ID`         | Simon's Discord user ID, whose messages simon-bot treats as owner |
+| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                 |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                               |
+| `LAST_FM_API_KEY`          | Last.fm API key                                                   |
+| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                   |
+| `TURSO_DATABASE_URL`       | Turso database URL, simon-bot's memory                            |
+| `TURSO_AUTH_TOKEN`         | Turso auth token                                                  |
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
@@ -139,8 +140,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   and pronouns and its self-written `<own-prompt>`, rendered under the fixed base prompt in
   `app/lib/anthropic.ts`, which it cannot override. The chosen name also works as a mention.
   `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory and
-  self tools, so bookkeeping never delays a response. Messages posted from Discord itself
-  (not relayed from the site) are Simon's and reach the model tagged `(owner)`.
+  self tools, so bookkeeping never delays a response. Messages from the Discord user in
+  `DISCORD_OWNER_ID` reach the model tagged `(owner)`.
 
 ## Patterns
 
