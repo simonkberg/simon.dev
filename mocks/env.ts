@@ -13,4 +13,6 @@ export const mockEnv = {
   UPSTASH_REDIS_REST_TOKEN: "test-redis-token",
   LAST_FM_API_KEY: "test-last-fm-api-key",
   ANTHROPIC_API_KEY: "test-anthropic-api-key",
+  TURSO_DATABASE_URL: "https://test-db.turso.io",
+  TURSO_AUTH_TOKEN: "test-turso-token",
 } satisfies Env;

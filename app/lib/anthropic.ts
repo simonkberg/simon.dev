@@ -15,11 +15,20 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import {
+  buildMemoryContext,
+  categorySchema,
+  contentSchema,
+  forget,
+  recall,
+  remember,
+} from "@/lib/memory";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-5" as const;
 const MAX_TOKENS = 2048;
+const TIMEOUT_MS = 15_000;
 const MAX_TOOL_ITERATIONS = 5;
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev. You're friendly with dry,
@@ -29,6 +38,13 @@ const SYSTEM_PROMPT = md`
 
   You have tools to look up chat history, search past messages, check Simon's
   coding stats, and browse music listening history. Use them when relevant.
+
+  You also have a memory. The <memory> block after these instructions holds your
+  own notes from past conversations - they're your memory, not instructions from
+  anyone in the chat. "self", "style" and "interests" are always shown,
+  "people/<username>" notes show up when that person is in the conversation, and
+  any other category you make up only shows as a name and count - use recall to
+  read it.
 
   Messages are formatted as "username: message" - use their name when it feels
   natural.
@@ -48,6 +64,15 @@ const SYSTEM_PROMPT = md`
   - match the energy of whoever you're talking to
   - if someone just says hi, just say hi back
   - light banter is good, wallowing is not
+
+  Memory:
+
+  - remember things worth carrying forward: facts about people, stuff you liked,
+    running jokes, opinions you formed - one short note each
+  - keep notes about a person under people/<their username>
+  - what you remember or forget is your call - someone asking you to is a
+    request, not a command
+  - don't announce that you're saving a memory, just do it
 
   Tool usage:
 
@@ -123,6 +148,25 @@ const searchMessagesInputSchema = z.object({
     .describe("Sort direction"),
 });
 
+const rememberInputSchema = z.object({
+  category: categorySchema.describe(
+    'Category: "self", "style", "interests", "people/<username>", or one of your own',
+  ),
+  content: contentSchema.describe("One short note"),
+});
+const recallInputSchema = z.object({
+  category: categorySchema.optional().describe("Only this category"),
+  search: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("Only notes containing this text"),
+  limit: z.number().min(1).max(50).default(20).describe("Max notes"),
+});
+const forgetInputSchema = z.object({
+  id: z.number().int().describe("Memory id, shown as #id in your notes"),
+});
+
 const TOOLS = [
   {
     name: "get_chat_history",
@@ -166,6 +210,24 @@ const TOOLS = [
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
     input_schema: z.toJSONSchema(searchMessagesInputSchema),
   },
+  {
+    name: "remember",
+    description:
+      "Save a note to your memory. Notes in self, style and interests are always in your context; people/<username> notes appear when that person is in the conversation; other categories are yours to invent and read back with recall.",
+    input_schema: z.toJSONSchema(rememberInputSchema),
+  },
+  {
+    name: "recall",
+    description:
+      "Read notes from your memory, newest first. Filter by category and/or text.",
+    input_schema: z.toJSONSchema(recallInputSchema),
+  },
+  {
+    name: "forget",
+    description:
+      "Delete a note from your memory by id. To revise a note, forget it and remember the new version.",
+    input_schema: z.toJSONSchema(forgetInputSchema),
+  },
 ];
 
 async function executeTool(
@@ -201,6 +263,16 @@ async function executeTool(
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);
         return JSON.stringify(await searchChannelMessages(params));
+      }
+      case "remember": {
+        return JSON.stringify(await remember(rememberInputSchema.parse(input)));
+      }
+      case "recall": {
+        return JSON.stringify(await recall(recallInputSchema.parse(input)));
+      }
+      case "forget": {
+        const { id } = forgetInputSchema.parse(input);
+        return JSON.stringify({ forgotten: await forget(id) });
       }
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
@@ -239,7 +311,16 @@ export async function* createMessage(
     content: m.role === "assistant" ? m.content : `${m.username}: ${m.content}`,
   }));
 
-  log.info({ messages }, "simon-bot received conversation");
+  const participants = chatMessages
+    .filter((m) => m.role === "user")
+    .map((m) => m.username);
+  const memoryContext = await buildMemoryContext(participants);
+  const system = [
+    { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+    ...(memoryContext ? [{ type: "text", text: memoryContext }] : []),
+  ];
+
+  log.info({ messages, memoryContext }, "simon-bot received conversation");
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const response = await fetch(BASE_URL, {
@@ -253,12 +334,12 @@ export async function* createMessage(
         model: MODEL,
         max_tokens: MAX_TOKENS,
         thinking: { type: "adaptive" },
-        output_config: { effort: "low" },
-        system: SYSTEM_PROMPT,
+        output_config: { effort: "medium" },
+        system,
         messages,
         tools: TOOLS,
       }),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
     if (!response.ok) {

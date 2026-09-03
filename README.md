@@ -51,7 +51,12 @@ UPSTASH_REDIS_REST_URL=your-redis-url
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
 LAST_FM_API_KEY=your-lastfm-api-key
 ANTHROPIC_API_KEY=your-anthropic-api-key
+TURSO_DATABASE_URL=libsql://your-db.turso.io
+TURSO_AUTH_TOKEN=your-turso-token
 ```
+
+For local development, `turso dev` serves the same HTTP API on
+`http://127.0.0.1:8080` and ignores the token.
 
 ## Deployment
 

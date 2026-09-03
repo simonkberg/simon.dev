@@ -17,6 +17,8 @@ export const env = parseAndValidateEnv({
     .min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
   LAST_FM_API_KEY: z.string().min(1, "LAST_FM_API_KEY is required"),
   ANTHROPIC_API_KEY: z.string().min(1, "ANTHROPIC_API_KEY is required"),
+  TURSO_DATABASE_URL: z.url("TURSO_DATABASE_URL must be a valid URL"),
+  TURSO_AUTH_TOKEN: z.string().min(1, "TURSO_AUTH_TOKEN is required"),
 });
 
 export type Env = typeof env;
