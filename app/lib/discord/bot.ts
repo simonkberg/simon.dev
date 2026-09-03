@@ -68,7 +68,6 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
           : ("user" as const),
       username: m.username,
       content: m.content,
-      owner: m.fromOwner,
     })) as [ChatMessage, ...ChatMessage[]];
 
     try {

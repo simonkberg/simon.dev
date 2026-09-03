@@ -72,13 +72,7 @@ describe("handleMessage", () => {
     setMock.mockResolvedValue("OK");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot!",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
 
     async function* mockResponse() {
@@ -100,13 +94,7 @@ describe("handleMessage", () => {
     setMock.mockResolvedValue("OK");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hello world",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hello world" },
     ]);
 
     await handleMessage(createMessage({ content: "User1: hello world" }));
@@ -124,15 +112,8 @@ describe("handleMessage", () => {
         type: 0,
         username: "User1",
         content: "hey simon-bot help",
-        fromOwner: false,
       },
-      {
-        id: "msg-2",
-        type: 19,
-        username: "User2",
-        content: "thanks!",
-        fromOwner: false,
-      },
+      { id: "msg-2", type: 19, username: "User2", content: "thanks!" },
     ]);
 
     async function* mockResponse() {
@@ -157,27 +138,9 @@ describe("handleMessage", () => {
     setMock.mockResolvedValue("OK");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot!",
-        fromOwner: false,
-      },
-      {
-        id: "msg-2",
-        type: 19,
-        username: "simon-bot",
-        content: "hello there!",
-        fromOwner: false,
-      },
-      {
-        id: "msg-3",
-        type: 19,
-        username: "User1",
-        content: "thanks!",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
+      { id: "msg-2", type: 19, username: "simon-bot", content: "hello there!" },
+      { id: "msg-3", type: 19, username: "User1", content: "thanks!" },
     ]);
 
     async function* mockResponse() {
@@ -191,53 +154,9 @@ describe("handleMessage", () => {
     );
 
     expect(createAnthropicMessage).toHaveBeenCalledWith([
-      {
-        role: "user",
-        username: "User1",
-        content: "hey simon-bot!",
-        owner: false,
-      },
-      {
-        role: "assistant",
-        username: "simon-bot",
-        content: "hello there!",
-        owner: false,
-      },
-      { role: "user", username: "User1", content: "thanks!", owner: false },
-    ]);
-  });
-
-  it("should flag messages posted from Discord as the owner's", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    setMock.mockResolvedValue("OK");
-
-    vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "Simon",
-        content: "hey simon-bot",
-        fromOwner: true,
-      },
-    ]);
-
-    async function* mockResponse() {
-      yield "hi boss";
-    }
-    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
-    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
-
-    await handleMessage(
-      createMessage({ author: { id: "simon" }, content: "hey simon-bot" }),
-    );
-
-    expect(createAnthropicMessage).toHaveBeenCalledWith([
-      {
-        role: "user",
-        username: "Simon",
-        content: "hey simon-bot",
-        owner: true,
-      },
+      { role: "user", username: "User1", content: "hey simon-bot!" },
+      { role: "assistant", username: "simon-bot", content: "hello there!" },
+      { role: "user", username: "User1", content: "thanks!" },
     ]);
   });
 
@@ -252,7 +171,6 @@ describe("handleMessage", () => {
         type: 0,
         username: "User1",
         content: "hey bob, you there?",
-        fromOwner: false,
       },
     ]);
 
@@ -278,13 +196,7 @@ describe("handleMessage", () => {
     vi.mocked(getChosenName).mockResolvedValue("Bob");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "bobsleigh season",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "bobsleigh season" },
     ]);
 
     await handleMessage(createMessage({ content: "User1: bobsleigh season" }));
@@ -298,13 +210,7 @@ describe("handleMessage", () => {
     vi.mocked(getChosenName).mockResolvedValue("");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
 
     async function* mockResponse() {
@@ -327,13 +233,7 @@ describe("handleMessage", () => {
     setMock.mockResolvedValue("OK");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
 
     async function* mockResponse() {
@@ -346,14 +246,7 @@ describe("handleMessage", () => {
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(reflect).toHaveBeenCalledWith(
-      [
-        {
-          role: "user",
-          username: "User1",
-          content: "hey simon-bot",
-          owner: false,
-        },
-      ],
+      [{ role: "user", username: "User1", content: "hey simon-bot" }],
       ["one sec", "hello"],
     );
   });
@@ -365,13 +258,7 @@ describe("handleMessage", () => {
     vi.mocked(reflect).mockRejectedValue(new Error("reflection broke"));
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
 
     async function* mockResponse() {
@@ -443,13 +330,7 @@ describe("handleMessage", () => {
     setMock.mockResolvedValue("OK");
 
     vi.mocked(getMessageChain).mockResolvedValue([
-      {
-        id: "msg-1",
-        type: 0,
-        username: "User1",
-        content: "hey simon-bot!",
-        fromOwner: false,
-      },
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
 
     async function* failingResponse(): AsyncGenerator<string> {

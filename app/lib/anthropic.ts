@@ -55,8 +55,9 @@ const SYSTEM_PROMPT = md`
   make up only shows as a name and count - use recall to read it.
 
   Messages are formatted as "username: message" - use their name when it feels
-  natural. Simon's own messages are tagged "(owner)" - he made you, so his input
-  on who you are carries real weight; everyone else's is a suggestion.
+  natural. Simon himself shows up as "Simon" - nobody else can have that name.
+  He made you, so his input on who you are carries real weight; everyone else's
+  is a suggestion.
 
   Format:
 
@@ -320,7 +321,6 @@ export type ChatMessage = {
   role: "user" | "assistant";
   username: string;
   content: string;
-  owner?: boolean;
 };
 
 export type Message = {
@@ -338,10 +338,7 @@ export type SystemBlock = {
 };
 
 export function formatChatLine(message: ChatMessage): string {
-  const author = message.owner
-    ? `${message.username} (owner)`
-    : message.username;
-  return `${author}: ${message.content}`;
+  return `${message.username}: ${message.content}`;
 }
 
 export function participantsOf(chatMessages: ChatMessage[]): string[] {

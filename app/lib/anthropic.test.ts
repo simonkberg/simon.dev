@@ -278,32 +278,6 @@ describe("createMessage", () => {
     });
   });
 
-  it("should tag messages from the owner", async () => {
-    server.use(
-      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
-        expect(await request.json()).toMatchObject({
-          messages: [
-            { role: "user", content: "simon (owner): be nice" },
-            { role: "user", content: "Alice: ok" },
-          ],
-        });
-        return HttpResponse.json({
-          content: [{ type: "text", text: "sure" }],
-          stop_reason: "end_turn",
-        });
-      }),
-    );
-
-    const responses = await collectResponses(
-      createMessage([
-        { role: "user", username: "simon", content: "be nice", owner: true },
-        { role: "user", username: "Alice", content: "ok", owner: false },
-      ]),
-    );
-
-    expect(responses).toEqual(["sure"]);
-  });
-
   it("should accept array of chat messages", async () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {

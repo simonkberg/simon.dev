@@ -139,8 +139,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   and pronouns and its self-written `<own-prompt>`, rendered under the fixed base prompt in
   `app/lib/anthropic.ts`, which it cannot override. The chosen name also works as a mention.
   `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory and
-  self tools, so bookkeeping never delays a response. Messages posted from Discord itself
-  (not relayed from the site) are Simon's and reach the model tagged `(owner)`.
+  self tools, so bookkeeping never delays a response. Simon is recognised by his username:
+  site visitors get generated names, so only his own Discord messages appear as "Simon".
 
 ## Patterns
 

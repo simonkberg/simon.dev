@@ -30,12 +30,12 @@ describe("reflect", () => {
       [
         { role: "user", username: "alice", content: "i love cats" },
         { role: "assistant", username: "simon-bot", content: "same" },
-        { role: "user", username: "simon", content: "be nicer", owner: true },
+        { role: "user", username: "Simon", content: "be nicer" },
       ],
       ["ok fine", "cats are great"],
     );
 
-    expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "simon"]);
+    expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "Simon"]);
     expect(runAgentLoop).toHaveBeenCalledWith({
       system: [
         {
@@ -52,7 +52,7 @@ describe("reflect", () => {
             "<conversation>",
             "alice: i love cats",
             "simon-bot: same",
-            "simon (owner): be nicer",
+            "Simon: be nicer",
             "simon-bot: ok fine",
             "simon-bot: cats are great",
             "</conversation>",
