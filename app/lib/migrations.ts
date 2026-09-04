@@ -13,13 +13,6 @@ export const MIGRATIONS: readonly string[] = [
     created_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS memories_category ON memories (category)`,
-  `CREATE TABLE IF NOT EXISTS profile (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )`,
-  // The profile table came and went within one PR; the create stays so versions line up.
-  `DROP TABLE IF EXISTS profile`,
 ];
 
 const LOCK_KEY = "turso:migrations:lock";
