@@ -28,15 +28,13 @@ export const selfPromptSchema = z
   .max(MAX_SELF_PROMPT_LENGTH);
 
 const KEY = "system_prompt";
-let lastKnown = DEFAULT_SELF_PROMPT;
 
 export async function getOwnPrompt(): Promise<string> {
   const { rows } = await query("SELECT value FROM profile WHERE key = ?", [
     KEY,
   ]);
   const value = rows[0]?.["value"];
-  lastKnown = typeof value === "string" ? value : DEFAULT_SELF_PROMPT;
-  return lastKnown;
+  return typeof value === "string" ? value : DEFAULT_SELF_PROMPT;
 }
 
 export async function updateOwnPrompt(input: string): Promise<string> {
@@ -48,7 +46,6 @@ export async function updateOwnPrompt(input: string): Promise<string> {
     [KEY, prompt, new Date().toISOString()],
   );
   log.info({ from: before, to: prompt }, "simon-bot rewrote its own prompt");
-  lastKnown = prompt;
   return prompt;
 }
 
@@ -60,7 +57,7 @@ export async function buildProfileContext(): Promise<string> {
   try {
     return renderOwnPrompt(await getOwnPrompt());
   } catch (err) {
-    log.error({ err }, "Failed to load own prompt, using the last known one");
-    return renderOwnPrompt(lastKnown);
+    log.error({ err }, "Failed to load own prompt, using the default");
+    return renderOwnPrompt(DEFAULT_SELF_PROMPT);
   }
 }

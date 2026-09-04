@@ -89,18 +89,16 @@ describe("buildProfileContext", () => {
     );
   });
 
-  it("should fall back to the last known prompt and log when the database fails", async () => {
+  it("should fall back to the default and log when the database fails", async () => {
     vi.spyOn(log, "error").mockImplementation(() => {});
-    vi.mocked(query).mockResolvedValueOnce(storedPrompt("i am bob"));
-    await getOwnPrompt();
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
     await expect(buildProfileContext()).resolves.toBe(
-      "<own-prompt>\ni am bob\n</own-prompt>",
+      `<own-prompt>\n${DEFAULT_SELF_PROMPT}\n</own-prompt>`,
     );
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
-      "Failed to load own prompt, using the last known one",
+      "Failed to load own prompt, using the default",
     );
   });
 });
