@@ -317,6 +317,25 @@ describe("createMessage", () => {
       });
     });
 
+    it("should say when a move would overfill a category", async () => {
+      vi.mocked(edit).mockResolvedValue({
+        status: "full",
+        category: "context",
+      });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "this chat gets spam",
+        new_content: "this chat gets spam",
+        category: "context",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          'Category "context" is full (25 memories). Forget something first.',
+      });
+    });
+
     it("should delete notes with forget", async () => {
       vi.mocked(forget).mockResolvedValue({ status: "ok" });
 

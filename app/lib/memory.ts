@@ -115,15 +115,25 @@ export async function recall(input: {
 
 export type WriteMiss =
   | { status: "stale"; current: Memory }
-  | { status: "missing" };
+  | { status: "missing" }
+  | { status: "full"; category: string };
 
 export function describeMiss(id: number, miss: WriteMiss) {
-  return miss.status === "missing"
-    ? { error: `There is no note #${id} - it may have been forgotten already` }
-    : {
+  switch (miss.status) {
+    case "missing":
+      return {
+        error: `There is no note #${id} - it may have been forgotten already`,
+      };
+    case "full":
+      return {
+        error: `Category "${miss.category}" is full (${MAX_PER_CATEGORY} memories). Forget something first.`,
+      };
+    case "stale":
+      return {
         error: `Note #${id} has changed since you read it - work from its current text`,
         current: miss.current,
       };
+  }
 }
 
 async function explainMiss(id: number): Promise<WriteMiss> {
@@ -158,16 +168,31 @@ export async function edit(input: {
   const newContent = contentSchema.parse(input.newContent);
   const category =
     input.category === undefined ? null : categorySchema.parse(input.category);
+  const read = asRead(input.id, input.oldContent);
+  // A move into another category counts against that category's cap.
   const { rows } = await query(
     `UPDATE memories SET content = ?, category = COALESCE(?, category)
      WHERE id = ? AND content IN (?, ?)
+       AND (? IS NULL OR ? = category
+         OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
      RETURNING id, category, content, created_at`,
-    [newContent, category, input.id, ...asRead(input.id, input.oldContent)],
+    [
+      newContent,
+      category,
+      input.id,
+      ...read,
+      category,
+      category,
+      category,
+      MAX_PER_CATEGORY,
+    ],
   );
   const row = rows[0];
-  return row === undefined
-    ? explainMiss(input.id)
-    : { status: "ok", memory: toMemory(row) };
+  if (row !== undefined) return { status: "ok", memory: toMemory(row) };
+  const miss = await explainMiss(input.id);
+  const unchanged =
+    miss.status === "stale" && read.includes(miss.current.content);
+  return unchanged && category !== null ? { status: "full", category } : miss;
 }
 
 export async function forget(input: {

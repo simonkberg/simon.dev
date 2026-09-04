@@ -175,7 +175,17 @@ describe("edit", () => {
     });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("WHERE id = ? AND content IN (?, ?)"),
-      ["i like trains", null, 4, "i like cats", "i like cats"],
+      [
+        "i like trains",
+        null,
+        4,
+        "i like cats",
+        "i like cats",
+        null,
+        null,
+        null,
+        MAX_PER_CATEGORY,
+      ],
     );
   });
 
@@ -201,8 +211,30 @@ describe("edit", () => {
         4,
         "this chat gets spam",
         "this chat gets spam",
+        "context",
+        "context",
+        "context",
+        MAX_PER_CATEGORY,
       ],
     );
+  });
+
+  it("should refuse to move a note into a full category", async () => {
+    vi.mocked(query)
+      .mockResolvedValueOnce(emptyResult)
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        rows: [row(4, "style", "this chat gets spam")],
+      });
+
+    await expect(
+      edit({
+        id: 4,
+        oldContent: "this chat gets spam",
+        newContent: "this chat gets spam",
+        category: "context",
+      }),
+    ).resolves.toEqual({ status: "full", category: "context" });
   });
 
   it("should validate the category before moving", async () => {
@@ -235,7 +267,7 @@ describe("edit", () => {
     });
 
     expect(
-      vi.mocked(query).mock.calls.map(([, args]) => args?.slice(3)),
+      vi.mocked(query).mock.calls.map(([, args]) => args?.slice(3, 5)),
     ).toEqual([
       ["- #4 i like cats", "i like cats"],
       ["#4 i like cats", "i like cats"],
