@@ -243,6 +243,22 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual(memory);
     });
 
+    it("should say when a category is full instead of saving", async () => {
+      vi.mocked(remember).mockResolvedValue({
+        status: "full",
+        category: "self",
+      });
+
+      const result = await runTool("remember", {
+        category: "self",
+        content: "one more",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error: 'Category "self" is full (25 memories). Forget something first.',
+      });
+    });
+
     it("should read notes with recall and apply defaults", async () => {
       vi.mocked(recall).mockResolvedValue([]);
 
