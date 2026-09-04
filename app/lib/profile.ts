@@ -39,7 +39,8 @@ export async function getOwnPrompt(): Promise<string> {
 
 export async function updateOwnPrompt(input: string): Promise<string> {
   const prompt = selfPromptSchema.parse(input);
-  const before = await getOwnPrompt();
+  // Only for the log line, so a failed read must not block the write.
+  const before = await getOwnPrompt().catch(() => undefined);
   await query(
     `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,

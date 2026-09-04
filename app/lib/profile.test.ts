@@ -67,6 +67,24 @@ describe("updateOwnPrompt", () => {
     );
   });
 
+  it("should still write when the read for the log line fails", async () => {
+    vi.mocked(query).mockImplementation(async (sql) => {
+      if (sql.includes("SELECT")) throw new Error("db hiccup");
+      return emptyResult;
+    });
+
+    await expect(updateOwnPrompt("i am bob")).resolves.toBe("i am bob");
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT (key) DO UPDATE"),
+      ["system_prompt", "i am bob", expect.any(String)],
+    );
+    expect(log.info).toHaveBeenCalledWith(
+      { from: undefined, to: "i am bob" },
+      "simon-bot rewrote its own prompt",
+    );
+  });
+
   it("should reject an empty or oversized prompt", async () => {
     await expect(updateOwnPrompt("   ")).rejects.toThrow();
     await expect(
