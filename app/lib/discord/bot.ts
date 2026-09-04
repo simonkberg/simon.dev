@@ -82,8 +82,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       );
     }
 
-    // Deliberately not awaited: reflection must never delay or fail a reply.
-    // A partial exchange still counts as long as the bot said something.
+    // Not awaited: reflection must never delay or fail a reply, even a partial one.
     if (replies.length > 0) {
       reflect([...messages, ...replies]).catch((err) => {
         log.error({ err, messageId: message.id }, "Bot reflection failed");

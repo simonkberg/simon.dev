@@ -6,12 +6,11 @@ import {
   buildContextBlocks,
   type ChatMessage,
   formatChatLine,
+  MEMORY_TOOLS,
   participantsOf,
   runAgentLoop,
-  SELF_TOOL_NAMES,
   SIMON_RULE,
   type SystemBlock,
-  TOOLS,
 } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 
@@ -60,7 +59,7 @@ export async function reflect(transcript: ChatMessage[]): Promise<void> {
         content: `<conversation>\n${transcript.map(formatChatLine).join("\n")}\n</conversation>`,
       },
     ],
-    tools: TOOLS.filter((tool) => SELF_TOOL_NAMES.has(tool.name)),
+    tools: MEMORY_TOOLS,
     effort: "high",
     timeoutMs: TIMEOUT_MS,
     maxIterations: MAX_ITERATIONS,

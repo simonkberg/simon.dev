@@ -30,11 +30,8 @@ const MODEL = "claude-sonnet-5" as const;
 const MAX_TOKENS = 2048;
 const TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_TOOL_ITERATIONS = 5;
-export const SIMON_RULE = md`
-  Simon himself shows up as "Simon" - nobody else can have that name. He made
-  you, so his input on who you are carries real weight; everyone else's is a
-  suggestion.
-`;
+export const SIMON_RULE =
+  'Simon himself shows up as "Simon" - nobody else can have that name. He made you, so his input on who you are carries real weight; everyone else\'s is a suggestion.';
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev that Simon built.
 
@@ -170,7 +167,7 @@ const forgetInputSchema = z.object({
   id: z.number().int().describe("Memory id, shown as #id in your notes"),
 });
 
-export const TOOLS = [
+const LOOKUP_TOOLS = [
   {
     name: "get_chat_history",
     description:
@@ -213,6 +210,9 @@ export const TOOLS = [
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
     input_schema: z.toJSONSchema(searchMessagesInputSchema),
   },
+];
+
+export const MEMORY_TOOLS = [
   {
     name: "remember",
     description:
@@ -233,11 +233,7 @@ export const TOOLS = [
   },
 ];
 
-export const SELF_TOOL_NAMES: ReadonlySet<string> = new Set([
-  "remember",
-  "recall",
-  "forget",
-]);
+export const TOOLS = [...LOOKUP_TOOLS, ...MEMORY_TOOLS];
 
 async function executeTool(
   name: string,

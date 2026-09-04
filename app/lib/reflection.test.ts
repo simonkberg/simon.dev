@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildContextBlocks, runAgentLoop, TOOLS } from "@/lib/anthropic";
+import {
+  buildContextBlocks,
+  MEMORY_TOOLS,
+  runAgentLoop,
+} from "@/lib/anthropic";
 import { log } from "@/lib/log";
 
 import { reflect } from "./reflection";
@@ -56,9 +60,7 @@ describe("reflect", () => {
           ].join("\n"),
         },
       ],
-      tools: TOOLS.filter((tool) =>
-        ["remember", "recall", "forget"].includes(tool.name),
-      ),
+      tools: MEMORY_TOOLS,
       effort: "high",
       timeoutMs: 60_000,
       maxIterations: 10,
