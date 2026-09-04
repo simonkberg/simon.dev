@@ -11,7 +11,7 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
-import { buildProfileContext, updateProfile } from "@/lib/profile";
+import { buildProfileContext, updateOwnPrompt } from "@/lib/profile";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -34,7 +34,7 @@ vi.mock(import("@/lib/memory"), async (importOriginal) => {
 });
 vi.mock(import("@/lib/profile"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, buildProfileContext: vi.fn(), updateProfile: vi.fn() };
+  return { ...actual, buildProfileContext: vi.fn(), updateOwnPrompt: vi.fn() };
 });
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -54,7 +54,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
 const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
-const PROFILE_CONTEXT = "<identity>\nname: (not chosen yet)\n</identity>";
+const PROFILE_CONTEXT = "<own-prompt>\ni am simon-bot\n</own-prompt>";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -255,19 +255,15 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual({ forgotten: true });
     });
 
-    it("should change identity with update_self", async () => {
-      const profile = {
-        name: "bob",
-        pronouns: "",
+    it("should rewrite the own prompt with update_self", async () => {
+      vi.mocked(updateOwnPrompt).mockResolvedValue("i am bob");
+
+      const result = await runTool("update_self", {
         system_prompt: "i am bob",
-        former_names: "[]",
-      };
-      vi.mocked(updateProfile).mockResolvedValue(profile);
+      });
 
-      const result = await runTool("update_self", { name: "bob" });
-
-      expect(updateProfile).toHaveBeenCalledWith({ name: "bob" });
-      expect(JSON.parse(result)).toEqual(profile);
+      expect(updateOwnPrompt).toHaveBeenCalledWith("i am bob");
+      expect(JSON.parse(result)).toEqual({ system_prompt: "i am bob" });
     });
 
     it("should return validation errors instead of saving", async () => {

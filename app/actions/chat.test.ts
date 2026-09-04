@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   dismissChatTip,
-  getBotName,
   getChatHistory,
   postChatMessage,
   refreshChatHistory,
@@ -17,7 +16,6 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { DEFAULT_PROFILE, getProfile } from "@/lib/profile";
 import type { Username } from "@/lib/session";
 
 // Hoisted so it can be referenced in the Ratelimit mock below
@@ -38,11 +36,6 @@ vi.mock("@upstash/ratelimit", async (importOriginal) => {
     ),
   };
 });
-vi.mock(import("@/lib/profile"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual, getProfile: vi.fn() };
-});
-
 vi.mock(import("next/cache"), () => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
@@ -288,29 +281,5 @@ describe("dismissChatTip", () => {
     await dismissChatTip();
 
     expect(setChatTipDismissed).toHaveBeenCalled();
-  });
-});
-
-describe("getBotName", () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("should return the chosen name and cache it for minutes", async () => {
-    vi.mocked(getProfile).mockResolvedValue({
-      ...DEFAULT_PROFILE,
-      name: "Mabel",
-    });
-
-    await expect(getBotName()).resolves.toBe("Mabel");
-    expect(cacheLife).toHaveBeenCalledWith("minutes");
-  });
-
-  it("should fall back to the handle and cache briefly on failure", async () => {
-    vi.spyOn(log, "error").mockImplementation(() => {});
-    vi.mocked(getProfile).mockRejectedValue(new Error("db down"));
-
-    await expect(getBotName()).resolves.toBe("simon-bot");
-    expect(cacheLife).toHaveBeenCalledWith("seconds");
   });
 });

@@ -13,7 +13,6 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { displayName, getProfile, HANDLE } from "@/lib/profile";
 import { getRedis } from "@/lib/redis";
 import { getSession } from "@/lib/session";
 
@@ -32,21 +31,6 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
   } catch (err) {
     log.error({ err, action: "getChatHistory" }, "Error fetching chat history");
     return { status: "error", error: "Failed to fetch chat history" };
-  }
-}
-
-/** The name the bot currently posts under, for the chat tip. */
-export async function getBotName(): Promise<string> {
-  "use cache";
-
-  try {
-    const name = displayName(await getProfile());
-    cacheLife("minutes");
-    return name;
-  } catch (err) {
-    log.error({ err, action: "getBotName" }, "Error fetching bot name");
-    cacheLife("seconds");
-    return HANDLE;
   }
 }
 

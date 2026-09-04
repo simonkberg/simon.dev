@@ -27,13 +27,11 @@ const findMessageById = (messages: Message[], id: string): Message | null => {
 export interface ChatProps {
   history: Promise<ChatHistoryResult>;
   tipDismissed: Promise<boolean>;
-  botName: Promise<string>;
 }
 
-export const Chat = ({ history, tipDismissed, botName }: ChatProps) => {
+export const Chat = ({ history, tipDismissed }: ChatProps) => {
   const result = use(history);
   const dismissed = use(tipDismissed);
-  const name = use(botName);
   const [replyToId, setReplyToId] = useState<string | null>(null);
 
   if (result.status === "error") {
@@ -71,7 +69,7 @@ export const Chat = ({ history, tipDismissed, botName }: ChatProps) => {
         </div>
       )}
       <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
-        {!dismissed && <ChatTip name={name} />}
+        {!dismissed && <ChatTip />}
       </ChatInput>
     </>
   );

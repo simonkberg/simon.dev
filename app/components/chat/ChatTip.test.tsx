@@ -14,21 +14,15 @@ describe("ChatTip", () => {
   });
 
   it("renders the tip", () => {
-    render(<ChatTip name="simon-bot" />);
+    render(<ChatTip />);
 
     expect(
-      screen.getByText(/mention .simon-bot. to chat with a clanker/),
+      screen.getByText(/mention .simon bot. to chat with a clanker/),
     ).toBeInTheDocument();
   });
 
-  it("shows the name the bot picked", () => {
-    render(<ChatTip name="Mabel" />);
-
-    expect(screen.getByText(/mention .Mabel. to chat/)).toBeInTheDocument();
-  });
-
   it("uses an info glyph the font actually covers", () => {
-    const { container } = render(<ChatTip name="simon-bot" />);
+    const { container } = render(<ChatTip />);
 
     // U+1F6C8 is absent from Iosevka and would fall back to a system face.
     expect(container.querySelector("[aria-hidden]")).toHaveTextContent(
@@ -42,7 +36,7 @@ describe("ChatTip", () => {
 
     render(
       <form onSubmit={onSubmit}>
-        <ChatTip name="simon-bot" />
+        <ChatTip />
       </form>,
     );
 

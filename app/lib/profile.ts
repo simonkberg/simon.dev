@@ -6,20 +6,7 @@ import { z } from "zod";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
-/** The permanent fallback handle: how the bot posts until it picks a name. */
-export const HANDLE = "simon-bot";
-
-export const PROFILE_KEYS = [
-  "name",
-  "pronouns",
-  "system_prompt",
-  "former_names",
-] as const;
-export type ProfileKey = (typeof PROFILE_KEYS)[number];
-export type Profile = Record<ProfileKey, string>;
-
 export const MAX_SELF_PROMPT_LENGTH = 1500;
-const MAX_FORMER_NAMES = 20;
 
 export const DEFAULT_SELF_PROMPT = md`
   i'm friendly with dry, self-deprecating humor - i know i'm not exactly
@@ -34,147 +21,46 @@ export const DEFAULT_SELF_PROMPT = md`
   the emojis.
 `;
 
-export const DEFAULT_PROFILE: Profile = {
-  name: "",
-  pronouns: "",
-  system_prompt: DEFAULT_SELF_PROMPT,
-  former_names: "[]",
-};
+export const selfPromptSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_SELF_PROMPT_LENGTH);
 
-export const profileChangesSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(
-      3,
-      "A name needs at least 3 characters, or it'll fire on ordinary chat",
-    )
-    .max(40)
-    .regex(/^[^:\r\n]+$/, "A name can't contain colons or line breaks")
-    .refine((name) => name.toLowerCase() !== "simon", {
-      message: "Simon is the human who built you; pick another name",
-    })
-    .optional(),
-  pronouns: z.string().trim().min(1).max(30).optional(),
-  system_prompt: z
-    .string()
-    .trim()
-    .min(1)
-    .max(MAX_SELF_PROMPT_LENGTH)
-    .optional(),
-});
+const KEY = "system_prompt";
+let lastKnown = DEFAULT_SELF_PROMPT;
 
-export type ProfileChanges = z.infer<typeof profileChangesSchema>;
-
-function isProfileKey(key: unknown): key is ProfileKey {
-  return typeof key === "string" && PROFILE_KEYS.includes(key as ProfileKey);
-}
-
-/** What the bot posts under and answers to. */
-export function displayName(profile: Profile): string {
-  return profile.name || HANDLE;
-}
-
-export function formerNames(profile: Profile): string[] {
-  try {
-    return z.array(z.string()).parse(JSON.parse(profile.former_names));
-  } catch {
-    return [];
-  }
-}
-
-/** Every name the bot has ever posted under, current name first. */
-export function selfNames(profile: Profile): string[] {
-  return [...new Set([displayName(profile), HANDLE, ...formerNames(profile)])];
-}
-
-let lastKnown = DEFAULT_PROFILE;
-
-export async function getProfile(): Promise<Profile> {
-  const { rows } = await query("SELECT key, value FROM profile");
-  const profile = { ...DEFAULT_PROFILE };
-  for (const row of rows) {
-    const key = row["key"];
-    const value = row["value"];
-    if (isProfileKey(key) && typeof value === "string") {
-      profile[key] = value;
-    }
-  }
-  lastKnown = profile;
-  return profile;
-}
-
-/** What to fall back on when a read fails, so a hiccup doesn't cost the bot its name. */
-export function lastKnownProfile(): Profile {
+export async function getOwnPrompt(): Promise<string> {
+  const { rows } = await query("SELECT value FROM profile WHERE key = ?", [
+    KEY,
+  ]);
+  const value = rows[0]?.["value"];
+  lastKnown = typeof value === "string" ? value : DEFAULT_SELF_PROMPT;
   return lastKnown;
 }
 
-export async function updateProfile(input: ProfileChanges): Promise<Profile> {
-  const changes = Object.entries(profileChangesSchema.parse(input)).filter(
-    (entry): entry is [ProfileKey, string] => entry[1] !== undefined,
+export async function updateOwnPrompt(input: string): Promise<string> {
+  const prompt = selfPromptSchema.parse(input);
+  const before = await getOwnPrompt();
+  await query(
+    `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    [KEY, prompt, new Date().toISOString()],
   );
-  if (changes.length === 0) {
-    throw new Error("Nothing to update: pass name, pronouns or system_prompt");
-  }
-
-  const before = await getProfile();
-  const writes = [...changes];
-  const newName = Object.fromEntries(changes)["name"];
-  if (newName !== undefined && before.name && before.name !== newName) {
-    const history = [
-      ...formerNames(before).filter((name) => name !== newName),
-      before.name,
-    ].slice(-MAX_FORMER_NAMES);
-    writes.push(["former_names", JSON.stringify(history)]);
-  }
-
-  const updatedAt = new Date().toISOString();
-  const results = await Promise.allSettled(
-    writes.map(([key, value]) =>
-      query(
-        `INSERT INTO profile (key, value, updated_at) VALUES (?, ?, ?)
-         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-        [key, value, updatedAt],
-      ),
-    ),
-  );
-  const saved = writes.filter((_, i) => results[i]?.status === "fulfilled");
-  const failed = writes.filter((_, i) => results[i]?.status === "rejected");
-  for (const [key, value] of saved) {
-    log.info({ key, from: before[key], to: value }, "simon-bot updated itself");
-  }
-  if (failed.length > 0) {
-    const cause = results.find((r) => r.status === "rejected")?.reason;
-    const savedKeys = saved.map(([key]) => key).join(", ") || "nothing";
-    throw new Error(
-      `Failed to save ${failed.map(([key]) => key).join(", ")} (${savedKeys} saved)`,
-      { cause },
-    );
-  }
-  lastKnown = { ...before, ...Object.fromEntries(writes) };
-  return lastKnown;
+  log.info({ from: before, to: prompt }, "simon-bot rewrote its own prompt");
+  lastKnown = prompt;
+  return prompt;
 }
 
-function renderProfile(profile: Profile): string {
-  const former = formerNames(profile);
-  return [
-    "<identity>",
-    `name: ${profile.name || `${HANDLE} (the default - you haven't picked one yet)`}`,
-    `pronouns: ${profile.pronouns || "(not chosen yet)"}`,
-    ...(former.length > 0 ? [`former names: ${former.join(", ")}`] : []),
-    "</identity>",
-    "",
-    "<own-prompt>",
-    profile.system_prompt,
-    "</own-prompt>",
-  ].join("\n");
+function renderOwnPrompt(prompt: string): string {
+  return `<own-prompt>\n${prompt}\n</own-prompt>`;
 }
 
 export async function buildProfileContext(): Promise<string> {
   try {
-    return renderProfile(await getProfile());
+    return renderOwnPrompt(await getOwnPrompt());
   } catch (err) {
-    log.error({ err }, "Failed to load profile, using the last known one");
-    return renderProfile(lastKnownProfile());
+    log.error({ err }, "Failed to load own prompt, using the last known one");
+    return renderOwnPrompt(lastKnown);
   }
 }

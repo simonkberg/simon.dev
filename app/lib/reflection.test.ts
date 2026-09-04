@@ -38,7 +38,7 @@ describe("reflect", () => {
       system: [
         {
           type: "text",
-          text: expect.stringContaining("taking a quiet moment"),
+          text: expect.stringContaining("taking a quiet"),
           cache_control: { type: "ephemeral" },
         },
         { type: "text", text: "<memory>\n</memory>" },

@@ -2,7 +2,7 @@ import type { Viewport } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { getBotName, getChatHistory } from "@/actions/chat";
+import { getChatHistory } from "@/actions/chat";
 import { getRecentTracks } from "@/actions/lastfm";
 import { getWakaTimeStats } from "@/actions/wakaTime";
 import { Chat } from "@/components/chat/Chat";
@@ -29,7 +29,6 @@ export default function RootPage() {
   const history = getChatHistory();
   const recentTracks = getRecentTracks();
   const tipDismissed = getChatTipDismissed();
-  const botName = getBotName();
 
   return (
     <Page>
@@ -101,11 +100,7 @@ export default function RootPage() {
         </Heading>
         <Terminal>
           <Suspense fallback={<Loader />}>
-            <Chat
-              history={history}
-              tipDismissed={tipDismissed}
-              botName={botName}
-            />
+            <Chat history={history} tipDismissed={tipDismissed} />
           </Suspense>
         </Terminal>
       </section>
