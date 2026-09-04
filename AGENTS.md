@@ -135,8 +135,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
-- **Logging:** pino (`app/lib/log.ts`), one JSON line per entry so Railway indexes it. In
-  production `instrumentation.ts` bridges `console.*` into it, so Next's own errors (and its
+- **Logging:** pino (`app/lib/log.ts`), one JSON line per entry so Railway indexes it.
+  `instrumentation.ts` bridges `console.*` into it, so Next's own errors (and its
   `NEXT_PRIVATE_DEBUG_CACHE` output) arrive structured too; `LOG_LEVEL` filters both.
 - **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at

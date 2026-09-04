@@ -4,9 +4,7 @@ export async function register() {
     const { bridgeConsole, log } = await import("@/lib/log");
     const { runMigrations } = await import("@/lib/migrations");
 
-    if (process.env.NODE_ENV === "production") {
-      bridgeConsole();
-    }
+    bridgeConsole();
 
     try {
       await runMigrations();
