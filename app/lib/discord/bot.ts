@@ -79,7 +79,12 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
         "oops, something went wrong... try again later!",
         BOT_USERNAME,
         message.id,
-      );
+      ).catch((postErr: unknown) => {
+        log.error(
+          { err: postErr, messageId: message.id },
+          "Bot error message failed",
+        );
+      });
     }
 
     // Not awaited: reflection must never delay or fail a reply, even a partial one.

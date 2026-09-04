@@ -206,6 +206,35 @@ describe("handleMessage", () => {
     ]);
   });
 
+  it("should still reflect when the error message can't be posted either", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
+    ]);
+
+    async function* mockResponse() {
+      yield "one sec";
+      throw new Error("model timed out");
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage)
+      .mockResolvedValueOnce("response-1")
+      .mockRejectedValueOnce(new Error("discord down"));
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      { err: expect.any(Error), messageId: "msg-1" },
+      "Bot error message failed",
+    );
+    expect(reflect).toHaveBeenCalledWith([
+      { role: "user", username: "User1", content: "hey simon-bot" },
+      { role: "assistant", username: "simon-bot", content: "one sec" },
+    ]);
+  });
+
   it("should not reflect when nothing was said", async () => {
     vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
