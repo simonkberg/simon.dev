@@ -115,6 +115,39 @@ describe("bridgeConsole", () => {
     });
   });
 
+  it("does not parse a leading error message as a template", () => {
+    const { logger, lines } = createLogger();
+    const target = createConsole();
+    bridgeConsole(target, logger);
+
+    target.error(new Error("Invalid config: %s"), "server.json");
+
+    expect(lines[0]?.["msg"]).toBe("Invalid config: %s server.json");
+  });
+
+  it("attaches the first error and prints the others' messages", () => {
+    const { logger, lines } = createLogger();
+    const target = createConsole();
+    bridgeConsole(target, logger);
+
+    target.error("failed both", new Error("one"), new Error("two"));
+
+    expect(lines[0]).toMatchObject({
+      msg: "failed both one two",
+      err: { message: "one" },
+    });
+  });
+
+  it("logs an empty message for a call without arguments", () => {
+    const { logger, lines } = createLogger();
+    const target = createConsole();
+    bridgeConsole(target, logger);
+
+    target.log();
+
+    expect(lines[0]?.["msg"]).toBe("");
+  });
+
   it("uses the error message when nothing else was printed", () => {
     const { logger, lines } = createLogger();
     const target = createConsole();

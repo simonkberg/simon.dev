@@ -29,13 +29,18 @@ function formatArgs(args: unknown[]): string {
 export function bridgeConsole(target: Console = console, logger: Logger = log) {
   for (const [method, level] of consoleLevels) {
     target[method] = (...args: unknown[]) => {
-      const errIndex = args.findIndex((arg) => arg instanceof Error);
-      if (errIndex === -1) {
+      const err = args.find((arg): arg is Error => arg instanceof Error);
+      if (!err) {
         logger[level](formatArgs(args));
         return;
       }
-      const err = args[errIndex] as Error;
-      logger[level]({ err }, formatArgs(args.with(errIndex, err.message)));
+      const messages = args.map((arg) =>
+        arg instanceof Error ? arg.message : arg,
+      );
+      // A message in the template slot must not be parsed for % directives
+      const template =
+        args[0] instanceof Error ? ["%s", ...messages] : messages;
+      logger[level]({ err }, formatArgs(template));
     };
   }
 }
