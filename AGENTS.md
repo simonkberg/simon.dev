@@ -82,7 +82,7 @@ Key settings in `next.config.ts`:
 > See #1997.
 
 > **`/` keeps cached data out of its static shell** by chaining the `"use cache"` calls on
-> `connection()`, so the shell has no revalidate time and never goes stale. When a partially
+> `io()`, so the shell has no revalidate time and never goes stale. When a partially
 > prerendered page's shell is stale, Next regenerates it inside the next Server Action request
 > and re-runs the action handler on the already-consumed body. That logs "Unexpected end of
 > JSON input" with a digest, fails no request, and leaves the shell stale until a GET

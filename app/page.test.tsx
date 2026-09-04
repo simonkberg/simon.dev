@@ -15,9 +15,9 @@ import RootPage, { viewport } from "./page";
 
 vi.mock("server-only", () => ({}));
 
-vi.mock(import("next/server"), async (importOriginal) => {
+vi.mock(import("next/cache"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, connection: vi.fn(async () => {}) };
+  return { ...actual, io: vi.fn(async () => {}) };
 });
 
 vi.mock(import("@/actions/chat"), () => ({
