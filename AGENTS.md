@@ -115,6 +115,9 @@ Validation via Zod in `app/lib/env.ts`. Required variables:
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` is a Docker build arg, not validated by Zod: pin it in
+Railway so server action references stay valid across redeploys.
+
 ## Architecture
 
 Integrations live in `app/lib/` — Discord (REST + Gateway WebSocket, streamed to clients
