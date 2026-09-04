@@ -175,8 +175,35 @@ describe("edit", () => {
     });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("WHERE id = ? AND content = ?"),
-      ["i like trains", 4, "i like cats"],
+      ["i like trains", null, 4, "i like cats"],
     );
+  });
+
+  it("should move a note to another category when asked", async () => {
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [row(4, "context", "this chat gets spam")],
+    });
+
+    await expect(
+      edit({
+        id: 4,
+        oldContent: "this chat gets spam",
+        newContent: "this chat gets spam",
+        category: " Context ",
+      }),
+    ).resolves.toMatchObject({ status: "ok", memory: { category: "context" } });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("category = COALESCE(?, category)"),
+      ["this chat gets spam", "context", 4, "this chat gets spam"],
+    );
+  });
+
+  it("should validate the category before moving", async () => {
+    await expect(
+      edit({ id: 4, oldContent: "x", newContent: "y", category: "Not Valid!" }),
+    ).rejects.toThrow();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("should hand back the current text when the note changed", async () => {
@@ -296,6 +323,9 @@ describe("buildMemoryContext", () => {
         "## interests",
         "- #3 trains",
         "",
+        "## context",
+        "(nothing yet)",
+        "",
         "## people/alice",
         "- #4 likes cats",
         "",
@@ -305,8 +335,8 @@ describe("buildMemoryContext", () => {
     );
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("WHERE category IN (?, ?, ?, ?)"),
-      ["self", "style", "interests", "people/alice"],
+      expect.stringContaining("WHERE category IN (?, ?, ?, ?, ?)"),
+      ["self", "style", "interests", "context", "people/alice"],
     );
   });
 

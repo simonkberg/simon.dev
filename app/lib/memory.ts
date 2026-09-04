@@ -4,7 +4,12 @@ import { z } from "zod";
 import { log } from "@/lib/log";
 import { query, type Value } from "@/lib/turso";
 
-export const CORE_CATEGORIES = ["self", "style", "interests"] as const;
+export const CORE_CATEGORIES = [
+  "self",
+  "style",
+  "interests",
+  "context",
+] as const;
 export const PEOPLE_PREFIX = "people/";
 export const MAX_CONTENT_LENGTH = 300;
 export const MAX_PER_CATEGORY = 25;
@@ -130,12 +135,16 @@ export async function edit(input: {
   id: number;
   oldContent: string;
   newContent: string;
+  category?: string | undefined;
 }): Promise<{ status: "ok"; memory: Memory } | WriteMiss> {
   const newContent = contentSchema.parse(input.newContent);
+  const category =
+    input.category === undefined ? null : categorySchema.parse(input.category);
   const { rows } = await query(
-    `UPDATE memories SET content = ? WHERE id = ? AND content = ?
+    `UPDATE memories SET content = ?, category = COALESCE(?, category)
+     WHERE id = ? AND content = ?
      RETURNING id, category, content, created_at`,
-    [newContent, input.id, input.oldContent.trim()],
+    [newContent, category, input.id, input.oldContent.trim()],
   );
   const row = rows[0];
   return row === undefined

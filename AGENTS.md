@@ -132,7 +132,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **simon-bot memory:** `app/lib/turso.ts` calls Turso's HTTP pipeline endpoint with raw
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
   at boot under a Redis lock. `app/lib/memory.ts` owns the `memories` table and renders the
-  `<memory>` system-prompt block: `self`, `style`, `interests` and `people/<username>` for
+  `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
   with `recall`. `edit` and `forget` only land against the exact text the bot read, so a
   note changed by a parallel reply or reflection is never overwritten blindly. Memory

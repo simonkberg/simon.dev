@@ -264,8 +264,35 @@ describe("createMessage", () => {
         id: 3,
         oldContent: "i like cats",
         newContent: "i like trains",
+        category: undefined,
       });
       expect(JSON.parse(result)).toEqual(memory);
+    });
+
+    it("should pass a category through to move a note", async () => {
+      vi.mocked(edit).mockResolvedValue({
+        status: "ok",
+        memory: {
+          id: 3,
+          category: "context",
+          content: "this chat gets spam",
+          createdAt: "2025-01-01T00:00:00.000Z",
+        },
+      });
+
+      await runTool("edit", {
+        id: 3,
+        old_content: "this chat gets spam",
+        new_content: "this chat gets spam",
+        category: "context",
+      });
+
+      expect(edit).toHaveBeenCalledWith({
+        id: 3,
+        oldContent: "this chat gets spam",
+        newContent: "this chat gets spam",
+        category: "context",
+      });
     });
 
     it("should hand a changed note back instead of editing it", async () => {

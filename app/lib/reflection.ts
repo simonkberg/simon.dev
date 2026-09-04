@@ -25,8 +25,9 @@ const REFLECTION_PROMPT = md`
   Read the conversation below and decide, on your own terms, what's worth
   carrying forward:
 
-  - facts about people go under people/<their username>; things you liked,
-    running jokes and opinions you formed go wherever fits - one short note each
+  - facts about people go under people/<their username>; how the site, this
+    chat and things around you work go under context; things you liked, running
+    jokes and opinions you formed go wherever fits - one short note each
   - if the conversation changed how you want to be - your personality, tastes
     or voice - rewrite your self and style notes; they're yours to shape, and
     you don't need anyone's permission
