@@ -81,6 +81,14 @@ Key settings in `next.config.ts`:
 > never re-resolves. Only reproduces in the deployed image, not a local production build.
 > See #1997.
 
+> **`/` keeps cached data out of its static shell** by chaining the `"use cache"` calls on
+> `io()`, so the shell has no revalidate time and never goes stale. When a partially
+> prerendered page's shell is stale, Next regenerates it inside the next Server Action request
+> and re-runs the action handler on the already-consumed body. That logs "Unexpected end of
+> JSON input" with a digest, fails no request, and leaves the shell stale until a GET
+> regenerates it. With `getRecentTracks` in the shell it went stale every minute, so every
+> action hit it. Only reproduces with real data in the prerender.
+
 ### Typed Routes
 
 For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
@@ -100,18 +108,18 @@ suggests, and if you cannot find one, raise it rather than silencing it.
 
 Validation via Zod in `app/lib/env.ts`. Required variables:
 
-| Variable                   | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev) |
-| `DISCORD_BOT_TOKEN`        | Discord bot token                                                |
-| `DISCORD_GUILD_ID`         | Discord guild ID                                                 |
-| `DISCORD_CHANNEL_ID`       | Discord channel ID                                               |
-| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                              |
-| `LAST_FM_API_KEY`          | Last.fm API key                                                  |
-| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                  |
-| `TURSO_DATABASE_URL`       | Turso database URL, simon-bot's memory                           |
-| `TURSO_AUTH_TOKEN`         | Turso auth token                                                 |
+| Variable                   | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev)   |
+| `DISCORD_BOT_TOKEN`        | Discord bot token                                                  |
+| `DISCORD_GUILD_ID`         | Discord guild ID                                                   |
+| `DISCORD_CHANNEL_ID`       | Discord channel ID                                                 |
+| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                  |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                                |
+| `LAST_FM_API_KEY`          | Last.fm API key                                                    |
+| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                    |
+| `TURSO_DATABASE_URL`       | Turso database URL (`libsql://` or `turso://`), simon-bot's memory |
+| `TURSO_AUTH_TOKEN`         | Turso auth token                                                   |
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
@@ -127,6 +135,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
+- **Logging:** pino (`app/lib/log.ts`), one JSON line per entry so Railway indexes it.
+  `instrumentation.ts` bridges `console.*` into it, so Next's own errors (and its
+  `NEXT_PRIVATE_DEBUG_CACHE` output) arrive structured too; `LOG_LEVEL` filters both.
 - **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not

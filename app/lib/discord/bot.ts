@@ -44,7 +44,10 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     // Dedup across instances
     const isNew = await markSeen(messageId);
-    if (!isNew) return;
+    if (!isNew) {
+      log.info({ messageId }, "Message already handled by another instance");
+      return;
+    }
 
     // Fetch the reply chain
     const chain = await getMessageChain(messageId);

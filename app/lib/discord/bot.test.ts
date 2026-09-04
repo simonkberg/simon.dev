@@ -288,11 +288,16 @@ describe("handleMessage", () => {
   });
 
   it("should skip if already seen (dedup)", async () => {
+    const info = vi.spyOn(log, "info").mockImplementation(() => {});
     setMock.mockResolvedValue(null); // null = key already exists
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(getMessageChain).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      { messageId: "msg-1" },
+      "Message already handled by another instance",
+    );
   });
 
   it("should ignore non-standard message types", async () => {
