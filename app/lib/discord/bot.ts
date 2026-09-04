@@ -2,6 +2,7 @@ import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
 import { getRedis } from "@/lib/redis";
+import { reflect } from "@/lib/reflection";
 
 import type { Username } from "../session";
 import { getMessageChain, postChannelMessage } from "./api";
@@ -33,6 +34,7 @@ async function markSeen(messageId: string): Promise<boolean> {
 }
 
 export async function handleMessage(message: DiscordMessage): Promise<void> {
+  const messageId = message.id;
   try {
     // Only respond to default messages (0) and replies (19)
     if (message.type !== 0 && message.type !== 19) return;
@@ -41,11 +43,11 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     if (isBotMessage(message.content)) return;
 
     // Dedup across instances
-    const isNew = await markSeen(message.id);
+    const isNew = await markSeen(messageId);
     if (!isNew) return;
 
     // Fetch the reply chain
-    const chain = await getMessageChain(message.id);
+    const chain = await getMessageChain(messageId);
     if (chain.length === 0) return;
 
     // Check if bot is mentioned anywhere in chain
@@ -61,21 +63,34 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       content: m.content,
     })) as [ChatMessage, ...ChatMessage[]];
 
+    const replies: ChatMessage[] = [];
     try {
       for await (const response of createMessage(messages)) {
-        await postChannelMessage(response, BOT_USERNAME, message.id);
+        await postChannelMessage(response, BOT_USERNAME, messageId);
+        replies.push({
+          role: "assistant",
+          username: BOT_USERNAME,
+          content: response,
+        });
       }
-      log.info({ messageId: message.id }, "Bot responded to message");
+      log.info({ messageId }, "Bot responded to message");
     } catch (err) {
-      log.error({ err, messageId: message.id }, "Bot response failed");
+      log.error({ err, messageId }, "Bot response failed");
       await postChannelMessage(
         "oops, something went wrong... try again later!",
         BOT_USERNAME,
-        message.id,
+        messageId,
       );
+    } finally {
+      // Not awaited: reflection must never delay or fail a reply, even a partial one.
+      if (replies.length > 0) {
+        reflect([...messages, ...replies]).catch((err) => {
+          log.error({ err, messageId }, "Bot reflection failed");
+        });
+      }
     }
   } catch (err) {
-    log.error({ err, messageId: message.id }, "Bot message handling failed");
+    log.error({ err, messageId: messageId }, "Bot message handling failed");
   }
 }
 

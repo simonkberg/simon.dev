@@ -4,7 +4,18 @@ import { z } from "zod";
 import { log } from "@/lib/log";
 import { query, type Value } from "@/lib/turso";
 
-export const CORE_CATEGORIES = ["self", "style", "interests"] as const;
+export const CORE_CATEGORIES = {
+  self: "who you are",
+  style: "how you write",
+  interests: "what you like",
+  context: "the world you work in",
+} as const;
+
+export function describeCoreCategories(): string {
+  return Object.entries(CORE_CATEGORIES)
+    .map(([name, what]) => `"${name}" is ${what}`)
+    .join(", ");
+}
 export const PEOPLE_PREFIX = "people/";
 export const MAX_CONTENT_LENGTH = 300;
 export const MAX_PER_CATEGORY = 25;
@@ -56,7 +67,7 @@ export function peopleCategory(username: string): string | undefined {
 export async function remember(input: {
   category: string;
   content: string;
-}): Promise<Memory> {
+}): Promise<{ status: "ok"; memory: Memory } | WriteMiss> {
   const category = categorySchema.parse(input.category);
   const content = contentSchema.parse(input.content);
 
@@ -69,12 +80,9 @@ export async function remember(input: {
     [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
   );
   const row = rows[0];
-  if (row === undefined) {
-    throw new Error(
-      `Category "${category}" is full (${MAX_PER_CATEGORY} memories). Forget something first.`,
-    );
-  }
-  return toMemory(row);
+  return row === undefined
+    ? { status: "full", category }
+    : { status: "ok", memory: toMemory(row) };
 }
 
 function escapeLike(text: string): string {
@@ -108,11 +116,98 @@ export async function recall(input: {
   return rows.map(toMemory);
 }
 
-export async function forget(id: number): Promise<boolean> {
-  const { rowsAffected } = await query("DELETE FROM memories WHERE id = ?", [
-    id,
-  ]);
-  return rowsAffected > 0;
+export type WriteMiss =
+  | { status: "stale"; current: Memory }
+  | { status: "missing"; id: number }
+  | { status: "full"; category: string };
+
+export function describeMiss(miss: WriteMiss) {
+  switch (miss.status) {
+    case "missing":
+      return {
+        error: `There is no note #${miss.id} - it may have been forgotten already`,
+      };
+    case "full":
+      return {
+        error: `Category "${miss.category}" is full (${MAX_PER_CATEGORY} memories). Forget something first.`,
+      };
+    case "stale":
+      return {
+        error: `Note #${miss.current.id} has changed since you read it - work from its current text`,
+        current: miss.current,
+      };
+  }
+}
+
+async function explainMiss(id: number): Promise<WriteMiss> {
+  const { rows } = await query(
+    "SELECT id, category, content, created_at FROM memories WHERE id = ?",
+    [id],
+  );
+  const row = rows[0];
+  return row === undefined
+    ? { status: "missing", id }
+    : { status: "stale", current: toMemory(row) };
+}
+
+const LISTING_PREFIX = /^(?:-\s*)?#(\d+)\s+/;
+
+// The listing shows notes as "- #id text"; a copy that kept the decoration
+// should still match, and so should a note whose own text starts with "#id".
+function asRead(id: number, text: string): [string, string] {
+  const trimmed = text.trim();
+  const prefix = LISTING_PREFIX.exec(trimmed);
+  const bare =
+    prefix?.[1] === String(id) ? trimmed.slice(prefix[0].length) : trimmed;
+  return [trimmed, bare];
+}
+
+// Writes only land against the exact text the caller read, so a note that
+// changed under a parallel reply or reflection is never overwritten blindly.
+export async function edit(input: {
+  id: number;
+  oldContent: string;
+  newContent: string;
+  category?: string | undefined;
+}): Promise<{ status: "ok"; memory: Memory } | WriteMiss> {
+  const newContent = contentSchema.parse(input.newContent);
+  const category =
+    input.category === undefined ? null : categorySchema.parse(input.category);
+  const read = asRead(input.id, input.oldContent);
+  // A move into another category counts against that category's cap.
+  const { rows } = await query(
+    `UPDATE memories SET content = ?, category = COALESCE(?, category)
+     WHERE id = ? AND content IN (?, ?)
+       AND (COALESCE(?, category) = category
+         OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
+     RETURNING id, category, content, created_at`,
+    [
+      newContent,
+      category,
+      input.id,
+      ...read,
+      category,
+      category,
+      MAX_PER_CATEGORY,
+    ],
+  );
+  const row = rows[0];
+  if (row !== undefined) return { status: "ok", memory: toMemory(row) };
+  const miss = await explainMiss(input.id);
+  const unchanged =
+    miss.status === "stale" && read.includes(miss.current.content);
+  return unchanged && category !== null ? { status: "full", category } : miss;
+}
+
+export async function forget(input: {
+  id: number;
+  content: string;
+}): Promise<{ status: "ok" } | WriteMiss> {
+  const { rowsAffected } = await query(
+    "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
+    [input.id, ...asRead(input.id, input.content)],
+  );
+  return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
 function renderCategory(category: string, memories: Memory[]): string {
@@ -130,7 +225,7 @@ export async function buildMemoryContext(
     const people = participants
       .map(peopleCategory)
       .filter((category) => category !== undefined);
-    const shown = [...new Set<string>([...CORE_CATEGORIES, ...people])];
+    const shown = [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
 
     const [{ rows: memoryRows }, { rows: countRows }] = await Promise.all([
       query(

@@ -124,17 +124,23 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
-- **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `low`
-  effort) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
+- **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `medium` effort for replies,
+  `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
   per-request — and dedupes through Redis (60s TTL) so multiple instances don't
   double-reply.
 - **simon-bot memory:** `app/lib/turso.ts` calls Turso's HTTP pipeline endpoint with raw
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
   at boot under a Redis lock. `app/lib/memory.ts` owns the `memories` table and renders the
-  `<memory>` system-prompt block: `self`, `style`, `interests` and `people/<username>` for
+  `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
-  with `recall`. Memory failures degrade to a reply without memory, never to no reply.
+  with `recall`. `edit` and `forget` are compare-and-swap on the note's text. Memory
+  failures degrade to a reply without memory, never to no reply.
+- **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
+  base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
+  `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory
+  tools, so bookkeeping never delays a response. Simon is recognised by his username:
+  site visitors get generated names, so only his own Discord messages appear as "simon".
 
 ## Patterns
 

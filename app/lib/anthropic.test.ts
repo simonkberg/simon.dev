@@ -10,7 +10,13 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
+import {
+  buildMemoryContext,
+  edit,
+  forget,
+  recall,
+  remember,
+} from "@/lib/memory";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -27,6 +33,7 @@ vi.mock(import("@/lib/memory"), async (importOriginal) => {
     ...actual,
     buildMemoryContext: vi.fn(),
     remember: vi.fn(),
+    edit: vi.fn(),
     recall: vi.fn(),
     forget: vi.fn(),
   };
@@ -99,6 +106,7 @@ describe("createMessage", () => {
             { name: "search_messages" },
             { name: "remember" },
             { name: "recall" },
+            { name: "edit" },
             { name: "forget" },
           ],
         });
@@ -207,6 +215,13 @@ describe("createMessage", () => {
       return toolResult;
     }
 
+    const CHANGED = {
+      id: 3,
+      category: "self",
+      content: "i like dogs",
+      createdAt: "2025-01-01T00:00:00.000Z",
+    };
+
     it("should save notes with remember", async () => {
       const memory = {
         id: 1,
@@ -214,7 +229,7 @@ describe("createMessage", () => {
         content: "i like trains",
         createdAt: "2025-01-01T00:00:00.000Z",
       };
-      vi.mocked(remember).mockResolvedValue(memory);
+      vi.mocked(remember).mockResolvedValue({ status: "ok", memory });
 
       const result = await runTool("remember", {
         category: "self",
@@ -228,6 +243,22 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual(memory);
     });
 
+    it("should say when a category is full instead of saving", async () => {
+      vi.mocked(remember).mockResolvedValue({
+        status: "full",
+        category: "self",
+      });
+
+      const result = await runTool("remember", {
+        category: "self",
+        content: "one more",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error: 'Category "self" is full (25 memories). Forget something first.',
+      });
+    });
+
     it("should read notes with recall and apply defaults", async () => {
       vi.mocked(recall).mockResolvedValue([]);
 
@@ -237,13 +268,123 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual([]);
     });
 
+    it("should rewrite notes with edit", async () => {
+      const memory = {
+        id: 3,
+        category: "self",
+        content: "i like trains",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      };
+      vi.mocked(edit).mockResolvedValue({ status: "ok", memory });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "i like cats",
+        new_content: "i like trains",
+      });
+
+      expect(edit).toHaveBeenCalledWith({
+        id: 3,
+        oldContent: "i like cats",
+        newContent: "i like trains",
+        category: undefined,
+      });
+      expect(JSON.parse(result)).toEqual(memory);
+    });
+
+    it("should pass a category through to move a note", async () => {
+      vi.mocked(edit).mockResolvedValue({
+        status: "ok",
+        memory: {
+          id: 3,
+          category: "context",
+          content: "this chat gets spam",
+          createdAt: "2025-01-01T00:00:00.000Z",
+        },
+      });
+
+      await runTool("edit", {
+        id: 3,
+        old_content: "this chat gets spam",
+        new_content: "this chat gets spam",
+        category: "context",
+      });
+
+      expect(edit).toHaveBeenCalledWith({
+        id: 3,
+        oldContent: "this chat gets spam",
+        newContent: "this chat gets spam",
+        category: "context",
+      });
+    });
+
+    it("should hand a changed note back instead of editing it", async () => {
+      vi.mocked(edit).mockResolvedValue({ status: "stale", current: CHANGED });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "i like cats",
+        new_content: "i like trains",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          "Note #3 has changed since you read it - work from its current text",
+        current: CHANGED,
+      });
+    });
+
+    it("should say when a move would overfill a category", async () => {
+      vi.mocked(edit).mockResolvedValue({
+        status: "full",
+        category: "context",
+      });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "this chat gets spam",
+        new_content: "this chat gets spam",
+        category: "context",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          'Category "context" is full (25 memories). Forget something first.',
+      });
+    });
+
     it("should delete notes with forget", async () => {
-      vi.mocked(forget).mockResolvedValue(true);
+      vi.mocked(forget).mockResolvedValue({ status: "ok" });
 
-      const result = await runTool("forget", { id: 3 });
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
 
-      expect(forget).toHaveBeenCalledWith(3);
+      expect(forget).toHaveBeenCalledWith({ id: 3, content: "i like cats" });
       expect(JSON.parse(result)).toEqual({ forgotten: true });
+    });
+
+    it("should hand a changed note back instead of forgetting it", async () => {
+      vi.mocked(forget).mockResolvedValue({
+        status: "stale",
+        current: CHANGED,
+      });
+
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          "Note #3 has changed since you read it - work from its current text",
+        current: CHANGED,
+      });
+    });
+
+    it("should say when a note to forget is already gone", async () => {
+      vi.mocked(forget).mockResolvedValue({ status: "missing", id: 3 });
+
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
+
+      expect(JSON.parse(result)).toEqual({
+        error: "There is no note #3 - it may have been forgotten already",
+      });
     });
 
     it("should return validation errors instead of saving", async () => {
@@ -412,7 +553,10 @@ describe("createMessage", () => {
     );
 
     expect(responses).toEqual(["yeah I'm not touching that one, sorry"]);
-    expect(warn).toHaveBeenCalledWith("simon-bot response was refused");
+    expect(warn).toHaveBeenCalledWith(
+      { loop: "reply" },
+      "simon-bot response was refused",
+    );
   });
 
   it("should yield only the fallback when a refusal carries text", async () => {
@@ -458,7 +602,10 @@ describe("createMessage", () => {
       "so anyway I was thinking abo",
       "...welp, ran out of words there",
     ]);
-    expect(warn).toHaveBeenCalledWith("simon-bot response hit the token limit");
+    expect(warn).toHaveBeenCalledWith(
+      { loop: "reply" },
+      "simon-bot response hit the token limit",
+    );
   });
 
   it("should still say something when the limit leaves no text", async () => {
@@ -642,7 +789,7 @@ describe("createMessage", () => {
     ]);
     expect(callCount).toBe(5);
     expect(warnSpy).toHaveBeenCalledWith(
-      { iterations: 5 },
+      { loop: "reply", iterations: 5 },
       "simon-bot reached max tool iterations",
     );
   });
