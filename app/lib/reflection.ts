@@ -64,7 +64,7 @@ export async function reflect(transcript: ChatMessage[]): Promise<void> {
     effort: "high",
     timeoutMs: TIMEOUT_MS,
     maxIterations: MAX_ITERATIONS,
-    label: "simon-bot reflection",
+    loop: "reflection",
   })) {
     log.info({ text }, "simon-bot reflected");
   }

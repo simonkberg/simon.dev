@@ -520,7 +520,10 @@ describe("createMessage", () => {
     );
 
     expect(responses).toEqual(["yeah I'm not touching that one, sorry"]);
-    expect(warn).toHaveBeenCalledWith("simon-bot response was refused");
+    expect(warn).toHaveBeenCalledWith(
+      { loop: "reply" },
+      "simon-bot response was refused",
+    );
   });
 
   it("should yield only the fallback when a refusal carries text", async () => {
@@ -566,7 +569,10 @@ describe("createMessage", () => {
       "so anyway I was thinking abo",
       "...welp, ran out of words there",
     ]);
-    expect(warn).toHaveBeenCalledWith("simon-bot response hit the token limit");
+    expect(warn).toHaveBeenCalledWith(
+      { loop: "reply" },
+      "simon-bot response hit the token limit",
+    );
   });
 
   it("should still say something when the limit leaves no text", async () => {
@@ -750,7 +756,7 @@ describe("createMessage", () => {
     ]);
     expect(callCount).toBe(5);
     expect(warnSpy).toHaveBeenCalledWith(
-      { iterations: 5 },
+      { loop: "reply", iterations: 5 },
       "simon-bot reached max tool iterations",
     );
   });

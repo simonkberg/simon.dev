@@ -64,7 +64,7 @@ describe("reflect", () => {
       effort: "high",
       timeoutMs: 60_000,
       maxIterations: 10,
-      label: "simon-bot reflection",
+      loop: "reflection",
     });
     expect(log.info).toHaveBeenCalledWith(
       { text: "remembered that alice likes cats" },

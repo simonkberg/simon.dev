@@ -394,7 +394,7 @@ export type AgentLoopOptions = {
   effort: "low" | "medium" | "high";
   timeoutMs: number;
   maxIterations?: number;
-  label: string;
+  loop: "reply" | "reflection";
 };
 
 export async function* runAgentLoop({
@@ -404,7 +404,7 @@ export async function* runAgentLoop({
   effort,
   timeoutMs,
   maxIterations = DEFAULT_MAX_TOOL_ITERATIONS,
-  label,
+  loop,
 }: AgentLoopOptions): AsyncGenerator<string, void, unknown> {
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     const response = await fetch(BASE_URL, {
@@ -436,7 +436,7 @@ export async function* runAgentLoop({
 
     // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
-      log.warn(`${label} response was refused`);
+      log.warn({ loop }, "simon-bot response was refused");
       yield "yeah I'm not touching that one, sorry";
       return;
     }
@@ -444,13 +444,13 @@ export async function* runAgentLoop({
     // Log and yield text blocks
     for (const block of result.content) {
       if (block.type === "text") {
-        log.info({ text: block.text }, `${label} response`);
+        log.info({ loop, text: block.text }, "simon-bot response");
         yield block.text;
       }
     }
 
     if (result.stop_reason === "max_tokens") {
-      log.warn(`${label} response hit the token limit`);
+      log.warn({ loop }, "simon-bot response hit the token limit");
       yield "...welp, ran out of words there";
     }
 
@@ -471,13 +471,13 @@ export async function* runAgentLoop({
     const toolResults = await Promise.all(
       toolUseBlocks.map(async (toolUse) => {
         log.info(
-          { tool: toolUse.name, input: toolUse.input },
-          `${label} tool call`,
+          { loop, tool: toolUse.name, input: toolUse.input },
+          "simon-bot tool call",
         );
         const content = await executeTool(toolUse.name, toolUse.input);
         log.info(
-          { tool: toolUse.name, result: content },
-          `${label} tool result`,
+          { loop, tool: toolUse.name, result: content },
+          "simon-bot tool result",
         );
         return {
           type: "tool_result" as const,
@@ -492,8 +492,8 @@ export async function* runAgentLoop({
   }
 
   log.warn(
-    { iterations: maxIterations },
-    `${label} reached max tool iterations`,
+    { loop, iterations: maxIterations },
+    "simon-bot reached max tool iterations",
   );
   yield "sorry, I got stuck in a loop and couldn't finish my thought...";
 }
@@ -520,6 +520,6 @@ export async function* createMessage(
     tools: TOOLS,
     effort: "medium",
     timeoutMs: TIMEOUT_MS,
-    label: "simon-bot",
+    loop: "reply",
   });
 }
