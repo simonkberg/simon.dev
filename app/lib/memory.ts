@@ -108,11 +108,50 @@ export async function recall(input: {
   return rows.map(toMemory);
 }
 
-export async function forget(id: number): Promise<boolean> {
-  const { rowsAffected } = await query("DELETE FROM memories WHERE id = ?", [
-    id,
-  ]);
-  return rowsAffected > 0;
+/** A write that missed: the note changed since it was read, or it is gone. */
+export type WriteMiss =
+  | { status: "stale"; current: Memory }
+  | { status: "missing" };
+
+async function explainMiss(id: number): Promise<WriteMiss> {
+  const { rows } = await query(
+    "SELECT id, category, content, created_at FROM memories WHERE id = ?",
+    [id],
+  );
+  const row = rows[0];
+  return row === undefined
+    ? { status: "missing" }
+    : { status: "stale", current: toMemory(row) };
+}
+
+// Writes only land against the exact text the caller read, so a note that
+// changed under a parallel reply or reflection is never overwritten blindly.
+export async function edit(input: {
+  id: number;
+  oldContent: string;
+  newContent: string;
+}): Promise<{ status: "ok"; memory: Memory } | WriteMiss> {
+  const newContent = contentSchema.parse(input.newContent);
+  const { rows } = await query(
+    `UPDATE memories SET content = ? WHERE id = ? AND content = ?
+     RETURNING id, category, content, created_at`,
+    [newContent, input.id, input.oldContent.trim()],
+  );
+  const row = rows[0];
+  return row === undefined
+    ? explainMiss(input.id)
+    : { status: "ok", memory: toMemory(row) };
+}
+
+export async function forget(input: {
+  id: number;
+  content: string;
+}): Promise<{ status: "ok" } | WriteMiss> {
+  const { rowsAffected } = await query(
+    "DELETE FROM memories WHERE id = ? AND content = ?",
+    [input.id, input.content.trim()],
+  );
+  return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
 function renderCategory(category: string, memories: Memory[]): string {

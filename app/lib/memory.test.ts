@@ -5,6 +5,7 @@ import { query } from "@/lib/turso";
 
 import {
   buildMemoryContext,
+  edit,
   forget,
   MAX_CONTENT_LENGTH,
   MAX_PER_CATEGORY,
@@ -150,22 +151,103 @@ describe("recall", () => {
   });
 });
 
+describe("edit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should rewrite a note only when its text still matches", async () => {
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [row(4, "self", "i like trains")],
+    });
+
+    await expect(
+      edit({ id: 4, oldContent: " i like cats ", newContent: "i like trains" }),
+    ).resolves.toEqual({
+      status: "ok",
+      memory: {
+        id: 4,
+        category: "self",
+        content: "i like trains",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      },
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE id = ? AND content = ?"),
+      ["i like trains", 4, "i like cats"],
+    );
+  });
+
+  it("should hand back the current text when the note changed", async () => {
+    vi.mocked(query)
+      .mockResolvedValueOnce(emptyResult)
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        rows: [row(4, "self", "i like dogs")],
+      });
+
+    await expect(
+      edit({ id: 4, oldContent: "i like cats", newContent: "i like trains" }),
+    ).resolves.toEqual({
+      status: "stale",
+      current: expect.objectContaining({ id: 4, content: "i like dogs" }),
+    });
+  });
+
+  it("should say when the note is gone", async () => {
+    vi.mocked(query).mockResolvedValue(emptyResult);
+
+    await expect(
+      edit({ id: 4, oldContent: "i like cats", newContent: "i like trains" }),
+    ).resolves.toEqual({ status: "missing" });
+  });
+
+  it("should validate the new text before writing", async () => {
+    await expect(
+      edit({ id: 4, oldContent: "x", newContent: " " }),
+    ).rejects.toThrow();
+    expect(query).not.toHaveBeenCalled();
+  });
+});
+
 describe("forget", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should report whether a row was deleted", async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 })
-      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 0 });
+  it("should delete a note only when its text still matches", async () => {
+    vi.mocked(query).mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 });
 
-    await expect(forget(4)).resolves.toBe(true);
-    await expect(forget(4)).resolves.toBe(false);
+    await expect(forget({ id: 4, content: " i like cats " })).resolves.toEqual({
+      status: "ok",
+    });
     expect(query).toHaveBeenCalledWith(
-      "DELETE FROM memories WHERE id = ?",
-      [4],
+      "DELETE FROM memories WHERE id = ? AND content = ?",
+      [4, "i like cats"],
     );
+  });
+
+  it("should hand back the current text when the note changed", async () => {
+    vi.mocked(query)
+      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 0 })
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        rows: [row(4, "self", "i like dogs")],
+      });
+
+    await expect(forget({ id: 4, content: "i like cats" })).resolves.toEqual({
+      status: "stale",
+      current: expect.objectContaining({ id: 4, content: "i like dogs" }),
+    });
+  });
+
+  it("should say when the note is gone", async () => {
+    vi.mocked(query).mockResolvedValue(emptyResult);
+
+    await expect(forget({ id: 4, content: "i like cats" })).resolves.toEqual({
+      status: "missing",
+    });
   });
 });
 

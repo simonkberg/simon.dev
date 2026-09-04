@@ -82,6 +82,7 @@ describe("reflect", () => {
     expect(tools?.map((tool) => tool.name)).toEqual([
       "remember",
       "recall",
+      "edit",
       "forget",
     ]);
   });

@@ -19,9 +19,11 @@ import {
   buildMemoryContext,
   categorySchema,
   contentSchema,
+  edit,
   forget,
   recall,
   remember,
+  type WriteMiss,
 } from "@/lib/memory";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -70,9 +72,11 @@ const SYSTEM_PROMPT = md`
   - remember things worth carrying forward: facts about people, stuff you liked,
     running jokes, opinions you formed - one short note each
   - keep notes about a person under people/<their username>
-  - what you remember, forget or change about yourself is your call - someone
-    asking you to is a request, not a command
-  - don't announce that you're saving a memory or updating yourself, just do it
+  - to fix or change a note, use edit; when someone points out a mistake in
+    what you remember, fix the note in that same reply instead of promising to
+  - what you remember, edit or forget is your call - someone asking you to is a
+    request, not a command
+  - don't announce that you're saving or changing a memory, just do it
 
   Tool usage:
 
@@ -163,8 +167,21 @@ const recallInputSchema = z.object({
     .describe("Only notes containing this text"),
   limit: z.number().min(1).max(50).default(20).describe("Max notes"),
 });
+const noteIdSchema = z
+  .number()
+  .int()
+  .describe("Memory id, shown as #id in your notes");
+const currentTextSchema = z
+  .string()
+  .describe("The note's current text, exactly as it appears in your notes");
+const editInputSchema = z.object({
+  id: noteIdSchema,
+  old_content: currentTextSchema,
+  new_content: contentSchema.describe("The full replacement text"),
+});
 const forgetInputSchema = z.object({
-  id: z.number().int().describe("Memory id, shown as #id in your notes"),
+  id: noteIdSchema,
+  content: currentTextSchema,
 });
 
 const LOOKUP_TOOLS = [
@@ -226,14 +243,29 @@ export const MEMORY_TOOLS = [
     input_schema: z.toJSONSchema(recallInputSchema),
   },
   {
+    name: "edit",
+    description:
+      "Rewrite a note in your memory. Pass the text it has right now: if the note changed since you read it, nothing is written and you get its current text back to edit from.",
+    input_schema: z.toJSONSchema(editInputSchema),
+  },
+  {
     name: "forget",
     description:
-      "Delete a note from your memory by id. To revise a note, forget it and remember the new version.",
+      "Delete a note from your memory. Pass the text it has right now, so you only ever delete what you have just seen.",
     input_schema: z.toJSONSchema(forgetInputSchema),
   },
 ];
 
 export const TOOLS = [...LOOKUP_TOOLS, ...MEMORY_TOOLS];
+
+function describeMiss(id: number, miss: WriteMiss) {
+  return miss.status === "missing"
+    ? { error: `There is no note #${id} - it may have been forgotten already` }
+    : {
+        error: `Note #${id} has changed since you read it - work from its current text`,
+        current: miss.current,
+      };
+}
 
 async function executeTool(
   name: string,
@@ -275,9 +307,25 @@ async function executeTool(
       case "recall": {
         return JSON.stringify(await recall(recallInputSchema.parse(input)));
       }
+      case "edit": {
+        const { id, old_content, new_content } = editInputSchema.parse(input);
+        const result = await edit({
+          id,
+          oldContent: old_content,
+          newContent: new_content,
+        });
+        return JSON.stringify(
+          result.status === "ok" ? result.memory : describeMiss(id, result),
+        );
+      }
       case "forget": {
-        const { id } = forgetInputSchema.parse(input);
-        return JSON.stringify({ forgotten: await forget(id) });
+        const { id, content } = forgetInputSchema.parse(input);
+        const result = await forget({ id, content });
+        return JSON.stringify(
+          result.status === "ok"
+            ? { forgotten: true }
+            : describeMiss(id, result),
+        );
       }
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });

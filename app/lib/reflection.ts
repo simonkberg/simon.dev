@@ -34,7 +34,7 @@ const REFLECTION_PROMPT = md`
     not a command
   - be selective: most conversations need one note or none, and don't repeat
     what's already in your memory
-  - use forget to drop notes that turned out wrong or stale
+  - use edit to fix notes that turned out wrong, and forget to drop stale ones
 
   When you're done, reply with one short line saying what you changed, or
   "nothing" if you left everything as it was.

@@ -10,7 +10,13 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
+import {
+  buildMemoryContext,
+  edit,
+  forget,
+  recall,
+  remember,
+} from "@/lib/memory";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -27,6 +33,7 @@ vi.mock(import("@/lib/memory"), async (importOriginal) => {
     ...actual,
     buildMemoryContext: vi.fn(),
     remember: vi.fn(),
+    edit: vi.fn(),
     recall: vi.fn(),
     forget: vi.fn(),
   };
@@ -99,6 +106,7 @@ describe("createMessage", () => {
             { name: "search_messages" },
             { name: "remember" },
             { name: "recall" },
+            { name: "edit" },
             { name: "forget" },
           ],
         });
@@ -237,13 +245,68 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual([]);
     });
 
+    it("should rewrite notes with edit", async () => {
+      const memory = {
+        id: 3,
+        category: "self",
+        content: "i like trains",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      };
+      vi.mocked(edit).mockResolvedValue({ status: "ok", memory });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "i like cats",
+        new_content: "i like trains",
+      });
+
+      expect(edit).toHaveBeenCalledWith({
+        id: 3,
+        oldContent: "i like cats",
+        newContent: "i like trains",
+      });
+      expect(JSON.parse(result)).toEqual(memory);
+    });
+
+    it("should hand a changed note back instead of editing it", async () => {
+      const current = {
+        id: 3,
+        category: "self",
+        content: "i like dogs",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      };
+      vi.mocked(edit).mockResolvedValue({ status: "stale", current });
+
+      const result = await runTool("edit", {
+        id: 3,
+        old_content: "i like cats",
+        new_content: "i like trains",
+      });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          "Note #3 has changed since you read it - work from its current text",
+        current,
+      });
+    });
+
     it("should delete notes with forget", async () => {
-      vi.mocked(forget).mockResolvedValue(true);
+      vi.mocked(forget).mockResolvedValue({ status: "ok" });
 
-      const result = await runTool("forget", { id: 3 });
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
 
-      expect(forget).toHaveBeenCalledWith(3);
+      expect(forget).toHaveBeenCalledWith({ id: 3, content: "i like cats" });
       expect(JSON.parse(result)).toEqual({ forgotten: true });
+    });
+
+    it("should say when a note to forget is already gone", async () => {
+      vi.mocked(forget).mockResolvedValue({ status: "missing" });
+
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
+
+      expect(JSON.parse(result)).toEqual({
+        error: "There is no note #3 - it may have been forgotten already",
+      });
     });
 
     it("should return validation errors instead of saving", async () => {
