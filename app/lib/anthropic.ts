@@ -387,6 +387,17 @@ export async function buildContextBlocks(
   return memoryContext === "" ? [] : [{ type: "text", text: memoryContext }];
 }
 
+/** How a loop ended; anything but end_turn is the model being cut off. */
+export type LoopEnd = "end_turn" | "refusal" | "max_tokens" | "max_iterations";
+
+// What the chat sees when a reply is cut off; reflection has no reader to tell.
+const FALLBACKS: Record<Exclude<LoopEnd, "end_turn">, string> = {
+  refusal: "yeah I'm not touching that one, sorry",
+  max_tokens: "...welp, ran out of words there",
+  max_iterations:
+    "sorry, I got stuck in a loop and couldn't finish my thought...",
+};
+
 export type AgentLoopOptions = {
   system: SystemBlock[];
   messages: Message[];
@@ -405,7 +416,7 @@ export async function* runAgentLoop({
   timeoutMs,
   maxIterations = DEFAULT_MAX_TOOL_ITERATIONS,
   loop,
-}: AgentLoopOptions): AsyncGenerator<string, void, unknown> {
+}: AgentLoopOptions): AsyncGenerator<string, LoopEnd, unknown> {
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     const response = await fetch(BASE_URL, {
       method: "POST",
@@ -437,8 +448,7 @@ export async function* runAgentLoop({
     // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
       log.warn({ loop }, "simon-bot response was refused");
-      yield "yeah I'm not touching that one, sorry";
-      return;
+      return "refusal";
     }
 
     // Log and yield text blocks
@@ -451,12 +461,12 @@ export async function* runAgentLoop({
 
     if (result.stop_reason === "max_tokens") {
       log.warn({ loop }, "simon-bot response hit the token limit");
-      yield "...welp, ran out of words there";
+      return "max_tokens";
     }
 
     // If not a tool use, we're done
     if (result.stop_reason !== "tool_use") {
-      return;
+      return "end_turn";
     }
 
     // Extract tool use blocks for execution
@@ -495,7 +505,7 @@ export async function* runAgentLoop({
     { loop, iterations: maxIterations },
     "simon-bot reached max tool iterations",
   );
-  yield "sorry, I got stuck in a loop and couldn't finish my thought...";
+  return "max_iterations";
 }
 
 export async function* createMessage(
@@ -514,7 +524,7 @@ export async function* createMessage(
 
   log.info({ messages, contextBlocks }, "simon-bot received conversation");
 
-  yield* runAgentLoop({
+  const end = yield* runAgentLoop({
     system,
     messages,
     tools: TOOLS,
@@ -522,4 +532,5 @@ export async function* createMessage(
     timeoutMs: TIMEOUT_MS,
     loop: "reply",
   });
+  if (end !== "end_turn") yield FALLBACKS[end];
 }

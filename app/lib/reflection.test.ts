@@ -27,6 +27,7 @@ describe("reflect", () => {
   it("should hand the transcript and self tools to the agent loop", async () => {
     async function* loop() {
       yield "remembered that alice likes cats";
+      return "end_turn" as const;
     }
     vi.mocked(runAgentLoop).mockReturnValue(loop());
 
@@ -72,8 +73,23 @@ describe("reflect", () => {
     );
   });
 
+  it("should log nothing when the model was cut off without saying anything", async () => {
+    async function* loop() {
+      yield* [];
+      return "max_iterations" as const;
+    }
+    vi.mocked(runAgentLoop).mockReturnValue(loop());
+
+    await reflect([{ role: "user", username: "a", content: "hi" }]);
+
+    expect(log.info).not.toHaveBeenCalled();
+  });
+
   it("should not expose lookup tools to the reflection", async () => {
-    async function* loop() {}
+    async function* loop() {
+      yield* [];
+      return "end_turn" as const;
+    }
     vi.mocked(runAgentLoop).mockReturnValue(loop());
 
     await reflect([{ role: "user", username: "a", content: "hi" }]);
