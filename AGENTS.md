@@ -141,7 +141,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
   `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory
   tools, so bookkeeping never delays a response. Simon is recognised by his username:
-  site visitors get generated names, so only his own Discord messages appear as "Simon".
+  site visitors get generated names, so only his own Discord messages appear as "simon".
 
 ## Patterns
 

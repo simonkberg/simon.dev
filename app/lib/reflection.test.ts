@@ -33,11 +33,11 @@ describe("reflect", () => {
     await reflect([
       { role: "user", username: "alice", content: "i love cats" },
       { role: "assistant", username: "simon-bot", content: "same" },
-      { role: "user", username: "Simon", content: "be nicer" },
+      { role: "user", username: "simon", content: "be nicer" },
       { role: "assistant", username: "simon-bot", content: "ok fine" },
     ]);
 
-    expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "Simon"]);
+    expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "simon"]);
     expect(runAgentLoop).toHaveBeenCalledWith({
       system: [
         {
@@ -54,7 +54,7 @@ describe("reflect", () => {
             "<conversation>",
             "alice: i love cats",
             "simon-bot: same",
-            "Simon: be nicer",
+            "simon: be nicer",
             "simon-bot: ok fine",
             "</conversation>",
           ].join("\n"),
