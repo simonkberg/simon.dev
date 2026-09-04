@@ -102,6 +102,19 @@ describe("bridgeConsole", () => {
     expect(lines[0]?.["err"]).toHaveProperty("stack");
   });
 
+  it("substitutes the error message into a placeholder", () => {
+    const { logger, lines } = createLogger();
+    const target = createConsole();
+    bridgeConsole(target, logger);
+
+    target.error("Request failed: %s", new Error("boom"));
+
+    expect(lines[0]).toMatchObject({
+      msg: "Request failed: boom",
+      err: { message: "boom" },
+    });
+  });
+
   it("uses the error message when nothing else was printed", () => {
     const { logger, lines } = createLogger();
     const target = createConsole();

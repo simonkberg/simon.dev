@@ -35,8 +35,7 @@ export function bridgeConsole(target: Console = console, logger: Logger = log) {
         return;
       }
       const err = args[errIndex] as Error;
-      const msg = formatArgs(args.toSpliced(errIndex, 1));
-      logger[level]({ err }, msg ? `${msg} ${err.message}` : err.message);
+      logger[level]({ err }, formatArgs(args.with(errIndex, err.message)));
     };
   }
 }
