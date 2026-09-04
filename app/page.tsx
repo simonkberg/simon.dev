@@ -1,5 +1,6 @@
 import type { Viewport } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { getChatHistory } from "@/actions/chat";
@@ -25,9 +26,11 @@ export const viewport: Viewport = {
 };
 
 export default function RootPage() {
-  const stats = getWakaTimeStats();
-  const history = getChatHistory();
-  const recentTracks = getRecentTracks();
+  // Keeps cached data out of the static shell so it never goes stale, see AGENTS.md
+  const request = connection();
+  const stats = request.then(getWakaTimeStats);
+  const history = request.then(getChatHistory);
+  const recentTracks = request.then(getRecentTracks);
   const tipDismissed = getChatTipDismissed();
 
   return (
