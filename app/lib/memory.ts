@@ -113,10 +113,18 @@ export async function recall(input: {
   return rows.map(toMemory);
 }
 
-/** A write that missed: the note changed since it was read, or it is gone. */
 export type WriteMiss =
   | { status: "stale"; current: Memory }
   | { status: "missing" };
+
+export function describeMiss(id: number, miss: WriteMiss) {
+  return miss.status === "missing"
+    ? { error: `There is no note #${id} - it may have been forgotten already` }
+    : {
+        error: `Note #${id} has changed since you read it - work from its current text`,
+        current: miss.current,
+      };
+}
 
 async function explainMiss(id: number): Promise<WriteMiss> {
   const { rows } = await query(
@@ -130,9 +138,13 @@ async function explainMiss(id: number): Promise<WriteMiss> {
 }
 
 // The listing shows notes as "- #id text"; a copy that kept the decoration
-// should still match the stored text.
-function bareContent(id: number, text: string): string {
-  return text.trim().replace(new RegExp(String.raw`^(-\s*)?#${id}\s+`), "");
+// should still match, and so should a note whose own text starts with "#id".
+function asRead(id: number, text: string): [string, string] {
+  const trimmed = text.trim();
+  return [
+    trimmed,
+    trimmed.replace(new RegExp(String.raw`^(-\s*)?#${id}\s+`), ""),
+  ];
 }
 
 // Writes only land against the exact text the caller read, so a note that
@@ -148,9 +160,9 @@ export async function edit(input: {
     input.category === undefined ? null : categorySchema.parse(input.category);
   const { rows } = await query(
     `UPDATE memories SET content = ?, category = COALESCE(?, category)
-     WHERE id = ? AND content = ?
+     WHERE id = ? AND content IN (?, ?)
      RETURNING id, category, content, created_at`,
-    [newContent, category, input.id, bareContent(input.id, input.oldContent)],
+    [newContent, category, input.id, ...asRead(input.id, input.oldContent)],
   );
   const row = rows[0];
   return row === undefined
@@ -163,8 +175,8 @@ export async function forget(input: {
   content: string;
 }): Promise<{ status: "ok" } | WriteMiss> {
   const { rowsAffected } = await query(
-    "DELETE FROM memories WHERE id = ? AND content = ?",
-    [input.id, bareContent(input.id, input.content)],
+    "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
+    [input.id, ...asRead(input.id, input.content)],
   );
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }

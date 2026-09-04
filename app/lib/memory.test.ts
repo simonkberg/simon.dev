@@ -174,8 +174,8 @@ describe("edit", () => {
       },
     });
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("WHERE id = ? AND content = ?"),
-      ["i like trains", null, 4, "i like cats"],
+      expect.stringContaining("WHERE id = ? AND content IN (?, ?)"),
+      ["i like trains", null, 4, "i like cats", "i like cats"],
     );
   });
 
@@ -195,7 +195,13 @@ describe("edit", () => {
     ).resolves.toMatchObject({ status: "ok", memory: { category: "context" } });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("category = COALESCE(?, category)"),
-      ["this chat gets spam", "context", 4, "this chat gets spam"],
+      [
+        "this chat gets spam",
+        "context",
+        4,
+        "this chat gets spam",
+        "this chat gets spam",
+      ],
     );
   });
 
@@ -228,10 +234,12 @@ describe("edit", () => {
       newContent: "i like trains",
     });
 
-    expect(vi.mocked(query).mock.calls.map(([, args]) => args?.[3])).toEqual([
-      "i like cats",
-      "i like cats",
-      "#41 not mine",
+    expect(
+      vi.mocked(query).mock.calls.map(([, args]) => args?.slice(3)),
+    ).toEqual([
+      ["- #4 i like cats", "i like cats"],
+      ["#4 i like cats", "i like cats"],
+      ["#41 not mine", "#41 not mine"],
     ]);
   });
 
@@ -279,8 +287,8 @@ describe("forget", () => {
       forget({ id: 4, content: " - #4 i like cats " }),
     ).resolves.toEqual({ status: "ok" });
     expect(query).toHaveBeenCalledWith(
-      "DELETE FROM memories WHERE id = ? AND content = ?",
-      [4, "i like cats"],
+      "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
+      [4, "- #4 i like cats", "i like cats"],
     );
   });
 

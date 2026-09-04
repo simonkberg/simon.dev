@@ -19,11 +19,11 @@ import {
   buildMemoryContext,
   categorySchema,
   contentSchema,
+  describeMiss,
   edit,
   forget,
   recall,
   remember,
-  type WriteMiss,
 } from "@/lib/memory";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -265,15 +265,6 @@ export const MEMORY_TOOLS = [
 ];
 
 export const TOOLS = [...LOOKUP_TOOLS, ...MEMORY_TOOLS];
-
-function describeMiss(id: number, miss: WriteMiss) {
-  return miss.status === "missing"
-    ? { error: `There is no note #${id} - it may have been forgotten already` }
-    : {
-        error: `Note #${id} has changed since you read it - work from its current text`,
-        current: miss.current,
-      };
-}
 
 async function executeTool(
   name: string,
