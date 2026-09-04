@@ -206,6 +206,35 @@ describe("edit", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it("should accept the text copied straight from the listing", async () => {
+    vi.mocked(query).mockResolvedValue({
+      ...emptyResult,
+      rows: [row(4, "self", "i like trains")],
+    });
+
+    await edit({
+      id: 4,
+      oldContent: "- #4 i like cats",
+      newContent: "i like trains",
+    });
+    await edit({
+      id: 4,
+      oldContent: "#4 i like cats",
+      newContent: "i like trains",
+    });
+    await edit({
+      id: 4,
+      oldContent: "#41 not mine",
+      newContent: "i like trains",
+    });
+
+    expect(vi.mocked(query).mock.calls.map(([, args]) => args?.[3])).toEqual([
+      "i like cats",
+      "i like cats",
+      "#41 not mine",
+    ]);
+  });
+
   it("should hand back the current text when the note changed", async () => {
     vi.mocked(query)
       .mockResolvedValueOnce(emptyResult)
@@ -246,9 +275,9 @@ describe("forget", () => {
   it("should delete a note only when its text still matches", async () => {
     vi.mocked(query).mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 });
 
-    await expect(forget({ id: 4, content: " i like cats " })).resolves.toEqual({
-      status: "ok",
-    });
+    await expect(
+      forget({ id: 4, content: " - #4 i like cats " }),
+    ).resolves.toEqual({ status: "ok" });
     expect(query).toHaveBeenCalledWith(
       "DELETE FROM memories WHERE id = ? AND content = ?",
       [4, "i like cats"],

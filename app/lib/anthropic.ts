@@ -175,7 +175,7 @@ const noteIdSchema = z
 const currentTextSchema = z
   .string()
   .describe(
-    "The note's current text, word for word, without the #id in front of it in your notes",
+    "The note's current text, word for word, as it reads after the #id in your notes",
   );
 const editInputSchema = z.object({
   id: noteIdSchema,

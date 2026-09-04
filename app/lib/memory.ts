@@ -129,6 +129,12 @@ async function explainMiss(id: number): Promise<WriteMiss> {
     : { status: "stale", current: toMemory(row) };
 }
 
+// The listing shows notes as "- #id text"; a copy that kept the decoration
+// should still match the stored text.
+function bareContent(id: number, text: string): string {
+  return text.trim().replace(new RegExp(String.raw`^(-\s*)?#${id}\s+`), "");
+}
+
 // Writes only land against the exact text the caller read, so a note that
 // changed under a parallel reply or reflection is never overwritten blindly.
 export async function edit(input: {
@@ -144,7 +150,7 @@ export async function edit(input: {
     `UPDATE memories SET content = ?, category = COALESCE(?, category)
      WHERE id = ? AND content = ?
      RETURNING id, category, content, created_at`,
-    [newContent, category, input.id, input.oldContent.trim()],
+    [newContent, category, input.id, bareContent(input.id, input.oldContent)],
   );
   const row = rows[0];
   return row === undefined
@@ -158,7 +164,7 @@ export async function forget(input: {
 }): Promise<{ status: "ok" } | WriteMiss> {
   const { rowsAffected } = await query(
     "DELETE FROM memories WHERE id = ? AND content = ?",
-    [input.id, input.content.trim()],
+    [input.id, bareContent(input.id, input.content)],
   );
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
