@@ -299,6 +299,24 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual({ forgotten: true });
     });
 
+    it("should hand a changed note back instead of forgetting it", async () => {
+      const current = {
+        id: 3,
+        category: "self",
+        content: "i like dogs",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      };
+      vi.mocked(forget).mockResolvedValue({ status: "stale", current });
+
+      const result = await runTool("forget", { id: 3, content: "i like cats" });
+
+      expect(JSON.parse(result)).toEqual({
+        error:
+          "Note #3 has changed since you read it - work from its current text",
+        current,
+      });
+    });
+
     it("should say when a note to forget is already gone", async () => {
       vi.mocked(forget).mockResolvedValue({ status: "missing" });
 
