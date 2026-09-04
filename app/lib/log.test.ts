@@ -65,6 +65,20 @@ describe("bridgeConsole", () => {
     );
   });
 
+  it("keeps literal undefined arguments", () => {
+    const { logger, lines } = createLogger();
+    const target = createConsole();
+    bridgeConsole(target, logger);
+
+    target.log("value:", undefined);
+    target.log("%s and %s", undefined, "x");
+
+    expect(lines.map(({ msg }) => msg)).toEqual([
+      "value: undefined",
+      "undefined and x",
+    ]);
+  });
+
   it("serializes an Error argument as err and keeps its extra fields", () => {
     const { logger, lines } = createLogger();
     const target = createConsole();

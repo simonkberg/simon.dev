@@ -29,13 +29,14 @@ function formatArgs(args: unknown[]): string {
 export function bridgeConsole(target: Console = console, logger: Logger = log) {
   for (const [method, level] of consoleLevels) {
     target[method] = (...args: unknown[]) => {
-      const err = args.find((arg): arg is Error => arg instanceof Error);
-      const msg = formatArgs(args.filter((arg) => arg !== err));
-      if (err) {
-        logger[level]({ err }, msg ? `${msg} ${err.message}` : err.message);
-      } else {
-        logger[level](msg);
+      const errIndex = args.findIndex((arg) => arg instanceof Error);
+      if (errIndex === -1) {
+        logger[level](formatArgs(args));
+        return;
       }
+      const err = args[errIndex] as Error;
+      const msg = formatArgs(args.toSpliced(errIndex, 1));
+      logger[level]({ err }, msg ? `${msg} ${err.message}` : err.message);
     };
   }
 }
