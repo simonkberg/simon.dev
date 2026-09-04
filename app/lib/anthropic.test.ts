@@ -54,7 +54,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
 const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
-const PROFILE_CONTEXT = "<own-prompt>\ni am simon-bot\n</own-prompt>";
+const PROFILE_CONTEXT = "<own-prompt>\ni keep it short and dry\n</own-prompt>";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -256,14 +256,16 @@ describe("createMessage", () => {
     });
 
     it("should rewrite the own prompt with update_self", async () => {
-      vi.mocked(updateOwnPrompt).mockResolvedValue("i am bob");
+      vi.mocked(updateOwnPrompt).mockResolvedValue("i keep it short and dry");
 
       const result = await runTool("update_self", {
-        system_prompt: "i am bob",
+        system_prompt: "i keep it short and dry",
       });
 
-      expect(updateOwnPrompt).toHaveBeenCalledWith("i am bob");
-      expect(JSON.parse(result)).toEqual({ system_prompt: "i am bob" });
+      expect(updateOwnPrompt).toHaveBeenCalledWith("i keep it short and dry");
+      expect(JSON.parse(result)).toEqual({
+        system_prompt: "i keep it short and dry",
+      });
     });
 
     it("should return validation errors instead of saving", async () => {

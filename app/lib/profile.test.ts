@@ -35,9 +35,9 @@ describe("getOwnPrompt", () => {
   });
 
   it("should return the stored prompt", async () => {
-    vi.mocked(query).mockResolvedValue(storedPrompt("i am bob"));
+    vi.mocked(query).mockResolvedValue(storedPrompt("i keep it short and dry"));
 
-    await expect(getOwnPrompt()).resolves.toBe("i am bob");
+    await expect(getOwnPrompt()).resolves.toBe("i keep it short and dry");
   });
 
   it("should ignore a stored value that isn't text", async () => {
@@ -55,14 +55,16 @@ describe("updateOwnPrompt", () => {
   });
 
   it("should upsert the prompt and log the old and new text", async () => {
-    await expect(updateOwnPrompt("  i am bob ")).resolves.toBe("i am bob");
+    await expect(updateOwnPrompt("  i keep it short and dry ")).resolves.toBe(
+      "i keep it short and dry",
+    );
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("ON CONFLICT (key) DO UPDATE"),
-      ["system_prompt", "i am bob", expect.any(String)],
+      ["system_prompt", "i keep it short and dry", expect.any(String)],
     );
     expect(log.info).toHaveBeenCalledWith(
-      { from: DEFAULT_SELF_PROMPT, to: "i am bob" },
+      { from: DEFAULT_SELF_PROMPT, to: "i keep it short and dry" },
       "simon-bot rewrote its own prompt",
     );
   });
@@ -73,14 +75,16 @@ describe("updateOwnPrompt", () => {
       return emptyResult;
     });
 
-    await expect(updateOwnPrompt("i am bob")).resolves.toBe("i am bob");
+    await expect(updateOwnPrompt("i keep it short and dry")).resolves.toBe(
+      "i keep it short and dry",
+    );
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("ON CONFLICT (key) DO UPDATE"),
-      ["system_prompt", "i am bob", expect.any(String)],
+      ["system_prompt", "i keep it short and dry", expect.any(String)],
     );
     expect(log.info).toHaveBeenCalledWith(
-      { from: undefined, to: "i am bob" },
+      { from: undefined, to: "i keep it short and dry" },
       "simon-bot rewrote its own prompt",
     );
   });
@@ -100,10 +104,10 @@ describe("buildProfileContext", () => {
   });
 
   it("should render the stored prompt", async () => {
-    vi.mocked(query).mockResolvedValue(storedPrompt("i am bob"));
+    vi.mocked(query).mockResolvedValue(storedPrompt("i keep it short and dry"));
 
     await expect(buildProfileContext()).resolves.toBe(
-      "<own-prompt>\ni am bob\n</own-prompt>",
+      "<own-prompt>\ni keep it short and dry\n</own-prompt>",
     );
   });
 

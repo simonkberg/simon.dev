@@ -28,9 +28,9 @@ describe("reflect", () => {
 
     await reflect([
       { role: "user", username: "alice", content: "i love cats" },
-      { role: "assistant", username: "Mabel", content: "same" },
+      { role: "assistant", username: "simon-bot", content: "same" },
       { role: "user", username: "Simon", content: "be nicer" },
-      { role: "assistant", username: "Mabel", content: "ok fine" },
+      { role: "assistant", username: "simon-bot", content: "ok fine" },
     ]);
 
     expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "Simon"]);
@@ -49,9 +49,9 @@ describe("reflect", () => {
           content: [
             "<conversation>",
             "alice: i love cats",
-            "Mabel: same",
+            "simon-bot: same",
             "Simon: be nicer",
-            "Mabel: ok fine",
+            "simon-bot: ok fine",
             "</conversation>",
           ].join("\n"),
         },
