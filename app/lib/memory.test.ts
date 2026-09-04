@@ -57,10 +57,13 @@ describe("remember", () => {
     await expect(
       remember({ category: "  Self ", content: "  i like trains  " }),
     ).resolves.toEqual({
-      id: 9,
-      category: "self",
-      content: "i like trains",
-      createdAt: "2025-01-01T00:00:00.000Z",
+      status: "ok",
+      memory: {
+        id: 9,
+        category: "self",
+        content: "i like trains",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      },
     });
 
     expect(query).toHaveBeenCalledTimes(1);
@@ -106,7 +109,7 @@ describe("remember", () => {
 
     await expect(
       remember({ category: "jokes", content: "one more" }),
-    ).rejects.toThrow('Category "jokes" is full');
+    ).resolves.toEqual({ status: "full", category: "jokes" });
     expect(query).toHaveBeenCalledTimes(1);
   });
 });
@@ -183,7 +186,6 @@ describe("edit", () => {
         "i like cats",
         null,
         null,
-        null,
         MAX_PER_CATEGORY,
       ],
     );
@@ -211,7 +213,6 @@ describe("edit", () => {
         4,
         "this chat gets spam",
         "this chat gets spam",
-        "context",
         "context",
         "context",
         MAX_PER_CATEGORY,
@@ -296,7 +297,7 @@ describe("edit", () => {
 
     await expect(
       edit({ id: 4, oldContent: "i like cats", newContent: "i like trains" }),
-    ).resolves.toEqual({ status: "missing" });
+    ).resolves.toEqual({ status: "missing", id: 4 });
   });
 
   it("should validate the new text before writing", async () => {
@@ -343,6 +344,7 @@ describe("forget", () => {
 
     await expect(forget({ id: 4, content: "i like cats" })).resolves.toEqual({
       status: "missing",
+      id: 4,
     });
   });
 });

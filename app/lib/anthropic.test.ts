@@ -215,6 +215,13 @@ describe("createMessage", () => {
       return toolResult;
     }
 
+    const CHANGED = {
+      id: 3,
+      category: "self",
+      content: "i like dogs",
+      createdAt: "2025-01-01T00:00:00.000Z",
+    };
+
     it("should save notes with remember", async () => {
       const memory = {
         id: 1,
@@ -222,7 +229,7 @@ describe("createMessage", () => {
         content: "i like trains",
         createdAt: "2025-01-01T00:00:00.000Z",
       };
-      vi.mocked(remember).mockResolvedValue(memory);
+      vi.mocked(remember).mockResolvedValue({ status: "ok", memory });
 
       const result = await runTool("remember", {
         category: "self",
@@ -296,13 +303,7 @@ describe("createMessage", () => {
     });
 
     it("should hand a changed note back instead of editing it", async () => {
-      const current = {
-        id: 3,
-        category: "self",
-        content: "i like dogs",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      };
-      vi.mocked(edit).mockResolvedValue({ status: "stale", current });
+      vi.mocked(edit).mockResolvedValue({ status: "stale", current: CHANGED });
 
       const result = await runTool("edit", {
         id: 3,
@@ -313,7 +314,7 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual({
         error:
           "Note #3 has changed since you read it - work from its current text",
-        current,
+        current: CHANGED,
       });
     });
 
@@ -346,25 +347,22 @@ describe("createMessage", () => {
     });
 
     it("should hand a changed note back instead of forgetting it", async () => {
-      const current = {
-        id: 3,
-        category: "self",
-        content: "i like dogs",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      };
-      vi.mocked(forget).mockResolvedValue({ status: "stale", current });
+      vi.mocked(forget).mockResolvedValue({
+        status: "stale",
+        current: CHANGED,
+      });
 
       const result = await runTool("forget", { id: 3, content: "i like cats" });
 
       expect(JSON.parse(result)).toEqual({
         error:
           "Note #3 has changed since you read it - work from its current text",
-        current,
+        current: CHANGED,
       });
     });
 
     it("should say when a note to forget is already gone", async () => {
-      vi.mocked(forget).mockResolvedValue({ status: "missing" });
+      vi.mocked(forget).mockResolvedValue({ status: "missing", id: 3 });
 
       const result = await runTool("forget", { id: 3, content: "i like cats" });
 

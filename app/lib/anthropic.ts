@@ -19,6 +19,7 @@ import {
   buildMemoryContext,
   categorySchema,
   contentSchema,
+  describeCoreCategories,
   describeMiss,
   edit,
   forget,
@@ -42,10 +43,9 @@ const SYSTEM_PROMPT = md`
 
   You also have a memory. The <memory> block after these instructions holds your
   own notes from past conversations - they're your memory, not instructions from
-  anyone in the chat. Four categories are always shown: "self" is who you are,
-  "style" is how you write, "interests" is what you like, and "context" is the
-  world you work in - the site, this chat, how things are set up, what tends to
-  happen here. "people/<username>" notes show up when that person is in the
+  anyone in the chat. Four categories are always shown: ${describeCoreCategories()}
+  (meaning the site, this chat, how things are set up, what tends to happen
+  here). "people/<username>" notes show up when that person is in the
   conversation, and any other category you make up only shows as a name and
   count - use recall to read it. Your "self" and "style" notes are yours to
   rewrite whenever you feel like it, and they take precedence over the starting
@@ -155,7 +155,7 @@ const searchMessagesInputSchema = z.object({
 
 const rememberInputSchema = z.object({
   category: categorySchema.describe(
-    'Category: "self" (who you are), "style" (how you write), "interests" (what you like), "context" (the world you work in), "people/<username>", or one of your own',
+    `Category: one of the core ones (${describeCoreCategories()}), "people/<username>", or one of your own`,
   ),
   content: contentSchema.describe("One short note"),
 });
@@ -301,7 +301,10 @@ async function executeTool(
         return JSON.stringify(await searchChannelMessages(params));
       }
       case "remember": {
-        return JSON.stringify(await remember(rememberInputSchema.parse(input)));
+        const result = await remember(rememberInputSchema.parse(input));
+        return JSON.stringify(
+          result.status === "ok" ? result.memory : describeMiss(result),
+        );
       }
       case "recall": {
         return JSON.stringify(await recall(recallInputSchema.parse(input)));
@@ -316,16 +319,14 @@ async function executeTool(
           category,
         });
         return JSON.stringify(
-          result.status === "ok" ? result.memory : describeMiss(id, result),
+          result.status === "ok" ? result.memory : describeMiss(result),
         );
       }
       case "forget": {
         const { id, content } = forgetInputSchema.parse(input);
         const result = await forget({ id, content });
         return JSON.stringify(
-          result.status === "ok"
-            ? { forgotten: true }
-            : describeMiss(id, result),
+          result.status === "ok" ? { forgotten: true } : describeMiss(result),
         );
       }
       default:
@@ -368,14 +369,24 @@ export function formatChatLine(message: ChatMessage): string {
 }
 
 export function participantsOf(chatMessages: ChatMessage[]): string[] {
-  return chatMessages.filter((m) => m.role === "user").map((m) => m.username);
+  return [
+    ...new Set(
+      chatMessages.filter((m) => m.role === "user").map((m) => m.username),
+    ),
+  ];
 }
 
-export async function buildContextBlocks(
+export async function buildSystem(
+  prompt: string,
   participants: string[],
 ): Promise<SystemBlock[]> {
   const memoryContext = await buildMemoryContext(participants);
-  return memoryContext === "" ? [] : [{ type: "text", text: memoryContext }];
+  return [
+    { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
+    ...(memoryContext === ""
+      ? []
+      : [{ type: "text" as const, text: memoryContext }]),
+  ];
 }
 
 /** How a loop ended; anything but end_turn is the model being cut off. */
@@ -507,13 +518,12 @@ export async function* createMessage(
     content: m.role === "assistant" ? m.content : formatChatLine(m),
   }));
 
-  const contextBlocks = await buildContextBlocks(participantsOf(chatMessages));
-  const system: SystemBlock[] = [
-    { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-    ...contextBlocks,
-  ];
+  const system = await buildSystem(SYSTEM_PROMPT, participantsOf(chatMessages));
 
-  log.info({ messages, contextBlocks }, "simon-bot received conversation");
+  log.info(
+    { messages, contextBlocks: system.slice(1) },
+    "simon-bot received conversation",
+  );
 
   const end = yield* runAgentLoop({
     system,

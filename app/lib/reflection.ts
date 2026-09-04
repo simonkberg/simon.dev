@@ -3,16 +3,14 @@ import "server-only";
 import md from "string-dedent";
 
 import {
-  buildContextBlocks,
+  buildSystem,
   type ChatMessage,
   formatChatLine,
   MEMORY_TOOLS,
   participantsOf,
   runAgentLoop,
   SIMON_RULE,
-  type SystemBlock,
 } from "@/lib/anthropic";
-import { log } from "@/lib/log";
 
 const TIMEOUT_MS = 60_000;
 const MAX_ITERATIONS = 10;
@@ -43,29 +41,21 @@ const REFLECTION_PROMPT = md`
 
 /** Runs after a reply, over the whole exchange including the bot's own lines. */
 export async function reflect(transcript: ChatMessage[]): Promise<void> {
-  const system: SystemBlock[] = [
-    {
-      type: "text",
-      text: REFLECTION_PROMPT,
-      cache_control: { type: "ephemeral" },
-    },
-    ...(await buildContextBlocks(participantsOf(transcript))),
-  ];
-
-  for await (const text of runAgentLoop({
-    system,
-    messages: [
-      {
-        role: "user",
-        content: `<conversation>\n${transcript.map(formatChatLine).join("\n")}\n</conversation>`,
-      },
-    ],
-    tools: MEMORY_TOOLS,
-    effort: "high",
-    timeoutMs: TIMEOUT_MS,
-    maxIterations: MAX_ITERATIONS,
-    loop: "reflection",
-  })) {
-    log.info({ text }, "simon-bot reflected");
-  }
+  // Nothing to post: the loop logs what the model said as it goes.
+  await Array.fromAsync(
+    runAgentLoop({
+      system: await buildSystem(REFLECTION_PROMPT, participantsOf(transcript)),
+      messages: [
+        {
+          role: "user",
+          content: `<conversation>\n${transcript.map(formatChatLine).join("\n")}\n</conversation>`,
+        },
+      ],
+      tools: MEMORY_TOOLS,
+      effort: "high",
+      timeoutMs: TIMEOUT_MS,
+      maxIterations: MAX_ITERATIONS,
+      loop: "reflection",
+    }),
+  );
 }

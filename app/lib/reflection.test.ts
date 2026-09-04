@@ -1,27 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  buildContextBlocks,
-  MEMORY_TOOLS,
-  runAgentLoop,
-} from "@/lib/anthropic";
-import { log } from "@/lib/log";
+import { buildSystem, MEMORY_TOOLS, runAgentLoop } from "@/lib/anthropic";
 
 import { reflect } from "./reflection";
 
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, runAgentLoop: vi.fn(), buildContextBlocks: vi.fn() };
+  return { ...actual, runAgentLoop: vi.fn(), buildSystem: vi.fn() };
 });
 
 describe("reflect", () => {
+  const system = [
+    { type: "text" as const, text: "prompt" },
+    { type: "text" as const, text: "<memory>\n</memory>" },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(buildContextBlocks).mockResolvedValue([
-      { type: "text", text: "<memory>\n</memory>" },
-    ]);
+    vi.mocked(buildSystem).mockResolvedValue(system);
   });
 
   it("should hand the transcript and self tools to the agent loop", async () => {
@@ -38,16 +35,12 @@ describe("reflect", () => {
       { role: "assistant", username: "simon-bot", content: "ok fine" },
     ]);
 
-    expect(buildContextBlocks).toHaveBeenCalledWith(["alice", "simon"]);
+    expect(buildSystem).toHaveBeenCalledWith(
+      expect.stringContaining("taking a quiet"),
+      ["alice", "simon"],
+    );
     expect(runAgentLoop).toHaveBeenCalledWith({
-      system: [
-        {
-          type: "text",
-          text: expect.stringContaining("taking a quiet"),
-          cache_control: { type: "ephemeral" },
-        },
-        { type: "text", text: "<memory>\n</memory>" },
-      ],
+      system,
       messages: [
         {
           role: "user",
@@ -67,39 +60,5 @@ describe("reflect", () => {
       maxIterations: 10,
       loop: "reflection",
     });
-    expect(log.info).toHaveBeenCalledWith(
-      { text: "remembered that alice likes cats" },
-      "simon-bot reflected",
-    );
-  });
-
-  it("should log nothing when the model was cut off without saying anything", async () => {
-    async function* loop() {
-      yield* [];
-      return "max_iterations" as const;
-    }
-    vi.mocked(runAgentLoop).mockReturnValue(loop());
-
-    await reflect([{ role: "user", username: "a", content: "hi" }]);
-
-    expect(log.info).not.toHaveBeenCalled();
-  });
-
-  it("should not expose lookup tools to the reflection", async () => {
-    async function* loop() {
-      yield* [];
-      return "end_turn" as const;
-    }
-    vi.mocked(runAgentLoop).mockReturnValue(loop());
-
-    await reflect([{ role: "user", username: "a", content: "hi" }]);
-
-    const { tools } = vi.mocked(runAgentLoop).mock.calls[0]?.[0] ?? {};
-    expect(tools?.map((tool) => tool.name)).toEqual([
-      "remember",
-      "recall",
-      "edit",
-      "forget",
-    ]);
   });
 });

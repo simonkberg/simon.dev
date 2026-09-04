@@ -227,7 +227,7 @@ describe("handleMessage", () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       { err: expect.any(Error), messageId: "msg-1" },
-      "Bot error message failed",
+      "Bot message handling failed",
     );
     expect(reflect).toHaveBeenCalledWith([
       { role: "user", username: "User1", content: "hey simon-bot" },

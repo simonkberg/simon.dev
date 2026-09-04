@@ -134,8 +134,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   at boot under a Redis lock. `app/lib/memory.ts` owns the `memories` table and renders the
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
-  with `recall`. `edit` and `forget` only land against the exact text the bot read, so a
-  note changed by a parallel reply or reflection is never overwritten blindly. Memory
+  with `recall`. `edit` and `forget` are compare-and-swap on the note's text. Memory
   failures degrade to a reply without memory, never to no reply.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
