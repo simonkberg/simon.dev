@@ -108,18 +108,18 @@ suggests, and if you cannot find one, raise it rather than silencing it.
 
 Validation via Zod in `app/lib/env.ts`. Required variables:
 
-| Variable                   | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev) |
-| `DISCORD_BOT_TOKEN`        | Discord bot token                                                |
-| `DISCORD_GUILD_ID`         | Discord guild ID                                                 |
-| `DISCORD_CHANNEL_ID`       | Discord channel ID                                               |
-| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                              |
-| `LAST_FM_API_KEY`          | Last.fm API key                                                  |
-| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                  |
-| `TURSO_DATABASE_URL`       | Turso database URL, simon-bot's memory                           |
-| `TURSO_AUTH_TOKEN`         | Turso auth token                                                 |
+| Variable                   | Description                                                        |
+| -------------------------- | ------------------------------------------------------------------ |
+| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev)   |
+| `DISCORD_BOT_TOKEN`        | Discord bot token                                                  |
+| `DISCORD_GUILD_ID`         | Discord guild ID                                                   |
+| `DISCORD_CHANNEL_ID`       | Discord channel ID                                                 |
+| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                  |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                                |
+| `LAST_FM_API_KEY`          | Last.fm API key                                                    |
+| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                    |
+| `TURSO_DATABASE_URL`       | Turso database URL (`libsql://` or `turso://`), simon-bot's memory |
+| `TURSO_AUTH_TOKEN`         | Turso auth token                                                   |
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 

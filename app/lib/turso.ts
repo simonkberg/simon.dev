@@ -69,10 +69,10 @@ function decodeValue(value: z.infer<typeof valueSchema>): Value {
 }
 
 function pipelineUrl(): string {
-  const base = env.TURSO_DATABASE_URL.replace(/^libsql:/, "https:").replace(
-    /\/$/,
-    "",
-  );
+  const base = env.TURSO_DATABASE_URL.replace(
+    /^(libsql|turso):/,
+    "https:",
+  ).replace(/\/$/, "");
   return `${base}/v2/pipeline`;
 }
 

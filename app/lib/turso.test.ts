@@ -179,17 +179,20 @@ describe("query", () => {
     );
   });
 
-  it("should rewrite libsql URLs to https", async () => {
-    vi.stubEnv("TURSO_DATABASE_URL", "libsql://other-db.turso.io/");
-    vi.resetModules();
-    const { query: freshQuery } = await import("./turso");
+  it.each(["libsql", "turso"])(
+    "should rewrite %s URLs to https",
+    async (scheme) => {
+      vi.stubEnv("TURSO_DATABASE_URL", `${scheme}://other-db.turso.io/`);
+      vi.resetModules();
+      const { query: freshQuery } = await import("./turso");
 
-    server.use(
-      http.post("https://other-db.turso.io/v2/pipeline", () =>
-        HttpResponse.json(pipelineResponse()),
-      ),
-    );
+      server.use(
+        http.post("https://other-db.turso.io/v2/pipeline", () =>
+          HttpResponse.json(pipelineResponse()),
+        ),
+      );
 
-    await expect(freshQuery("SELECT 1")).resolves.toMatchObject({ rows: [] });
-  });
+      await expect(freshQuery("SELECT 1")).resolves.toMatchObject({ rows: [] });
+    },
+  );
 });
