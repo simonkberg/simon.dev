@@ -18,6 +18,8 @@ export const MIGRATIONS: readonly string[] = [
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
+  // The profile table came and went within one PR; the create stays so versions line up.
+  `DROP TABLE IF EXISTS profile`,
 ];
 
 const LOCK_KEY = "turso:migrations:lock";

@@ -57,7 +57,7 @@ describe("reflect", () => {
         },
       ],
       tools: TOOLS.filter((tool) =>
-        ["remember", "recall", "forget", "update_self"].includes(tool.name),
+        ["remember", "recall", "forget"].includes(tool.name),
       ),
       effort: "high",
       timeoutMs: 60_000,
@@ -81,7 +81,6 @@ describe("reflect", () => {
       "remember",
       "recall",
       "forget",
-      "update_self",
     ]);
   });
 });

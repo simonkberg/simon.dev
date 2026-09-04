@@ -11,7 +11,6 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { buildMemoryContext, forget, recall, remember } from "@/lib/memory";
-import { buildProfileContext, updateOwnPrompt } from "@/lib/profile";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
 
@@ -32,10 +31,6 @@ vi.mock(import("@/lib/memory"), async (importOriginal) => {
     forget: vi.fn(),
   };
 });
-vi.mock(import("@/lib/profile"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual, buildProfileContext: vi.fn(), updateOwnPrompt: vi.fn() };
-});
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
@@ -54,7 +49,6 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
 const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
-const PROFILE_CONTEXT = "<own-prompt>\ni keep it short and dry\n</own-prompt>";
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -70,7 +64,6 @@ describe("createMessage", () => {
   beforeEach(() => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.mocked(buildMemoryContext).mockResolvedValue(MEMORY_CONTEXT);
-    vi.mocked(buildProfileContext).mockResolvedValue(PROFILE_CONTEXT);
   });
 
   afterEach(() => {
@@ -91,7 +84,6 @@ describe("createMessage", () => {
               text: expect.stringContaining("simon-bot"),
               cache_control: { type: "ephemeral" },
             },
-            { type: "text", text: PROFILE_CONTEXT },
             { type: "text", text: MEMORY_CONTEXT },
           ],
           messages: [
@@ -108,7 +100,6 @@ describe("createMessage", () => {
             { name: "remember" },
             { name: "recall" },
             { name: "forget" },
-            { name: "update_self" },
           ],
         });
         expect(request.headers.get("x-api-key")).toBe("test-anthropic-api-key");
@@ -158,7 +149,7 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         const body = (await request.json()) as { system: unknown[] };
-        expect(body.system).toHaveLength(2);
+        expect(body.system).toHaveLength(1);
         return HttpResponse.json({
           content: [{ type: "text", text: "ok" }],
           stop_reason: "end_turn",
@@ -253,19 +244,6 @@ describe("createMessage", () => {
 
       expect(forget).toHaveBeenCalledWith(3);
       expect(JSON.parse(result)).toEqual({ forgotten: true });
-    });
-
-    it("should rewrite the own prompt with update_self", async () => {
-      vi.mocked(updateOwnPrompt).mockResolvedValue("i keep it short and dry");
-
-      const result = await runTool("update_self", {
-        system_prompt: "i keep it short and dry",
-      });
-
-      expect(updateOwnPrompt).toHaveBeenCalledWith("i keep it short and dry");
-      expect(JSON.parse(result)).toEqual({
-        system_prompt: "i keep it short and dry",
-      });
     });
 
     it("should return validation errors instead of saving", async () => {

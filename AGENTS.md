@@ -135,11 +135,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   `<memory>` system-prompt block: `self`, `style`, `interests` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
   with `recall`. Memory failures degrade to a reply without memory, never to no reply.
-- **simon-bot self:** `app/lib/profile.ts` owns the `profile` table, which holds the bot's
-  self-written `<own-prompt>`, rendered under the fixed base prompt in `app/lib/anthropic.ts`,
-  which it cannot override.
-  `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory and
-  self tools, so bookkeeping never delays a response. Simon is recognised by his username:
+- **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
+  base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
+  `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory
+  tools, so bookkeeping never delays a response. Simon is recognised by his username:
   site visitors get generated names, so only his own Discord messages appear as "Simon".
 
 ## Patterns
