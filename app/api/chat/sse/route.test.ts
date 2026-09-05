@@ -10,6 +10,7 @@ import {
 } from "vitest";
 
 import { subscribe } from "@/lib/discord/gateway";
+import { log } from "@/lib/log";
 
 import { GET } from "./route";
 
@@ -119,6 +120,17 @@ describe("GET /api/chat/sse", () => {
 
     controller.abort();
     reader.releaseLock();
+  });
+
+  it("should return 503 without a ping interval when subscribing fails", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.mocked(subscribe).mockRejectedValue(new Error("Gateway closed"));
+    const controller = new AbortController();
+
+    const response = await GET(createRequest(controller.signal));
+
+    expect(response.status).toBe(503);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("should cleanup on abort", async () => {
