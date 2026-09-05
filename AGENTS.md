@@ -251,7 +251,7 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 
 Next bundles `instrumentation.ts` and each route handler into separate module graphs, so a
 module-level `let` is one instance per graph, not per process. State that must be shared
-between them (the gateway connection, readiness) goes through `getGlobal` in
+between them (the gateway connection, the Redis client, readiness) goes through `getGlobal` in
 `app/lib/global.ts`; tests reset it with `resetGlobal` instead of `vi.resetModules()`.
 
 ### Private Fields
