@@ -80,6 +80,14 @@ describe("env", () => {
       expectTypeOf(env).toEqualTypeOf<Env>();
     });
 
+    it("should treat an empty SKIP_ENV_VALIDATION as unset", async () => {
+      vi.stubEnv("SKIP_ENV_VALIDATION", "");
+
+      const { env } = await import("./env");
+
+      expect(env).toEqual(mockEnv);
+    });
+
     it("should treat empty values as unset when SKIP_ENV_VALIDATION is true", async () => {
       vi.stubEnv("SKIP_ENV_VALIDATION", "true");
       vi.stubEnv("ANTHROPIC_API_KEY", "");
