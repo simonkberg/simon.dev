@@ -69,10 +69,6 @@ class DiscordGateway {
   #pending: PromiseWithResolvers<void> | null = null;
   #ready = false;
 
-  get connected(): boolean {
-    return this.#ready;
-  }
-
   addSubscriber(callback: () => void): void {
     this.#subscribers.add(callback);
   }
@@ -373,11 +369,7 @@ function getGateway(): DiscordGateway {
 export async function subscribe(callback: () => void): Promise<() => void> {
   const gw = getGateway();
   gw.addSubscriber(callback);
-
-  if (!gw.connected) {
-    await gw.connect();
-  }
-
+  await gw.connect();
   return () => gw.removeSubscriber(callback);
 }
 
@@ -386,10 +378,6 @@ export async function subscribeToMessages(
 ): Promise<() => void> {
   const gw = getGateway();
   gw.addMessageSubscriber(callback);
-
-  if (!gw.connected) {
-    await gw.connect();
-  }
-
+  await gw.connect();
   return () => gw.removeMessageSubscriber(callback);
 }

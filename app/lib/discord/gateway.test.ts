@@ -448,6 +448,40 @@ describe("subscribe", () => {
     );
   });
 
+  it("should reject when the gateway sends an unparseable message before READY", async () => {
+    const { subscribe } = await import("./gateway");
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.send("not json");
+      }),
+    );
+
+    await expect(subscribe(vi.fn())).rejects.toThrow();
+  });
+
+  it("should log when a reconnect cannot open a socket", async () => {
+    const { subscribe } = await import("./gateway");
+    const { log } = await import("@/lib/log");
+
+    server.use(
+      createHandshakeHandler({
+        session: { session_id: "test-session-id", resume_gateway_url: "nope" },
+      }),
+    );
+
+    await subscribe(vi.fn());
+    getLastClient(gateway.clients)?.send(
+      createPayload(GatewayOpcode.RECONNECT, null),
+    );
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Reconnection failed",
+    );
+  });
+
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {
     const { subscribe } = await import("./gateway");
     let connectionCount = 0;
