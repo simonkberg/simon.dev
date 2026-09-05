@@ -1,9 +1,10 @@
 import "server-only";
 import { getGlobal } from "@/lib/global";
 
-export type Stage = "migrations" | "bot";
+const STAGES = ["migrations", "bot"] as const;
 
-const STAGES: readonly Stage[] = ["migrations", "bot"];
+export type Stage = (typeof STAGES)[number];
+
 const KEY = "simon.dev/readiness";
 
 function ready(): Set<Stage> {
