@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 
 import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
@@ -60,11 +61,12 @@ class DiscordGateway {
 
   // Reconnection state
   #reconnectAttempts = 0;
+  #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #shouldResume = true;
 
-  get connected(): boolean {
-    return this.#ws?.readyState === WebSocket.OPEN;
-  }
+  // Settles on whichever attempt reaches READY; rejects only when no later attempt can succeed.
+  #pending: PromiseWithResolvers<void> | null = null;
+  #ready = false;
 
   addSubscriber(callback: () => void): void {
     this.#subscribers.add(callback);
@@ -102,36 +104,64 @@ class DiscordGateway {
     }
   }
 
-  async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const url =
-        this.#shouldResume && this.#resumeGatewayUrl
-          ? `${this.#resumeGatewayUrl}/?v=10&encoding=json`
-          : GATEWAY_URL;
+  connect(): Promise<void> {
+    if (this.#ready) return Promise.resolve();
 
-      log.info(
-        { url, resume: this.#shouldResume },
-        "Connecting to Discord Gateway",
-      );
+    const { promise } = (this.#pending ??= Promise.withResolvers<void>());
+    if (!this.#ws && !this.#reconnectTimer) {
+      this.#tryOpen();
+    }
+    return promise;
+  }
 
-      this.#ws = new WebSocket(url);
+  #tryOpen(): void {
+    try {
+      this.#open();
+    } catch (err) {
+      log.error({ err }, "Failed to open gateway connection");
+      this.#onConnectFailed(err);
+    }
+  }
 
-      this.#ws.onopen = () => {
-        log.debug("Gateway connection opened");
-      };
+  #open(): void {
+    const url =
+      this.#shouldResume && this.#resumeGatewayUrl
+        ? `${this.#resumeGatewayUrl}/?v=10&encoding=json`
+        : GATEWAY_URL;
 
-      this.#ws.onclose = (event) => {
-        this.#handleClose(event.code, event.reason);
-      };
+    log.info(
+      { url, resume: this.#shouldResume },
+      "Connecting to Discord Gateway",
+    );
 
-      this.#ws.onerror = (event) => {
-        log.error({ error: event }, "Gateway WebSocket error");
-      };
+    this.#ws = new WebSocket(url);
 
-      this.#ws.onmessage = (event) => {
-        this.#handleMessage(String(event.data), resolve, reject);
-      };
-    });
+    this.#ws.onopen = () => {
+      log.debug("Gateway connection opened");
+    };
+
+    this.#ws.onclose = (event) => {
+      this.#handleClose(event.code, event.reason);
+    };
+
+    this.#ws.onerror = (event) => {
+      log.error({ error: event }, "Gateway WebSocket error");
+    };
+
+    this.#ws.onmessage = (event) => {
+      this.#handleMessage(String(event.data));
+    };
+  }
+
+  #onReady(): void {
+    this.#ready = true;
+    this.#pending?.resolve();
+    this.#pending = null;
+  }
+
+  #onConnectFailed(err: unknown): void {
+    this.#pending?.reject(err);
+    this.#pending = null;
   }
 
   #send(op: number, d: unknown): void {
@@ -193,17 +223,13 @@ class DiscordGateway {
     }
   }
 
-  #handleMessage(
-    data: string,
-    onReady: () => void,
-    onError: (err: Error) => void,
-  ): void {
+  #handleMessage(data: string): void {
     try {
       const payload = GatewayPayloadSchema.parse(JSON.parse(data));
 
       switch (payload.op) {
         case GatewayOpcode.DISPATCH:
-          this.#handleDispatch(payload.s, payload.t, payload.d, onReady);
+          this.#handleDispatch(payload.s, payload.t, payload.d);
           break;
 
         case GatewayOpcode.HEARTBEAT:
@@ -246,7 +272,6 @@ class DiscordGateway {
       }
     } catch (err) {
       log.error({ err, data }, "Failed to parse gateway message");
-      onError(err instanceof Error ? err : new Error(String(err)));
     }
   }
 
@@ -254,7 +279,6 @@ class DiscordGateway {
     seq: number | null,
     eventName: string | null,
     data: unknown,
-    onReady: () => void,
   ): void {
     // Update sequence number
     if (seq !== null) {
@@ -268,14 +292,14 @@ class DiscordGateway {
         this.#resumeGatewayUrl = ready.resume_gateway_url;
         this.#reconnectAttempts = 0;
         log.info({ sessionId: this.#sessionId }, "Gateway READY");
-        onReady();
+        this.#onReady();
         break;
       }
 
       case "RESUMED":
         this.#reconnectAttempts = 0;
         log.info("Gateway RESUMED");
-        onReady();
+        this.#onReady();
         break;
 
       case "MESSAGE_CREATE":
@@ -307,10 +331,14 @@ class DiscordGateway {
     this.#stopHeartbeat();
     this.#awaitingAck = false;
     this.#ws = null;
+    this.#ready = false;
 
     // Check if we should reconnect
     if (FATAL_CLOSE_CODES.has(code)) {
       log.error({ code }, "Fatal gateway close code, not reconnecting");
+      this.#onConnectFailed(
+        new Error(`Gateway closed with fatal code ${code}: ${reason}`),
+      );
       return;
     }
 
@@ -328,31 +356,21 @@ class DiscordGateway {
 
     log.info({ backoff, attempt: this.#reconnectAttempts }, "Reconnecting");
 
-    setTimeout(() => {
-      void this.connect().catch((err) => {
-        log.error({ err }, "Reconnection failed");
-      });
+    this.#reconnectTimer = setTimeout(() => {
+      this.#reconnectTimer = null;
+      this.#tryOpen();
     }, backoff);
   }
 }
 
-let gateway: DiscordGateway | null = null;
-
 function getGateway(): DiscordGateway {
-  if (!gateway) {
-    gateway = new DiscordGateway();
-  }
-  return gateway;
+  return getGlobal("simon.dev/discord-gateway", () => new DiscordGateway());
 }
 
 export async function subscribe(callback: () => void): Promise<() => void> {
   const gw = getGateway();
   gw.addSubscriber(callback);
-
-  if (!gw.connected) {
-    await gw.connect();
-  }
-
+  await gw.connect();
   return () => gw.removeSubscriber(callback);
 }
 
@@ -361,10 +379,6 @@ export async function subscribeToMessages(
 ): Promise<() => void> {
   const gw = getGateway();
   gw.addMessageSubscriber(callback);
-
-  if (!gw.connected) {
-    await gw.connect();
-  }
-
+  await gw.connect();
   return () => gw.removeMessageSubscriber(callback);
 }

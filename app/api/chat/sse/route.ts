@@ -18,17 +18,23 @@ export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
   let aborted = false;
 
+  let unsubscribe: () => void;
+  try {
+    unsubscribe = await subscribe(() => {
+      if (aborted) return;
+      void writer
+        .write(encoder.encode(`data: refresh\n\n`))
+        .catch(ignoreWriteErrors);
+    });
+  } catch (err) {
+    log.error({ err }, "Failed to subscribe to gateway");
+    return new NextResponse(null, { status: 503 });
+  }
+
   const pingInterval = setInterval(() => {
     if (aborted) return;
     void writer.write(encoder.encode(PING_MESSAGE)).catch(ignoreWriteErrors);
   }, PING_INTERVAL_MS);
-
-  const unsubscribe = await subscribe(() => {
-    if (aborted) return;
-    void writer
-      .write(encoder.encode(`data: refresh\n\n`))
-      .catch(ignoreWriteErrors);
-  });
 
   request.signal.addEventListener("abort", () => {
     aborted = true;
