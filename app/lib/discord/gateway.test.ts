@@ -509,8 +509,24 @@ describe("subscribe", () => {
     await rejected;
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
-      "Reconnection failed",
+      "Failed to open gateway connection",
     );
+  });
+
+  it("should reject when the socket cannot be opened", async () => {
+    const { subscribe } = await import("./gateway");
+
+    server.use(
+      createHandshakeHandler({
+        session: { session_id: "test-session-id", resume_gateway_url: "nope" },
+      }),
+    );
+
+    await subscribe(vi.fn());
+    getLastClient(gateway.clients)?.close(4004, "Authentication failed");
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(subscribe(vi.fn())).rejects.toThrow("Invalid URL");
   });
 
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {

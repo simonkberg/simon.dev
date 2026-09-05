@@ -109,11 +109,20 @@ class DiscordGateway {
   connect(): Promise<void> {
     if (this.#ready) return Promise.resolve();
 
-    this.#pending ??= Promise.withResolvers<void>();
+    const { promise } = (this.#pending ??= Promise.withResolvers<void>());
     if (!this.#ws && !this.#reconnectTimer) {
-      this.#open();
+      this.#tryOpen();
     }
-    return this.#pending.promise;
+    return promise;
+  }
+
+  #tryOpen(): void {
+    try {
+      this.#open();
+    } catch (err) {
+      log.error({ err }, "Failed to open gateway connection");
+      this.#onConnectFailed(err);
+    }
   }
 
   #open(): void {
@@ -351,12 +360,7 @@ class DiscordGateway {
 
     this.#reconnectTimer = setTimeout(() => {
       this.#reconnectTimer = null;
-      try {
-        this.#open();
-      } catch (err) {
-        log.error({ err }, "Reconnection failed");
-        this.#onConnectFailed(err);
-      }
+      this.#tryOpen();
     }, backoff);
   }
 }
