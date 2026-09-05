@@ -67,7 +67,7 @@ class DiscordGateway {
   // Settles on whichever attempt reaches READY; rejects only when no later attempt can succeed.
   #pending: PromiseWithResolvers<void> | null = null;
   #ready = false;
-  // Retrying a fatal close re-sends IDENTIFY with the same config; Discord resets the token past its daily limit.
+  // Set when no retry with this config can succeed; retrying would re-send IDENTIFY, and Discord resets the token past its daily limit.
   #fatal: Error | null = null;
 
   addSubscriber(callback: () => void): void {
@@ -165,6 +165,11 @@ class DiscordGateway {
   #onConnectFailed(err: unknown): void {
     this.#pending?.reject(err);
     this.#pending = null;
+  }
+
+  #latchFatal(err: Error): void {
+    this.#fatal = err;
+    this.#onConnectFailed(err);
   }
 
   #send(op: number, d: unknown): void {
@@ -293,7 +298,8 @@ class DiscordGateway {
         const parsed = ReadyDataSchema.safeParse(data);
         if (!parsed.success) {
           log.error({ err: parsed.error, data }, "Invalid READY payload");
-          this.#onConnectFailed(parsed.error);
+          this.#latchFatal(parsed.error);
+          this.#ws?.close(4000, "Invalid READY");
           break;
         }
         const ready = parsed.data;
@@ -345,12 +351,12 @@ class DiscordGateway {
     // Check if we should reconnect
     if (FATAL_CLOSE_CODES.has(code)) {
       log.error({ code }, "Fatal gateway close code, not reconnecting");
-      this.#fatal = new Error(
-        `Gateway closed with fatal code ${code}: ${reason}`,
+      this.#latchFatal(
+        new Error(`Gateway closed with fatal code ${code}: ${reason}`),
       );
-      this.#onConnectFailed(this.#fatal);
       return;
     }
+    if (this.#fatal) return;
 
     // Check if we need to re-identify instead of resume
     if (RE_IDENTIFY_CLOSE_CODES.has(code)) {

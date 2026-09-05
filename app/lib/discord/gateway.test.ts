@@ -552,12 +552,15 @@ describe("subscribe", () => {
     expect(connectionCount).toBe(1);
   });
 
-  it("should reject when READY cannot be parsed", async () => {
+  it("should close the socket and latch when READY cannot be parsed", async () => {
     const { subscribe } = await import("./gateway");
     const { log } = await import("@/lib/log");
+    let connectionCount = 0;
+    let closeCode: number | undefined;
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
         client.send(
           createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
         );
@@ -565,6 +568,9 @@ describe("subscribe", () => {
           if (PayloadSchema.parse(event.data).op === GatewayOpcode.IDENTIFY) {
             client.send(createPayload(GatewayOpcode.DISPATCH, {}, 1, "READY"));
           }
+        });
+        client.addEventListener("close", (event) => {
+          closeCode = event.code;
         });
       }),
     );
@@ -574,6 +580,12 @@ describe("subscribe", () => {
       { err: expect.any(Error), data: {} },
       "Invalid READY payload",
     );
+
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(closeCode).toBe(4000);
+
+    await expect(subscribe(vi.fn())).rejects.toThrow();
+    expect(connectionCount).toBe(1);
   });
 
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {
