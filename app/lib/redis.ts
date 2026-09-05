@@ -1,8 +1,11 @@
 import "server-only";
 import { Redis } from "@upstash/redis";
 
-import { getGlobal } from "@/lib/global";
+let redis: Redis | undefined;
 
 export function getRedis(): Redis {
-  return getGlobal("simon.dev/redis", () => Redis.fromEnv());
+  if (!redis) {
+    redis = Redis.fromEnv();
+  }
+  return redis;
 }

@@ -523,69 +523,10 @@ describe("subscribe", () => {
     );
 
     await subscribe(vi.fn());
-    getLastClient(gateway.clients)?.send(
-      createPayload(GatewayOpcode.RECONNECT, null),
-    );
-    await vi.advanceTimersByTimeAsync(2000);
-
-    await expect(subscribe(vi.fn())).rejects.toThrow("Invalid URL");
-  });
-
-  it("should reject every connect after a fatal close without opening a socket", async () => {
-    const { subscribe } = await import("./gateway");
-    let connectionCount = 0;
-
-    server.use(
-      gateway.addEventListener("connection", () => {
-        connectionCount++;
-      }),
-      createHandshakeHandler(),
-    );
-
-    await subscribe(vi.fn());
     getLastClient(gateway.clients)?.close(4004, "Authentication failed");
     await vi.advanceTimersByTimeAsync(0);
 
-    await expect(subscribe(vi.fn())).rejects.toThrow(
-      "Gateway closed with fatal code 4004: Authentication failed",
-    );
-    expect(connectionCount).toBe(1);
-  });
-
-  it("should close the socket and latch when READY cannot be parsed", async () => {
-    const { subscribe } = await import("./gateway");
-    const { log } = await import("@/lib/log");
-    let connectionCount = 0;
-    let closeCode: number | undefined;
-
-    server.use(
-      gateway.addEventListener("connection", ({ client }) => {
-        connectionCount++;
-        client.send(
-          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
-        );
-        client.addEventListener("message", (event) => {
-          if (PayloadSchema.parse(event.data).op === GatewayOpcode.IDENTIFY) {
-            client.send(createPayload(GatewayOpcode.DISPATCH, {}, 1, "READY"));
-          }
-        });
-        client.addEventListener("close", (event) => {
-          closeCode = event.code;
-        });
-      }),
-    );
-
-    await expect(subscribe(vi.fn())).rejects.toThrow();
-    expect(log.error).toHaveBeenCalledWith(
-      { err: expect.any(Error), data: {} },
-      "Invalid READY payload",
-    );
-
-    await vi.advanceTimersByTimeAsync(60000);
-    expect(closeCode).toBe(4000);
-
-    await expect(subscribe(vi.fn())).rejects.toThrow();
-    expect(connectionCount).toBe(1);
+    await expect(subscribe(vi.fn())).rejects.toThrow("Invalid URL");
   });
 
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {

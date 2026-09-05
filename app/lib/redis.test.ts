@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resetGlobal } from "./global";
-
 vi.mock(import("server-only"), () => ({}));
 
 describe("getRedis", () => {
   beforeEach(() => {
     vi.resetModules();
-    resetGlobal("simon.dev/redis");
   });
 
   it("should return a Redis instance", async () => {
