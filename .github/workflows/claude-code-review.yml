@@ -34,7 +34,12 @@ jobs:
           track_progress: true
           use_sticky_comment: true
           allowed_bots: renovate[bot],claude[bot]
-          prompt: "/code-review medium --comment ${{ github.event.pull_request.number }}"
+          # The skill reviews in subagents; without the second line the run can end
+          # before they report, leaving the comment on its checklist.
+          prompt: |
+            /code-review medium --comment ${{ github.event.pull_request.number }}
+
+            Run the review in the foreground and wait for every review and verification agent to finish. Do not end your turn until all findings are posted and the comment carries the final summary.
           # --allowedTools is what starts the inline comment MCP server.
           claude_args: >-
             --permission-mode auto
