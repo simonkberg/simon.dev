@@ -64,9 +64,7 @@ class DiscordGateway {
   #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #shouldResume = true;
 
-  // Settled by whichever connection attempt reaches READY, so a socket that
-  // drops before the handshake completes still resolves after the reconnect.
-  // Rejected only when no attempt can follow: a fatal close or an unopenable URL.
+  // Settles on whichever attempt reaches READY; rejects only when no later attempt can succeed.
   #pending: PromiseWithResolvers<void> | null = null;
   #ready = false;
 
