@@ -70,6 +70,15 @@ describe("env", () => {
       // Type should still match Env even with partial validation
       expectTypeOf(env).toEqualTypeOf<Env>();
     });
+
+    it("should treat empty values as missing when SKIP_ENV_VALIDATION is true", async () => {
+      vi.stubEnv("SKIP_ENV_VALIDATION", "true");
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
+
+      const { env } = await import("./env");
+
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+    });
   });
 
   describe("validation failures", () => {
