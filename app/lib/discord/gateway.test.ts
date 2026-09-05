@@ -469,16 +469,22 @@ describe("subscribe", () => {
     );
   });
 
-  it("should reject when the gateway sends an unparseable message before READY", async () => {
+  it("should keep waiting for READY after an unparseable message", async () => {
     const { subscribe } = await import("./gateway");
+    const { log } = await import("@/lib/log");
 
     server.use(
       gateway.addEventListener("connection", ({ client }) => {
         client.send("not json");
       }),
+      createHandshakeHandler(),
     );
 
-    await expect(subscribe(vi.fn())).rejects.toThrow();
+    await expect(subscribe(vi.fn())).resolves.toBeTypeOf("function");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error), data: "not json" },
+      "Failed to parse gateway message",
+    );
   });
 
   it("should reject waiting subscribers when a reconnect cannot open a socket", async () => {

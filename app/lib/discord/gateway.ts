@@ -66,6 +66,7 @@ class DiscordGateway {
 
   // Settled by whichever connection attempt reaches READY, so a socket that
   // drops before the handshake completes still resolves after the reconnect.
+  // Rejected only when no attempt can follow: a fatal close or an unopenable URL.
   #pending: PromiseWithResolvers<void> | null = null;
   #ready = false;
 
@@ -264,7 +265,6 @@ class DiscordGateway {
       }
     } catch (err) {
       log.error({ err, data }, "Failed to parse gateway message");
-      this.#onConnectFailed(err);
     }
   }
 
