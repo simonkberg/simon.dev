@@ -448,6 +448,27 @@ describe("subscribe", () => {
     );
   });
 
+  it("should log WebSocket errors", async () => {
+    const { subscribe } = await import("./gateway");
+    const { log } = await import("@/lib/log");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // msw surfaces a throwing connection handler as an error event on the client
+    server.use(
+      gateway.addEventListener("connection", () => {
+        throw new Error("Connection failed");
+      }),
+    );
+
+    void subscribe(vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(log.error).toHaveBeenCalledWith(
+      { error: expect.any(Event) },
+      "Gateway WebSocket error",
+    );
+  });
+
   it("should reject when the gateway sends an unparseable message before READY", async () => {
     const { subscribe } = await import("./gateway");
 

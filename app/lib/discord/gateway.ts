@@ -151,7 +151,7 @@ class DiscordGateway {
     this.#pending = null;
   }
 
-  #onConnectFailed(err: Error): void {
+  #onConnectFailed(err: unknown): void {
     this.#pending?.reject(err);
     this.#pending = null;
   }
@@ -264,9 +264,7 @@ class DiscordGateway {
       }
     } catch (err) {
       log.error({ err, data }, "Failed to parse gateway message");
-      this.#onConnectFailed(
-        err instanceof Error ? err : new Error(String(err)),
-      );
+      this.#onConnectFailed(err);
     }
   }
 
