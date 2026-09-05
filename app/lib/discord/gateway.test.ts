@@ -481,7 +481,7 @@ describe("subscribe", () => {
     await expect(subscribe(vi.fn())).rejects.toThrow();
   });
 
-  it("should log when a reconnect cannot open a socket", async () => {
+  it("should reject waiting subscribers when a reconnect cannot open a socket", async () => {
     const { subscribe } = await import("./gateway");
     const { log } = await import("@/lib/log");
 
@@ -495,8 +495,12 @@ describe("subscribe", () => {
     getLastClient(gateway.clients)?.send(
       createPayload(GatewayOpcode.RECONNECT, null),
     );
+    await vi.advanceTimersByTimeAsync(0);
+
+    const rejected = expect(subscribe(vi.fn())).rejects.toThrow();
     await vi.advanceTimersByTimeAsync(2000);
 
+    await rejected;
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Reconnection failed",

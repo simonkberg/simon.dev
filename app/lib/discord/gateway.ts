@@ -355,6 +355,7 @@ class DiscordGateway {
         this.#open();
       } catch (err) {
         log.error({ err }, "Reconnection failed");
+        this.#onConnectFailed(err);
       }
     }, backoff);
   }
