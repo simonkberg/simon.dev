@@ -55,6 +55,15 @@ describe("env", () => {
       expect(env.SESSION_SECRET).toBe("unsafe_dev_secret");
     });
 
+    it("should use default SESSION_SECRET in development when empty", async () => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("SESSION_SECRET", "");
+
+      const { env } = await import("./env");
+
+      expect(env.SESSION_SECRET).toBe("unsafe_dev_secret");
+    });
+
     it("should allow missing values when SKIP_ENV_VALIDATION is true", async () => {
       vi.stubEnv("SKIP_ENV_VALIDATION", "true");
       for (const key of Object.keys(mockEnv)) {
