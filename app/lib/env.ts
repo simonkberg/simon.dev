@@ -33,11 +33,14 @@ function parseAndValidateEnv<T extends Record<string, z.ZodTypeAny>>(
     .default(false)
     .parse(process.env["SKIP_ENV_VALIDATION"]);
 
+  // An empty variable is an unset one, as in the shell.
+  const definedEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => value !== ""),
+  );
+
   const result = (
-    skipEnvValidation
-      ? envSchema.partial().safeParse(withoutEmptyValues(process.env))
-      : envSchema.safeParse(process.env)
-  ) as z.ZodSafeParseResult<z.infer<typeof envSchema>>;
+    skipEnvValidation ? envSchema.partial() : envSchema
+  ).safeParse(definedEnv) as z.ZodSafeParseResult<z.infer<typeof envSchema>>;
 
   if (!result.success) {
     console.error(
@@ -50,13 +53,4 @@ function parseAndValidateEnv<T extends Record<string, z.ZodTypeAny>>(
   }
 
   return result.data;
-}
-
-// GitHub Actions exports unset action inputs as "", which a partial schema still rejects.
-function withoutEmptyValues(
-  env: NodeJS.ProcessEnv,
-): Record<string, string | undefined> {
-  return Object.fromEntries(
-    Object.entries(env).filter(([, value]) => value !== ""),
-  );
 }
