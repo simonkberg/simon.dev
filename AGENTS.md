@@ -37,6 +37,8 @@ If Corepack is not enabled, run `corepack enable` before installing dependencies
 
 > **Prefer `pnpm lint` and `pnpm lint:fix`** over individual commands (`lint:tsc`, `lint:oxlint`, `lint:oxfmt`). They run all checks in parallel and complete in seconds.
 
+> **Lint and test need no env vars.** `pnpm typegen` sets `SKIP_ENV_VALIDATION` itself; a bare `next typegen` (or `next build`) fails on the Zod env check because `next.config.ts` imports `app/lib/env.ts`.
+
 ### MCP Tools
 
 MCP servers are configured in `.mcp.json`:
