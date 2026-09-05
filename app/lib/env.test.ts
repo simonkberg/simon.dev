@@ -55,6 +55,15 @@ describe("env", () => {
       expect(env.SESSION_SECRET).toBe("unsafe_dev_secret");
     });
 
+    it("should use default SESSION_SECRET in development when empty", async () => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("SESSION_SECRET", "");
+
+      const { env } = await import("./env");
+
+      expect(env.SESSION_SECRET).toBe("unsafe_dev_secret");
+    });
+
     it("should allow missing values when SKIP_ENV_VALIDATION is true", async () => {
       vi.stubEnv("SKIP_ENV_VALIDATION", "true");
       for (const key of Object.keys(mockEnv)) {
@@ -69,6 +78,23 @@ describe("env", () => {
 
       // Type should still match Env even with partial validation
       expectTypeOf(env).toEqualTypeOf<Env>();
+    });
+
+    it("should treat an empty SKIP_ENV_VALIDATION as unset", async () => {
+      vi.stubEnv("SKIP_ENV_VALIDATION", "");
+
+      const { env } = await import("./env");
+
+      expect(env).toEqual(mockEnv);
+    });
+
+    it("should treat empty values as unset when SKIP_ENV_VALIDATION is true", async () => {
+      vi.stubEnv("SKIP_ENV_VALIDATION", "true");
+      vi.stubEnv("ANTHROPIC_API_KEY", "");
+
+      const { env } = await import("./env");
+
+      expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     });
   });
 
