@@ -4,6 +4,7 @@ import { type WebSocketLink, ws } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { resetGlobal } from "@/lib/global";
 import { server } from "@/mocks/node";
 
 vi.mock(import("server-only"), () => ({}));
@@ -112,9 +113,9 @@ describe("subscribe", () => {
     });
   }
 
-  // Reset module state between tests to get fresh gateway singleton
   beforeEach(() => {
     vi.resetModules();
+    resetGlobal("simon.dev/discord-gateway");
     vi.useFakeTimers();
     // Make jitter deterministic (0 jitter)
     vi.spyOn(Math, "random").mockReturnValue(0);
@@ -369,6 +370,126 @@ describe("subscribe", () => {
     );
     await vi.advanceTimersByTimeAsync(0);
     expect(callback).toHaveBeenCalledTimes(1); // Still 1, not 2
+  });
+
+  it("should share one connection between concurrent subscribers", async () => {
+    const { subscribe, subscribeToMessages } = await import("./gateway");
+    server.use(createHandshakeHandler());
+
+    await Promise.all([subscribe(vi.fn()), subscribeToMessages(vi.fn())]);
+
+    expect(gateway.clients.size).toBe(1);
+  });
+
+  it("should share one gateway across module instances", async () => {
+    server.use(createHandshakeHandler());
+
+    const first = await import("./gateway");
+    await first.subscribe(vi.fn());
+
+    vi.resetModules();
+    const second = await import("./gateway");
+    await second.subscribe(vi.fn());
+
+    expect(gateway.clients.size).toBe(1);
+  });
+
+  it("should resolve after a reconnect when the socket drops before READY", async () => {
+    const { subscribe } = await import("./gateway");
+    let connectionCount = 0;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
+        if (connectionCount === 1) {
+          client.close(4000, "Dropped");
+          return;
+        }
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+        client.addEventListener("message", (event) => {
+          if (PayloadSchema.parse(event.data).op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                DEFAULT_SESSION,
+                1,
+                "READY",
+              ),
+            );
+          }
+        });
+      }),
+    );
+
+    const subscribed = subscribe(vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(connectionCount).toBe(1);
+
+    // Wait for exponential backoff (2^1 * 1000 = 2000ms)
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await expect(subscribed).resolves.toBeTypeOf("function");
+    expect(connectionCount).toBe(2);
+  });
+
+  it("should reject when the socket closes with a fatal code before READY", async () => {
+    const { subscribe } = await import("./gateway");
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.close(4004, "Authentication failed");
+      }),
+    );
+
+    await expect(subscribe(vi.fn())).rejects.toThrow(
+      "Gateway closed with fatal code 4004: Authentication failed",
+    );
+  });
+
+  it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {
+    const { subscribe } = await import("./gateway");
+    let connectionCount = 0;
+
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        connectionCount++;
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+        client.addEventListener("message", (event) => {
+          const { op } = PayloadSchema.parse(event.data);
+          if (op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                DEFAULT_SESSION,
+                1,
+                "READY",
+              ),
+            );
+          } else if (op === GatewayOpcode.RESUME) {
+            client.send(
+              createPayload(GatewayOpcode.DISPATCH, null, 2, "RESUMED"),
+            );
+          }
+        });
+      }),
+    );
+
+    await subscribe(vi.fn());
+    getLastClient(gateway.clients)?.close(4000, "Dropped");
+    await vi.advanceTimersByTimeAsync(0);
+
+    const subscribed = subscribe(vi.fn());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(connectionCount).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    await expect(subscribed).resolves.toBeTypeOf("function");
+    expect(connectionCount).toBe(2);
   });
 
   it("should send RESUME instead of IDENTIFY on reconnect", async () => {

@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
+import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 
 import { type DiscordMessage, DiscordMessageSchema } from "./schemas";
@@ -60,10 +61,16 @@ class DiscordGateway {
 
   // Reconnection state
   #reconnectAttempts = 0;
+  #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #shouldResume = true;
 
+  // Settled by whichever connection attempt reaches READY, so a socket that
+  // drops before the handshake completes still resolves after the reconnect.
+  #pending: PromiseWithResolvers<void> | null = null;
+  #ready = false;
+
   get connected(): boolean {
-    return this.#ws?.readyState === WebSocket.OPEN;
+    return this.#ready;
   }
 
   addSubscriber(callback: () => void): void {
@@ -102,36 +109,55 @@ class DiscordGateway {
     }
   }
 
-  async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const url =
-        this.#shouldResume && this.#resumeGatewayUrl
-          ? `${this.#resumeGatewayUrl}/?v=10&encoding=json`
-          : GATEWAY_URL;
+  connect(): Promise<void> {
+    if (this.#ready) return Promise.resolve();
 
-      log.info(
-        { url, resume: this.#shouldResume },
-        "Connecting to Discord Gateway",
-      );
+    this.#pending ??= Promise.withResolvers<void>();
+    if (!this.#ws && !this.#reconnectTimer) {
+      this.#open();
+    }
+    return this.#pending.promise;
+  }
 
-      this.#ws = new WebSocket(url);
+  #open(): void {
+    const url =
+      this.#shouldResume && this.#resumeGatewayUrl
+        ? `${this.#resumeGatewayUrl}/?v=10&encoding=json`
+        : GATEWAY_URL;
 
-      this.#ws.onopen = () => {
-        log.debug("Gateway connection opened");
-      };
+    log.info(
+      { url, resume: this.#shouldResume },
+      "Connecting to Discord Gateway",
+    );
 
-      this.#ws.onclose = (event) => {
-        this.#handleClose(event.code, event.reason);
-      };
+    this.#ws = new WebSocket(url);
 
-      this.#ws.onerror = (event) => {
-        log.error({ error: event }, "Gateway WebSocket error");
-      };
+    this.#ws.onopen = () => {
+      log.debug("Gateway connection opened");
+    };
 
-      this.#ws.onmessage = (event) => {
-        this.#handleMessage(String(event.data), resolve, reject);
-      };
-    });
+    this.#ws.onclose = (event) => {
+      this.#handleClose(event.code, event.reason);
+    };
+
+    this.#ws.onerror = (event) => {
+      log.error({ error: event }, "Gateway WebSocket error");
+    };
+
+    this.#ws.onmessage = (event) => {
+      this.#handleMessage(String(event.data));
+    };
+  }
+
+  #onReady(): void {
+    this.#ready = true;
+    this.#pending?.resolve();
+    this.#pending = null;
+  }
+
+  #onConnectFailed(err: Error): void {
+    this.#pending?.reject(err);
+    this.#pending = null;
   }
 
   #send(op: number, d: unknown): void {
@@ -193,17 +219,13 @@ class DiscordGateway {
     }
   }
 
-  #handleMessage(
-    data: string,
-    onReady: () => void,
-    onError: (err: Error) => void,
-  ): void {
+  #handleMessage(data: string): void {
     try {
       const payload = GatewayPayloadSchema.parse(JSON.parse(data));
 
       switch (payload.op) {
         case GatewayOpcode.DISPATCH:
-          this.#handleDispatch(payload.s, payload.t, payload.d, onReady);
+          this.#handleDispatch(payload.s, payload.t, payload.d);
           break;
 
         case GatewayOpcode.HEARTBEAT:
@@ -246,7 +268,9 @@ class DiscordGateway {
       }
     } catch (err) {
       log.error({ err, data }, "Failed to parse gateway message");
-      onError(err instanceof Error ? err : new Error(String(err)));
+      this.#onConnectFailed(
+        err instanceof Error ? err : new Error(String(err)),
+      );
     }
   }
 
@@ -254,7 +278,6 @@ class DiscordGateway {
     seq: number | null,
     eventName: string | null,
     data: unknown,
-    onReady: () => void,
   ): void {
     // Update sequence number
     if (seq !== null) {
@@ -268,14 +291,14 @@ class DiscordGateway {
         this.#resumeGatewayUrl = ready.resume_gateway_url;
         this.#reconnectAttempts = 0;
         log.info({ sessionId: this.#sessionId }, "Gateway READY");
-        onReady();
+        this.#onReady();
         break;
       }
 
       case "RESUMED":
         this.#reconnectAttempts = 0;
         log.info("Gateway RESUMED");
-        onReady();
+        this.#onReady();
         break;
 
       case "MESSAGE_CREATE":
@@ -307,10 +330,14 @@ class DiscordGateway {
     this.#stopHeartbeat();
     this.#awaitingAck = false;
     this.#ws = null;
+    this.#ready = false;
 
     // Check if we should reconnect
     if (FATAL_CLOSE_CODES.has(code)) {
       log.error({ code }, "Fatal gateway close code, not reconnecting");
+      this.#onConnectFailed(
+        new Error(`Gateway closed with fatal code ${code}: ${reason}`),
+      );
       return;
     }
 
@@ -328,21 +355,19 @@ class DiscordGateway {
 
     log.info({ backoff, attempt: this.#reconnectAttempts }, "Reconnecting");
 
-    setTimeout(() => {
-      void this.connect().catch((err) => {
+    this.#reconnectTimer = setTimeout(() => {
+      this.#reconnectTimer = null;
+      try {
+        this.#open();
+      } catch (err) {
         log.error({ err }, "Reconnection failed");
-      });
+      }
     }, backoff);
   }
 }
 
-let gateway: DiscordGateway | null = null;
-
 function getGateway(): DiscordGateway {
-  if (!gateway) {
-    gateway = new DiscordGateway();
-  }
-  return gateway;
+  return getGlobal("simon.dev/discord-gateway", () => new DiscordGateway());
 }
 
 export async function subscribe(callback: () => void): Promise<() => void> {

@@ -135,6 +135,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
+- **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
+  has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
+  Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never
+  takes traffic and the previous deploy keeps serving.
 - **Logging:** pino (`app/lib/log.ts`), one JSON line per entry so Railway indexes it.
   `instrumentation.ts` bridges `console.*` into it, so Next's own errors (and its
   `NEXT_PRIVATE_DEBUG_CACHE` output) arrive structured too; `LOG_LEVEL` filters both.
@@ -240,6 +244,13 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 ### `useTransition` Naming Collision
 
 `useTransition` is used from both `@react-spring/web` (animations in `ChatHistory`) and React (async transitions in `ChatInput`). Check imports carefully — they have different signatures and return types.
+
+### Process-Wide Singletons
+
+Next bundles `instrumentation.ts` and each route handler into separate module graphs, so a
+module-level `let` is one instance per graph, not per process. State that must be shared
+between them (the gateway connection, readiness) goes through `getGlobal` in
+`app/lib/global.ts`; tests reset it with `resetGlobal` instead of `vi.resetModules()`.
 
 ### Private Fields
 
