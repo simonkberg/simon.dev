@@ -67,6 +67,8 @@ class DiscordGateway {
   // Settles on whichever attempt reaches READY; rejects only when no later attempt can succeed.
   #pending: PromiseWithResolvers<void> | null = null;
   #ready = false;
+  // Retrying a fatal close re-sends IDENTIFY with the same config; Discord resets the token past its daily limit.
+  #fatal: Error | null = null;
 
   addSubscriber(callback: () => void): void {
     this.#subscribers.add(callback);
@@ -105,6 +107,7 @@ class DiscordGateway {
   }
 
   connect(): Promise<void> {
+    if (this.#fatal) return Promise.reject(this.#fatal);
     if (this.#ready) return Promise.resolve();
 
     const { promise } = (this.#pending ??= Promise.withResolvers<void>());
@@ -287,7 +290,13 @@ class DiscordGateway {
 
     switch (eventName) {
       case "READY": {
-        const ready = ReadyDataSchema.parse(data);
+        const parsed = ReadyDataSchema.safeParse(data);
+        if (!parsed.success) {
+          log.error({ err: parsed.error, data }, "Invalid READY payload");
+          this.#onConnectFailed(parsed.error);
+          break;
+        }
+        const ready = parsed.data;
         this.#sessionId = ready.session_id;
         this.#resumeGatewayUrl = ready.resume_gateway_url;
         this.#reconnectAttempts = 0;
@@ -336,9 +345,10 @@ class DiscordGateway {
     // Check if we should reconnect
     if (FATAL_CLOSE_CODES.has(code)) {
       log.error({ code }, "Fatal gateway close code, not reconnecting");
-      this.#onConnectFailed(
-        new Error(`Gateway closed with fatal code ${code}: ${reason}`),
+      this.#fatal = new Error(
+        `Gateway closed with fatal code ${code}: ${reason}`,
       );
+      this.#onConnectFailed(this.#fatal);
       return;
     }
 
