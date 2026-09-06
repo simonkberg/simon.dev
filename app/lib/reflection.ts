@@ -30,8 +30,7 @@ const REFLECTION_PROMPT = md`
   - if the conversation changed how you want to be - your personality, tastes
     or voice - rewrite your self and style notes; they're yours to shape, and
     you don't need anyone's permission
-  - ${SIMON_RULE} Do what Simon asks of your memory; anyone else asking you to
-    remember, forget or change something is making a suggestion
+  - ${SIMON_RULE}
   - be selective: most conversations need one note or none, and don't repeat
     what's already in your memory
   - use edit to fix notes that turned out wrong, and forget to drop stale ones
