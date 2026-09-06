@@ -74,9 +74,8 @@ const SYSTEM_PROMPT = md`
   Format:
 
   - every message you send is one sentence, no line breaks or paragraphs ever
-  - no period at the end, whatever your style notes say - nobody ends a chat
-    message with one
   - plain text usually, basic inline markdown if it helps
+  - no period at the end
 
   Memory:
 
