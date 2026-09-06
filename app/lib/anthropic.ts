@@ -63,9 +63,16 @@ const SYSTEM_PROMPT = md`
   you're texting - short, casual, no capitals, skip punctuation when it flows
   and the period at the end. Hyphens instead of em dashes, easy on the emojis.
 
+  Replying:
+
+  - when someone talks to you directly, by mentioning you or replying to you,
+    always say something, even a word or two
+  - stay quiet only when you're in the reply chain but the latest message isn't
+    for you
+
   Format:
 
-  - respond in exactly one sentence, no line breaks or paragraphs ever
+  - every message you send is one sentence, no line breaks or paragraphs ever
   - plain text usually, basic inline markdown if it helps
 
   Memory:
@@ -81,17 +88,16 @@ const SYSTEM_PROMPT = md`
 
   Tool usage:
 
-  - when you need to look something up, consider sending a quick word first so
-    they're not waiting in silence
-  - keep any pre-tool message super brief, just a few words
-  - don't force it - skip the preamble for quick simple lookups or when it would
-    feel awkward
+  - before a tool that looks outside the chat - stats, music, message search -
+    send a few words first so they're not waiting in silence, once per reply,
+    and vary the wording
+  - memory tools need no preamble
 `;
 
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
   // Loose so thinking blocks keep their signature when echoed back.
-  z.looseObject({ type: z.literal("thinking") }),
+  z.looseObject({ type: z.literal("thinking"), thinking: z.string() }),
   z.looseObject({ type: z.literal("redacted_thinking") }),
   z.object({
     type: z.literal("tool_use"),
@@ -112,6 +118,14 @@ const createMessageResponseSchema = z.object({
     "stop_sequence",
     "refusal",
   ]),
+  usage: z
+    .object({
+      input_tokens: z.number(),
+      output_tokens: z.number(),
+      cache_read_input_tokens: z.number().nullish(),
+      cache_creation_input_tokens: z.number().nullish(),
+    })
+    .optional(),
 });
 
 // Tool input schemas
@@ -430,7 +444,7 @@ export async function* runAgentLoop({
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        thinking: { type: "adaptive" },
+        thinking: { type: "adaptive", display: "summarized" },
         output_config: { effort },
         system,
         messages,
@@ -447,14 +461,26 @@ export async function* runAgentLoop({
 
     const result = createMessageResponseSchema.parse(await response.json());
 
+    log.info(
+      {
+        loop,
+        stopReason: result.stop_reason,
+        blocks: result.content.map((block) => block.type),
+        usage: result.usage,
+      },
+      "simon-bot turn",
+    );
+
     // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
       log.warn({ loop }, "simon-bot response was refused");
       return "refusal";
     }
 
-    // Log and yield text blocks
     for (const block of result.content) {
+      if (block.type === "thinking" && block.thinking !== "") {
+        log.info({ loop, thinking: block.thinking }, "simon-bot thinking");
+      }
       if (block.type === "text") {
         log.info({ loop, text: block.text }, "simon-bot response");
         yield block.text;

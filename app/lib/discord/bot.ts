@@ -67,6 +67,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     })) as [ChatMessage, ...ChatMessage[]];
 
     const replies: ChatMessage[] = [];
+    let finished = false;
     try {
       for await (const response of createMessage(messages)) {
         await postChannelMessage(response, BOT_USERNAME, messageId);
@@ -76,7 +77,13 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
           content: response,
         });
       }
-      log.info({ messageId }, "Bot responded to message");
+      finished = true;
+      log.info(
+        { messageId, replies: replies.length },
+        replies.length > 0
+          ? "Bot responded to message"
+          : "Bot chose not to reply",
+      );
     } catch (err) {
       log.error({ err, messageId }, "Bot response failed");
       await postChannelMessage(
@@ -86,7 +93,9 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       );
     } finally {
       // Not awaited: reflection must never delay or fail a reply, even a partial one.
-      if (replies.length > 0) {
+      // Staying silent is still a turn worth reflecting on; a turn that failed before
+      // anything was said is not.
+      if (finished || replies.length > 0) {
         reflect([...messages, ...replies]).catch((err) => {
           log.error({ err, messageId }, "Bot reflection failed");
         });
