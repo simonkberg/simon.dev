@@ -82,7 +82,7 @@ describe("createMessage", () => {
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         expect(await request.json()).toMatchObject({
           model: "claude-sonnet-5",
-          thinking: { type: "adaptive" },
+          thinking: { type: "adaptive", display: "summarized" },
           output_config: { effort: "medium" },
           max_tokens: 2048,
           system: [
@@ -520,6 +520,72 @@ describe("createMessage", () => {
         ]),
       ),
     ).rejects.toThrow();
+  });
+
+  it("should log every turn with its stop reason, blocks and usage", async () => {
+    const info = vi.spyOn(log, "info").mockImplementation(() => {});
+    const usage = {
+      input_tokens: 1200,
+      output_tokens: 40,
+      cache_read_input_tokens: 1000,
+      cache_creation_input_tokens: 0,
+    };
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [
+            { type: "thinking", thinking: "they just said hi", signature: "s" },
+            { type: "text", text: "hi" },
+          ],
+          stop_reason: "end_turn",
+          usage,
+        }),
+      ),
+    );
+
+    await collectResponses(
+      createMessage([{ role: "user", username: TEST_USERNAME, content: "hi" }]),
+    );
+
+    expect(info).toHaveBeenCalledWith(
+      {
+        loop: "reply",
+        stopReason: "end_turn",
+        blocks: ["thinking", "text"],
+        usage,
+      },
+      "simon-bot turn",
+    );
+    expect(info).toHaveBeenCalledWith(
+      { loop: "reply", thinking: "they just said hi" },
+      "simon-bot thinking",
+    );
+  });
+
+  it("should not log a thinking block the API left empty", async () => {
+    const info = vi.spyOn(log, "info").mockImplementation(() => {});
+
+    server.use(
+      http.post(ANTHROPIC_BASE_URL, () =>
+        HttpResponse.json({
+          content: [
+            { type: "thinking", thinking: "", signature: "s" },
+            { type: "text", text: "hi" },
+          ],
+          stop_reason: "end_turn",
+        }),
+      ),
+    );
+
+    await collectResponses(
+      createMessage([{ role: "user", username: TEST_USERNAME, content: "hi" }]),
+    );
+
+    expect(info).not.toHaveBeenCalledWith(
+      expect.objectContaining({ thinking: expect.anything() }),
+      "simon-bot thinking",
+    );
   });
 
   it("should handle response with no content blocks", async () => {

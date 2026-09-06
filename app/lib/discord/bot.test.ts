@@ -235,7 +235,42 @@ describe("handleMessage", () => {
     ]);
   });
 
-  it("should not reflect when nothing was said", async () => {
+  it("should reflect when the bot chose not to reply", async () => {
+    const info = vi.spyOn(log, "info").mockImplementation(() => {});
+    setMock.mockResolvedValue("OK");
+    vi.mocked(getMessageChain).mockResolvedValue([
+      {
+        id: "msg-1",
+        type: 0,
+        username: "simon",
+        content: "simon-bot try sounding less like grok please",
+      },
+    ]);
+
+    async function* mockResponse() {}
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+
+    await handleMessage(
+      createMessage({
+        content: "simon-bot try sounding less like grok please",
+      }),
+    );
+
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      { messageId: "msg-1", replies: 0 },
+      "Bot chose not to reply",
+    );
+    expect(reflect).toHaveBeenCalledWith([
+      {
+        role: "user",
+        username: "simon",
+        content: "simon-bot try sounding less like grok please",
+      },
+    ]);
+  });
+
+  it("should not reflect when the reply failed before anything was said", async () => {
     vi.spyOn(log, "error").mockImplementation(() => {});
     setMock.mockResolvedValue("OK");
     vi.mocked(getMessageChain).mockResolvedValue([

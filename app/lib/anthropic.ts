@@ -91,7 +91,7 @@ const SYSTEM_PROMPT = md`
 const contentBlockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string() }),
   // Loose so thinking blocks keep their signature when echoed back.
-  z.looseObject({ type: z.literal("thinking") }),
+  z.looseObject({ type: z.literal("thinking"), thinking: z.string() }),
   z.looseObject({ type: z.literal("redacted_thinking") }),
   z.object({
     type: z.literal("tool_use"),
@@ -112,6 +112,14 @@ const createMessageResponseSchema = z.object({
     "stop_sequence",
     "refusal",
   ]),
+  usage: z
+    .object({
+      input_tokens: z.number(),
+      output_tokens: z.number(),
+      cache_read_input_tokens: z.number().nullish(),
+      cache_creation_input_tokens: z.number().nullish(),
+    })
+    .optional(),
 });
 
 // Tool input schemas
@@ -430,7 +438,7 @@ export async function* runAgentLoop({
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
-        thinking: { type: "adaptive" },
+        thinking: { type: "adaptive", display: "summarized" },
         output_config: { effort },
         system,
         messages,
@@ -447,14 +455,26 @@ export async function* runAgentLoop({
 
     const result = createMessageResponseSchema.parse(await response.json());
 
+    log.info(
+      {
+        loop,
+        stopReason: result.stop_reason,
+        blocks: result.content.map((block) => block.type),
+        usage: result.usage,
+      },
+      "simon-bot turn",
+    );
+
     // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
       log.warn({ loop }, "simon-bot response was refused");
       return "refusal";
     }
 
-    // Log and yield text blocks
     for (const block of result.content) {
+      if (block.type === "thinking" && block.thinking !== "") {
+        log.info({ loop, thinking: block.thinking }, "simon-bot thinking");
+      }
       if (block.type === "text") {
         log.info({ loop, text: block.text }, "simon-bot response");
         yield block.text;

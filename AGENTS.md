@@ -158,9 +158,11 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   failures degrade to a reply without memory, never to no reply.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
-  `app/lib/reflection.ts` runs after every reply, fire-and-forget, with only the memory
-  tools, so bookkeeping never delays a response. Simon is recognised by his username:
-  site visitors get generated names, so only his own Discord messages appear as "simon".
+  `app/lib/reflection.ts` runs after every mention, even one the bot chose not to answer,
+  fire-and-forget, with only the memory tools, so bookkeeping never delays a response.
+  Every API turn logs its stop reason, block types, usage and summarized thinking, so a
+  silent turn can be read back from the logs. Simon is recognised by his username: site
+  visitors get generated names, so only his own Discord messages appear as "simon".
 
 ## Patterns
 
