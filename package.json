@@ -61,7 +61,7 @@
     "lint-staged": "17.5.0",
     "msw": "2.15.0",
     "oxc-transform-react": "0.148.0",
-    "oxfmt": "0.66.0",
+    "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
     "oxlint-tsgolint": "7.0.2001",
     "pino-pretty": "13.1.3",
