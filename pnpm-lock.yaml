@@ -182,8 +182,8 @@ importers:
         specifier: 1.38.4
         version: 1.38.4
       comparator.ts:
-        specifier: 1.0.4
-        version: 1.0.4
+        specifier: 2.0.0
+        version: 2.0.0
       dataloader:
         specifier: 2.2.3
         version: 2.2.3
@@ -1502,8 +1502,9 @@ packages:
   colorette@2.0.20:
     resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
 
-  comparator.ts@1.0.4:
-    resolution: {integrity: sha512-9owRa69IGm0OfHhbS8f+FAKe1BhJ2x84ujpPIR5nsmuWkj7/xmVea3KDmiUJCAnDEUUMC+pENdMTj/JDP6CEmg==}
+  comparator.ts@2.0.0:
+    resolution: {integrity: sha512-zZECuotOb/hwkXxiE32r68fytihd+YyBY6I/xG1+rDercX/x4ACuH4/bcHQ6CFEwzRRywraNbHtr3tM0sjncPA==}
+    engines: {node: '>=22'}
 
   concurrently@10.0.5:
     resolution: {integrity: sha512-JaP/CoftUrCcAFW/g//RbgEGwlelnEae6cfBLgH6ZdO6s8jPkn6p9SB9u6pdVxYXoiSnFqseOlHfrEfF82TVOg==}
@@ -3060,7 +3061,7 @@ snapshots:
 
   colorette@2.0.20: {}
 
-  comparator.ts@1.0.4: {}
+  comparator.ts@2.0.0: {}
 
   concurrently@10.0.5:
     dependencies:
