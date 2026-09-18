@@ -3,7 +3,7 @@
   extends: [
     "config:best-practices",
     ":pinAllExceptPeerDependencies",
-    ":automergePatch",
+    ":automergeMinor",
     ":automergeDigest",
     ":automergeLinters",
     ":automergeTesters",
