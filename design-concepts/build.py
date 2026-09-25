@@ -116,9 +116,12 @@ def djb2hash(s: str) -> int:
         n &= 0xFFFFFFFF
         return n - 0x100000000 if n & 0x80000000 else n
 
+    if not s:
+        return 0
+    units = s.encode("utf-16-le")
     a = 5381
-    for ch in s:
-        a = int32((int32(a << 5) + a) ^ ord(ch))
+    for i in range(0, len(units), 2):
+        a = int32((int32(a << 5) + a) ^ int.from_bytes(units[i : i + 2], "little"))
     return a
 
 
