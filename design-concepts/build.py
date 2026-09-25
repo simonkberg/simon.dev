@@ -1,6 +1,6 @@
 """Builds the static redesign concepts from the site's real markup and content.
 
-    python3 design-concepts/build.py            # writes <concept>/*.html
+    python3 design-concepts/build.py            # writes <concept>/*.html, then oxfmt
     python3 design-concepts/build.py --viewer out.html
                                                 # also a single-file viewer with
                                                 # subset fonts inlined (needs fonttools + brotli)
@@ -11,6 +11,7 @@ import html
 import io
 import json
 import pathlib
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).parent
@@ -465,5 +466,7 @@ def build_viewer(out):
 
 if __name__ == "__main__":
     build_static()
+    # Keeps the output in the shape `pnpm lint` checks for.
+    subprocess.run(["pnpm", "exec", "oxfmt", str(ROOT)], check=True)
     if "--viewer" in sys.argv:
         build_viewer(sys.argv[sys.argv.index("--viewer") + 1])

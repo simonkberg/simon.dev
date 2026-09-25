@@ -24,7 +24,7 @@ python3 -m http.server
 `shared/preview.js` stands in for the chat's client code (reply, cancel with Esc,
 dismiss the tip, send; `/error` shows the error toast) and adds a theme switch.
 
-`python3 design-concepts/build.py` regenerates the pages; `--viewer out.html` also
+`python3 design-concepts/build.py` regenerates the pages and formats them with oxfmt; `--viewer out.html` also
 writes a single-file viewer with subset fonts inlined (needs `fonttools` and `brotli`).
 
 ## Structural changes they need
