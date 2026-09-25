@@ -1,0 +1,31 @@
+@font-face {
+  font-family: "Iosevka SS08";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("../../app/assets/IosevkaSS08-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Iosevka SS08";
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url("../../app/assets/IosevkaSS08-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Iosevka SS08";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("../../app/assets/IosevkaSS08-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Iosevka SS08";
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+  src: url("../../app/assets/IosevkaSS08-BoldItalic.woff2") format("woff2");
+}

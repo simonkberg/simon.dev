@@ -1,0 +1,252 @@
+<title>simon.dev Redesign Concepts</title>
+<style>
+  :root {
+    --ground: #f4f4f2;
+    --panel: #ffffff;
+    --ink: #1c1c1a;
+    --muted: #6d6d68;
+    --line: #dcdcd7;
+    --on: #1c1c1a;
+    --on-ink: #f4f4f2;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111110;
+      --panel: #1a1a19;
+      --ink: #e4e4df;
+      --muted: #94948d;
+      --line: #2f2f2c;
+      --on: #e4e4df;
+      --on-ink: #111110;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #111110;
+    --panel: #1a1a19;
+    --ink: #e4e4df;
+    --muted: #94948d;
+    --line: #2f2f2c;
+    --on: #e4e4df;
+    --on-ink: #111110;
+    color-scheme: dark;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    background: var(--ground);
+    color: var(--ink);
+    font:
+      13px/1.45 "Iosevka SS08",
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      monospace;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 20px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .group > span {
+    margin-right: 6px;
+    color: var(--muted);
+  }
+  .bar button {
+    appearance: none;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+  .bar button:hover {
+    background: var(--line);
+  }
+  .bar button[aria-pressed="true"] {
+    background: var(--on);
+    color: var(--on-ink);
+  }
+  .bar button:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+  .about {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--muted);
+  }
+  .about strong {
+    color: var(--ink);
+  }
+  .stage {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+  }
+  .stage.mobile {
+    padding: 16px;
+  }
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: var(--panel);
+  }
+  .stage.mobile iframe {
+    width: 390px;
+    max-width: 100%;
+    border: 1px solid var(--line);
+  }
+  @media (width < 700px) {
+    .group[data-key="width"] {
+      display: none;
+    }
+  }
+</style>
+
+<div class="bar">
+  <div class="group" data-key="concept">
+    <span>concept</span>
+    <button data-value="manual">Manual</button>
+    <button data-value="ledger">Ledger</button>
+    <button data-value="panes">Panes</button>
+  </div>
+  <div class="group" data-key="page">
+    <span>page</span>
+    <button data-value="index">home</button>
+    <button data-value="listening">listening</button>
+    <button data-value="not-found">404</button>
+    <button data-value="error">error</button>
+  </div>
+  <div class="group" data-key="theme">
+    <span>theme</span>
+    <button data-value="system">system</button>
+    <button data-value="light">light</button>
+    <button data-value="dark">dark</button>
+  </div>
+  <div class="group" data-key="width">
+    <span>width</span>
+    <button data-value="desktop">desktop</button>
+    <button data-value="mobile">mobile</button>
+  </div>
+  <p class="about" id="about"></p>
+</div>
+<div class="stage" id="stage">
+  <iframe id="frame" title="Concept preview"></iframe>
+</div>
+
+<script>
+  const FONTS = "__FONTS__";
+  const DOCS = "__DOCS__";
+  const ABOUT = {
+    manual:
+      "<strong>Manual.</strong> The site as a man page: section names in caps, body indented, header and footer lines like troff's. Bold, underline and reverse video only.",
+    ledger:
+      "<strong>Ledger.</strong> A label column and a content column, a large name, one cobalt accent. WakaTime percentages as segmented bars; the chat is a plain live panel.",
+    panes:
+      "<strong>Panes.</strong> A tmux session, dark first. The status line has a window per page, sections are panes titled in their border, and the pane under the pointer or holding focus lights up.",
+  };
+  const HINT =
+    " Chat works: hover a message and press \u21A9 to reply, Esc to cancel, send /error for the error toast.";
+
+  const fontStyle = document.createElement("style");
+  fontStyle.textContent = FONTS;
+  document.head.append(fontStyle);
+
+  const state = {
+    concept: "manual",
+    page: "index",
+    theme: "system",
+    width: "desktop",
+  };
+  const [concept, page] = location.hash.slice(1).split(".");
+  if (concept in ABOUT) state.concept = concept;
+  if (page && `${state.concept}/${page}` in DOCS) state.page = page;
+
+  const frame = document.getElementById("frame");
+  const stage = document.getElementById("stage");
+
+  const applyTheme = () => {
+    const root = frame.contentDocument?.documentElement;
+    if (!root) return;
+    const theme =
+      state.theme === "system"
+        ? document.documentElement.dataset.theme
+        : state.theme;
+    if (theme) root.dataset.theme = theme;
+    else root.removeAttribute("data-theme");
+  };
+
+  const render = (reload) => {
+    document.querySelectorAll(".group").forEach((group) => {
+      group.querySelectorAll("button").forEach((button) => {
+        button.setAttribute(
+          "aria-pressed",
+          String(state[group.dataset.key] === button.dataset.value),
+        );
+      });
+    });
+    document.getElementById("about").innerHTML = ABOUT[state.concept] + HINT;
+    stage.classList.toggle("mobile", state.width === "mobile");
+    if (reload) {
+      const doc = DOCS[`${state.concept}/${state.page}`].replace(
+        "</head>",
+        `<style>${FONTS}</style></head>`,
+      );
+      frame.srcdoc = doc;
+      try {
+        history.replaceState(null, "", `#${state.concept}.${state.page}`);
+      } catch {}
+    }
+    applyTheme();
+  };
+
+  frame.addEventListener("load", () => {
+    applyTheme();
+    frame.contentDocument.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link || link.target === "_blank") return;
+      const match = link.getAttribute("href").match(/^([\w-]+)\.html$/);
+      if (!match) return;
+      event.preventDefault();
+      state.page = match[1];
+      render(true);
+    });
+  });
+
+  document.querySelectorAll(".group").forEach((group) => {
+    group.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      const key = group.dataset.key;
+      if (state[key] === button.dataset.value) return;
+      state[key] = button.dataset.value;
+      render(key === "concept" || key === "page");
+    });
+  });
+
+  new MutationObserver(applyTheme).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+
+  render(true);
+</script>

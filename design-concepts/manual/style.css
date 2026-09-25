@@ -1,0 +1,558 @@
+/*
+ * Manual: the site as a man page. Only the typographic devices a terminal
+ * pager has: bold, underline, reverse video. Section names flush left in
+ * caps, body indented, header and footer lines mirroring troff's.
+ */
+
+:root {
+  --paper: oklch(0.985 0.002 100);
+  --ink: oklch(0.2 0.005 100);
+  --muted: oklch(0.52 0.008 100);
+  --rule: oklch(0.87 0.006 100);
+  --wash: oklch(0.95 0.004 100);
+  --user-lightness: 0.5;
+
+  --indent: 7ch;
+  --measure: 72ch;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: oklch(0.17 0.004 100);
+    --ink: oklch(0.9 0.006 100);
+    --muted: oklch(0.64 0.008 100);
+    --rule: oklch(0.32 0.006 100);
+    --wash: oklch(0.22 0.005 100);
+    --user-lightness: 0.8;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: oklch(0.17 0.004 100);
+  --ink: oklch(0.9 0.006 100);
+  --muted: oklch(0.64 0.008 100);
+  --rule: oklch(0.32 0.006 100);
+  --wash: oklch(0.22 0.005 100);
+  --user-lightness: 0.8;
+  color-scheme: dark;
+}
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: "Iosevka SS08", ui-monospace, monospace;
+  font-size: 100%;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+p {
+  margin: 0 0 1lh;
+}
+
+small {
+  font-size: inherit;
+}
+
+button {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+a,
+.link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+
+  &:hover {
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+  }
+}
+
+:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.page {
+  max-width: calc(var(--measure) + var(--indent) + 4ch);
+  margin: 0 auto;
+  padding: 0 max(1rem, env(safe-area-inset-right)) 2lh
+    max(1rem, env(safe-area-inset-left));
+}
+
+.header > .container,
+.footer > .colophon {
+  display: flex;
+  justify-content: space-between;
+  gap: 2ch;
+}
+
+.header {
+  padding-block: max(1.5rem, env(safe-area-inset-top)) 1lh;
+
+  .title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: normal;
+    text-transform: uppercase;
+
+    > .link {
+      text-decoration: none;
+    }
+  }
+
+  .right {
+    text-transform: uppercase;
+  }
+}
+
+.heading {
+  margin: 1.5lh 0 0.5lh;
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+section > :not(.heading),
+.content > menu,
+.footer > .subtitle {
+  margin-left: var(--indent);
+  max-width: var(--measure);
+}
+
+ul {
+  list-style: none;
+  margin-block: 0 1lh;
+  padding: 0;
+}
+
+.stats {
+  > li {
+    display: grid;
+    grid-template-columns: 18ch 8ch;
+  }
+
+  .value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.recent-tracks {
+  > li {
+    padding-left: 2ch;
+    text-indent: -2ch;
+  }
+
+  .subtitle {
+    white-space: nowrap;
+  }
+}
+
+/* The SEE ALSO line: comma separated, section number in parentheses. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+
+  > li + li::before {
+    content: ",\00a0";
+  }
+
+  a::after {
+    content: "(1)";
+  }
+}
+
+.footer {
+  margin-top: 3lh;
+
+  > .subtitle {
+    display: block;
+    margin-bottom: 2lh;
+  }
+
+  > .colophon > :last-child {
+    text-transform: uppercase;
+  }
+}
+
+@media (width < 40rem) {
+  :root {
+    --indent: 3ch;
+  }
+
+  .header .center,
+  .header .right,
+  .footer .colophon > :last-child {
+    display: none;
+  }
+}
+
+@keyframes loading-dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75%,
+  100% {
+    content: "...";
+  }
+}
+
+.loader::after {
+  content: "";
+  animation: loading-dots 0.75s infinite steps(4);
+}
+
+/* Chat: a framed region like a pager's split, no window chrome. */
+
+.terminal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+
+  &:fullscreen {
+    padding: 1rem;
+
+    > .content {
+      max-height: none;
+      flex: 1;
+    }
+  }
+
+  > .topbar {
+    display: flex;
+    gap: 1.5ch;
+    justify-content: flex-end;
+    padding: 0 1ch;
+    background: var(--ink);
+    color: var(--paper);
+
+    &::before {
+      content: "chat(7)";
+      margin-right: auto;
+      font-weight: bold;
+    }
+
+    > .control {
+      &.close::before {
+        content: "q";
+      }
+
+      &.minimize::before {
+        content: "-";
+      }
+
+      &.maximize::before {
+        content: "+";
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: var(--paper);
+        color: var(--ink);
+        outline: none;
+      }
+    }
+  }
+
+  > .content {
+    display: flex;
+    flex-direction: column;
+    max-height: 25rem;
+    padding: 0 1ch;
+  }
+}
+
+.chat-history {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+
+  > .scrollable {
+    display: flex;
+    flex-direction: column-reverse;
+    overflow: hidden auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+
+    > .content {
+      margin: 0;
+      padding-block: 0.5lh;
+    }
+  }
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    height: 0.5lh;
+    pointer-events: none;
+  }
+
+  &::before {
+    top: 0;
+    background: linear-gradient(var(--paper), transparent);
+  }
+
+  &::after {
+    bottom: 0;
+    background: linear-gradient(transparent, var(--paper));
+  }
+
+  ul ul {
+    margin: 0 0 0 3ch;
+  }
+
+  ul ul > li {
+    position: relative;
+
+    &::before {
+      content: "└─";
+      position: absolute;
+      left: -2.5ch;
+      color: var(--muted);
+    }
+  }
+}
+
+.chat-message {
+  text-wrap: pretty;
+
+  > .user {
+    font-weight: bold;
+    color: oklch(from var(--user-color) var(--user-lightness) min(c, 0.16) h);
+  }
+
+  > .text {
+    display: inline;
+
+    code {
+      padding: 0 0.5ch;
+      background: var(--wash);
+      font-size: inherit;
+    }
+  }
+
+  > .edited,
+  > .timestamp {
+    color: var(--muted);
+  }
+
+  > .reply {
+    color: var(--muted);
+    visibility: hidden;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--ink);
+      visibility: visible;
+    }
+
+    &:disabled {
+      visibility: hidden !important;
+    }
+  }
+
+  &:hover > .reply,
+  &:focus-within > .reply {
+    visibility: visible;
+  }
+}
+
+.chat-replying-to {
+  position: relative;
+  margin-bottom: 0.5lh;
+  padding: 0 3ch 0 1ch;
+  border-left: 1px solid var(--ink);
+  background: var(--wash);
+
+  > .clear {
+    position: absolute;
+    top: 0;
+    right: 1ch;
+    color: var(--muted);
+  }
+}
+
+.chat-input {
+  flex: 0 0 auto;
+  padding-block: 0.25lh 0.5lh;
+  border-top: 1px solid var(--rule);
+
+  > .wrapper {
+    position: relative;
+    display: flex;
+
+    &::before {
+      content: ":";
+      font-weight: bold;
+    }
+
+    > .input {
+      flex: 1;
+      min-width: 0;
+      padding: 0 9ch 0 1ch;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      caret-color: var(--ink);
+
+      &::placeholder {
+        color: var(--muted);
+      }
+
+      &:focus {
+        outline: 0;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+      }
+    }
+  }
+}
+
+.caret-buddy {
+  position: absolute;
+  right: 0;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.chat-tip {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+
+  > .clear:hover {
+    color: var(--ink);
+  }
+}
+
+.chat-toast {
+  position: absolute;
+  z-index: 1;
+  bottom: 3.5lh;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 1ch;
+  width: max-content;
+  max-width: calc(100% - 2ch);
+  padding: 0 1ch;
+  background: var(--ink);
+  color: var(--paper);
+
+  &.error::before {
+    content: "error:";
+    font-weight: bold;
+  }
+}
+
+/* Listening */
+
+menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  margin-block: 0 1lh;
+  padding: 0;
+  list-style: none;
+
+  > [aria-current] {
+    padding: 0 0.5ch;
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: inherit;
+}
+
+th {
+  text-align: left;
+  font-weight: bold;
+  border-bottom: 1px solid var(--ink);
+}
+
+th,
+td {
+  padding: 0;
+  vertical-align: top;
+
+  + th,
+  + td {
+    padding-left: 2ch;
+  }
+
+  &.numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+td:first-child {
+  color: var(--muted);
+}
+
+tbody tr:hover {
+  background: var(--wash);
+}
