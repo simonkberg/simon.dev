@@ -341,7 +341,7 @@ def footer_manual(page):
 
 
 def header_ledger(section):
-    path = f'<span class="path">/{section.lower()}</span>' if section else ""
+    path = f'<span class="path">/{section.lower().replace(" ", "-")}</span>' if section else ""
     return f"""
 <header class="header"><div class="container">
   <h1 class="title"><a href="index.html" class="link"><span class="shebang">#!/</span>simon kjellberg</a>{path}</h1>
