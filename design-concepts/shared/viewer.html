@@ -124,10 +124,15 @@
 
 <div class="bar">
   <div class="group" data-key="concept">
-    <span>concept</span>
-    <button data-value="manual">Manual</button>
-    <button data-value="ledger">Ledger</button>
+    <span>variant</span>
     <button data-value="panes">Panes</button>
+    <button data-value="ledger">Ledger</button>
+    <button data-value="manual">Manual</button>
+  </div>
+  <div class="group" data-key="source">
+    <span>stylesheet</span>
+    <button data-value="unified">unified</button>
+    <button data-value="original">original</button>
   </div>
   <div class="group" data-key="page">
     <span>page</span>
@@ -166,20 +171,28 @@
   };
   const HINT =
     " Chat works: hover a message and press \u21A9 to reply, Esc to cancel, send /error for the error toast.";
+  const SOURCE = {
+    unified:
+      " <strong>Unified:</strong> one markup and one stylesheet; switching variant only changes <code>data-variant</code>, as the switcher in the page footer does.",
+    original:
+      " <strong>Original:</strong> the concept's own stylesheet, for comparison.",
+  };
 
   const fontStyle = document.createElement("style");
   fontStyle.textContent = FONTS;
   document.head.append(fontStyle);
 
   const state = {
-    concept: "manual",
+    concept: "panes",
+    source: "unified",
     page: "index",
     theme: "system",
     width: "desktop",
   };
-  const [concept, page] = location.hash.slice(1).split(".");
+  const [concept, page, source] = location.hash.slice(1).split(".");
   if (concept in ABOUT) state.concept = concept;
-  if (page && `${state.concept}/${page}` in DOCS) state.page = page;
+  if (source in SOURCE) state.source = source;
+  if (page && `unified/${page}` in DOCS) state.page = page;
 
   const frame = document.getElementById("frame");
   const stage = document.getElementById("stage");
@@ -204,23 +217,43 @@
         );
       });
     });
-    document.getElementById("about").innerHTML = ABOUT[state.concept] + HINT;
+    document.getElementById("about").innerHTML =
+      ABOUT[state.concept] + SOURCE[state.source] + HINT;
     stage.classList.toggle("mobile", state.width === "mobile");
     if (reload) {
-      const doc = DOCS[`${state.concept}/${state.page}`].replace(
-        "</head>",
-        `<style>${FONTS}</style></head>`,
-      );
-      frame.srcdoc = doc;
-      try {
-        history.replaceState(null, "", `#${state.concept}.${state.page}`);
-      } catch {}
+      const key =
+        state.source === "unified"
+          ? `unified/${state.page}`
+          : `${state.concept}/${state.page}`;
+      frame.srcdoc = DOCS[key]
+        .replace('data-variant="panes"', `data-variant="${state.concept}"`)
+        .replace("</head>", `<style>${FONTS}</style></head>`);
+    } else if (state.source === "unified") {
+      frame.contentDocument.documentElement.dataset.variant = state.concept;
     }
+    try {
+      history.replaceState(
+        null,
+        "",
+        `#${state.concept}.${state.page}.${state.source}`,
+      );
+    } catch {}
     applyTheme();
   };
 
   frame.addEventListener("load", () => {
     applyTheme();
+    // Follow the in-page switcher.
+    new MutationObserver(() => {
+      const variant = frame.contentDocument.documentElement.dataset.variant;
+      if (variant && variant !== state.concept) {
+        state.concept = variant;
+        render(false);
+      }
+    }).observe(frame.contentDocument.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-variant"],
+    });
     frame.contentDocument.addEventListener("click", (event) => {
       const link = event.target.closest("a[href]");
       if (!link || link.target === "_blank") return;
@@ -239,7 +272,11 @@
       const key = group.dataset.key;
       if (state[key] === button.dataset.value) return;
       state[key] = button.dataset.value;
-      render(key === "concept" || key === "page");
+      render(
+        key === "page" ||
+          key === "source" ||
+          (key === "concept" && state.source === "original"),
+      );
     });
   });
 

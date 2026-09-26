@@ -12,13 +12,39 @@ simon.dev; each concept is one stylesheet over it.
 
 All three follow `prefers-color-scheme` and work down to phone width.
 
+## Unified
+
+`unified/` is all three from one markup and one stylesheet. The rules in
+`unified/style.css` read only custom properties; a variant is the block that sets
+them (`:root[data-variant="…"]`), and no rule outside those blocks names a variant.
+Colours are `light-dark()` pairs, so `color-scheme` or `data-theme` picks the palette.
+
+- `data-variant` on `<html>` selects the variant; Panes is the default.
+- The footer switcher sets it and saves a `variant` cookie. A small inline script
+  in `<head>` reads the cookie before first paint, so the server renders the same
+  static page for everyone.
+- About 215 variables; a variant sets 80–115 of them, the rest keep the default.
+  Structural choices are variables too: grid templates, `position`, generated
+  `content` (the `(1)` after links, the chat's `live` label, reply glyphs).
+
+Compared with the three originals, pixel for pixel up to the footer, the
+differences are:
+
+- The footer (switcher, and Manual's colophon on every page) now appears on every
+  page in every variant.
+- Manual's header reads `SIMON KJELLBERG(1)`, not `SIMON-KJELLBERG(1)`: the name
+  is one piece of shared markup. Its centre label reads `Not-Found` on the 404.
+- Ledger's period label sits on its own line at phone width, as intended; the
+  original's cascade kept it inline.
+- Reduced motion now stops animations in all three (it was Ledger only).
+
 ## Viewing
 
 Serve the repository root (the pages load the Iosevka files from `app/assets/`):
 
 ```sh
 python3 -m http.server
-# http://localhost:8000/design-concepts/manual/index.html
+# http://localhost:8000/design-concepts/unified/index.html
 ```
 
 `shared/preview.js` stands in for the chat's client code (reply, cancel with Esc,

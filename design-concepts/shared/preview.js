@@ -120,6 +120,33 @@
     scrollable?.scrollTo({ top: scrollable.scrollHeight });
   });
 
+  // Variant switcher (unified pages only). The viewer may also set the
+  // attribute from outside, so the buttons follow the attribute.
+  const root = document.documentElement;
+  const variantButtons = document.querySelectorAll(".variants > button");
+  const syncVariantButtons = () => {
+    const current = root.dataset.variant ?? "panes";
+    for (const button of variantButtons) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.variant === current),
+      );
+    }
+  };
+  for (const button of variantButtons) {
+    button.addEventListener("click", () => {
+      root.dataset.variant = button.dataset.variant;
+      document.cookie = `variant=${button.dataset.variant}; path=/; max-age=31536000; samesite=lax`;
+    });
+  }
+  if (variantButtons.length) {
+    new MutationObserver(syncVariantButtons).observe(root, {
+      attributes: true,
+      attributeFilter: ["data-variant"],
+    });
+    syncVariantButtons();
+  }
+
   // Theme switch for the standalone pages; the viewer drives it from outside.
   if (window.top === window) {
     const modes = ["system", "light", "dark"];

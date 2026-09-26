@@ -1,6 +1,7 @@
 """Builds the static redesign concepts from the site's real markup and content.
 
-    python3 design-concepts/build.py            # writes <concept>/*.html, then oxfmt
+    python3 design-concepts/build.py            # writes <concept>/*.html and
+                                                # unified/*.html, then oxfmt
     python3 design-concepts/build.py --viewer out.html
                                                 # also a single-file viewer with
                                                 # subset fonts inlined (needs fonttools + brotli)
@@ -383,8 +384,12 @@ CHROME = {
 def render(concept, page, head_extra):
     title, section = PAGES[page]
     header, footer = CHROME[concept]
+    return document(title, page, head_extra, header(section), footer(page))
+
+
+def document(title, page, head_extra, header, footer, html_attrs=""):
     return f"""<!doctype html>
-<html lang="en">
+<html lang="en"{html_attrs}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -392,8 +397,8 @@ def render(concept, page, head_extra):
 {head_extra}
 </head>
 <body data-page="{page}">
-<div class="page">{header(section)}
-<div class="content">{BODIES[page]()}{footer(page)}</div>
+<div class="page">{header}
+<div class="content">{BODIES[page]()}{footer}</div>
 </div>
 <script src="../shared/preview.js" defer></script>
 </body>
@@ -401,11 +406,64 @@ def render(concept, page, head_extra):
 """
 
 
+# --- unified: one markup for every variant --------------------------------
+
+VARIANTS = ["panes", "ledger", "manual"]
+
+# Runs before first paint so a saved variant never flashes the default.
+VARIANT_SCRIPT = (
+    "<script>(()=>{const m=document.cookie.match(/(?:^|; )variant=(panes|ledger|manual)(?:;|$)/);"
+    "if(m)document.documentElement.dataset.variant=m[1]})()</script>"
+)
+
+
+def header_unified(page):
+    path = f'<span class="path">{page}</span>' if page != "index" else ""
+    home = ' aria-current="page"' if page == "index" else ""
+    listening = ' aria-current="page"' if page == "listening" else ""
+    return f"""
+<header class="header"><div class="container">
+  <h1 class="title"><a href="index.html" class="link">simon kjellberg</a>{path}</h1>
+  <nav class="windows" aria-label="Pages">
+    <a href="index.html"{home}>0:home</a>
+    <a href="listening.html"{listening}>1:listening</a>
+  </nav>
+  <span class="status">stockholm, se</span>
+</div></header>"""
+
+
+def footer_unified(page):
+    note = f'<small class="subtitle">{RAILWAY}</small>' if page == "index" else ""
+    buttons = "".join(
+        f'<button type="button" data-variant="{v}" aria-pressed="{str(v == "panes").lower()}">{v}</button>'
+        for v in VARIANTS
+    )
+    return f"""
+<footer class="footer">{note}
+  <div class="variants" role="group" aria-label="Style">{buttons}</div>
+  <div class="colophon"><span>simon.dev</span><span>September 2026</span><span aria-hidden="true">simon kjellberg(1)</span></div>
+</footer>"""
+
+
+def render_unified(page, head_extra):
+    title, _ = PAGES[page]
+    return document(
+        title,
+        page,
+        VARIANT_SCRIPT + "\n" + head_extra,
+        header_unified(page),
+        footer_unified(page),
+        ' data-variant="panes"',
+    )
+
+
 def build_static():
     head = '<link rel="stylesheet" href="../shared/fonts.css">\n<link rel="stylesheet" href="style.css">'
     for concept in CONCEPTS:
         for page in PAGES:
             (ROOT / concept / f"{page}.html").write_text(render(concept, page, head))
+    for page in PAGES:
+        (ROOT / "unified" / f"{page}.html").write_text(render_unified(page, head))
 
 
 # --- single-file viewer ----------------------------------------------------
@@ -422,10 +480,11 @@ def subset_fonts():
     from fontTools import subset
 
     text = "".join(
-        (ROOT / c / "style.css").read_text() for c in CONCEPTS
+        (ROOT / c / "style.css").read_text() for c in [*CONCEPTS, "unified"]
     ) + (ROOT / "shared" / "preview.js").read_text()
-    for c in CONCEPTS:
-        for p in PAGES:
+    for p in PAGES:
+        text += render_unified(p, "")
+        for c in CONCEPTS:
             text += render(c, p, "")
     unicodes = sorted({ord(ch) for ch in text} | set(range(0x20, 0x7F)) | set(range(0xA0, 0x180)))
     faces = []
@@ -460,6 +519,12 @@ def build_viewer(out):
                 f"<script>{preview}</script>",
             )
             docs[f"{concept}/{page}"] = doc
+    css = (ROOT / "unified" / "style.css").read_text()
+    for page in PAGES:
+        docs[f"unified/{page}"] = render_unified(page, f"<style>{css}</style>").replace(
+            '<script src="../shared/preview.js" defer></script>',
+            f"<script>{preview}</script>",
+        )
     template = (ROOT / "shared" / "viewer.html").read_text()
     viewer = template.replace("\"__FONTS__\"", json.dumps(fonts)).replace(
         "\"__DOCS__\"", json.dumps(docs).replace("</", "<\\/")
