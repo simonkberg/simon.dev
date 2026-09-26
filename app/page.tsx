@@ -34,7 +34,17 @@ export default function RootPage() {
   const tipDismissed = getChatTipDismissed();
 
   return (
-    <Page>
+    <Page
+      footnote={
+        <Subtitle>
+          Hosted on{" "}
+          <ExternalLink href="https://railway.com?referralCode=wzuAxn">
+            Railway
+          </ExternalLink>{" "}
+          (affiliate link).
+        </Subtitle>
+      }
+    >
       <section aria-labelledby="about-heading">
         <Heading level={2} id="about-heading">
           About <Subtitle>(Location: Stockholm, Sweden)</Subtitle>
@@ -107,16 +117,6 @@ export default function RootPage() {
           </Suspense>
         </Terminal>
       </section>
-
-      <footer>
-        <Subtitle>
-          Hosted on{" "}
-          <ExternalLink href="https://railway.com?referralCode=wzuAxn">
-            Railway
-          </ExternalLink>{" "}
-          (affiliate link).
-        </Subtitle>
-      </footer>
     </Page>
   );
 }

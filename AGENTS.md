@@ -268,6 +268,18 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 Components use React's recommended [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders) pattern to adjust state based on changing props (e.g. `ChatToast`, `CaretBuddy`, `RelativeTime`). This is NOT an anti-pattern — do not suggest `useEffect` or `useMemo` as replacements.
 
+### Style Variants
+
+The site has three looks (panes, ledger, manual) over one markup. `app/global.css` is a
+default block of custom properties, one `:root[data-variant="…"]` block per variant, then
+rules that read only those properties: no rule outside the blocks names a variant. A change
+that needs a variant to differ is a new property, not a scoped selector.
+
+`<html data-variant="panes">` is the server default. `VariantSwitcher` saves the choice in a
+`variant` cookie, and a script in `<head>` (`app/lib/variant.ts`) applies it before first
+paint. Don't read the cookie with `cookies()` in the layout: every page would render per
+request and lose its static shell. Check chat changes in all three variants.
+
 ### Markdown Rendering
 
 Discord message content is raw markdown, rendered by `app/components/Markdown.tsx`. We use simple-markdown's parser and walk the AST ourselves — their React output builds React 18 elements (`react.element` brand) that React 19 rejects, so don't swap in `defaultReactOutput`.

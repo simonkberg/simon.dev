@@ -34,7 +34,7 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
           <>{track.name}</> &ndash; <em>{track.artist}</em>{" "}
           {track.loved ? " ❤ " : ""}
           {track.nowPlaying ? (
-            <Subtitle>(Now playing)</Subtitle>
+            <small className="subtitle now-playing">(Now playing)</small>
           ) : track.playedAt ? (
             <Subtitle>
               (

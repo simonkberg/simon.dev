@@ -14,6 +14,9 @@ All three follow `prefers-color-scheme` and work down to phone width.
 
 ## Unified
 
+The app now ships this as `app/global.css`, which is the source of truth; these
+files are the design reference it started from.
+
 `unified/` is all three from one markup and one stylesheet. The rules in
 `unified/style.css` read only custom properties; a variant is the block that sets
 them (`:root[data-variant="…"]`), and no rule outside those blocks names a variant.

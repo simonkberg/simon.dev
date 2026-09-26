@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { config } from "@/config";
@@ -14,10 +14,9 @@ describe("Page", () => {
     );
 
     const heading = screen.getByRole("heading", { level: 1 });
-    const link = screen.getByRole("link");
+    const link = within(heading).getByRole("link");
 
-    expect(heading).toContainElement(link);
-    expect(link).toHaveTextContent(`#!/${config.title}`);
+    expect(link).toHaveTextContent(config.title);
     expect(link).toHaveAttribute("href", "/");
   });
 
@@ -28,8 +27,9 @@ describe("Page", () => {
       </Page>,
     );
 
-    const link = screen.getByRole("link");
-    expect(link).toHaveTextContent(`#!/${config.title}/Listening`);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "listening",
+    );
   });
 
   it("renders children content", () => {
@@ -40,5 +40,19 @@ describe("Page", () => {
     );
 
     expect(screen.getByText("Page content")).toBeInTheDocument();
+  });
+
+  it("renders the footnote and the variant switcher in the footer", () => {
+    render(
+      <Page footnote={<small>Footnote</small>}>
+        <div>Page content</div>
+      </Page>,
+    );
+
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByText("Footnote")).toBeInTheDocument();
+    expect(
+      within(footer).getByRole("group", { name: "Style" }),
+    ).toBeInTheDocument();
   });
 });

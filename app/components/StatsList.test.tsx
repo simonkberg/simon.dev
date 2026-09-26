@@ -25,8 +25,8 @@ describe("StatsList", () => {
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(2);
 
-    expect(items[0]).toHaveTextContent("TypeScript: 45.67%");
-    expect(items[1]).toHaveTextContent("JavaScript: 30.12%");
+    expect(items[0]).toHaveTextContent("TypeScript 45.67%");
+    expect(items[1]).toHaveTextContent("JavaScript 30.12%");
   });
 
   it("displays error message when stats fetch fails", async () => {

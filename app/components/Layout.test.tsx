@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Layout } from "@/components/Layout";
 import { config } from "@/config";
+import { variantScript } from "@/lib/variant";
 
 vi.mock(import("@/assets/fonts"), () => ({
   iosevka: {
@@ -28,6 +29,20 @@ describe("Layout", () => {
     render(<Layout />, { container: document });
 
     expect(document.documentElement).toHaveClass("iosevka-mock-class");
+  });
+
+  it("should default to the panes variant", () => {
+    render(<Layout />, { container: document });
+
+    expect(document.documentElement).toHaveAttribute("data-variant", "panes");
+  });
+
+  it("should apply the saved variant from the head", () => {
+    render(<Layout />, { container: document });
+
+    expect(document.head.querySelector("script")?.textContent).toBe(
+      variantScript,
+    );
   });
 
   it("should include Google Tag Manager with correct ID", async () => {
