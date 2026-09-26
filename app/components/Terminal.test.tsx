@@ -59,6 +59,16 @@ describe("Terminal", () => {
     expect(mockRequestFullscreen).not.toHaveBeenCalled();
   });
 
+  it("renders the status in the top bar", () => {
+    render(
+      <Terminal status={<span role="status">live</span>}>
+        Example content
+      </Terminal>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("live");
+  });
+
   it("renders terminal region with a maximize button only", () => {
     render(<Terminal>Example content</Terminal>);
 

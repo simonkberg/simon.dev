@@ -136,6 +136,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Discord:** a DataLoader with a 100-entry LRU batches user lookups, and a rate-limit
   "gate" prevents retry storms when Discord returns 429s. Messages from the site carry a
   `username: content` prefix for attribution.
+- **Chat stream:** `ChatStream` (in the chat's title bar) owns the SSE connection and shows
+  its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
+  the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.

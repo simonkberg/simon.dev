@@ -1,8 +1,12 @@
 "use client";
 
-import { type PropsWithChildren, useRef } from "react";
+import { type PropsWithChildren, type ReactNode, useRef } from "react";
 
-export const Terminal = ({ children }: PropsWithChildren) => {
+export interface TerminalProps extends PropsWithChildren {
+  status?: ReactNode;
+}
+
+export const Terminal = ({ status, children }: TerminalProps) => {
   const terminalRef = useRef<HTMLDivElement>(null);
 
   const handleClickMaximize = () => {
@@ -23,6 +27,7 @@ export const Terminal = ({ children }: PropsWithChildren) => {
       aria-label="Terminal"
     >
       <div className="topbar">
+        {status}
         <button
           className="control maximize"
           aria-label="Maximize"

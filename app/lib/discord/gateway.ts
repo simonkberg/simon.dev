@@ -43,11 +43,13 @@ const ReadyDataSchema = z.object({
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
 
 export type MessageSubscriber = (message: DiscordMessage) => void;
+export type StatusSubscriber = (ready: boolean) => void;
 
 class DiscordGateway {
   #ws: WebSocket | null = null;
   #subscribers = new Set<() => void>();
   #messageSubscribers = new Set<MessageSubscriber>();
+  #statusSubscribers = new Set<StatusSubscriber>();
 
   // Session state (for resume)
   #sessionId: string | null = null;
@@ -106,6 +108,26 @@ class DiscordGateway {
     }
   }
 
+  addStatusSubscriber(callback: StatusSubscriber): void {
+    this.#statusSubscribers.add(callback);
+  }
+
+  removeStatusSubscriber(callback: StatusSubscriber): void {
+    this.#statusSubscribers.delete(callback);
+  }
+
+  #setReady(ready: boolean): void {
+    if (this.#ready === ready) return;
+    this.#ready = ready;
+    for (const callback of this.#statusSubscribers) {
+      try {
+        callback(ready);
+      } catch (err) {
+        log.error({ err }, "Status subscriber callback error");
+      }
+    }
+  }
+
   connect(): Promise<void> {
     if (this.#fatal) return Promise.reject(this.#fatal);
     if (this.#ready) return Promise.resolve();
@@ -157,7 +179,7 @@ class DiscordGateway {
   }
 
   #onReady(): void {
-    this.#ready = true;
+    this.#setReady(true);
     this.#pending?.resolve();
     this.#pending = null;
   }
@@ -346,7 +368,7 @@ class DiscordGateway {
     this.#stopHeartbeat();
     this.#awaitingAck = false;
     this.#ws = null;
-    this.#ready = false;
+    this.#setReady(false);
 
     // Check if we should reconnect
     if (FATAL_CLOSE_CODES.has(code)) {
@@ -397,4 +419,11 @@ export async function subscribeToMessages(
   gw.addMessageSubscriber(callback);
   await gw.connect();
   return () => gw.removeMessageSubscriber(callback);
+}
+
+/** Called with `false` when the gateway drops and `true` once it's back. */
+export function subscribeToStatus(callback: StatusSubscriber): () => void {
+  const gw = getGateway();
+  gw.addStatusSubscriber(callback);
+  return () => gw.removeStatusSubscriber(callback);
 }

@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 
-import { subscribe } from "@/lib/discord/gateway";
+import { subscribe, subscribeToStatus } from "@/lib/discord/gateway";
 import { log } from "@/lib/log";
 
 import { GET } from "./route";
@@ -19,7 +19,10 @@ vi.mock(import("next/server"), async (importOriginal) => {
   return { ...actual, connection: vi.fn() };
 });
 
-vi.mock(import("@/lib/discord/gateway"), () => ({ subscribe: vi.fn() }));
+vi.mock(import("@/lib/discord/gateway"), () => ({
+  subscribe: vi.fn(),
+  subscribeToStatus: vi.fn(),
+}));
 
 function createRequest(signal: AbortSignal) {
   return new NextRequest("http://localhost/api/chat/sse", { signal });
@@ -27,11 +30,14 @@ function createRequest(signal: AbortSignal) {
 
 describe("GET /api/chat/sse", () => {
   let mockUnsubscribe: Mock;
+  let mockUnsubscribeStatus: Mock;
 
   beforeEach(() => {
     vi.useFakeTimers();
     mockUnsubscribe = vi.fn();
+    mockUnsubscribeStatus = vi.fn();
     vi.mocked(subscribe).mockResolvedValue(mockUnsubscribe);
+    vi.mocked(subscribeToStatus).mockReturnValue(mockUnsubscribeStatus);
   });
 
   afterEach(() => {
@@ -101,6 +107,28 @@ describe("GET /api/chat/sse", () => {
     reader.releaseLock();
   });
 
+  it("should send status events when the gateway drops and recovers", async () => {
+    const controller = new AbortController();
+    const response = await GET(createRequest(controller.signal));
+    const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    await reader.read();
+
+    onStatus(false);
+    expect(decoder.decode((await reader.read()).value)).toBe(
+      "event: status\ndata: connecting\n\n",
+    );
+
+    onStatus(true);
+    expect(decoder.decode((await reader.read()).value)).toBe(
+      "event: status\ndata: live\n\n",
+    );
+
+    controller.abort();
+    reader.releaseLock();
+  });
+
   it("should send periodic pings every 30 seconds", async () => {
     const controller = new AbortController();
     const response = await GET(createRequest(controller.signal));
@@ -138,10 +166,12 @@ describe("GET /api/chat/sse", () => {
     await GET(createRequest(controller.signal));
 
     expect(mockUnsubscribe).not.toHaveBeenCalled();
+    expect(mockUnsubscribeStatus).not.toHaveBeenCalled();
 
     controller.abort();
 
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
+    expect(mockUnsubscribeStatus).toHaveBeenCalledOnce();
   });
 
   it("should not write after abort", async () => {
@@ -149,11 +179,13 @@ describe("GET /api/chat/sse", () => {
     const response = await GET(createRequest(controller.signal));
 
     const onMessage = vi.mocked(subscribe).mock.calls[0]![0];
+    const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
 
     controller.abort();
 
     // These should be no-ops after abort
     onMessage();
+    onStatus(false);
     await vi.advanceTimersByTimeAsync(30_000);
 
     // Stream should be closed, reading should complete

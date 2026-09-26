@@ -51,6 +51,10 @@ vi.mock(import("@/components/chat/Chat"), () => ({
   },
 }));
 
+vi.mock(import("@/components/chat/ChatStream"), () => ({
+  ChatStream: () => <span role="status">live</span>,
+}));
+
 vi.mock(import("@/components/RecentTracksList"), () => ({
   RecentTracksList: ({ recentTracks }: RecentTracksListProps) => {
     use(recentTracks);
@@ -258,7 +262,7 @@ describe("RootPage", () => {
       await act(async () => render(<RootPage />));
 
       const region = screen.getByRole("region", { name: /^Chat/ });
-      expect(within(region).getByRole("status")).toBeInTheDocument();
+      expect(within(region).getByText("Loading")).toBeInTheDocument();
       expect(within(region).queryByTestId("chat")).not.toBeInTheDocument();
 
       await act(async () => {
@@ -268,7 +272,7 @@ describe("RootPage", () => {
       });
 
       await waitFor(() => {
-        expect(within(region).queryByRole("status")).not.toBeInTheDocument();
+        expect(within(region).queryByText("Loading")).not.toBeInTheDocument();
         expect(within(region).getByTestId("chat")).toBeInTheDocument();
       });
       vi.useRealTimers();
