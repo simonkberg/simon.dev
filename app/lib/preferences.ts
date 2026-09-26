@@ -28,25 +28,6 @@ export const themePreference = {
 
 export const preferences = [variantPreference, themePreference] as const;
 
-export function isOption<T extends string>(
-  preference: Preference<T>,
-  value: unknown,
-): value is T {
-  return preference.options.includes(value as T);
-}
-
-/** The value saved in a `document.cookie` string, if valid. */
-export function readPreference<T extends string>(
-  preference: Preference<T>,
-  cookie: string,
-): T | undefined {
-  const value = new RegExp(`(?:^|; )${preference.name}=([^;]*)`).exec(
-    cookie,
-  )?.[1];
-
-  return isOption(preference, value) ? value : undefined;
-}
-
 export function preferenceCookie<T extends string>(
   preference: Preference<T>,
   value: T,
@@ -54,15 +35,13 @@ export function preferenceCookie<T extends string>(
   return `${preference.name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
-type SavedPreference = Pick<Preference, "name" | "options">;
-
 /**
  * Applies the saved preferences to the root. Stringified into a `<head>`
  * script so it runs before first paint, which is why it references nothing
  * outside itself and takes the options as an argument. The layout never reads
  * the cookies: `cookies()` there would make every page render per request.
  */
-export function applySavedPreferences(saved: readonly SavedPreference[]) {
+export function applySavedPreferences(saved: readonly Preference[]) {
   for (const { name, options } of saved) {
     const value = new RegExp(`(?:^|; )${name}=([^;]*)`).exec(
       document.cookie,
@@ -73,9 +52,4 @@ export function applySavedPreferences(saved: readonly SavedPreference[]) {
   }
 }
 
-const savedPreferences = preferences.map(({ name, options }) => ({
-  name,
-  options,
-}));
-
-export const preferencesScript = `(${applySavedPreferences.toString()})(${JSON.stringify(savedPreferences)})`;
+export const preferencesScript = `(${applySavedPreferences.toString()})(${JSON.stringify(preferences)})`;

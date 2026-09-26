@@ -8,6 +8,11 @@ export interface HeaderProps {
 
 const toPath = (section: string) => section.toLowerCase().replaceAll(" ", "-");
 
+const windows = [
+  { href: "/", path: "home" },
+  { href: "/listening/", path: "listening" },
+] as const;
+
 export const Header = ({ section }: HeaderProps) => (
   <header className="header">
     <div className="container">
@@ -18,15 +23,17 @@ export const Header = ({ section }: HeaderProps) => (
         {section && <span className="path">{toPath(section)}</span>}
       </h1>
       <nav className="windows" aria-label="Pages">
-        <Link href="/" aria-current={section ? undefined : "page"}>
-          0:home
-        </Link>
-        <Link
-          href="/listening/"
-          aria-current={section === "Listening" ? "page" : undefined}
-        >
-          1:listening
-        </Link>
+        {windows.map(({ href, path }, index) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={
+              path === toPath(section ?? "home") ? "page" : undefined
+            }
+          >
+            {index}:{path}
+          </Link>
+        ))}
       </nav>
       <span className="status">stockholm, se</span>
     </div>

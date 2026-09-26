@@ -1,12 +1,12 @@
 "use client";
 
 import { useId, useLayoutEffect, useSyncExternalStore } from "react";
+import { arrayIncludes } from "ts-extras";
 
 import {
-  isOption,
+  applySavedPreferences,
   type Preference,
   preferenceCookie,
-  readPreference,
 } from "@/lib/preferences";
 
 const attributeOf = (preference: Preference) => `data-${preference.name}`;
@@ -20,12 +20,8 @@ function subscribe(preference: Preference, onChange: () => void) {
   return () => observer.disconnect();
 }
 
-function applyOption<T extends string>(preference: Preference<T>, value: T) {
-  document.documentElement.setAttribute(attributeOf(preference), value);
-}
-
 function selectOption<T extends string>(preference: Preference<T>, value: T) {
-  applyOption(preference, value);
+  document.documentElement.setAttribute(attributeOf(preference), value);
   document.cookie = preferenceCookie(preference, value);
 }
 
@@ -44,17 +40,16 @@ export const PreferenceSwitch = <T extends string>({
       const value = document.documentElement.getAttribute(
         attributeOf(preference),
       );
-      return isOption(preference, value) ? value : preference.fallback;
+      return arrayIncludes(preference.options, value)
+        ? value
+        : preference.fallback;
     },
     () => preference.fallback,
   );
 
-  // The head script applies the cookie before paint; the dev-mode remount
-  // resets <html> attributes, so apply it again. A no-op in production.
-  useLayoutEffect(() => {
-    const saved = readPreference(preference, document.cookie);
-    if (saved) applyOption(preference, saved);
-  }, [preference]);
+  // The head script applies the cookie before paint, but the dev-mode
+  // remount resets <html> attributes, so apply it again.
+  useLayoutEffect(() => applySavedPreferences([preference]), [preference]);
 
   return (
     <div className="switch" role="group" aria-labelledby={labelId}>

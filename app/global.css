@@ -4,7 +4,7 @@
  * root picks one, and each colour is a light-dark() pair, so `color-scheme`
  * (or `data-theme`) picks the palette.
  *
- * The defaults are a plain document; each variant overrides what it needs.
+ * The root always carries a variant; the defaults are what the variants share.
  */
 
 :root {
@@ -197,7 +197,6 @@
   --input-padding: 0.5rem 0;
   --input-rule: 1px solid var(--rule);
   --prompt: ">";
-  --prompt-color: var(--accent);
   --prompt-weight: normal;
   --buddy-size: inherit;
   --buddy-leading: inherit;
@@ -789,7 +788,6 @@ a,
       text-decoration: none;
 
       &:hover {
-        background: none;
         color: var(--ink);
       }
 
@@ -861,12 +859,12 @@ section:has(> .terminal) {
   padding-bottom: var(--chat-section-bottom);
 }
 
-.page > .content > section:has(#writing-heading) {
+.page > .content > section.main {
   grid-column: var(--writing-column);
   grid-row: var(--writing-row);
 }
 
-.page > .content > section:is(:has(#listening-heading), :has(#links-heading)) {
+.page > .content > section.side {
   grid-column: var(--side-column);
 }
 
@@ -910,7 +908,7 @@ section:has(> .terminal) {
   letter-spacing: 0;
 }
 
-#about-heading ~ p:first-of-type {
+.lede {
   font-size: var(--lede-size);
   line-height: var(--lede-leading);
   letter-spacing: var(--lede-tracking);
@@ -1371,7 +1369,7 @@ ul {
 
     &::before {
       content: var(--prompt);
-      color: var(--prompt-color);
+      color: var(--accent);
       font-weight: var(--prompt-weight);
     }
 

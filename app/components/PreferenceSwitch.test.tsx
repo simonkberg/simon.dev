@@ -4,21 +4,16 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   preferenceCookie,
-  preferences,
   themePreference,
   variantPreference,
 } from "@/lib/preferences";
+import { resetPreferences } from "@/mocks/preferences";
 
 import { PreferenceSwitch } from "./PreferenceSwitch";
 
 const root = document.documentElement;
 
-afterEach(() => {
-  for (const { name } of preferences) {
-    root.removeAttribute(`data-${name}`);
-    document.cookie = `${name}=; max-age=0; path=/`;
-  }
-});
+afterEach(resetPreferences);
 
 describe("PreferenceSwitch", () => {
   it("labels the group and presses the fallback without a choice", () => {
