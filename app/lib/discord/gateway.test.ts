@@ -588,6 +588,50 @@ describe("subscribe", () => {
     expect(connectionCount).toBe(1);
   });
 
+  it("should tell status subscribers when the gateway drops and recovers", async () => {
+    const { subscribe, subscribeToStatus } = await import("./gateway");
+    server.use(
+      gateway.addEventListener("connection", ({ client }) => {
+        client.send(
+          createPayload(GatewayOpcode.HELLO, { heartbeat_interval: 60000 }),
+        );
+        client.addEventListener("message", (event) => {
+          const { op } = PayloadSchema.parse(event.data);
+          if (op === GatewayOpcode.IDENTIFY) {
+            client.send(
+              createPayload(
+                GatewayOpcode.DISPATCH,
+                DEFAULT_SESSION,
+                1,
+                "READY",
+              ),
+            );
+          } else if (op === GatewayOpcode.RESUME) {
+            client.send(
+              createPayload(GatewayOpcode.DISPATCH, null, 2, "RESUMED"),
+            );
+          }
+        });
+      }),
+    );
+    await subscribe(vi.fn());
+    const onStatus = vi.fn();
+    const unsubscribe = subscribeToStatus(onStatus);
+
+    getLastClient(gateway.clients)?.close(4000, "Dropped");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onStatus).toHaveBeenLastCalledWith(false);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(onStatus).toHaveBeenLastCalledWith(true);
+    expect(onStatus).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
+    getLastClient(gateway.clients)?.close(4000, "Dropped");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onStatus).toHaveBeenCalledTimes(2);
+  });
+
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {
     const { subscribe } = await import("./gateway");
     let connectionCount = 0;

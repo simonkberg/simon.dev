@@ -1,6 +1,6 @@
 import { connection, type NextRequest, NextResponse } from "next/server";
 
-import { subscribe } from "@/lib/discord/gateway";
+import { subscribe, subscribeToStatus } from "@/lib/discord/gateway";
 import { log } from "@/lib/log";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
@@ -31,6 +31,19 @@ export async function GET(request: NextRequest) {
     return new NextResponse(null, { status: 503 });
   }
 
+  // The client counts an open stream as live; this tells it when the gateway
+  // behind it drops and comes back.
+  const unsubscribeStatus = subscribeToStatus((ready) => {
+    if (aborted) return;
+    void writer
+      .write(
+        encoder.encode(
+          `event: status\ndata: ${ready ? "live" : "connecting"}\n\n`,
+        ),
+      )
+      .catch(ignoreWriteErrors);
+  });
+
   const pingInterval = setInterval(() => {
     if (aborted) return;
     void writer.write(encoder.encode(PING_MESSAGE)).catch(ignoreWriteErrors);
@@ -39,6 +52,7 @@ export async function GET(request: NextRequest) {
   request.signal.addEventListener("abort", () => {
     aborted = true;
     unsubscribe();
+    unsubscribeStatus();
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
   });

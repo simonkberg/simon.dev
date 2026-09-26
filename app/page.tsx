@@ -7,6 +7,7 @@ import { getChatHistory } from "@/actions/chat";
 import { getRecentTracks } from "@/actions/lastfm";
 import { getWakaTimeStats } from "@/actions/wakaTime";
 import { Chat } from "@/components/chat/Chat";
+import { ChatStream } from "@/components/chat/ChatStream";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
@@ -101,7 +102,7 @@ export default function RootPage() {
         <Heading level={2} id="chat-heading">
           Chat
         </Heading>
-        <Terminal>
+        <Terminal status={<ChatStream />}>
           <Suspense fallback={<Loader />}>
             <Chat history={history} tipDismissed={tipDismissed} />
           </Suspense>

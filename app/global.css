@@ -157,6 +157,9 @@
   --topbar-size: inherit;
   --control-padding: 0;
   --control-maximize: none;
+  --status-dot: none;
+  --status-push: 0;
+  --status-weight: normal;
   --control-hover-color: var(--accent);
   --control-hover-bg: transparent;
 
@@ -328,6 +331,7 @@
   --topbar-size: 0.875rem;
   --control-padding: 0 0.5ch;
   --control-maximize: "z";
+  --status-dot: inline-block;
 
   --history-padding: 0.25rem 0.75rem;
   --reply-glyph: "";
@@ -445,6 +449,8 @@
   --topbar-size: 0.875rem;
   --topbar-justify: flex-end;
   --control-maximize: "expand ⤢";
+  --status-dot: inline-block;
+  --status-push: auto;
 
   --fade: 1rem;
   --history-padding: 0.75rem;
@@ -552,6 +558,8 @@
   --topbar-bg: var(--ink);
   --topbar-color: var(--ground);
   --control-maximize: "+";
+  --status-push: auto;
+  --status-weight: bold;
   --control-hover-color: var(--ink);
   --control-hover-bg: var(--ground);
 
@@ -1133,6 +1141,31 @@ ul {
     background: var(--topbar-bg);
     color: var(--topbar-color);
     font-size: var(--topbar-size);
+
+    > .status {
+      margin-right: var(--status-push);
+      padding: var(--control-padding);
+      font-weight: var(--status-weight);
+
+      &::before {
+        content: "";
+        display: var(--status-dot);
+        width: 0.5em;
+        height: 0.5em;
+        margin-right: 0.75ch;
+        border-radius: 50%;
+        background: var(--muted);
+        vertical-align: 0.1em;
+      }
+
+      &[data-status="live"]::before {
+        background: var(--accent);
+      }
+
+      &[data-status="connecting"]::before {
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+    }
 
     > .control {
       padding: var(--control-padding);

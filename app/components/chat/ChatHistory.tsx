@@ -1,9 +1,8 @@
 "use client";
 
 import { animated, useTransition } from "@react-spring/web";
-import { type Dispatch, type SetStateAction, useEffect } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
-import { refreshChatHistory } from "@/actions/chat";
 import type { Message } from "@/lib/discord/api";
 
 import { ChatMessage } from "./ChatMessage";
@@ -70,42 +69,6 @@ export const ChatHistory = ({
   replyToId,
   setReplyToId,
 }: ChatHistoryProps) => {
-  useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let reconnectAttempts = 0;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    const MAX_BACKOFF = 30000;
-
-    const connect = () => {
-      eventSource = new EventSource("/api/chat/sse");
-      eventSource.onopen = () => {
-        reconnectAttempts = 0;
-      };
-      eventSource.onmessage = () => void refreshChatHistory();
-      eventSource.onerror = () => {
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        reconnectAttempts++;
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        const backoff = Math.min(1000 * 2 ** reconnectAttempts, MAX_BACKOFF);
-        reconnectTimer = setTimeout(() => connect(), backoff);
-      };
-    };
-
-    connect();
-
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
-    };
-  }, []);
-
   return (
     <div className="chat-history">
       <div className="scrollable">
