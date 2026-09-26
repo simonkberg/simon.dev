@@ -39,7 +39,7 @@ export default function RootPage() {
         <Heading level={2} id="about-heading">
           About <Subtitle>(Location: Stockholm, Sweden)</Subtitle>
         </Heading>
-        <p className="lede">{config.description}</p>
+        <p>{config.description}</p>
         <p>
           Working as a senior engineer at{" "}
           <ExternalLink href="https://twitter.com/SpotifyEng">

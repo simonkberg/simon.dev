@@ -49,9 +49,6 @@
   --header-max: none;
   --header-inline: 0;
   --title-display: block;
-  --title-size: inherit;
-  --title-leading: inherit;
-  --title-tracking: normal;
   --title-weight: bold;
   --title-case: none;
   --title-prefix: none;
@@ -69,6 +66,7 @@
   --nav-current-bg: transparent;
   --nav-current-weight: normal;
   --nav-current-marker: none;
+  --nav-hover-color: var(--link-hover-color);
   --host-size: inherit;
   --host-margin: auto;
 
@@ -107,9 +105,7 @@
   --heading-wrap: normal;
   --heading-sub-display: inline;
   --heading-sub-gap: 0;
-  --lede-size: inherit;
-  --lede-leading: inherit;
-  --lede-tracking: normal;
+  --heading-sub-case: none;
 
   --stats-columns: minmax(0, 1fr) max-content;
   --stats-gap: 0;
@@ -283,6 +279,7 @@
   --nav-prefix: counter(page) ":";
   --nav-current-bg: var(--rule);
   --nav-current-marker: "*";
+  --nav-hover-color: var(--ink);
 
   --content-display: grid;
   --content-columns: repeat(2, minmax(0, 1fr));
@@ -294,7 +291,7 @@
   --writing-row: span 2;
   --side-column: 2;
 
-  --section-padding: 1rem 2ch 0.5rem;
+  --section-padding: 1rem 2ch;
   --section-border: 1px solid var(--rule);
   --section-active: var(--accent);
 
@@ -305,6 +302,7 @@
   --heading-bg: var(--ground);
   --heading-size: 0.875rem;
   --heading-case: lowercase;
+  --heading-sub-case: lowercase;
   --heading-wrap: nowrap;
 
   --stats-gap: 0 2ch;
@@ -396,10 +394,7 @@
 
   --page-max: 64rem;
   --page-padding: 0 max(1rem, 4vw) 3rem;
-  --header-padding: max(3.5rem, env(safe-area-inset-top)) 0 2.5rem;
-  --title-size: clamp(1.75rem, 1rem + 3.5vw, 3rem);
-  --title-leading: 1.1;
-  --title-tracking: -0.03em;
+  --header-padding: max(2.5rem, env(safe-area-inset-top)) 0 1.5rem;
   --title-case: lowercase;
   --title-prefix: "#!/";
   --nav-gap: 2ch;
@@ -420,9 +415,6 @@
   --heading-row: 1 / span 20;
   --heading-sub-display: block;
   --heading-sub-gap: 0.25rem;
-  --lede-size: 1.25rem;
-  --lede-leading: 1.45;
-  --lede-tracking: -0.01em;
 
   --stats-columns: max-content minmax(4rem, 1fr) max-content;
   --stats-gap: 0.15rem 2ch;
@@ -577,7 +569,7 @@
   --toast-error-bg: var(--ink);
   --toast-error-fg: var(--ground);
 
-  --menu-margin: 0 1lh;
+  --menu-margin: 1lh;
   --menu-current-padding: 0 0.5ch;
   --menu-current-bg: var(--ink);
   --menu-current-fg: var(--ground);
@@ -662,8 +654,8 @@ button {
   cursor: pointer;
 }
 
-a,
-.link {
+/* :where() so a component's own link hover (the period menu's) wins. */
+:where(a, .link) {
   color: inherit;
   text-decoration: underline;
   text-decoration-color: var(--link-line);
@@ -715,10 +707,8 @@ a,
   .title {
     display: var(--title-display);
     margin: 0;
-    font-size: var(--title-size);
+    font-size: inherit;
     font-weight: var(--title-weight);
-    line-height: var(--title-leading);
-    letter-spacing: var(--title-tracking);
     text-transform: var(--title-case);
 
     > .link {
@@ -762,7 +752,7 @@ a,
       }
 
       &:hover {
-        color: var(--ink);
+        color: var(--nav-hover-color);
       }
 
       &[aria-current] {
@@ -815,6 +805,11 @@ section {
 
   > * {
     grid-column: var(--section-body-column);
+  }
+
+  /* Sections space themselves; a trailing margin would double the gap. */
+  > :last-child {
+    margin-block-end: 0;
   }
 }
 
@@ -878,6 +873,7 @@ section:has(> .terminal) {
   > .subtitle {
     display: var(--heading-sub-display);
     margin-top: var(--heading-sub-gap);
+    text-transform: var(--heading-sub-case);
   }
 }
 
@@ -886,13 +882,6 @@ section:has(> .terminal) {
   font-weight: normal;
   text-transform: none;
   letter-spacing: 0;
-}
-
-.lede {
-  font-size: var(--lede-size);
-  line-height: var(--lede-leading);
-  letter-spacing: var(--lede-tracking);
-  text-wrap: pretty;
 }
 
 ul {
