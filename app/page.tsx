@@ -49,7 +49,7 @@ export default function RootPage() {
         </p>
       </section>
 
-      <section aria-labelledby="writing-heading">
+      <section aria-labelledby="writing-heading" className="main">
         <Heading level={2} id="writing-heading">
           Currently writing{" "}
           <Subtitle>
@@ -65,7 +65,7 @@ export default function RootPage() {
         </Suspense>
       </section>
 
-      <section aria-labelledby="listening-heading">
+      <section aria-labelledby="listening-heading" className="side">
         <Heading level={2} id="listening-heading">
           Currently listening to{" "}
           <Subtitle>
@@ -84,11 +84,11 @@ export default function RootPage() {
         </p>
       </section>
 
-      <section aria-labelledby="links-heading">
+      <section aria-labelledby="links-heading" className="side">
         <Heading level={2} id="links-heading">
           Links
         </Heading>
-        <ul>
+        <ul className="links">
           {config.links.map((link) => (
             <li key={link.url}>
               <ExternalLink href={link.url}>{link.label}</ExternalLink>
@@ -107,16 +107,6 @@ export default function RootPage() {
           </Suspense>
         </Terminal>
       </section>
-
-      <footer>
-        <Subtitle>
-          Hosted on{" "}
-          <ExternalLink href="https://railway.com?referralCode=wzuAxn">
-            Railway
-          </ExternalLink>{" "}
-          (affiliate link).
-        </Subtitle>
-      </footer>
     </Page>
   );
 }

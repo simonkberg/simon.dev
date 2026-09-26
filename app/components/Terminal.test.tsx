@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,18 +59,12 @@ describe("Terminal", () => {
     expect(mockRequestFullscreen).not.toHaveBeenCalled();
   });
 
-  it("renders terminal region with control buttons", () => {
+  it("renders terminal region with a maximize button only", () => {
     render(<Terminal>Example content</Terminal>);
 
     const terminal = screen.getByRole("region", { name: "Terminal" });
-    expect(terminal).toBeInTheDocument();
-
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Minimize" }),
-    ).toBeInTheDocument();
-    expect(
+    expect(within(terminal).getAllByRole("button")).toEqual([
       screen.getByRole("button", { name: "Maximize" }),
-    ).toBeInTheDocument();
+    ]);
   });
 });

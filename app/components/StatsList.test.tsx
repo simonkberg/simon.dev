@@ -25,8 +25,19 @@ describe("StatsList", () => {
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(2);
 
-    expect(items[0]).toHaveTextContent("TypeScript: 45.67%");
-    expect(items[1]).toHaveTextContent("JavaScript: 30.12%");
+    expect(items[0]).toHaveTextContent("TypeScript 45.67%");
+    expect(items[1]).toHaveTextContent("JavaScript 30.12%");
+  });
+
+  it("keeps the bars' scale valid when every stat is zero", async () => {
+    const zeroResult: WakaTimeStatsResult = {
+      status: "ok",
+      stats: [{ name: "TypeScript", percent: 0 }],
+    };
+
+    await act(() => render(<StatsList stats={Promise.resolve(zeroResult)} />));
+
+    expect(screen.getByRole("list").style.getPropertyValue("--max")).toBe("1");
   });
 
   it("displays error message when stats fetch fails", async () => {
