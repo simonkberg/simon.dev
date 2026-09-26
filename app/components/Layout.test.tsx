@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Layout } from "@/components/Layout";
 import { config } from "@/config";
-import { preferencesScript } from "@/lib/preferences";
 
 vi.mock(import("@/assets/fonts"), () => ({
   iosevka: {
@@ -38,12 +37,11 @@ describe("Layout", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "system");
   });
 
-  it("should apply the saved preferences from the head", () => {
-    render(<Layout />, { container: document });
+  it("should render the given preferences", () => {
+    render(<Layout variant="manual" theme="dark" />, { container: document });
 
-    expect(document.head.querySelector("script")?.textContent).toBe(
-      preferencesScript,
-    );
+    expect(document.documentElement).toHaveAttribute("data-variant", "manual");
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 
   it("should include Google Tag Manager with correct ID", async () => {

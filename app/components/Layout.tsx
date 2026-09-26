@@ -3,28 +3,26 @@ import { GoogleTagManager } from "@next/third-parties/google";
 import type { PropsWithChildren } from "react";
 
 import { iosevka } from "@/assets/fonts";
+import { Preferences, type SavedPreferences } from "@/components/Preferences";
 import { config } from "@/config";
-import {
-  preferencesScript,
-  themePreference,
-  variantPreference,
-} from "@/lib/preferences";
+import { themePreference, variantPreference } from "@/lib/preferences";
 
-export const Layout = ({ children }: PropsWithChildren) => {
-  return (
-    // The head script swaps the data attributes before hydration.
-    <html
-      lang="en"
-      className={iosevka.className}
-      data-variant={variantPreference.fallback}
-      data-theme={themePreference.fallback}
-      suppressHydrationWarning
-    >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: preferencesScript }} />
-      </head>
-      <GoogleTagManager gtmId={config.gtmId} />
-      <body>{children}</body>
-    </html>
-  );
-};
+export const Layout = ({
+  children,
+  variant = variantPreference.fallback,
+  theme = themePreference.fallback,
+}: PropsWithChildren<Partial<SavedPreferences>>) => (
+  <html
+    lang="en"
+    className={iosevka.className}
+    data-variant={variant}
+    data-theme={theme}
+  >
+    <GoogleTagManager gtmId={config.gtmId} />
+    <body>
+      <Preferences variant={variant} theme={theme}>
+        {children}
+      </Preferences>
+    </body>
+  </html>
+);

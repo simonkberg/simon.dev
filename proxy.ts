@@ -1,12 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import {
+  savedOption,
+  themePreference,
+  variantPreference,
+} from "@/lib/preferences";
 import { randomName } from "@/lib/randomName";
 import { decrypt, encrypt, UsernameSchema } from "@/lib/session";
 
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next();
+  const variant = savedOption(
+    variantPreference,
+    request.cookies.get(variantPreference.name)?.value,
+  );
+  const theme = savedOption(
+    themePreference,
+    request.cookies.get(themePreference.name)?.value,
+  );
+  const url = request.nextUrl.clone();
+  url.pathname = `/${variant}/${theme}${url.pathname}`;
+  const response = NextResponse.rewrite(url);
 
   const cookie = request.cookies.get("session");
   const session = await decrypt(cookie?.value);
@@ -33,10 +48,10 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
+     * - health (readiness route)
+     * - _next, __nextjs (Next.js internals)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!api|health|_next|__nextjs|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
 };
