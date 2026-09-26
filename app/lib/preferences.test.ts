@@ -70,7 +70,7 @@ describe("applySavedPreferences", () => {
         root.setAttribute(`data-${preference.name}`, preference.fallback);
         document.cookie = preferenceCookie(preference, option);
 
-        applySavedPreferences();
+        applySavedPreferences(preferences);
 
         expect(root).toHaveAttribute(`data-${preference.name}`, option);
       }
@@ -83,13 +83,16 @@ describe("applySavedPreferences", () => {
     document.cookie = "variant=neon; path=/";
     document.cookie = "theme=sepia; path=/";
 
-    applySavedPreferences();
+    applySavedPreferences(preferences);
 
     expect(root).toHaveAttribute("data-variant", "panes");
     expect(root).toHaveAttribute("data-theme", "system");
   });
 
-  it("is what the head script runs", () => {
-    expect(preferencesScript).toBe(`(${applySavedPreferences.toString()})()`);
+  it("is what the head script runs, with every option", () => {
+    expect(preferencesScript).toContain(applySavedPreferences.toString());
+    for (const preference of preferences) {
+      expect(preferencesScript).toContain(JSON.stringify(preference.options));
+    }
   });
 });

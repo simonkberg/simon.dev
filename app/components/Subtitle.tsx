@@ -1,5 +1,11 @@
 import type { PropsWithChildren } from "react";
 
-export const Subtitle = ({ children }: PropsWithChildren) => (
-  <small className="subtitle">{children}</small>
+export interface SubtitleProps extends PropsWithChildren {
+  className?: string;
+}
+
+export const Subtitle = ({ className, children }: SubtitleProps) => (
+  <small className={className ? `subtitle ${className}` : "subtitle"}>
+    {children}
+  </small>
 );

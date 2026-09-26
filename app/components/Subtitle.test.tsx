@@ -8,4 +8,9 @@ describe("Subtitle", () => {
     render(<Subtitle>Test subtitle</Subtitle>);
     expect(screen.getByText("Test subtitle")).toBeInTheDocument();
   });
+
+  it("adds an extra class name", () => {
+    render(<Subtitle className="now-playing">Now</Subtitle>);
+    expect(screen.getByText("Now")).toHaveClass("subtitle", "now-playing");
+  });
 });
