@@ -143,7 +143,8 @@
   --terminal-position: relative;
   --terminal-border: none;
   --terminal-radius: 0;
-  --terminal-fs-padding: 0;
+  --terminal-fs-padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
   --terminal-height: 26rem;
   --terminal-inset: 0;
   --topbar-position: static;
@@ -549,7 +550,6 @@
   --footer-gap: 3lh;
 
   --terminal-border: 1px solid var(--ink);
-  --terminal-fs-padding: 1rem;
   --terminal-height: 25rem;
   --terminal-inset: 0 1ch;
   --topbar-justify: flex-end;
@@ -1112,6 +1112,7 @@ ul {
 
   &:fullscreen {
     padding: var(--terminal-fs-padding);
+    border: 0;
     border-radius: 0;
 
     /* Panes hangs the bar on its section's border, which fullscreen hides. */
