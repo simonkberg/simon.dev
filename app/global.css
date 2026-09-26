@@ -140,11 +140,6 @@
   --footer-color: inherit;
   --footer-gap: 0;
   --footer-padding: 0;
-  --footer-note-display: inline;
-  --footer-note-gap: 0;
-  --colophon-display: none;
-  --colophon-last: inline;
-  --variants-size: 0.875rem;
 
   --terminal-position: relative;
   --terminal-border: none;
@@ -563,10 +558,6 @@
   --links-marker-position: static;
   --links-suffix: "(1)";
   --footer-gap: 3lh;
-  --footer-note-display: block;
-  --footer-note-gap: 2lh;
-  --colophon-display: flex;
-  --variants-size: inherit;
 
   --terminal-border: 1px solid var(--ink);
   --terminal-fs-padding: 1rem;
@@ -641,7 +632,6 @@
     --indent: 3ch;
     --path-display: none;
     --header-mirror: none;
-    --colophon-last: none;
   }
 }
 
@@ -881,7 +871,7 @@ section:has(> .terminal) {
 }
 
 /* Zero specificity: element rules (a table's width, the stats' columns) win. */
-:where(section > :not(.heading), .content > menu, .footer > :not(.colophon)) {
+:where(section > :not(.heading), .content > menu, .footer > *) {
   margin-left: var(--indent);
   max-width: var(--measure);
 }
@@ -1073,34 +1063,31 @@ ul {
 /* Footer */
 
 .footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5lh;
   margin-top: var(--footer-gap);
   padding: var(--footer-padding);
   color: var(--footer-color);
-
-  > .subtitle {
-    display: var(--footer-note-display);
-    margin-bottom: var(--footer-note-gap);
-  }
-
-  > .colophon {
-    display: var(--colophon-display);
-    justify-content: space-between;
-    gap: 2ch;
-
-    > :last-child {
-      display: var(--colophon-last);
-      text-transform: uppercase;
-    }
-  }
 }
 
-.variants {
+.preferences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25lh 4ch;
+  font-size: var(--small-size);
+}
+
+.switch {
   display: flex;
   flex-wrap: wrap;
   gap: 0 1.5ch;
-  margin-block: 0.5lh;
   color: var(--muted);
-  font-size: var(--variants-size);
+
+  > .label::after {
+    content: ":";
+  }
 
   > button {
     text-decoration: underline;

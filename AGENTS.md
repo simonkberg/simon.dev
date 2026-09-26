@@ -275,10 +275,11 @@ default block of custom properties, one `:root[data-variant="…"]` block per va
 rules that read only those properties: no rule outside the blocks names a variant. A change
 that needs a variant to differ is a new property, not a scoped selector.
 
-`<html data-variant="panes">` is the server default. `VariantSwitcher` saves the choice in a
-`variant` cookie, and a script in `<head>` (`app/lib/variant.ts`) applies it before first
-paint. Don't read the cookie with `cookies()` in the layout: every page would render per
-request and lose its static shell. Check chat changes in all three variants.
+Visitors pick a variant and a theme (`system`, `light`, `dark`) in the footer. Each is a
+`data-*` attribute on `<html>` and a cookie of the same name (`app/lib/preferences.ts`);
+the server renders the fallbacks and a script in `<head>` applies the cookies before first
+paint. Don't read them with `cookies()` in the layout: every page would render per request
+and lose its static shell. Check chat changes in all three variants.
 
 ### Markdown Rendering
 

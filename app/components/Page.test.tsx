@@ -42,17 +42,16 @@ describe("Page", () => {
     expect(screen.getByText("Page content")).toBeInTheDocument();
   });
 
-  it("renders the footnote and the variant switcher in the footer", () => {
+  it("renders the hosting note and both switches in the footer", () => {
     render(
-      <Page footnote={<small>Footnote</small>}>
+      <Page>
         <div>Page content</div>
       </Page>,
     );
 
     const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByText("Footnote")).toBeInTheDocument();
-    expect(
-      within(footer).getByRole("group", { name: "Style" }),
-    ).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name: "Railway" })).toBeVisible();
+    expect(within(footer).getByRole("group", { name: "style" })).toBeVisible();
+    expect(within(footer).getByRole("group", { name: "theme" })).toBeVisible();
   });
 });

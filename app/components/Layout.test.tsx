@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Layout } from "@/components/Layout";
 import { config } from "@/config";
-import { variantScript } from "@/lib/variant";
+import { preferencesScript } from "@/lib/preferences";
 
 vi.mock(import("@/assets/fonts"), () => ({
   iosevka: {
@@ -31,17 +31,18 @@ describe("Layout", () => {
     expect(document.documentElement).toHaveClass("iosevka-mock-class");
   });
 
-  it("should default to the panes variant", () => {
+  it("should default to the panes variant and the system theme", () => {
     render(<Layout />, { container: document });
 
     expect(document.documentElement).toHaveAttribute("data-variant", "panes");
+    expect(document.documentElement).toHaveAttribute("data-theme", "system");
   });
 
-  it("should apply the saved variant from the head", () => {
+  it("should apply the saved preferences from the head", () => {
     render(<Layout />, { container: document });
 
     expect(document.head.querySelector("script")?.textContent).toBe(
-      variantScript,
+      preferencesScript,
     );
   });
 

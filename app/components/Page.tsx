@@ -1,25 +1,31 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import type { PropsWithChildren } from "react";
 
+import { ExternalLink } from "@/components/ExternalLink";
 import { Header } from "@/components/Header";
-import { VariantSwitcher } from "@/components/VariantSwitcher";
-import { config } from "@/config";
+import { PreferenceSwitch } from "@/components/PreferenceSwitch";
+import { Subtitle } from "@/components/Subtitle";
+import { themePreference, variantPreference } from "@/lib/preferences";
 
 interface PageProps extends PropsWithChildren {
   section?: string;
-  footnote?: ReactNode;
 }
 
-export const Page = ({ section, footnote, children }: PageProps) => (
+export const Page = ({ section, children }: PageProps) => (
   <div className="page">
     <Header section={section} />
     <div className="content">
       {children}
       <footer className="footer">
-        {footnote}
-        <VariantSwitcher />
-        <div className="colophon">
-          <span>{new URL(config.url).host}</span>
-          <span aria-hidden="true">{config.title}(1)</span>
+        <Subtitle>
+          Hosted on{" "}
+          <ExternalLink href="https://railway.com?referralCode=wzuAxn">
+            Railway
+          </ExternalLink>{" "}
+          (affiliate link).
+        </Subtitle>
+        <div className="preferences">
+          <PreferenceSwitch preference={variantPreference} />
+          <PreferenceSwitch preference={themePreference} />
         </div>
       </footer>
     </div>
