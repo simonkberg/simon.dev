@@ -273,7 +273,9 @@ Components use React's recommended [storing information from previous renders](h
 The site has three looks (panes, ledger, manual) over one markup. `app/global.css` is a
 default block of custom properties, one `:root[data-variant="…"]` block per variant, then
 rules that read only those properties: no rule outside the blocks names a variant. A change
-that needs a variant to differ is a new property, not a scoped selector.
+that needs a variant to differ is a new property, not a scoped selector. Every variant shows
+the same content; a variant may add decoration (glyphs, prefixes) but never words or controls
+the others lack.
 
 Visitors pick a variant and a theme (`system`, `light`, `dark`) in the footer. Each is a
 `data-*` attribute on `<html>` and a cookie of the same name (`app/lib/preferences.ts`);

@@ -23,8 +23,6 @@ export const Terminal = ({ children }: PropsWithChildren) => {
       aria-label="Terminal"
     >
       <div className="topbar">
-        <button className="control close" aria-label="Close" />
-        <button className="control minimize" aria-label="Minimize" />
         <button
           className="control maximize"
           aria-label="Maximize"

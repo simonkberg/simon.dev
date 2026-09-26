@@ -27,8 +27,9 @@ describe("Page", () => {
       </Page>,
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "listening",
+    expect(screen.getByRole("link", { name: "listening" })).toHaveAttribute(
+      "aria-current",
+      "page",
     );
   });
 

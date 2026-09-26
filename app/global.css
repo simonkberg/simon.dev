@@ -45,9 +45,9 @@
   --header-size: 1rem;
   --header-leading: inherit;
   --header-justify: normal;
+  --header-align: center;
   --header-max: none;
   --header-inline: 0;
-  --header-mirror: none;
   --title-display: block;
   --title-size: inherit;
   --title-leading: inherit;
@@ -62,12 +62,15 @@
   --title-link-color: inherit;
   --title-link-hover-color: var(--link-hover-color);
   --title-link-hover-bg: var(--link-hover-bg);
-  --path-display: none;
-  --path-color: inherit;
-  --path-prefix: none;
-  --path-case: none;
-  --windows-display: none;
-  --status-display: none;
+  --nav-gap: 1ch;
+  --nav-link-padding: 0;
+  --nav-prefix: none;
+  --nav-current-color: var(--ink);
+  --nav-current-bg: transparent;
+  --nav-current-weight: normal;
+  --nav-current-marker: none;
+  --host-size: inherit;
+  --host-margin: auto;
 
   --content-display: block;
   --content-columns: none;
@@ -156,13 +159,7 @@
   --topbar-color: var(--muted);
   --topbar-rule: none;
   --topbar-size: inherit;
-  --topbar-marker: none;
-  --topbar-label: none;
-  --topbar-label-weight: normal;
-  --control-secondary: inline-block;
   --control-padding: 0;
-  --control-close: none;
-  --control-minimize: none;
   --control-maximize: none;
   --control-hover-color: var(--accent);
   --control-hover-bg: transparent;
@@ -212,14 +209,10 @@
   --toast-size: inherit;
   --toast-error-bg: oklch(0.6 0.19 27);
   --toast-error-fg: white;
-  --toast-error-label: none;
 
   --menu-gap: 0 2ch;
   --menu-margin: 0;
   --menu-padding: 0;
-  --menu-label: none;
-  --menu-label-basis: auto;
-  --menu-label-gap: 0;
   --menu-item-padding: 0;
   --menu-item-bg: transparent;
   --menu-link-color: inherit;
@@ -286,8 +279,10 @@
   --title-link-color: var(--on-accent);
   --title-link-hover-color: var(--on-accent);
   --title-link-hover-bg: var(--accent);
-  --windows-display: flex;
-  --status-display: inline;
+  --nav-link-padding: 0 1ch;
+  --nav-prefix: counter(page) ":";
+  --nav-current-bg: var(--rule);
+  --nav-current-marker: "*";
 
   --content-display: grid;
   --content-columns: repeat(2, minmax(0, 1fr));
@@ -332,8 +327,6 @@
   --topbar-bg: var(--ground);
   --topbar-size: 0.875rem;
   --control-padding: 0 0.5ch;
-  --control-close: "x";
-  --control-minimize: "-";
   --control-maximize: "z";
 
   --history-padding: 0.25rem 0.75rem;
@@ -409,10 +402,11 @@
   --title-tracking: -0.03em;
   --title-case: lowercase;
   --title-prefix: "#!/";
-  --path-display: inline;
-  --path-color: var(--accent);
-  --path-prefix: "/";
-  --path-case: lowercase;
+  --nav-gap: 2ch;
+  --nav-prefix: "/";
+  --nav-current-color: var(--accent);
+  --host-size: 0.875rem;
+  --header-align: baseline;
 
   --content-display: flex;
   --label: 18ch;
@@ -455,9 +449,7 @@
   --topbar-padding: 0.4rem 1rem;
   --topbar-rule: 1px solid var(--rule);
   --topbar-size: 0.875rem;
-  --topbar-marker: "";
-  --topbar-label: "live";
-  --control-secondary: none;
+  --topbar-justify: flex-end;
   --control-maximize: "expand ⤢";
 
   --fade: 1rem;
@@ -490,9 +482,7 @@
   --toast-error-bg: oklch(0.55 0.19 27);
 
   --menu-gap: 0 2.5ch;
-  --menu-padding: 1.25rem 0;
-  --menu-label: "Period";
-  --menu-label-basis: calc(var(--label) + var(--gutter) - 2.5ch);
+  --menu-padding: 1.25rem 0 1.25rem calc(var(--label) + var(--gutter));
   --menu-link-color: var(--muted);
   --menu-link-line: none;
   --menu-link-hover: var(--accent);
@@ -536,13 +526,13 @@
     max(1rem, env(safe-area-inset-left));
   --header-padding: max(1.5rem, env(safe-area-inset-top)) 0 1lh;
   --header-justify: space-between;
-  --header-mirror: "simon kjellberg(1)";
   --title-display: contents;
   --title-weight: normal;
   --title-case: uppercase;
   --title-suffix: "(1)";
-  --path-display: inline;
-  --path-case: capitalize;
+  --nav-gap: 2ch;
+  --nav-current-weight: bold;
+  --host-margin: 0;
 
   --heading-margin: 1.5lh 0 0.5lh;
   --heading-case: uppercase;
@@ -567,10 +557,6 @@
   --topbar-padding: 0 1ch;
   --topbar-bg: var(--ink);
   --topbar-color: var(--ground);
-  --topbar-label: "chat(7)";
-  --topbar-label-weight: bold;
-  --control-close: "q";
-  --control-minimize: "-";
   --control-maximize: "+";
   --control-hover-color: var(--ink);
   --control-hover-bg: var(--ground);
@@ -590,7 +576,6 @@
   --toast-bottom: 3.5lh;
   --toast-error-bg: var(--ink);
   --toast-error-fg: var(--ground);
-  --toast-error-label: "error:";
 
   --menu-margin: 0 1lh;
   --menu-current-padding: 0 0.5ch;
@@ -606,7 +591,6 @@
     --writing-column: 1 / -1;
     --writing-row: auto;
     --side-column: 1 / -1;
-    --status-display: none;
   }
 }
 
@@ -621,16 +605,13 @@
     --footer-padding: 2rem 0 0;
     --track-time-float: none;
     --track-time-gap: 0;
-    --menu-label-basis: 100%;
-    --menu-label-gap: 0.5rem;
+    --menu-padding: 1.25rem 0;
   }
 }
 
 @media (width < 40rem) {
   :root[data-variant="manual"] {
     --indent: 3ch;
-    --path-display: none;
-    --header-mirror: none;
   }
 }
 
@@ -722,17 +703,13 @@ a,
 
   > .container {
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
+    align-items: var(--header-align);
     justify-content: var(--header-justify);
-    gap: 2ch;
+    gap: 0 2ch;
     max-width: var(--header-max);
     margin: 0 auto;
     padding-inline: var(--header-inline);
-
-    &::after {
-      content: var(--header-mirror);
-      text-transform: uppercase;
-    }
   }
 
   .title {
@@ -750,6 +727,7 @@ a,
       background: var(--title-link-bg);
       color: var(--title-link-color);
       text-decoration: none;
+      white-space: nowrap;
 
       &::before {
         content: var(--title-prefix);
@@ -768,45 +746,47 @@ a,
     }
   }
 
-  .path {
-    display: var(--path-display);
-    color: var(--path-color);
-    text-transform: var(--path-case);
-
-    &::before {
-      content: var(--path-prefix);
-    }
-  }
-
-  .windows {
-    display: var(--windows-display);
-    gap: 1ch;
+  .nav {
+    display: flex;
+    gap: var(--nav-gap);
+    counter-reset: page -1;
 
     > a {
-      padding: 0 1ch;
+      padding: var(--nav-link-padding);
       color: var(--muted);
       text-decoration: none;
+      counter-increment: page;
+
+      &::before {
+        content: var(--nav-prefix);
+      }
 
       &:hover {
         color: var(--ink);
       }
 
       &[aria-current] {
-        color: var(--ink);
-        background: var(--rule);
+        background: var(--nav-current-bg);
+        color: var(--nav-current-color);
+        font-weight: var(--nav-current-weight);
 
         &::after {
-          content: "*";
+          content: var(--nav-current-marker);
           color: var(--accent);
         }
       }
     }
   }
 
-  .status {
-    display: var(--status-display);
-    margin-left: auto;
+  .host {
+    margin-left: var(--host-margin);
     color: var(--muted);
+    font-size: var(--host-size);
+
+    /* The address bar already shows it; phones need the room for the pages. */
+    @media (width < 40rem) {
+      display: none;
+    }
   }
 }
 
@@ -1156,37 +1136,8 @@ ul {
     color: var(--topbar-color);
     font-size: var(--topbar-size);
 
-    &::before {
-      content: var(--topbar-marker);
-      order: -2;
-      width: 0.5em;
-      height: 0.5em;
-      border-radius: 50%;
-      background: var(--accent);
-    }
-
-    &::after {
-      content: var(--topbar-label);
-      order: -1;
-      margin-right: auto;
-      font-weight: var(--topbar-label-weight);
-    }
-
     > .control {
       padding: var(--control-padding);
-
-      &.close,
-      &.minimize {
-        display: var(--control-secondary);
-      }
-
-      &.close::before {
-        content: var(--control-close);
-      }
-
-      &.minimize::before {
-        content: var(--control-minimize);
-      }
 
       &.maximize::before {
         content: var(--control-maximize);
@@ -1438,11 +1389,6 @@ ul {
   &.error {
     background: var(--toast-error-bg);
     color: var(--toast-error-fg);
-
-    &::before {
-      content: var(--toast-error-label);
-      font-weight: bold;
-    }
   }
 }
 
@@ -1455,13 +1401,6 @@ menu {
   margin-block: var(--menu-margin);
   padding: var(--menu-padding);
   list-style: none;
-
-  &::before {
-    content: var(--menu-label);
-    flex: 0 0 var(--menu-label-basis);
-    margin-bottom: var(--menu-label-gap);
-    font-weight: bold;
-  }
 
   > li {
     padding: var(--menu-item-padding);

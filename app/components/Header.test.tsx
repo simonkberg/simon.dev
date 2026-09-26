@@ -5,6 +5,8 @@ import { config } from "@/config";
 
 import { Header } from "./Header";
 
+const pages = () => screen.getByRole("navigation", { name: "Pages" });
+
 describe("Header", () => {
   it("renders the title as a link to the homepage", () => {
     render(<Header />);
@@ -15,45 +17,52 @@ describe("Header", () => {
     expect(link).toHaveAttribute("href", "/");
   });
 
-  it("renders the section as a path", () => {
-    render(<Header section="Not Found" />);
+  it("links every page", () => {
+    render(<Header />);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      `${config.title}not-found`,
+    expect(within(pages()).getByRole("link", { name: "home" })).toHaveAttribute(
+      "href",
+      "/",
     );
+    expect(
+      within(pages()).getByRole("link", { name: "listening" }),
+    ).toHaveAttribute("href", "/listening");
   });
 
   it("marks home as the current page without a section", () => {
     render(<Header />);
 
-    const nav = screen.getByRole("navigation", { name: "Pages" });
-    expect(within(nav).getByRole("link", { name: "0:home" })).toHaveAttribute(
+    expect(within(pages()).getByRole("link", { name: "home" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     expect(
-      within(nav).getByRole("link", { name: "1:listening" }),
+      within(pages()).getByRole("link", { name: "listening" }),
     ).not.toHaveAttribute("aria-current");
   });
 
-  it("marks listening as the current page", () => {
+  it("marks the section's page as current", () => {
     render(<Header section="Listening" />);
 
-    const nav = screen.getByRole("navigation", { name: "Pages" });
     expect(
-      within(nav).getByRole("link", { name: "1:listening" }),
+      within(pages()).getByRole("link", { name: "listening" }),
     ).toHaveAttribute("aria-current", "page");
     expect(
-      within(nav).getByRole("link", { name: "0:home" }),
+      within(pages()).getByRole("link", { name: "home" }),
     ).not.toHaveAttribute("aria-current");
   });
 
   it("marks no page as current on other sections", () => {
-    render(<Header section="Error" />);
+    render(<Header section="Not Found" />);
 
-    const nav = screen.getByRole("navigation", { name: "Pages" });
-    for (const link of within(nav).getAllByRole("link")) {
+    for (const link of within(pages()).getAllByRole("link")) {
       expect(link).not.toHaveAttribute("aria-current");
     }
+  });
+
+  it("shows the site's host", () => {
+    render(<Header />);
+
+    expect(screen.getByText("simon.dev")).toBeInTheDocument();
   });
 });

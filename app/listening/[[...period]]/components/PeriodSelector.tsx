@@ -10,7 +10,7 @@ export interface PeriodSelectorProps {
 }
 
 export const PeriodSelector = ({ current }: PeriodSelectorProps) => (
-  <menu>
+  <menu aria-label="Period">
     {periodsWithLabels.map(([period, label]) => (
       <li key={period} aria-current={current === period ? "page" : undefined}>
         {current === period ? (

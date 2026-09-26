@@ -6,36 +6,31 @@ export interface HeaderProps {
   section?: string;
 }
 
-const toPath = (section: string) => section.toLowerCase().replaceAll(" ", "-");
-
-const windows = [
-  { href: "/", path: "home" },
-  { href: "/listening/", path: "listening" },
+const pages = [
+  { href: "/", name: "home" },
+  { href: "/listening/", name: "listening" },
 ] as const;
 
-export const Header = ({ section }: HeaderProps) => (
+export const Header = ({ section = "home" }: HeaderProps) => (
   <header className="header">
     <div className="container">
       <h1 className="title">
         <Link href="/" className="link">
           {config.title}
         </Link>
-        {section && <span className="path">{toPath(section)}</span>}
       </h1>
-      <nav className="windows" aria-label="Pages">
-        {windows.map(({ href, path }, index) => (
+      <nav className="nav" aria-label="Pages">
+        {pages.map(({ href, name }) => (
           <Link
             key={href}
             href={href}
-            aria-current={
-              path === toPath(section ?? "home") ? "page" : undefined
-            }
+            aria-current={name === section.toLowerCase() ? "page" : undefined}
           >
-            {index}:{path}
+            {name}
           </Link>
         ))}
       </nav>
-      <span className="status">stockholm, se</span>
+      <span className="host">{new URL(config.url).host}</span>
     </div>
   </header>
 );
