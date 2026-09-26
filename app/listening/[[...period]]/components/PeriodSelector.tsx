@@ -2,7 +2,6 @@ import Link from "next/link";
 import { objectEntries } from "ts-extras";
 
 import { type Period, periodLabels } from "@/lib/lastfm";
-import { route } from "@/lib/routes";
 
 const periodsWithLabels = objectEntries(periodLabels);
 
@@ -18,9 +17,7 @@ export const PeriodSelector = ({ current }: PeriodSelectorProps) => (
           label
         ) : (
           <Link
-            href={route(
-              period === "overall" ? "/listening/" : `/listening/${period}`,
-            )}
+            href={`/listening/${period === "overall" ? "" : period}`}
             prefetch
             replace
           >

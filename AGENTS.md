@@ -55,8 +55,7 @@ BuildKit cache mounts are used for pnpm store and Next.js build cache. Build arg
 
 ## Directory Structure
 
-All source lives in `app/` (App Router); test mocks in `mocks/`. Pages live under
-`app/[variant]/[theme]/` (see Style Variants); route handlers stay at the top.
+All source lives in `app/` (App Router); test mocks in `mocks/`.
 
 **Convention:** Route-specific components live in `{route}/components/` rather than `app/components/`.
 
@@ -95,9 +94,6 @@ Key settings in `next.config.ts`:
 ### Typed Routes
 
 For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
-
-The generated types only know the rewritten `/[variant]/[theme]/…` paths, so wrap public
-paths in `route()` from `app/lib/routes.ts`, and add new pages to its `PublicPath`.
 
 ### Lint and Format Config
 
@@ -232,7 +228,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 - **Accessing mocks:** Import mocked functions at the top level like any other import — `vi.mock` is hoisted before imports, so they resolve to the mock automatically. Never use `await import()` to access mocked values.
 - **Async components with `use()`:** Wrap render in `await act(async () => render(...))`
 - **Server-only modules:** Mock with `vi.mock("server-only", () => ({}))`
-- **Shared mocks:** Check `mocks/` before hand-rolling a stub. `vitest.setup.ts` mocks `useRouter()` with `mockRouter` from `@/mocks/navigation`; a test that mocks `next/navigation` itself must spread `importOriginal()` and keep it. For `cookies()` from `next/headers`, use `MockCookies` from `@/mocks/headers` — a real jar over `@edge-runtime/cookies` that needs no casting to satisfy the return type, and lets tests assert on the resulting `set-cookie` header rather than on a `vi.fn` spy. See `app/lib/session.test.ts` and `app/lib/chatTip.test.ts`.
+- **Shared mocks:** Check `mocks/` before hand-rolling a stub. For `cookies()` from `next/headers`, use `MockCookies` from `@/mocks/headers` — a real jar over `@edge-runtime/cookies` that needs no casting to satisfy the return type, and lets tests assert on the resulting `set-cookie` header rather than on a `vi.fn` spy. See `app/lib/session.test.ts` and `app/lib/chatTip.test.ts`.
 
 ## TypeScript
 
@@ -280,12 +276,10 @@ rules that read only those properties: no rule outside the blocks names a varian
 that needs a variant to differ is a new property, not a scoped selector.
 
 Visitors pick a variant and a theme (`system`, `light`, `dark`) in the footer. Each is a
-`data-*` attribute on `<html>` and a cookie of the same name (`app/lib/preferences.ts`).
-`proxy.ts` rewrites every page to `/{variant}/{theme}/…` from the cookies, and the root
-layout reads them with `next/root-params`, so each combination is its own prerendered shell
-and the server sends the right attributes. Don't read them with `cookies()`: every page
-would render per request and lose its static shell. Check chat changes in all three
-variants.
+`data-*` attribute on `<html>` and a cookie of the same name (`app/lib/preferences.ts`);
+the server renders the fallbacks and a script in `<head>` applies the cookies before first
+paint. Don't read them with `cookies()` in the layout: every page would render per request
+and lose its static shell. Check chat changes in all three variants.
 
 ### Markdown Rendering
 

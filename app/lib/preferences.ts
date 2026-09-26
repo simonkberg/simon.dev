@@ -1,9 +1,7 @@
-import { arrayIncludes } from "ts-extras";
-
 /**
  * Visitor preferences: each is a `data-*` attribute on `<html>` and a cookie
- * of the same name. The proxy rewrites every page to `/{variant}/{theme}/…`
- * from the cookies, so each combination is its own prerendered page.
+ * of the same name. The server renders the fallback; the head script swaps in
+ * the saved value before first paint.
  */
 export interface Preference<T extends string = string> {
   name: "variant" | "theme";
@@ -37,13 +35,21 @@ export function preferenceCookie<T extends string>(
   return `${preference.name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
-/** The saved option, or the fallback for a missing or unknown value. */
-export function savedOption<T extends string>(
-  preference: Preference<T>,
-  value: string | undefined,
-): T {
-  return arrayIncludes(preference.options, value) ? value : preference.fallback;
+/**
+ * Applies the saved preferences to the root. Stringified into a `<head>`
+ * script so it runs before first paint, which is why it references nothing
+ * outside itself and takes the options as an argument. The layout never reads
+ * the cookies: `cookies()` there would make every page render per request.
+ */
+export function applySavedPreferences(saved: readonly Preference[]) {
+  for (const { name, options } of saved) {
+    const value = new RegExp(`(?:^|; )${name}=([^;]*)`).exec(
+      document.cookie,
+    )?.[1];
+    if (value && options.includes(value)) {
+      document.documentElement.setAttribute(`data-${name}`, value);
+    }
+  }
 }
 
-export type Variant = (typeof variantPreference.options)[number];
-export type Theme = (typeof themePreference.options)[number];
+export const preferencesScript = `(${applySavedPreferences.toString()})(${JSON.stringify(preferences)})`;

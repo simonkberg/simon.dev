@@ -1,33 +1,50 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { resetPreferences } from "@/mocks/preferences";
 
 import {
+  applySavedPreferences,
   preferenceCookie,
   preferences,
-  savedOption,
-  themePreference,
-  variantPreference,
+  preferencesScript,
 } from "./preferences";
 
-describe("savedOption", () => {
-  it("accepts every option of each preference", () => {
+const root = document.documentElement;
+
+afterEach(resetPreferences);
+
+describe("applySavedPreferences", () => {
+  it("applies every saved option to the root", () => {
     for (const preference of preferences) {
       for (const option of preference.options) {
-        expect(savedOption(preference, option)).toBe(option);
+        root.setAttribute(`data-${preference.name}`, preference.fallback);
+        document.cookie = preferenceCookie(preference, option);
+
+        applySavedPreferences(preferences);
+
+        expect(root).toHaveAttribute(`data-${preference.name}`, option);
       }
     }
   });
 
-  it("falls back for missing or unknown values", () => {
-    expect(savedOption(variantPreference, undefined)).toBe("panes");
-    expect(savedOption(variantPreference, "neon")).toBe("panes");
-    expect(savedOption(themePreference, "panes")).toBe("system");
-  });
-});
+  it("leaves the fallbacks without valid cookies", () => {
+    root.setAttribute("data-variant", "panes");
+    root.setAttribute("data-theme", "system");
+    document.cookie = "myvariant=manual; path=/";
+    document.cookie = "variant=neon; path=/";
+    document.cookie = "theme=sepia; path=/";
 
-describe("preferenceCookie", () => {
-  it("saves the option for a year across the site", () => {
-    expect(preferenceCookie(themePreference, "dark")).toBe(
-      "theme=dark; path=/; max-age=31536000; samesite=lax",
-    );
+    applySavedPreferences(preferences);
+
+    expect(root).toHaveAttribute("data-variant", "panes");
+    expect(root).toHaveAttribute("data-theme", "system");
+    document.cookie = "myvariant=; max-age=0; path=/";
+  });
+
+  it("is what the head script runs, with every option", () => {
+    expect(preferencesScript).toContain(applySavedPreferences.toString());
+    for (const preference of preferences) {
+      expect(preferencesScript).toContain(JSON.stringify(preference.options));
+    }
   });
 });

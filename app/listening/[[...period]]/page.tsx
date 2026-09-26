@@ -20,8 +20,7 @@ import { TopAlbumsTable } from "./components/TopAlbumsTable";
 import { TopArtistsTable } from "./components/TopArtistsTable";
 import { TopTracksTable } from "./components/TopTracksTable";
 
-type ListeningPageProps =
-  PageProps<"/[variant]/[theme]/listening/[[...period]]">;
+type ListeningPageProps = PageProps<"/listening/[[...period]]">;
 
 const toPeriod = (param?: string[]): Period => {
   if (param === undefined) return "overall";
@@ -46,9 +45,8 @@ export async function generateMetadata({
   };
 }
 
-export function generateStaticParams(): Pick<
-  Awaited<ListeningPageProps["params"]>,
-  "period"
+export function generateStaticParams(): Awaited<
+  ListeningPageProps["params"]
 >[] {
   return periods.map((period) => ({
     period: period === "overall" ? undefined : [period],

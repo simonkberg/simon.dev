@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useId, useSyncExternalStore } from "react";
+import { useId, useLayoutEffect, useSyncExternalStore } from "react";
 import { arrayIncludes } from "ts-extras";
 
-import { type Preference, preferenceCookie } from "@/lib/preferences";
-
-import { useSavedPreference } from "./Preferences";
+import {
+  applySavedPreferences,
+  type Preference,
+  preferenceCookie,
+} from "@/lib/preferences";
 
 const attributeOf = (preference: Preference) => `data-${preference.name}`;
 
@@ -32,8 +33,6 @@ export const PreferenceSwitch = <T extends string>({
   preference,
 }: PreferenceSwitchProps<T>) => {
   const labelId = useId();
-  const router = useRouter();
-  const saved = useSavedPreference(preference);
 
   const current = useSyncExternalStore(
     (onChange) => subscribe(preference, onChange),
@@ -41,10 +40,16 @@ export const PreferenceSwitch = <T extends string>({
       const value = document.documentElement.getAttribute(
         attributeOf(preference),
       );
-      return arrayIncludes(preference.options, value) ? value : saved;
+      return arrayIncludes(preference.options, value)
+        ? value
+        : preference.fallback;
     },
-    () => saved,
+    () => preference.fallback,
   );
+
+  // The head script applies the cookie before paint, but the dev-mode
+  // remount resets <html> attributes, so apply it again.
+  useLayoutEffect(() => applySavedPreferences([preference]), [preference]);
 
   return (
     <div className="switch" role="group" aria-labelledby={labelId}>
@@ -56,11 +61,7 @@ export const PreferenceSwitch = <T extends string>({
           key={option}
           type="button"
           aria-pressed={current === option}
-          onClick={() => {
-            selectOption(preference, option);
-            // Prefetched pages carry the old option in their <html>.
-            router.refresh();
-          }}
+          onClick={() => selectOption(preference, option)}
         >
           {option}
         </button>

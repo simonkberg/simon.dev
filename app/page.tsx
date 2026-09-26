@@ -17,7 +17,6 @@ import { Subtitle } from "@/components/Subtitle";
 import { Terminal } from "@/components/Terminal";
 import { config } from "@/config";
 import { getChatTipDismissed } from "@/lib/chatTip";
-import { route } from "@/lib/routes";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -81,7 +80,7 @@ export default function RootPage() {
           <RecentTracksList recentTracks={recentTracks} />
         </Suspense>
         <p>
-          See <Link href={route("/listening/")}>listening statistics</Link>.
+          See <Link href="/listening/">listening statistics</Link>.
         </p>
       </section>
 

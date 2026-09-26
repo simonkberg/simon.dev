@@ -11,15 +11,12 @@ import {
   type GetTopTracksResult,
 } from "@/actions/lastfm";
 import { periods } from "@/lib/lastfm";
-import { mockRouter } from "@/mocks/navigation";
 
 import ListeningPage, { generateMetadata, generateStaticParams } from "./page";
 
 vi.mock("server-only", () => ({}));
 
-vi.mock(import("next/navigation"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  useRouter: () => mockRouter,
+vi.mock(import("next/navigation"), () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -38,12 +35,11 @@ vi.mock(import("@/actions/lastfm"), () => ({
 }));
 
 const searchParams = Promise.resolve({});
-const preferences = { variant: "panes", theme: "system" };
 
 describe("generateMetadata", () => {
   it("should return correct metadata for default period", async () => {
     const metadata = await generateMetadata({
-      params: Promise.resolve({ ...preferences, period: undefined }),
+      params: Promise.resolve({ period: undefined }),
       searchParams,
     });
 
@@ -55,7 +51,7 @@ describe("generateMetadata", () => {
 
   it("should return correct metadata for 7day period", async () => {
     const metadata = await generateMetadata({
-      params: Promise.resolve({ ...preferences, period: ["7day"] }),
+      params: Promise.resolve({ period: ["7day"] }),
       searchParams,
     });
 
@@ -68,7 +64,7 @@ describe("generateMetadata", () => {
   it("should call notFound for invalid period", async () => {
     await expect(
       generateMetadata({
-        params: Promise.resolve({ ...preferences, period: ["invalid"] }),
+        params: Promise.resolve({ period: ["invalid"] }),
         searchParams,
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
@@ -79,7 +75,7 @@ describe("generateMetadata", () => {
   it("should call notFound for extra path segments", async () => {
     await expect(
       generateMetadata({
-        params: Promise.resolve({ ...preferences, period: ["7day", "extra"] }),
+        params: Promise.resolve({ period: ["7day", "extra"] }),
         searchParams,
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
@@ -117,7 +113,7 @@ describe("ListeningPage", () => {
     await act(async () =>
       render(
         <ListeningPage
-          params={Promise.resolve({ ...preferences, period: ["7day"] })}
+          params={Promise.resolve({ period: ["7day"] })}
           searchParams={searchParams}
         />,
       ),
@@ -136,7 +132,7 @@ describe("ListeningPage", () => {
     await act(async () =>
       render(
         <ListeningPage
-          params={Promise.resolve({ ...preferences, period: ["7day"] })}
+          params={Promise.resolve({ period: ["7day"] })}
           searchParams={searchParams}
         />,
       ),
@@ -156,7 +152,7 @@ describe("ListeningPage", () => {
     await act(async () =>
       render(
         <ListeningPage
-          params={Promise.resolve({ ...preferences, period: undefined })}
+          params={Promise.resolve({ period: undefined })}
           searchParams={searchParams}
         />,
       ),
@@ -188,7 +184,7 @@ describe("ListeningPage", () => {
     await act(async () =>
       render(
         <ListeningPage
-          params={Promise.resolve({ ...preferences, period: undefined })}
+          params={Promise.resolve({ period: undefined })}
           searchParams={searchParams}
         />,
       ),
