@@ -179,11 +179,13 @@ describe("GET /api/chat/sse", () => {
     const response = await GET(createRequest(controller.signal));
 
     const onMessage = vi.mocked(subscribe).mock.calls[0]![0];
+    const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
 
     controller.abort();
 
     // These should be no-ops after abort
     onMessage();
+    onStatus(false);
     await vi.advanceTimersByTimeAsync(30_000);
 
     // Stream should be closed, reading should complete

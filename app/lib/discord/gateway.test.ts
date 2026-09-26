@@ -632,6 +632,27 @@ describe("subscribe", () => {
     expect(onStatus).toHaveBeenCalledTimes(2);
   });
 
+  it("should log a throwing status subscriber and still notify the rest", async () => {
+    const { subscribe, subscribeToStatus } = await import("./gateway");
+    const { log } = await import("@/lib/log");
+    server.use(createHandshakeHandler());
+    await subscribe(vi.fn());
+    const onStatus = vi.fn();
+    subscribeToStatus(() => {
+      throw new Error("Subscriber failed");
+    });
+    subscribeToStatus(onStatus);
+
+    getLastClient(gateway.clients)?.close(4000, "Dropped");
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Status subscriber callback error",
+    );
+    expect(onStatus).toHaveBeenCalledWith(false);
+  });
+
   it("should let subscribers wait out a reconnect backoff instead of opening a second socket", async () => {
     const { subscribe } = await import("./gateway");
     let connectionCount = 0;
