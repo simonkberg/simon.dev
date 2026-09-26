@@ -1122,8 +1122,11 @@ ul {
       justify-content: flex-end;
     }
 
+    /* Without min-height: 0 a long history grows the content past the screen,
+       taking the input with it. */
     > .content {
       max-height: none;
+      min-height: 0;
       flex: 1;
     }
   }
