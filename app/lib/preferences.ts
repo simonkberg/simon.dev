@@ -1,8 +1,3 @@
-/**
- * Visitor preferences: each is a `data-*` attribute on `<html>` and a cookie
- * of the same name. The server renders the fallback; the head script swaps in
- * the saved value before first paint.
- */
 export interface Preference<T extends string = string> {
   name: "variant" | "theme";
   label: string;
@@ -35,12 +30,7 @@ export function preferenceCookie<T extends string>(
   return `${preference.name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
-/**
- * Applies the saved preferences to the root. Stringified into a `<head>`
- * script so it runs before first paint, which is why it references nothing
- * outside itself and takes the options as an argument. The layout never reads
- * the cookies: `cookies()` there would make every page render per request.
- */
+// Stringified into the <head> script, so it references nothing outside itself.
 export function applySavedPreferences(saved: readonly Preference[]) {
   for (const { name, options } of saved) {
     const value = new RegExp(`(?:^|; )${name}=([^;]*)`).exec(

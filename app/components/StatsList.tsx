@@ -24,7 +24,8 @@ export const StatsList = ({ stats }: StatsListProps) => {
     );
   }
 
-  const max = Math.max(...result.stats.map((stat) => stat.percent));
+  // All-zero stats would make the bars' `--value / --max` a 0/0.
+  const max = Math.max(...result.stats.map((stat) => stat.percent)) || 1;
 
   return (
     <ul className="stats" style={{ "--max": max } as CSSProperties}>
