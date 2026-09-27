@@ -20,6 +20,10 @@ import { TopAlbumsTable } from "./components/TopAlbumsTable";
 import { TopArtistsTable } from "./components/TopArtistsTable";
 import { TopTracksTable } from "./components/TopTracksTable";
 
+export const prefetch = "partial";
+// Reading params behind Suspense would turn invalid periods into soft 404s.
+export const instant = false;
+
 type ListeningPageProps = PageProps<"/listening/[[...period]]">;
 
 const toPeriod = (param?: string[]): Period => {
