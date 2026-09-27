@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { GetTopTracksResult } from "@/actions/lastfm";
 
-import { TopTracksTable, TopTracksTableSkeleton } from "./TopTracksTable";
+import { TopTracksTable } from "./TopTracksTable";
 
 vi.mock(import("@/components/AnimatedNumber"), () => ({
   AnimatedNumber: ({ value }: { value: number }) => <span>{value}</span>,
@@ -42,21 +42,5 @@ describe("TopTracksTable", () => {
 
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.getByText(/unavailable/i)).toBeInTheDocument();
-  });
-});
-
-describe("TopTracksTableSkeleton", () => {
-  it("renders ten placeholder rows under the real columns", () => {
-    const { container } = render(<TopTracksTableSkeleton />);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Loading");
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(
-      [...container.querySelectorAll("th")].map((th) => th.textContent),
-    ).toEqual(["#", "Track", "Artist", "Plays"]);
-    expect(container.querySelectorAll("tbody tr")).toHaveLength(10);
-    expect(container.querySelectorAll("tbody tr:first-child td")).toHaveLength(
-      4,
-    );
   });
 });

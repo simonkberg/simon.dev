@@ -7,7 +7,6 @@ import {
   refreshRecentTracks,
 } from "@/actions/lastfm";
 import { RelativeTime } from "@/components/RelativeTime";
-import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { Subtitle } from "@/components/Subtitle";
 
 const minute = 60_000;
@@ -51,27 +50,3 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
     </ul>
   );
 };
-
-const trackWidths = [
-  [14, 9],
-  [9, 12],
-  [18, 7],
-  [11, 10],
-  [16, 8],
-] as const;
-
-export const RecentTracksListSkeleton = () => (
-  <SkeletonStatus>
-    <ul className="recent-tracks placeholder" aria-hidden="true">
-      {trackWidths.map(([name, artist], index) => (
-        <li key={index}>
-          <Skeleton width={`${name}ch`} /> &ndash;{" "}
-          <Skeleton width={`${artist}ch`} />{" "}
-          <Subtitle>
-            <Skeleton width="12ch" />
-          </Subtitle>
-        </li>
-      ))}
-    </ul>
-  </SkeletonStatus>
-);

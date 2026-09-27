@@ -49,18 +49,14 @@ const labelWidths = [8, 6, 10, 5, 4, 7, 9, 6, 5, 4, 6, 4, 5, 4, 8] as const;
 
 export const StatsListSkeleton = () => (
   <SkeletonStatus>
-    <ul
-      className="stats placeholder"
-      aria-hidden="true"
-      style={{ "--max": 1 } as CSSProperties}
-    >
+    <ul className="stats placeholder" aria-hidden="true">
       {labelWidths.map((width, index) => (
-        <li key={index} style={{ "--value": 0 } as CSSProperties}>
+        <li key={index}>
           <span className="label">
-            <Skeleton width={`${width}ch`} />
+            <Skeleton width={width} />
           </span>{" "}
           <span className="value">
-            <Skeleton width="6ch" />
+            <Skeleton width={6} />
           </span>
         </li>
       ))}

@@ -30,11 +30,11 @@ export const TableSkeleton = ({ head, textColumns }: TableSkeletonProps) => (
             <td className="numeric">{index + 1}</td>
             {widths.slice(0, textColumns).map((width, column) => (
               <td key={column}>
-                <Skeleton width={`${width}ch`} />
+                <Skeleton width={width} />
               </td>
             ))}
             <td className="numeric">
-              <Skeleton width="4ch" />
+              <Skeleton width={4} />
             </td>
           </tr>
         ))}

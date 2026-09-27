@@ -1,11 +1,14 @@
 import type { CSSProperties, PropsWithChildren } from "react";
 
 export interface SkeletonProps {
-  width: `${number}ch`;
+  width: number;
 }
 
 export const Skeleton = ({ width }: SkeletonProps) => (
-  <span className="skeleton" style={{ "--width": width } as CSSProperties} />
+  <span
+    className="skeleton"
+    style={{ "--width": `${width}ch` } as CSSProperties}
+  />
 );
 
 // A sibling rather than a wrapper, so the placeholder sits where its content will.

@@ -55,8 +55,7 @@ vi.mock(import("@/components/chat/ChatStream"), () => ({
   ChatStream: () => <span role="status">live</span>,
 }));
 
-vi.mock(import("@/components/RecentTracksList"), async (importOriginal) => ({
-  ...(await importOriginal()),
+vi.mock(import("@/components/RecentTracksList"), () => ({
   RecentTracksList: ({ recentTracks }: RecentTracksListProps) => {
     use(recentTracks);
     return <div data-testid="recent-tracks-list" />;

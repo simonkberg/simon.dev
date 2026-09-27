@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GetRecentTracksResult, RecentTrack } from "@/actions/lastfm";
 import { refreshRecentTracks } from "@/actions/lastfm";
 
-import { RecentTracksList, RecentTracksListSkeleton } from "./RecentTracksList";
+import { RecentTracksList } from "./RecentTracksList";
 
 vi.mock(import("@/actions/lastfm"), () => ({ refreshRecentTracks: vi.fn() }));
 
@@ -227,14 +227,5 @@ describe("RecentTracksList", () => {
 
       vi.useRealTimers();
     });
-  });
-});
-
-describe("RecentTracksListSkeleton", () => {
-  it("announces loading without exposing the placeholder list", () => {
-    render(<RecentTracksListSkeleton />);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Loading");
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });

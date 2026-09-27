@@ -114,6 +114,7 @@
   --stats-row-bleed: 0;
   --stats-heat: transparent;
   --stats-bar: none;
+  --stats-fill: var(--stats-bar);
   --stats-value-color: var(--muted);
 
   --tracks-max: none;
@@ -917,7 +918,7 @@ ul {
     margin-inline: var(--stats-row-bleed);
     background: linear-gradient(
       90deg,
-      var(--stats-heat) calc(var(--value) / var(--max) * 100%),
+      var(--stats-heat) calc(var(--value, 0) / var(--max, 1) * 100%),
       transparent 0
     );
 
@@ -939,7 +940,8 @@ ul {
     }
 
     &::after {
-      width: max(3px, calc(var(--value) / var(--max) * 100%));
+      display: var(--stats-fill);
+      width: max(3px, calc(var(--value, 0) / var(--max, 1) * 100%));
       background: repeating-linear-gradient(
         90deg,
         var(--accent) 0 3px,
@@ -1120,17 +1122,11 @@ ul {
 }
 
 .placeholder {
+  --stats-fill: none;
+  --row-hover: transparent;
   user-select: none;
 
-  > li::after {
-    content: none;
-  }
-
-  tr:hover {
-    background: none;
-  }
-
-  /* Real cells wrap their text; a fixed-width bar would push the table wider. */
+  /* Only in cells: a content-sized column (ledger's stat labels) would resolve it to 0. */
   td .skeleton {
     width: min(var(--width), 100%);
   }

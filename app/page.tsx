@@ -12,10 +12,8 @@ import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
 import { Page } from "@/components/Page";
-import {
-  RecentTracksList,
-  RecentTracksListSkeleton,
-} from "@/components/RecentTracksList";
+import { RecentTracksList } from "@/components/RecentTracksList";
+import { RecentTracksListSkeleton } from "@/components/RecentTracksListSkeleton";
 import { StatsList, StatsListSkeleton } from "@/components/StatsList";
 import { Subtitle } from "@/components/Subtitle";
 import { Terminal } from "@/components/Terminal";
