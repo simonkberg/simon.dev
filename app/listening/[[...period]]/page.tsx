@@ -20,6 +20,8 @@ import { TopAlbumsTable } from "./components/TopAlbumsTable";
 import { TopArtistsTable } from "./components/TopArtistsTable";
 import { TopTracksTable } from "./components/TopTracksTable";
 
+export const prefetch = "partial";
+
 type ListeningPageProps = PageProps<"/listening/[[...period]]">;
 
 const toPeriod = (param?: string[]): Period => {
