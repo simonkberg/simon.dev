@@ -77,12 +77,6 @@ Key settings in `next.config.ts`:
 - `experimental: { globalNotFound: true }` — top-level 404 page
 - `experimental: { turbopackRustReactCompiler: true }` — native (Rust) React Compiler inside Turbopack
 
-> **Do not enable `partialPrefetching`.** It breaks `/listening/[[...period]]`: on a client
-> navigation the URL updates but the statistics stay on the period first loaded. All six
-> period links share one route, so they share one App Shell and the params-dependent content
-> never re-resolves. Only reproduces in the deployed image, not a local production build.
-> See #1997.
-
 > **`/` keeps cached data out of its static shell** by chaining the `"use cache"` calls on
 > `io()`, so the shell has no revalidate time and never goes stale. When a partially
 > prerendered page's shell is stale, Next regenerates it inside the next Server Action request
