@@ -114,6 +114,7 @@
   --stats-row-bleed: 0;
   --stats-heat: transparent;
   --stats-bar: none;
+  --stats-fill: var(--stats-bar);
   --stats-value-color: var(--muted);
 
   --tracks-max: none;
@@ -235,6 +236,11 @@
   --first-row-pad: 0;
   --rank-color: var(--muted);
   --row-hover: var(--wash);
+
+  --skeleton-bg: var(--rule);
+  --skeleton-height: 0.7em;
+  --skeleton-align: -0.05em;
+  --skeleton-animation: pulse 1.6s ease-in-out infinite;
 }
 
 :root[data-theme="light"] {
@@ -374,6 +380,15 @@
   --td-padding: 0.1rem 1px;
   --first-row-pad: 0.35rem;
   --row-hover: var(--heat);
+
+  --skeleton-bg: radial-gradient(
+      circle,
+      var(--muted) 0 1.2px,
+      transparent 1.7px
+    )
+    0 50% / 1ch 100% repeat-x;
+  --skeleton-height: 1lh;
+  --skeleton-align: top;
 }
 
 /* Ledger: a typographic grid. Section names in a label column, content in
@@ -498,6 +513,11 @@
   --first-row-pad: 0.3rem;
   --rank-color: var(--accent);
   --row-hover: var(--surface);
+
+  --skeleton-bg: linear-gradient(var(--rule), var(--rule)) bottom / 100% 1px
+    no-repeat;
+  --skeleton-height: 1em;
+  --skeleton-align: -0.2em;
 }
 
 /* Manual: the site as a man page. Bold, underline and reverse video only;
@@ -586,6 +606,15 @@
 
   --th-weight: bold;
   --th-color: var(--ink);
+
+  --skeleton-bg: repeating-linear-gradient(
+    90deg,
+    currentColor 0 calc(1ch - 2px),
+    transparent 0 1ch
+  );
+  --skeleton-height: 0.9em;
+  --skeleton-align: -0.1em;
+  --skeleton-animation: type 2.55s linear infinite;
 }
 
 @media (width < 46rem) {
@@ -917,7 +946,7 @@ ul {
     margin-inline: var(--stats-row-bleed);
     background: linear-gradient(
       90deg,
-      var(--stats-heat) calc(var(--value) / var(--max) * 100%),
+      var(--stats-heat) calc(var(--value, 0) / var(--max, 1) * 100%),
       transparent 0
     );
 
@@ -939,7 +968,8 @@ ul {
     }
 
     &::after {
-      width: max(3px, calc(var(--value) / var(--max) * 100%));
+      display: var(--stats-fill);
+      width: max(3px, calc(var(--value, 0) / var(--max, 1) * 100%));
       background: repeating-linear-gradient(
         90deg,
         var(--accent) 0 3px,
@@ -1098,6 +1128,61 @@ ul {
 .loader::after {
   content: "";
   animation: loading-dots 0.75s infinite steps(4);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Registered so it animates, snapped to whole characters where it is read. */
+@property --typed {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@keyframes type {
+  88%,
+  to {
+    --typed: var(--width);
+  }
+}
+
+.skeleton {
+  display: inline-block;
+  width: var(--width);
+  max-width: 100%;
+  height: var(--skeleton-height);
+  vertical-align: var(--skeleton-align);
+  color: var(--rule);
+  background: var(--skeleton-bg);
+  animation: var(--skeleton-animation);
+
+  /* The typed characters: the same background, revealed a cell at a time. */
+  &::after {
+    content: "";
+    display: block;
+    height: 100%;
+    color: var(--muted);
+    background: var(--skeleton-bg);
+    clip-path: inset(0 calc(100% - round(var(--typed), 1ch)) 0 0);
+  }
+}
+
+.placeholder {
+  --stats-fill: none;
+  --row-hover: transparent;
+  user-select: none;
+
+  /* Only in cells: a content-sized column (ledger's stat labels) would resolve it to 0. */
+  td .skeleton {
+    width: min(var(--width), 100%);
+  }
 }
 
 /* Chat */

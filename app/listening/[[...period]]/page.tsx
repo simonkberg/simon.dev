@@ -5,7 +5,6 @@ import { Suspense, use } from "react";
 import { getTopAlbums, getTopArtists, getTopTracks } from "@/actions/lastfm";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
-import { Loader } from "@/components/Loader";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import {
@@ -16,9 +15,18 @@ import {
 } from "@/lib/lastfm";
 
 import { PeriodSelector } from "./components/PeriodSelector";
-import { TopAlbumsTable } from "./components/TopAlbumsTable";
-import { TopArtistsTable } from "./components/TopArtistsTable";
-import { TopTracksTable } from "./components/TopTracksTable";
+import {
+  TopAlbumsTable,
+  TopAlbumsTableSkeleton,
+} from "./components/TopAlbumsTable";
+import {
+  TopArtistsTable,
+  TopArtistsTableSkeleton,
+} from "./components/TopArtistsTable";
+import {
+  TopTracksTable,
+  TopTracksTableSkeleton,
+} from "./components/TopTracksTable";
 
 export const prefetch = "partial";
 // Reading params behind Suspense would turn invalid periods into soft 404s.
@@ -77,28 +85,32 @@ export default function ListeningPage({ params }: ListeningPageProps) {
 
       <PeriodSelector current={period} />
 
-      <Suspense fallback={<Loader />}>
-        <section>
-          <Heading level={2}>
-            Top Tracks <Subtitle>(Top 10)</Subtitle>
-          </Heading>
+      <section>
+        <Heading level={2}>
+          Top Tracks <Subtitle>(Top 10)</Subtitle>
+        </Heading>
+        <Suspense fallback={<TopTracksTableSkeleton />}>
           <TopTracksTable topTracks={topTracks} />
-        </section>
+        </Suspense>
+      </section>
 
-        <section>
-          <Heading level={2}>
-            Top Artists <Subtitle>(Top 10)</Subtitle>
-          </Heading>
+      <section>
+        <Heading level={2}>
+          Top Artists <Subtitle>(Top 10)</Subtitle>
+        </Heading>
+        <Suspense fallback={<TopArtistsTableSkeleton />}>
           <TopArtistsTable topArtists={topArtists} />
-        </section>
+        </Suspense>
+      </section>
 
-        <section>
-          <Heading level={2}>
-            Top Albums <Subtitle>(Top 10)</Subtitle>
-          </Heading>
+      <section>
+        <Heading level={2}>
+          Top Albums <Subtitle>(Top 10)</Subtitle>
+        </Heading>
+        <Suspense fallback={<TopAlbumsTableSkeleton />}>
           <TopAlbumsTable topAlbums={topAlbums} />
-        </section>
-      </Suspense>
+        </Suspense>
+      </section>
     </Page>
   );
 }

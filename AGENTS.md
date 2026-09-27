@@ -198,7 +198,8 @@ Use `"minutes"` for frequently-changing data (recent tracks), `"hours"` for aggr
 ### Promise Props with `use()` Hook
 
 Components take `Promise<T>` props and unwrap them with `use()`. Always wrap the call site
-in `<Suspense>`.
+in `<Suspense>`. Lists and tables export a `*Skeleton` beside them for the fallback, built on
+their own markup so each variant styles it; chat keeps `Loader`.
 
 ### Page Metadata
 

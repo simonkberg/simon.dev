@@ -3,9 +3,28 @@ import { use } from "react";
 import type { GetTopArtistsResult } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
+import { TableSkeleton } from "./TableSkeleton";
+
 export interface TopArtistsTableProps {
   topArtists: Promise<GetTopArtistsResult>;
 }
+
+const head = (
+  <>
+    <colgroup>
+      <col />
+      <col style={{ width: "100%" }} />
+      <col />
+    </colgroup>
+    <thead>
+      <tr>
+        <th className="numeric">#</th>
+        <th>Artist</th>
+        <th className="numeric">Plays</th>
+      </tr>
+    </thead>
+  </>
+);
 
 export const TopArtistsTable = ({ topArtists }: TopArtistsTableProps) => {
   const result = use(topArtists);
@@ -16,18 +35,7 @@ export const TopArtistsTable = ({ topArtists }: TopArtistsTableProps) => {
 
   return (
     <table>
-      <colgroup>
-        <col />
-        <col style={{ width: "100%" }} />
-        <col />
-      </colgroup>
-      <thead>
-        <tr>
-          <th className="numeric">#</th>
-          <th>Artist</th>
-          <th className="numeric">Plays</th>
-        </tr>
-      </thead>
+      {head}
       <tbody>
         {result.artists.map((artist) => (
           <tr key={`${artist.rank}-${artist.name}`}>
@@ -42,3 +50,7 @@ export const TopArtistsTable = ({ topArtists }: TopArtistsTableProps) => {
     </table>
   );
 };
+
+export const TopArtistsTableSkeleton = () => (
+  <TableSkeleton head={head} textColumns={1} />
+);

@@ -62,7 +62,8 @@ vi.mock(import("@/components/RecentTracksList"), () => ({
   },
 }));
 
-vi.mock(import("@/components/StatsList"), () => ({
+vi.mock(import("@/components/StatsList"), async (importOriginal) => ({
+  ...(await importOriginal()),
   StatsList: ({ stats }: StatsListProps) => {
     use(stats);
     return <div data-testid="stats-list" />;

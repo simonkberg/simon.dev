@@ -190,13 +190,21 @@ describe("ListeningPage", () => {
       ),
     );
 
-    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    expect(screen.getAllByRole("status")).toHaveLength(3);
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: /Top Tracks/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("heading", { name: /Top Tracks/ }),
+    ).toBeInTheDocument();
 
     await act(async () => {
       resolveTracks({ status: "ok", tracks: [] });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("status")).toHaveLength(2);
+    });
+
+    await act(async () => {
       resolveArtists({ status: "ok", artists: [] });
       resolveAlbums({ status: "ok", albums: [] });
     });
@@ -204,9 +212,6 @@ describe("ListeningPage", () => {
     await waitFor(() => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
-
-    expect(
-      screen.getByRole("heading", { name: /Top Tracks/ }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("table")).toHaveLength(3);
   });
 });

@@ -3,6 +3,7 @@ import { type CSSProperties, use } from "react";
 import type { WakaTimeStatsResult } from "@/actions/wakaTime";
 
 import { AnimatedNumber } from "./AnimatedNumber";
+import { Skeleton, SkeletonStatus } from "./Skeleton";
 
 export interface StatsListProps {
   stats: Promise<WakaTimeStatsResult>;
@@ -43,3 +44,22 @@ export const StatsList = ({ stats }: StatsListProps) => {
     </ul>
   );
 };
+
+const labelWidths = [8, 6, 10, 5, 4, 7, 9, 6, 5, 4, 6, 4, 5, 4, 8] as const;
+
+export const StatsListSkeleton = () => (
+  <SkeletonStatus>
+    <ul className="stats placeholder" aria-hidden="true">
+      {labelWidths.map((width, index) => (
+        <li key={index}>
+          <span className="label">
+            <Skeleton width={width} />
+          </span>{" "}
+          <span className="value">
+            <Skeleton width={6} />
+          </span>
+        </li>
+      ))}
+    </ul>
+  </SkeletonStatus>
+);

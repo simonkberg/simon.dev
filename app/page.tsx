@@ -13,7 +13,8 @@ import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
 import { Page } from "@/components/Page";
 import { RecentTracksList } from "@/components/RecentTracksList";
-import { StatsList } from "@/components/StatsList";
+import { RecentTracksListSkeleton } from "@/components/RecentTracksListSkeleton";
+import { StatsList, StatsListSkeleton } from "@/components/StatsList";
 import { Subtitle } from "@/components/Subtitle";
 import { Terminal } from "@/components/Terminal";
 import { config } from "@/config";
@@ -61,7 +62,7 @@ export default function RootPage() {
             )
           </Subtitle>
         </Heading>
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={<StatsListSkeleton />}>
           <StatsList stats={stats} />
         </Suspense>
       </section>
@@ -77,7 +78,7 @@ export default function RootPage() {
             )
           </Subtitle>
         </Heading>
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={<RecentTracksListSkeleton />}>
           <RecentTracksList recentTracks={recentTracks} />
         </Suspense>
         <p>

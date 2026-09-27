@@ -3,9 +3,30 @@ import { use } from "react";
 import type { GetTopAlbumsResult } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
+import { TableSkeleton } from "./TableSkeleton";
+
 export interface TopAlbumsTableProps {
   topAlbums: Promise<GetTopAlbumsResult>;
 }
+
+const head = (
+  <>
+    <colgroup>
+      <col />
+      <col style={{ width: "50%" }} />
+      <col style={{ width: "50%" }} />
+      <col />
+    </colgroup>
+    <thead>
+      <tr>
+        <th className="numeric">#</th>
+        <th>Album</th>
+        <th>Artist</th>
+        <th className="numeric">Plays</th>
+      </tr>
+    </thead>
+  </>
+);
 
 export const TopAlbumsTable = ({ topAlbums }: TopAlbumsTableProps) => {
   const result = use(topAlbums);
@@ -16,20 +37,7 @@ export const TopAlbumsTable = ({ topAlbums }: TopAlbumsTableProps) => {
 
   return (
     <table>
-      <colgroup>
-        <col />
-        <col style={{ width: "50%" }} />
-        <col style={{ width: "50%" }} />
-        <col />
-      </colgroup>
-      <thead>
-        <tr>
-          <th className="numeric">#</th>
-          <th>Album</th>
-          <th>Artist</th>
-          <th className="numeric">Plays</th>
-        </tr>
-      </thead>
+      {head}
       <tbody>
         {result.albums.map((album) => (
           <tr key={`${album.rank}-${album.name}`}>
@@ -45,3 +53,7 @@ export const TopAlbumsTable = ({ topAlbums }: TopAlbumsTableProps) => {
     </table>
   );
 };
+
+export const TopAlbumsTableSkeleton = () => (
+  <TableSkeleton head={head} textColumns={2} />
+);
