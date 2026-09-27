@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { WakaTimeStatsResult } from "@/actions/wakaTime";
 
-import { StatsList } from "./StatsList";
+import { StatsList, StatsListSkeleton } from "./StatsList";
 
 describe("StatsList", () => {
   it("renders stats as list items", async () => {
@@ -61,5 +61,14 @@ describe("StatsList", () => {
     expect(
       screen.getByText(/probably on vacation/, { exact: false }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("StatsListSkeleton", () => {
+  it("announces loading without exposing the placeholder list", () => {
+    render(<StatsListSkeleton />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });

@@ -55,14 +55,16 @@ vi.mock(import("@/components/chat/ChatStream"), () => ({
   ChatStream: () => <span role="status">live</span>,
 }));
 
-vi.mock(import("@/components/RecentTracksList"), () => ({
+vi.mock(import("@/components/RecentTracksList"), async (importOriginal) => ({
+  ...(await importOriginal()),
   RecentTracksList: ({ recentTracks }: RecentTracksListProps) => {
     use(recentTracks);
     return <div data-testid="recent-tracks-list" />;
   },
 }));
 
-vi.mock(import("@/components/StatsList"), () => ({
+vi.mock(import("@/components/StatsList"), async (importOriginal) => ({
+  ...(await importOriginal()),
   StatsList: ({ stats }: StatsListProps) => {
     use(stats);
     return <div data-testid="stats-list" />;

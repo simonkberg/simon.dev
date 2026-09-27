@@ -3,9 +3,30 @@ import { use } from "react";
 import type { GetTopTracksResult } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
+import { TableSkeleton } from "./TableSkeleton";
+
 export interface TopTracksTableProps {
   topTracks: Promise<GetTopTracksResult>;
 }
+
+const head = (
+  <>
+    <colgroup>
+      <col />
+      <col style={{ width: "50%" }} />
+      <col style={{ width: "50%" }} />
+      <col />
+    </colgroup>
+    <thead>
+      <tr>
+        <th className="numeric">#</th>
+        <th>Track</th>
+        <th>Artist</th>
+        <th className="numeric">Plays</th>
+      </tr>
+    </thead>
+  </>
+);
 
 export const TopTracksTable = ({ topTracks }: TopTracksTableProps) => {
   const result = use(topTracks);
@@ -16,20 +37,7 @@ export const TopTracksTable = ({ topTracks }: TopTracksTableProps) => {
 
   return (
     <table>
-      <colgroup>
-        <col />
-        <col style={{ width: "50%" }} />
-        <col style={{ width: "50%" }} />
-        <col />
-      </colgroup>
-      <thead>
-        <tr>
-          <th className="numeric">#</th>
-          <th>Track</th>
-          <th>Artist</th>
-          <th className="numeric">Plays</th>
-        </tr>
-      </thead>
+      {head}
       <tbody>
         {result.tracks.map((track) => (
           <tr key={`${track.rank}-${track.name}`}>
@@ -45,3 +53,7 @@ export const TopTracksTable = ({ topTracks }: TopTracksTableProps) => {
     </table>
   );
 };
+
+export const TopTracksTableSkeleton = () => (
+  <TableSkeleton head={head} textColumns={2} />
+);
