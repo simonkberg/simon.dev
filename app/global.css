@@ -254,11 +254,11 @@
   --ink: light-dark(oklch(0.25 0.015 255), oklch(0.87 0.012 255));
   --muted: light-dark(oklch(0.5 0.02 255), oklch(0.63 0.02 255));
   --rule: light-dark(oklch(0.8 0.01 255), oklch(0.36 0.015 255));
-  --accent: light-dark(oklch(0.62 0.14 65), oklch(0.8 0.12 78));
-  --on-accent: light-dark(oklch(0.99 0.01 78), oklch(0.22 0.03 78));
+  --accent: light-dark(oklch(0.58 0.23 338), oklch(0.76 0.17 338));
+  --on-accent: light-dark(oklch(0.99 0.01 338), oklch(0.22 0.03 338));
   --heat: light-dark(
-    color-mix(in oklch, oklch(0.62 0.14 65) 14%, transparent),
-    color-mix(in oklch, oklch(0.8 0.12 78) 16%, transparent)
+    color-mix(in oklch, oklch(0.58 0.23 338) 14%, transparent),
+    color-mix(in oklch, oklch(0.76 0.17 338) 16%, transparent)
   );
 
   --link-line: var(--muted);
