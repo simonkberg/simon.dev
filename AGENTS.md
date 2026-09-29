@@ -141,7 +141,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Logging:** pino (`app/lib/log.ts`), one JSON line per entry so Railway indexes it.
   `instrumentation.ts` bridges `console.*` into it, so Next's own errors (and its
   `NEXT_PRIVATE_DEBUG_CACHE` output) arrive structured too; `LOG_LEVEL` filters both.
-- **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5 (adaptive thinking, `medium` effort for replies,
+- **simon-bot:** `app/lib/anthropic.ts` calls Claude Sonnet 5.5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
   per-request — and dedupes through Redis (60s TTL) so multiple instances don't

@@ -29,7 +29,7 @@ import {
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
 const BASE_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-5" as const;
+const MODEL = "claude-sonnet-5-5" as const;
 const MAX_TOKENS = 2048;
 const TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_TOOL_ITERATIONS = 5;
