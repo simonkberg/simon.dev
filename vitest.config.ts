@@ -11,7 +11,13 @@ const config = defineConfig({
   test: {
     environment: "happy-dom",
     environmentOptions: {
-      happyDOM: { settings: { handleDisabledFileLoadingAsSuccess: true } },
+      happyDOM: {
+        settings: {
+          handleDisabledFileLoadingAsSuccess: true,
+          // MSW 3 intercepts below happy-dom's fetch, which would otherwise block mocked cross-origin requests
+          fetch: { disableSameOriginPolicy: true },
+        },
+      },
     },
     include: ["app/**/*.test.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
