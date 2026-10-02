@@ -33,7 +33,7 @@
     "comparator.ts": "2.0.0",
     "dataloader": "2.2.3",
     "jose": "6.2.12",
-    "next": "16.3.6",
+    "next": "16.3.7",
     "pino": "10.3.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
