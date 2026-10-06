@@ -58,7 +58,7 @@
     "husky": "9.1.7",
     "jiti": "2.7.0",
     "lint-staged": "17.6.0",
-    "msw": "3.0.1",
+    "msw": "3.0.2",
     "oxc-transform-react": "0.152.0",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
