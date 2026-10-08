@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMessage as createAnthropicMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
+import { MIGRATIONS } from "@/lib/migrations";
 import { reflect } from "@/lib/reflection";
 import { query } from "@/lib/turso";
+import { createSqliteQuery } from "@/mocks/sqlite";
 
 import { getMessageChain, postChannelMessage } from "./api";
 import { handleMessage, startBotSubscription } from "./bot";
@@ -98,7 +100,42 @@ describe("handleMessage", () => {
 
     await handleMessage(createMessage({ content: "User1: hello world" }));
 
+    expect(query).not.toHaveBeenCalled();
+    expect(getMessageChain).not.toHaveBeenCalled();
     expect(postChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it("should not respond to a reply when nothing in the chain mentions the bot", async () => {
+    mockSeen(true);
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hello" },
+      { id: "msg-2", type: 19, username: "User2", content: "hi" },
+    ]);
+
+    await handleMessage(
+      createMessage({
+        type: 19,
+        id: "msg-2",
+        message_reference: { message_id: "msg-1" },
+        content: "User2: hi",
+      }),
+    );
+
+    expect(getMessageChain).toHaveBeenCalledWith("msg-2");
+    expect(postChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it("should handle a message only once across instances", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.mocked(query).mockImplementation(createSqliteQuery());
+    for (const sql of MIGRATIONS) await query(sql);
+    vi.mocked(getMessageChain).mockResolvedValue([]);
+
+    const message = createMessage({ content: "User1: hey simon-bot" });
+    await handleMessage(message);
+    await handleMessage(message);
+
+    expect(getMessageChain).toHaveBeenCalledTimes(1);
   });
 
   it("should respond when bot is mentioned in parent message", async () => {
@@ -122,7 +159,12 @@ describe("handleMessage", () => {
     vi.mocked(postChannelMessage).mockResolvedValue("response-1");
 
     await handleMessage(
-      createMessage({ type: 19, id: "msg-2", content: "User2: thanks!" }),
+      createMessage({
+        type: 19,
+        id: "msg-2",
+        message_reference: { message_id: "msg-1" },
+        content: "User2: thanks!",
+      }),
     );
 
     expect(postChannelMessage).toHaveBeenCalledWith(
@@ -149,7 +191,12 @@ describe("handleMessage", () => {
     vi.mocked(postChannelMessage).mockResolvedValue("response-1");
 
     await handleMessage(
-      createMessage({ type: 19, id: "msg-3", content: "User1: thanks!" }),
+      createMessage({
+        type: 19,
+        id: "msg-3",
+        message_reference: { message_id: "msg-2" },
+        content: "User1: thanks!",
+      }),
     );
 
     expect(createAnthropicMessage).toHaveBeenCalledWith([

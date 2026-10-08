@@ -39,6 +39,9 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Skip our own messages
     if (isBotMessage(message.content)) return;
 
+    // A message that isn't a reply can only involve the bot by mentioning it
+    if (!message.message_reference && !mentionsBot(message.content)) return;
+
     // Dedup across instances
     const isNew = await markSeen(messageId);
     if (!isNew) {

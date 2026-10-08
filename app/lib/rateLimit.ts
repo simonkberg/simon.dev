@@ -8,8 +8,7 @@ export type RateLimitResult =
 
 export type RateLimitOptions = { limit: number; windowMs: number };
 
-// One statement, so SQLite's single writer makes the count and the insert
-// atomic across replicas.
+// One statement, so SQLite's single writer makes count and insert atomic.
 export async function rateLimit(
   key: string,
   { limit, windowMs }: RateLimitOptions,
@@ -30,9 +29,10 @@ export async function rateLimit(
     [key, since],
   );
   const oldest = rows[0]?.["oldest"];
+  // No oldest means it left the window since the insert: retry now.
   return {
     success: false,
-    reset: (typeof oldest === "number" ? oldest : now) + windowMs,
+    reset: typeof oldest === "number" ? oldest + windowMs : now,
   };
 }
 

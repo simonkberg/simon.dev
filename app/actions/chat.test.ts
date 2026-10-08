@@ -131,6 +131,37 @@ describe("postChatMessage", () => {
     }
   });
 
+  it("never tells the user to wait less than a second", async () => {
+    mockRateLimitExceeded(0);
+    const formData = new FormData();
+    formData.set("text", "Test message");
+
+    const result = await postChatMessage(formData);
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Rate limit exceeded. Wait 1 seconds before trying again.",
+    });
+  });
+
+  it("posts anyway when the rate limiter fails", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const err = new Error("Turso down");
+    vi.mocked(rateLimit).mockRejectedValue(err);
+    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
+    const formData = new FormData();
+    formData.set("text", "Hello!");
+
+    const result = await postChatMessage(formData);
+
+    expect(result).toEqual({ status: "ok" });
+    expect(warn).toHaveBeenCalledWith(
+      { err, action: "postChatMessage" },
+      "Rate limiter failed",
+    );
+  });
+
   it("uses username as rate limit identifier when IP is unavailable", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.mocked(identifiers).mockResolvedValueOnce({

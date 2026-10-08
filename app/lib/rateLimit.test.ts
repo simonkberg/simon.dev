@@ -58,6 +58,49 @@ describe("rateLimit", () => {
     expect(await rateLimit("a", options)).toEqual({ success: true });
   });
 
+  it("should admit exactly the limit when requests race", async () => {
+    const results = await Promise.all(
+      Array.from({ length: options.limit + 3 }, () => rateLimit("a", options)),
+    );
+
+    expect(results.filter((result) => result.success)).toHaveLength(
+      options.limit,
+    );
+  });
+
+  it("should reset from the oldest request of this key inside the window", async () => {
+    await query("INSERT INTO rate_limits (key, at) VALUES ('a', ?)", [
+      1_005_000 - options.windowMs,
+    ]);
+    await query("INSERT INTO rate_limits (key, at) VALUES ('b', 1000001)");
+    vi.advanceTimersByTime(5_000);
+    for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
+
+    expect(await rateLimit("a", options)).toEqual({
+      success: false,
+      reset: 1_035_000,
+    });
+  });
+
+  it("should reset now when the oldest request left the window meanwhile", async () => {
+    vi.mocked(query)
+      .mockResolvedValueOnce({
+        rows: [],
+        rowsAffected: 0,
+        lastInsertRowId: null,
+      })
+      .mockResolvedValueOnce({
+        rows: [{ oldest: null }],
+        rowsAffected: 0,
+        lastInsertRowId: null,
+      });
+
+    expect(await rateLimit("a", options)).toEqual({
+      success: false,
+      reset: 1_000_000,
+    });
+  });
+
   it("should not record rejected requests", async () => {
     for (let i = 0; i < options.limit + 2; i++) await rateLimit("a", options);
 

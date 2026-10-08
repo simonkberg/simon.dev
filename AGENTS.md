@@ -142,12 +142,13 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **simon-bot:** `app/lib/anthropic.ts` calls Claude Haiku 5.5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
-  per-request — and dedupes through Turso's `seen_messages` so multiple instances don't
-  double-reply.
+  per-request — and dedupes replies and mentions through Turso's `seen_messages` so multiple
+  instances don't double-reply. Without Turso it doesn't reply at all, rather than twice.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
   at boot under a lock row in `locks`. Chat posts are rate limited by `app/lib/rateLimit.ts`,
   a sliding window kept atomic across replicas by doing the count and insert in one statement.
+  It fails open: a limiter error lets the post through.
 - **simon-bot memory:** `app/lib/memory.ts` owns the `memories` table and renders the
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
@@ -215,7 +216,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; run `MIGRATIONS` first)
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.

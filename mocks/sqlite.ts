@@ -8,9 +8,10 @@ export function createSqliteQuery(): typeof query {
   return async (sql, args) => {
     const statement = db.prepare(sql);
     if (statement.columns().length > 0) {
+      const rows = statement.all(...(args ?? [])) as Row[];
       return {
-        rows: statement.all(...(args ?? [])) as Row[],
-        rowsAffected: 0,
+        rows,
+        rowsAffected: /\breturning\b/i.test(sql) ? rows.length : 0,
         lastInsertRowId: null,
       };
     }

@@ -18,9 +18,10 @@ export const MIGRATIONS: readonly string[] = [
 ];
 
 const LOCK_NAME = "migrations";
-const LOCK_TTL_MS = 60_000;
+const LOCK_TTL_MS = 30_000;
 const LOCK_RETRY_MS = 500;
-const LOCK_ATTEMPTS = 60;
+// Longer than the lease, so a holder that died is outwaited.
+const LOCK_WAIT_MS = 45_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -36,19 +37,29 @@ async function acquireLock(owner: string): Promise<void> {
       expires_at INTEGER NOT NULL
     )`,
   );
-  for (let attempt = 0; attempt < LOCK_ATTEMPTS; attempt++) {
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
     const now = Date.now();
-    const { rowsAffected } = await query(
-      `INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
-       ON CONFLICT (name) DO UPDATE
-       SET owner = excluded.owner, expires_at = excluded.expires_at
-       WHERE locks.expires_at < ?`,
-      [LOCK_NAME, owner, now + LOCK_TTL_MS, now],
-    );
-    if (rowsAffected > 0) return;
+    try {
+      // Matching our own owner makes a retry after a lost response succeed.
+      const { rowsAffected } = await query(
+        `INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
+         ON CONFLICT (name) DO UPDATE
+         SET owner = excluded.owner, expires_at = excluded.expires_at
+         WHERE locks.expires_at < ? OR locks.owner = excluded.owner`,
+        [LOCK_NAME, owner, now + LOCK_TTL_MS, now],
+      );
+      if (rowsAffected > 0) return;
+    } catch (err) {
+      lastError = err;
+      log.warn({ err }, "Failed to take the migrations lock, retrying");
+    }
     await sleep(LOCK_RETRY_MS);
   }
-  throw new Error("Timed out waiting for the migrations lock");
+  throw new Error("Timed out waiting for the migrations lock", {
+    cause: lastError,
+  });
 }
 
 async function applyPending(): Promise<void> {
@@ -83,6 +94,8 @@ export async function runMigrations(): Promise<void> {
     await query("DELETE FROM locks WHERE name = ? AND owner = ?", [
       LOCK_NAME,
       owner,
-    ]);
+    ]).catch((err: unknown) => {
+      log.warn({ err }, "Failed to release the migrations lock");
+    });
   }
 }
