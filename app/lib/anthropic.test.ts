@@ -81,7 +81,7 @@ describe("createMessage", () => {
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
         expect(await request.json()).toMatchObject({
-          model: "claude-sonnet-5-5",
+          model: "claude-haiku-5-5",
           thinking: { type: "adaptive", display: "summarized" },
           output_config: { effort: "medium" },
           max_tokens: 2048,
