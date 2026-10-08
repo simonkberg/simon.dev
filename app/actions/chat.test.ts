@@ -1,4 +1,4 @@
-import { cacheLife, cacheTag, refresh, updateTag } from "next/cache"; // Hoisted so it can be referenced in the Ratelimit mock below
+import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { after } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,26 +16,10 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
+import { pruneRateLimits, rateLimit } from "@/lib/rateLimit";
 import type { Username } from "@/lib/session";
 
-// Hoisted so it can be referenced in the Ratelimit mock below
-const limitMock = vi.hoisted(() => vi.fn());
-
 vi.mock(import("server-only"), () => ({}));
-vi.mock(import("@upstash/redis"));
-// Untyped mock due to complexity of the actual module exports
-vi.mock("@upstash/ratelimit", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@upstash/ratelimit")>();
-  const slidingWindow = actual.Ratelimit.slidingWindow.bind(actual.Ratelimit);
-  return {
-    Ratelimit: vi.fn(
-      class {
-        limit = limitMock;
-        static slidingWindow = slidingWindow;
-      },
-    ),
-  };
-});
 vi.mock(import("next/cache"), () => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
@@ -55,7 +39,7 @@ vi.mock(import("@/lib/session"), () => ({
 }));
 vi.mock(import("@/lib/chatTip"), () => ({ setChatTipDismissed: vi.fn() }));
 vi.mock(import("@/lib/discord/api"));
-vi.mock(import("@/lib/redis"));
+vi.mock(import("@/lib/rateLimit"));
 
 function createMockMessage(overrides: Partial<Message> = {}): Message {
   return {
@@ -70,22 +54,13 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
 }
 
 function mockRateLimitSuccess() {
-  limitMock.mockResolvedValue({
-    success: true,
-    limit: 5,
-    remaining: 4,
-    reset: Date.now() + 30000,
-    pending: Promise.resolve(),
-  });
+  vi.mocked(rateLimit).mockResolvedValue({ success: true });
 }
 
 function mockRateLimitExceeded(resetInMs: number) {
-  limitMock.mockResolvedValue({
+  vi.mocked(rateLimit).mockResolvedValue({
     success: false,
-    limit: 5,
-    remaining: 0,
     reset: Date.now() + resetInMs,
-    pending: Promise.resolve(),
   });
 }
 
@@ -152,7 +127,7 @@ describe("postChatMessage", () => {
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.error).toMatch(/Rate limit exceeded/);
-      expect(result.error).toMatch(/\d+ seconds/);
+      expect(result.error).toMatch(/Wait 10 seconds/);
     }
   });
 
@@ -169,9 +144,9 @@ describe("postChatMessage", () => {
 
     await postChatMessage(formData);
 
-    expect(limitMock).toHaveBeenCalledWith("test-user", {
-      ip: undefined,
-      userAgent: "vitest",
+    expect(rateLimit).toHaveBeenCalledWith("postChatMessage:test-user", {
+      limit: 5,
+      windowMs: 30_000,
     });
   });
 
@@ -207,9 +182,9 @@ describe("postChatMessage", () => {
     const result = await postChatMessage(formData);
 
     expect(result).toEqual({ status: "ok" });
-    expect(limitMock).toHaveBeenCalledWith("0.0.0.0", {
-      ip: "0.0.0.0",
-      userAgent: "vitest",
+    expect(rateLimit).toHaveBeenCalledWith("postChatMessage:0.0.0.0", {
+      limit: 5,
+      windowMs: 30_000,
     });
     expect(postChannelMessage).toHaveBeenCalledWith(
       "Hello everyone!",
@@ -224,8 +199,11 @@ describe("postChatMessage", () => {
       }),
       "Hello everyone!",
     );
-    // Only one after() call for rate limit pending
     expect(after).toHaveBeenCalledTimes(1);
+    const task = vi.mocked(after).mock.calls[0]?.[0];
+    expect(task).toBeTypeOf("function");
+    if (typeof task === "function") await task();
+    expect(pruneRateLimits).toHaveBeenCalledWith(30_000);
   });
 
   it("returns error and logs when Discord API fails", async () => {

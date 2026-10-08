@@ -9,8 +9,6 @@ export const mockEnv = {
   DISCORD_BOT_TOKEN: "test-discord-bot-token",
   DISCORD_GUILD_ID: "test-discord-guild-id",
   DISCORD_CHANNEL_ID: "test-discord-channel-id",
-  UPSTASH_REDIS_REST_URL: "https://test.upstash.io",
-  UPSTASH_REDIS_REST_TOKEN: "test-redis-token",
   LAST_FM_API_KEY: "test-last-fm-api-key",
   ANTHROPIC_API_KEY: "test-anthropic-api-key",
   TURSO_DATABASE_URL: "https://test-db.turso.io",

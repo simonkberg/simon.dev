@@ -28,8 +28,6 @@
     "@khanacademy/simple-markdown": "4.0.0",
     "@next/third-parties": "16.3.8",
     "@react-spring/web": "10.1.2",
-    "@upstash/ratelimit": "2.2.0",
-    "@upstash/redis": "1.39.0",
     "comparator.ts": "2.0.0",
     "dataloader": "2.2.3",
     "jose": "6.2.12",

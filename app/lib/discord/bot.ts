@@ -1,8 +1,8 @@
 import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { getRedis } from "@/lib/redis";
 import { reflect } from "@/lib/reflection";
+import { query } from "@/lib/turso";
 
 import type { Username } from "../session";
 import { getMessageChain, postChannelMessage } from "./api";
@@ -22,15 +22,12 @@ function mentionsBot(content: string): boolean {
   return BOT_MENTION_PATTERN.test(content);
 }
 
-const SEEN_PREFIX = "discord:seen:";
-const SEEN_TTL = 60;
-
 async function markSeen(messageId: string): Promise<boolean> {
-  const result = await getRedis().set(`${SEEN_PREFIX}${messageId}`, "1", {
-    nx: true,
-    ex: SEEN_TTL,
-  });
-  return result === "OK";
+  const { rowsAffected } = await query(
+    "INSERT OR IGNORE INTO seen_messages (id) VALUES (?)",
+    [messageId],
+  );
+  return rowsAffected > 0;
 }
 
 export async function handleMessage(message: DiscordMessage): Promise<void> {
