@@ -97,6 +97,13 @@ describe("runMigrations", () => {
     await expect(runMigrations()).resolves.toBeUndefined();
   });
 
+  it("should report the real error when checking for the checksum column fails", async () => {
+    await runMigrations();
+    failNext("SELECT checksum FROM migrations LIMIT 0");
+
+    await expect(runMigrations()).rejects.toThrow("boom");
+  });
+
   it("should apply only the pending migrations and release the lock", async () => {
     await runMigrations();
     await query("DELETE FROM migrations WHERE version > 1");

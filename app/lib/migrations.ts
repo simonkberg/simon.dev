@@ -80,8 +80,11 @@ function checksum(sql: string): string {
 async function addChecksumColumn(): Promise<void> {
   try {
     await query("SELECT checksum FROM migrations LIMIT 0");
-  } catch {
-    await query("ALTER TABLE migrations ADD COLUMN checksum TEXT");
+  } catch (err) {
+    // If the column was there after all, the probe's error is the real one.
+    await query("ALTER TABLE migrations ADD COLUMN checksum TEXT").catch(() => {
+      throw err;
+    });
   }
 }
 
