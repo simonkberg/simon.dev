@@ -148,7 +148,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
   at boot under a lock row in `locks`. Chat posts are rate limited by `app/lib/rateLimit.ts`,
   a sliding window kept atomic across replicas by doing the count and insert in one statement.
-  It fails open: a limiter error lets the post through.
+  It fails open: a limiter error lets the post through. Like Upstash's, it remembers blocked
+  keys in memory, so a flood is turned away without database round trips.
 - **simon-bot memory:** `app/lib/memory.ts` owns the `memories` table and renders the
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads

@@ -130,6 +130,7 @@ describe("postChatMessage", () => {
       expect(result.error).toMatch(/Rate limit exceeded/);
       expect(result.error).toMatch(/Wait 10 seconds/);
     }
+    expect(pruneRateLimits).not.toHaveBeenCalled();
   });
 
   it("uses username as rate limit identifier when IP is unavailable", async () => {

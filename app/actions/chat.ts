@@ -68,14 +68,15 @@ export async function postChatMessage(
       RATE_LIMIT,
     );
 
-    after(() => pruneRateLimits(RATE_LIMIT.windowMs));
-
     if (!limited.success) {
       return {
         status: "error",
         error: `Rate limit exceeded. Wait ${limited.retryAfterSeconds} seconds before trying again.`,
       };
     }
+
+    // Only allowed posts add rows, so only they need to clear out old ones.
+    after(() => pruneRateLimits(RATE_LIMIT.windowMs));
 
     const messageId = await postChannelMessage(text, username, replyToId);
 

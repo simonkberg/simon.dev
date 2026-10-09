@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getGlobal, resetGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 import { createSqliteQuery, emptyResult } from "@/mocks/sqlite";
@@ -21,6 +22,7 @@ async function countRows(): Promise<unknown> {
 
 describe("rateLimit", () => {
   beforeEach(() => {
+    resetGlobal("simon.dev/rateLimit/blocked");
     vi.useFakeTimers({ now: 1_000_000 });
     vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
   });
@@ -105,6 +107,28 @@ describe("rateLimit", () => {
     for (let i = 0; i < options.limit + 2; i++) await rateLimit("a", options);
 
     expect(await countRows()).toBe(options.limit);
+  });
+
+  it("should turn a blocked key away without asking the database", async () => {
+    for (let i = 0; i <= options.limit; i++) await rateLimit("a", options);
+    vi.mocked(query).mockClear();
+    vi.advanceTimersByTime(10_000);
+
+    expect(await rateLimit("a", options)).toEqual({
+      success: false,
+      retryAfterSeconds: 20,
+    });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("should forget blocks once they lift", async () => {
+    for (let i = 0; i <= options.limit; i++) await rateLimit("a", options);
+    vi.advanceTimersByTime(options.windowMs);
+    for (let i = 0; i <= options.limit; i++) await rateLimit("b", options);
+
+    expect([
+      ...getGlobal("simon.dev/rateLimit/blocked", () => new Map()).keys(),
+    ]).toEqual(["b"]);
   });
 
   it("should count each key separately", async () => {
