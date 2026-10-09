@@ -1,8 +1,11 @@
 import "server-only";
+import { createHash } from "node:crypto";
+
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 
-// Append only. Each entry is one statement that must be safe to re-run: a
+// Append only, and never edit an entry once applied: boot fails on a changed
+// checksum. Each entry is one statement that must be safe to re-run, since a
 // crash between applying and recording it re-applies it on the next boot.
 export const MIGRATIONS: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS memories (
@@ -13,8 +16,8 @@ export const MIGRATIONS: readonly string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS memories_category ON memories (category)`,
   `CREATE TABLE IF NOT EXISTS seen_messages (id TEXT PRIMARY KEY, at INTEGER NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS rate_limits (key TEXT NOT NULL, at INTEGER NOT NULL)`,
-  `CREATE INDEX IF NOT EXISTS rate_limits_key_at ON rate_limits (key, at)`,
+  `CREATE TABLE IF NOT EXISTS rate_limits (key TEXT NOT NULL, expires_at INTEGER NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS rate_limits_key_expires_at ON rate_limits (key, expires_at)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.
@@ -26,7 +29,8 @@ const BOOTSTRAP = [
   )`,
   `CREATE TABLE IF NOT EXISTS migrations (
     version INTEGER PRIMARY KEY,
-    applied_at TEXT NOT NULL
+    applied_at TEXT NOT NULL,
+    checksum TEXT
   )`,
 ];
 
@@ -68,19 +72,60 @@ async function acquireLock(owner: string): Promise<void> {
   });
 }
 
+function checksum(sql: string): string {
+  return createHash("sha256").update(sql).digest("hex");
+}
+
+// Tables made before checksums were recorded lack the column.
+async function addChecksumColumn(): Promise<void> {
+  try {
+    await query("SELECT checksum FROM migrations LIMIT 0");
+  } catch {
+    await query("ALTER TABLE migrations ADD COLUMN checksum TEXT");
+  }
+}
+
+async function verifyApplied(): Promise<Set<number>> {
+  const { rows } = await query("SELECT version, checksum FROM migrations");
+  const changed: number[] = [];
+
+  const applied = new Set<number>();
+  for (const row of rows) {
+    const version = Number(row["version"]);
+    applied.add(version);
+    const sql = MIGRATIONS[version - 1];
+    if (sql === undefined) continue;
+    if (row["checksum"] === null) {
+      await query("UPDATE migrations SET checksum = ? WHERE version = ?", [
+        checksum(sql),
+        version,
+      ]);
+    } else if (row["checksum"] !== checksum(sql)) {
+      changed.push(version);
+    }
+  }
+
+  if (changed.length > 0) {
+    throw new Error(
+      `Applied migrations were edited: ${changed.join(", ")}. Add a new migration instead.`,
+    );
+  }
+  return applied;
+}
+
 async function applyPending(): Promise<void> {
-  const { rows } = await query("SELECT version FROM migrations");
-  const applied = new Set(rows.map((row) => row["version"]));
+  await addChecksumColumn();
+  const applied = await verifyApplied();
 
   for (const [index, sql] of MIGRATIONS.entries()) {
     const version = index + 1;
     if (applied.has(version)) continue;
 
     await query(sql);
-    await query("INSERT INTO migrations (version, applied_at) VALUES (?, ?)", [
-      version,
-      new Date().toISOString(),
-    ]);
+    await query(
+      "INSERT INTO migrations (version, applied_at, checksum) VALUES (?, ?, ?)",
+      [version, new Date().toISOString(), checksum(sql)],
+    );
     log.info({ version }, "Applied migration");
   }
 }

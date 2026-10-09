@@ -72,10 +72,9 @@ describe("rateLimit", () => {
   it("should reset from the oldest request of this key inside the window", async () => {
     vi.advanceTimersByTime(5_000);
     for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
-    await query("INSERT INTO rate_limits (key, at) VALUES ('a', ?)", [
-      1_005_000 - options.windowMs,
-    ]);
-    await query("INSERT INTO rate_limits (key, at) VALUES ('b', 1000001)");
+    await query(
+      "INSERT INTO rate_limits (key, expires_at) VALUES ('a', 1005000), ('b', 1006000)",
+    );
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
@@ -86,7 +85,7 @@ describe("rateLimit", () => {
   it("should ask for a retry soon when the oldest request left the window meanwhile", async () => {
     vi.mocked(query)
       .mockResolvedValueOnce(emptyResult)
-      .mockResolvedValueOnce({ ...emptyResult, rows: [{ oldest: null }] });
+      .mockResolvedValueOnce({ ...emptyResult, rows: [{ reset: null }] });
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
@@ -126,6 +125,17 @@ describe("rateLimit", () => {
 
     expect(await rateLimit("b", options)).toEqual({ success: true });
     expect((await rateLimit("a", options)).success).toBe(false);
+  });
+
+  it("should prune each row by its own window", async () => {
+    await rateLimit("long", { limit: 3, windowMs: 60_000 });
+    await rateLimit("short", options);
+    vi.advanceTimersByTime(options.windowMs);
+
+    await rateLimit("c", options);
+
+    const { rows } = await query("SELECT key FROM rate_limits ORDER BY key");
+    expect(rows).toEqual([{ key: "c" }, { key: "long" }]);
   });
 
   it("should prune requests outside the window when it records one", async () => {

@@ -22,11 +22,10 @@ function rejected(reset: number, now: number): RateLimitResult {
   };
 }
 
-async function prune(windowMs: number): Promise<void> {
+// Each row carries its own expiry, so one prune is right for every window.
+async function prune(): Promise<void> {
   try {
-    await query("DELETE FROM rate_limits WHERE at <= ?", [
-      Date.now() - windowMs,
-    ]);
+    await query("DELETE FROM rate_limits WHERE expires_at <= ?", [Date.now()]);
   } catch (err) {
     log.warn({ err }, "Failed to prune rate limits");
   }
@@ -38,7 +37,6 @@ export async function rateLimit(
   { limit, windowMs }: { limit: number; windowMs: number },
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const since = now - windowMs;
 
   const cached = blockedUntil().get(key);
   if (cached !== undefined && cached > now) return rejected(cached, now);
@@ -46,23 +44,23 @@ export async function rateLimit(
   try {
     // One statement, so SQLite's single writer makes count and insert atomic.
     const { rowsAffected } = await query(
-      `INSERT INTO rate_limits (key, at)
+      `INSERT INTO rate_limits (key, expires_at)
        SELECT ?, ?
-       WHERE (SELECT count(*) FROM rate_limits WHERE key = ? AND at > ?) < ?`,
-      [key, now, key, since, limit],
+       WHERE (SELECT count(*) FROM rate_limits WHERE key = ? AND expires_at > ?) < ?`,
+      [key, now + windowMs, key, now, limit],
     );
     if (rowsAffected > 0) {
       // Only inserts add rows, so only they need to clear out old ones.
-      void prune(windowMs);
+      void prune();
       return { success: true };
     }
 
     const { rows } = await query(
-      "SELECT min(at) AS oldest FROM rate_limits WHERE key = ? AND at > ?",
-      [key, since],
+      "SELECT min(expires_at) AS reset FROM rate_limits WHERE key = ? AND expires_at > ?",
+      [key, now],
     );
-    // No oldest means it left the window since the insert: retry now.
-    const reset = Number(rows[0]?.["oldest"] ?? since) + windowMs;
+    // No row means the oldest expired since the insert: retry now.
+    const reset = Number(rows[0]?.["reset"] ?? now);
     blockedUntil().set(key, reset);
     return rejected(reset, now);
   } catch (err) {

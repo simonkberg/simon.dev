@@ -57,6 +57,46 @@ describe("runMigrations", () => {
     vi.useRealTimers();
   });
 
+  it("should record a checksum for each applied migration", async () => {
+    await runMigrations();
+
+    const { rows } = await query(
+      "SELECT DISTINCT length(checksum) AS length FROM migrations",
+    );
+    expect(rows).toEqual([{ length: 64 }]);
+  });
+
+  it("should refuse to run when an applied migration was edited", async () => {
+    await runMigrations();
+    await query(
+      "UPDATE migrations SET checksum = 'edited' WHERE version IN (1, 3)",
+    );
+
+    await expect(runMigrations()).rejects.toThrow(
+      "Applied migrations were edited: 1, 3",
+    );
+    expect((await query("SELECT * FROM locks")).rows).toEqual([]);
+  });
+
+  it("should upgrade a migrations table from before checksums", async () => {
+    await query(
+      "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
+    );
+    await query(String(MIGRATIONS[0]));
+    await query(
+      "INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')",
+    );
+
+    await runMigrations();
+
+    expect(await appliedVersions()).toEqual(MIGRATIONS.map((_, i) => i + 1));
+    const { rows } = await query(
+      "SELECT count(*) AS missing FROM migrations WHERE checksum IS NULL",
+    );
+    expect(rows).toEqual([{ missing: 0 }]);
+    await expect(runMigrations()).resolves.toBeUndefined();
+  });
+
   it("should apply only the pending migrations and release the lock", async () => {
     await runMigrations();
     await query("DELETE FROM migrations WHERE version > 1");
