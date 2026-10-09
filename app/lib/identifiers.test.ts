@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { identifiers } from "./identifiers";
 
+vi.mock(import("server-only"), () => ({}));
 vi.mock(import("next/headers"), () => ({ headers: vi.fn() }));
 
 describe("identifiers", () => {
