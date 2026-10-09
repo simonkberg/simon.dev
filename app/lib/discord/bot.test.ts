@@ -7,7 +7,7 @@ import { log } from "@/lib/log";
 import { MIGRATIONS } from "@/lib/migrations";
 import { reflect } from "@/lib/reflection";
 import { query } from "@/lib/turso";
-import { createSqliteQuery, emptyResult } from "@/mocks/sqlite";
+import { createSqliteQuery } from "@/mocks/sqlite";
 
 import { getMessageChain, postChannelMessage } from "./api";
 import { handleMessage, startBotSubscription } from "./bot";
@@ -17,13 +17,6 @@ import type { DiscordMessage } from "./schemas";
 vi.mock(import("server-only"), () => ({}));
 
 vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
-
-function mockSeen(isNew: boolean) {
-  vi.mocked(query).mockResolvedValue({
-    ...emptyResult,
-    rowsAffected: isNew ? 1 : 0,
-  });
-}
 
 vi.mock(import("@/lib/reflection"), () => ({ reflect: vi.fn() }));
 
@@ -61,7 +54,7 @@ describe("handleMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(reflect).mockResolvedValue(undefined);
-    mockSeen(true);
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
   });
 
   afterEach(() => {
@@ -69,8 +62,15 @@ describe("handleMessage", () => {
     vi.restoreAllMocks();
   });
 
-  it("should respond when bot is mentioned in the message", async () => {
+  it("should respond when bot is mentioned in the message, even if pruning fails", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const sqlite = createSqliteQuery(MIGRATIONS);
+    vi.mocked(query).mockImplementation(async (sql, args) =>
+      sql.startsWith("DELETE")
+        ? Promise.reject(new Error("boom"))
+        : sqlite(sql, args),
+    );
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
@@ -88,31 +88,9 @@ describe("handleMessage", () => {
       "simon-bot",
       "msg-1",
     );
-  });
-
-  it("should still respond when pruning seen messages fails", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
-    const err = new Error("boom");
-    vi.mocked(query)
-      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 })
-      .mockRejectedValueOnce(err);
-    vi.mocked(getMessageChain).mockResolvedValue([
-      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
-    ]);
-    async function* mockResponse() {
-      yield "hello there!";
-    }
-    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
-    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
-
-    await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
-
-    expect(warn).toHaveBeenCalledWith({ err }, "Failed to prune seen messages");
-    expect(postChannelMessage).toHaveBeenCalledWith(
-      "hello there!",
-      "simon-bot",
-      "msg-1",
+    expect(warn).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to prune seen messages",
     );
   });
 
@@ -145,7 +123,6 @@ describe("handleMessage", () => {
 
   it("should handle a message only once across instances", async () => {
     const info = vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
     vi.mocked(getMessageChain).mockResolvedValue([]);
 
     const message = createMessage({ content: "User1: hey simon-bot" });
@@ -405,19 +382,6 @@ describe("handleMessage", () => {
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
     expect(createAnthropicMessage).not.toHaveBeenCalled();
-  });
-
-  it("should skip if already seen (dedup)", async () => {
-    const info = vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(false);
-
-    await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
-
-    expect(getMessageChain).not.toHaveBeenCalled();
-    expect(info).toHaveBeenCalledWith(
-      { messageId: "msg-1" },
-      "Message already handled by another instance",
-    );
   });
 
   it("should ignore non-standard message types", async () => {

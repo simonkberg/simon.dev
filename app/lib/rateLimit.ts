@@ -1,16 +1,18 @@
 import "server-only";
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
+import { LruMap } from "@/lib/LruMap";
 import { query } from "@/lib/turso";
 
 type RateLimitResult =
   | { success: true }
   | { success: false; retryAfterSeconds: number };
 
-// Keys known to be over their limit, and when that lifts, so a flood from one
-// key is turned away without a database round trip. Per process, best effort.
-function blocked(): Map<string, number> {
-  return getGlobal("simon.dev/rateLimit/blocked", () => new Map());
+const KEY = "simon.dev/rate-limit-blocked";
+
+// Per-process cache of over-limit keys, so a flood skips the database.
+function blockedUntil(): LruMap<string, number> {
+  return getGlobal(KEY, () => new LruMap(1000));
 }
 
 function rejected(reset: number, now: number): RateLimitResult {
@@ -20,12 +22,14 @@ function rejected(reset: number, now: number): RateLimitResult {
   };
 }
 
-function block(key: string, until: number, now: number): void {
-  const map = blocked();
-  for (const [other, otherUntil] of map) {
-    if (otherUntil <= now) map.delete(other);
+async function prune(windowMs: number): Promise<void> {
+  try {
+    await query("DELETE FROM rate_limits WHERE at <= ?", [
+      Date.now() - windowMs,
+    ]);
+  } catch (err) {
+    log.warn({ err }, "Failed to prune rate limits");
   }
-  map.set(key, until);
 }
 
 // Fails open: the limiter being down shouldn't take its caller down with it.
@@ -36,10 +40,8 @@ export async function rateLimit(
   const now = Date.now();
   const since = now - windowMs;
 
-  const blockedUntil = blocked().get(key);
-  if (blockedUntil !== undefined && blockedUntil > now) {
-    return rejected(blockedUntil, now);
-  }
+  const cached = blockedUntil().get(key);
+  if (cached !== undefined && cached > now) return rejected(cached, now);
 
   try {
     // One statement, so SQLite's single writer makes count and insert atomic.
@@ -49,7 +51,11 @@ export async function rateLimit(
        WHERE (SELECT count(*) FROM rate_limits WHERE key = ? AND at > ?) < ?`,
       [key, now, key, since, limit],
     );
-    if (rowsAffected > 0) return { success: true };
+    if (rowsAffected > 0) {
+      // Only inserts add rows, so only they need to clear out old ones.
+      void prune(windowMs);
+      return { success: true };
+    }
 
     const { rows } = await query(
       "SELECT min(at) AS oldest FROM rate_limits WHERE key = ? AND at > ?",
@@ -57,20 +63,10 @@ export async function rateLimit(
     );
     // No oldest means it left the window since the insert: retry now.
     const reset = Number(rows[0]?.["oldest"] ?? since) + windowMs;
-    block(key, reset, now);
+    blockedUntil().set(key, reset);
     return rejected(reset, now);
   } catch (err) {
     log.warn({ err, key }, "Rate limiter failed");
     return { success: true };
-  }
-}
-
-export async function pruneRateLimits(windowMs: number): Promise<void> {
-  try {
-    await query("DELETE FROM rate_limits WHERE at <= ?", [
-      Date.now() - windowMs,
-    ]);
-  } catch (err) {
-    log.warn({ err }, "Failed to prune rate limits");
   }
 }

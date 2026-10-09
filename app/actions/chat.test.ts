@@ -1,5 +1,4 @@
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
-import { after } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -16,7 +15,7 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { pruneRateLimits, rateLimit } from "@/lib/rateLimit";
+import { rateLimit } from "@/lib/rateLimit";
 import type { Username } from "@/lib/session";
 
 vi.mock(import("server-only"), () => ({}));
@@ -25,9 +24,6 @@ vi.mock(import("next/cache"), () => ({
   cacheTag: vi.fn(),
   refresh: vi.fn(),
   updateTag: vi.fn(),
-}));
-vi.mock(import("next/server"), () => ({
-  after: vi.fn((task) => (typeof task === "function" ? task() : task)),
 }));
 vi.mock(import("@/lib/identifiers"), () => ({
   identifiers: vi.fn(() =>
@@ -125,12 +121,10 @@ describe("postChatMessage", () => {
 
     const result = await postChatMessage(formData);
 
-    expect(result.status).toBe("error");
-    if (result.status === "error") {
-      expect(result.error).toMatch(/Rate limit exceeded/);
-      expect(result.error).toMatch(/Wait 10 seconds/);
-    }
-    expect(pruneRateLimits).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      status: "error",
+      error: "Rate limit exceeded. Wait 10 seconds before trying again.",
+    });
   });
 
   it("uses username as rate limit identifier when IP is unavailable", async () => {
@@ -201,8 +195,6 @@ describe("postChatMessage", () => {
       }),
       "Hello everyone!",
     );
-    expect(after).toHaveBeenCalledTimes(1);
-    expect(pruneRateLimits).toHaveBeenCalledWith(RATE_LIMIT.windowMs);
   });
 
   it("returns error and logs when Discord API fails", async () => {

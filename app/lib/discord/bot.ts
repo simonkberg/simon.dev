@@ -25,14 +25,6 @@ function mentionsBot(content: string): boolean {
 // Outlasts any gateway replay of missed events after a reconnect.
 const SEEN_RETENTION_MS = 60 * 60 * 1000;
 
-async function markSeen(messageId: string): Promise<boolean> {
-  const { rowsAffected } = await query(
-    "INSERT OR IGNORE INTO seen_messages (id, at) VALUES (?, ?)",
-    [messageId, Date.now()],
-  );
-  return rowsAffected > 0;
-}
-
 async function pruneSeen(): Promise<void> {
   try {
     await query("DELETE FROM seen_messages WHERE at <= ?", [
@@ -41,6 +33,16 @@ async function pruneSeen(): Promise<void> {
   } catch (err) {
     log.warn({ err }, "Failed to prune seen messages");
   }
+}
+
+async function markSeen(messageId: string): Promise<boolean> {
+  const { rowsAffected } = await query(
+    "INSERT OR IGNORE INTO seen_messages (id, at) VALUES (?, ?)",
+    [messageId, Date.now()],
+  );
+  if (rowsAffected === 0) return false;
+  void pruneSeen();
+  return true;
 }
 
 export async function handleMessage(message: DiscordMessage): Promise<void> {
@@ -61,7 +63,6 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       log.info({ messageId }, "Message already handled by another instance");
       return;
     }
-    void pruneSeen();
 
     // Fetch the reply chain
     const chain = await getMessageChain(messageId);

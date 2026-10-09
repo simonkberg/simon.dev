@@ -2,13 +2,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getGlobal, resetGlobal } from "@/lib/global";
+import { resetGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 import { createSqliteQuery, emptyResult } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
-import { pruneRateLimits, rateLimit } from "./rateLimit";
+import { rateLimit } from "./rateLimit";
 
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
@@ -22,7 +22,7 @@ async function countRows(): Promise<unknown> {
 
 describe("rateLimit", () => {
   beforeEach(() => {
-    resetGlobal("simon.dev/rateLimit/blocked");
+    resetGlobal("simon.dev/rate-limit-blocked");
     vi.useFakeTimers({ now: 1_000_000 });
     vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
   });
@@ -70,12 +70,12 @@ describe("rateLimit", () => {
   });
 
   it("should reset from the oldest request of this key inside the window", async () => {
+    vi.advanceTimersByTime(5_000);
+    for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
     await query("INSERT INTO rate_limits (key, at) VALUES ('a', ?)", [
       1_005_000 - options.windowMs,
     ]);
     await query("INSERT INTO rate_limits (key, at) VALUES ('b', 1000001)");
-    vi.advanceTimersByTime(5_000);
-    for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
@@ -121,16 +121,6 @@ describe("rateLimit", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
-  it("should forget blocks once they lift", async () => {
-    for (let i = 0; i <= options.limit; i++) await rateLimit("a", options);
-    vi.advanceTimersByTime(options.windowMs);
-    for (let i = 0; i <= options.limit; i++) await rateLimit("b", options);
-
-    expect([
-      ...getGlobal("simon.dev/rateLimit/blocked", () => new Map()).keys(),
-    ]).toEqual(["b"]);
-  });
-
   it("should count each key separately", async () => {
     for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
 
@@ -138,23 +128,32 @@ describe("rateLimit", () => {
     expect((await rateLimit("a", options)).success).toBe(false);
   });
 
-  it("should prune only requests outside the window", async () => {
+  it("should prune requests outside the window when it records one", async () => {
     await rateLimit("a", options);
     vi.advanceTimersByTime(20_000);
     await rateLimit("b", options);
     vi.advanceTimersByTime(10_000);
 
-    await pruneRateLimits(options.windowMs);
+    await rateLimit("c", options);
 
-    expect(await countRows()).toBe(1);
+    expect(await countRows()).toBe(2);
   });
 
   it("should log rather than throw when pruning fails", async () => {
     const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
-    const err = new Error("boom");
-    vi.mocked(query).mockRejectedValueOnce(err);
+    const sqlite = createSqliteQuery(MIGRATIONS);
+    vi.mocked(query).mockImplementation(async (sql, args) =>
+      sql.startsWith("DELETE")
+        ? Promise.reject(new Error("boom"))
+        : sqlite(sql, args),
+    );
 
-    await expect(pruneRateLimits(options.windowMs)).resolves.toBeUndefined();
-    expect(warn).toHaveBeenCalledWith({ err }, "Failed to prune rate limits");
+    expect(await rateLimit("a", options)).toEqual({ success: true });
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        { err: expect.any(Error) },
+        "Failed to prune rate limits",
+      ),
+    );
   });
 });

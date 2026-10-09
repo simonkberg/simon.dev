@@ -1,7 +1,6 @@
 "use server";
 
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
-import { after } from "next/server";
 import { z } from "zod";
 
 import { setChatTipDismissed } from "@/lib/chatTip";
@@ -12,7 +11,7 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { pruneRateLimits, rateLimit } from "@/lib/rateLimit";
+import { rateLimit } from "@/lib/rateLimit";
 import { getSession } from "@/lib/session";
 
 export type ChatHistoryResult =
@@ -63,20 +62,14 @@ export async function postChatMessage(
 
     const request = await identifiers();
     const identifier = request.ip ?? username;
-    const limited = await rateLimit(
-      `postChatMessage:${identifier}`,
-      RATE_LIMIT,
-    );
+    const result = await rateLimit(`postChatMessage:${identifier}`, RATE_LIMIT);
 
-    if (!limited.success) {
+    if (!result.success) {
       return {
         status: "error",
-        error: `Rate limit exceeded. Wait ${limited.retryAfterSeconds} seconds before trying again.`,
+        error: `Rate limit exceeded. Wait ${result.retryAfterSeconds} seconds before trying again.`,
       };
     }
-
-    // Only allowed posts add rows, so only they need to clear out old ones.
-    after(() => pruneRateLimits(RATE_LIMIT.windowMs));
 
     const messageId = await postChannelMessage(text, username, replyToId);
 
