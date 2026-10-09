@@ -17,6 +17,19 @@ export const MIGRATIONS: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS rate_limits_key_at ON rate_limits (key, at)`,
 ];
 
+// Outside MIGRATIONS: the lock and the version list need these before it can run.
+const BOOTSTRAP = [
+  `CREATE TABLE IF NOT EXISTS locks (
+    name TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+  )`,
+];
+
 const LOCK_NAME = "migrations";
 const LOCK_TTL_MS = 30_000;
 const LOCK_RETRY_MS = 500;
@@ -71,19 +84,6 @@ async function applyPending(): Promise<void> {
     log.info({ version }, "Applied migration");
   }
 }
-
-// Outside MIGRATIONS: the lock and the version list need these before it can run.
-const BOOTSTRAP = [
-  `CREATE TABLE IF NOT EXISTS locks (
-    name TEXT PRIMARY KEY,
-    owner TEXT NOT NULL,
-    expires_at INTEGER NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS migrations (
-    version INTEGER PRIMARY KEY,
-    applied_at TEXT NOT NULL
-  )`,
-];
 
 export async function runMigrations(): Promise<void> {
   for (const sql of BOOTSTRAP) await query(sql);

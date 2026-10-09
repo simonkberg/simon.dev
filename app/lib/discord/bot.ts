@@ -9,7 +9,6 @@ import { getMessageChain, postChannelMessage } from "./api";
 import { subscribeToMessages } from "./gateway";
 import type { DiscordMessage } from "./schemas";
 
-// Bot identity
 const BOT_USERNAME = "simon-bot" as Username;
 const BOT_PREFIX = `${BOT_USERNAME}: `;
 const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
@@ -51,24 +50,20 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Only respond to default messages (0) and replies (19)
     if (message.type !== 0 && message.type !== 19) return;
 
-    // Skip our own messages
     if (isBotMessage(message.content)) return;
 
     // A message that isn't a reply can only involve the bot by mentioning it
     if (!message.message_reference && !mentionsBot(message.content)) return;
 
-    // Dedup across instances
     const isNew = await markSeen(messageId);
     if (!isNew) {
       log.info({ messageId }, "Message already handled by another instance");
       return;
     }
 
-    // Fetch the reply chain
     const chain = await getMessageChain(messageId);
     if (chain.length === 0) return;
 
-    // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
 
     // Past this point, we're committed to responding
@@ -117,7 +112,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       }
     }
   } catch (err) {
-    log.error({ err, messageId: messageId }, "Bot message handling failed");
+    log.error({ err, messageId }, "Bot message handling failed");
   }
 }
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
+import { emptyResult } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
@@ -16,8 +17,6 @@ import {
 
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
-
-const emptyResult = { rows: [], rowsAffected: 0, lastInsertRowId: null };
 
 function row(
   id: number,
