@@ -10,15 +10,11 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import {
-  buildMemoryContext,
-  edit,
-  forget,
-  recall,
-  remember,
-} from "@/lib/memory";
+import { MIGRATIONS } from "@/lib/migrations";
+import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
+import { createSqliteQuery } from "@/mocks/sqlite";
 
 import { createMessage } from "./anthropic";
 
@@ -27,17 +23,7 @@ vi.mock(import("@/lib/discord/api"), () => ({
   getChannelMessages: vi.fn(),
   searchChannelMessages: vi.fn(),
 }));
-vi.mock(import("@/lib/memory"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    buildMemoryContext: vi.fn(),
-    remember: vi.fn(),
-    edit: vi.fn(),
-    recall: vi.fn(),
-    forget: vi.fn(),
-  };
-});
+vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
@@ -55,7 +41,22 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
-const MEMORY_CONTEXT = "<memory>\n## self\n(nothing yet)\n</memory>";
+const CREATED_AT = "2025-01-01T00:00:00.000Z";
+
+async function seed(id: number, category: string, content: string) {
+  await query(
+    "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
+    [id, category, content, CREATED_AT],
+  );
+}
+
+async function stored(id: number) {
+  const { rows } = await query(
+    "SELECT category, content FROM memories WHERE id = ?",
+    [id],
+  );
+  return rows[0];
+}
 
 async function collectResponses(
   generator: AsyncGenerator<string, void, unknown>,
@@ -70,7 +71,7 @@ async function collectResponses(
 describe("createMessage", () => {
   beforeEach(() => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(buildMemoryContext).mockResolvedValue(MEMORY_CONTEXT);
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
   });
 
   afterEach(() => {
@@ -91,7 +92,7 @@ describe("createMessage", () => {
               text: expect.stringContaining("simon-bot"),
               cache_control: { type: "ephemeral" },
             },
-            { type: "text", text: MEMORY_CONTEXT },
+            { type: "text", text: expect.stringContaining("<memory>") },
           ],
           messages: [
             { role: "user", content: `${TEST_USERNAME}: Hello, bot!` },
@@ -127,17 +128,24 @@ describe("createMessage", () => {
     );
 
     expect(responses).toEqual(["Hello! How can I help you?"]);
-    expect(buildMemoryContext).toHaveBeenCalledWith([TEST_USERNAME]);
   });
 
   it("should build memory context from the user participants only", async () => {
+    await seed(1, "people/alice", "likes cats");
+    await seed(2, "people/bob", "likes dogs");
+    await seed(3, "people/simon-bot", "that's me");
+    let memory = "";
     server.use(
-      http.post(ANTHROPIC_BASE_URL, () =>
-        HttpResponse.json({
+      http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
+        const body = (await request.json()) as {
+          system: Array<{ text: string }>;
+        };
+        memory = body.system[1]?.text ?? "";
+        return HttpResponse.json({
           content: [{ type: "text", text: "ok" }],
           stop_reason: "end_turn",
-        }),
-      ),
+        });
+      }),
     );
 
     await collectResponses(
@@ -148,11 +156,14 @@ describe("createMessage", () => {
       ]),
     );
 
-    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+    expect(memory).toContain("## people/alice\n- #1 likes cats");
+    expect(memory).toContain("## people/bob\n- #2 likes dogs");
+    expect(memory).toContain("people/simon-bot (1)");
   });
 
-  it("should omit the memory block when there is no memory context", async () => {
-    vi.mocked(buildMemoryContext).mockResolvedValue("");
+  it("should omit the memory block when memory can't be read", async () => {
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
 
     server.use(
       http.post(ANTHROPIC_BASE_URL, async ({ request }) => {
@@ -215,39 +226,26 @@ describe("createMessage", () => {
       return toolResult;
     }
 
-    const CHANGED = {
-      id: 3,
-      category: "self",
-      content: "i like dogs",
-      createdAt: "2025-01-01T00:00:00.000Z",
-    };
-
     it("should save notes with remember", async () => {
-      const memory = {
-        id: 1,
-        category: "self",
-        content: "i like trains",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      };
-      vi.mocked(remember).mockResolvedValue({ status: "ok", memory });
-
       const result = await runTool("remember", {
         category: "self",
         content: "i like trains",
       });
 
-      expect(remember).toHaveBeenCalledWith({
+      expect(JSON.parse(result)).toEqual({
+        id: expect.any(Number),
+        category: "self",
+        content: "i like trains",
+        createdAt: expect.any(String),
+      });
+      expect(await stored(JSON.parse(result).id)).toEqual({
         category: "self",
         content: "i like trains",
       });
-      expect(JSON.parse(result)).toEqual(memory);
     });
 
     it("should say when a category is full instead of saving", async () => {
-      vi.mocked(remember).mockResolvedValue({
-        status: "full",
-        category: "self",
-      });
+      for (let i = 0; i < 25; i++) await seed(100 + i, "self", `note ${i}`);
 
       const result = await runTool("remember", {
         category: "self",
@@ -259,23 +257,24 @@ describe("createMessage", () => {
       });
     });
 
-    it("should read notes with recall and apply defaults", async () => {
-      vi.mocked(recall).mockResolvedValue([]);
+    it("should read notes with recall", async () => {
+      await seed(1, "jokes", "knock knock");
+      await seed(2, "self", "i like trains");
 
       const result = await runTool("recall", { category: "jokes" });
 
-      expect(recall).toHaveBeenCalledWith({ category: "jokes", limit: 20 });
-      expect(JSON.parse(result)).toEqual([]);
+      expect(JSON.parse(result)).toEqual([
+        {
+          id: 1,
+          category: "jokes",
+          content: "knock knock",
+          createdAt: CREATED_AT,
+        },
+      ]);
     });
 
     it("should rewrite notes with edit", async () => {
-      const memory = {
-        id: 3,
-        category: "self",
-        content: "i like trains",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      };
-      vi.mocked(edit).mockResolvedValue({ status: "ok", memory });
+      await seed(3, "self", "i like cats");
 
       const result = await runTool("edit", {
         id: 3,
@@ -283,25 +282,16 @@ describe("createMessage", () => {
         new_content: "i like trains",
       });
 
-      expect(edit).toHaveBeenCalledWith({
+      expect(JSON.parse(result)).toEqual({
         id: 3,
-        oldContent: "i like cats",
-        newContent: "i like trains",
-        category: undefined,
+        category: "self",
+        content: "i like trains",
+        createdAt: CREATED_AT,
       });
-      expect(JSON.parse(result)).toEqual(memory);
     });
 
-    it("should pass a category through to move a note", async () => {
-      vi.mocked(edit).mockResolvedValue({
-        status: "ok",
-        memory: {
-          id: 3,
-          category: "context",
-          content: "this chat gets spam",
-          createdAt: "2025-01-01T00:00:00.000Z",
-        },
-      });
+    it("should move a note when edit gets a category", async () => {
+      await seed(3, "style", "this chat gets spam");
 
       await runTool("edit", {
         id: 3,
@@ -310,16 +300,14 @@ describe("createMessage", () => {
         category: "context",
       });
 
-      expect(edit).toHaveBeenCalledWith({
-        id: 3,
-        oldContent: "this chat gets spam",
-        newContent: "this chat gets spam",
+      expect(await stored(3)).toEqual({
         category: "context",
+        content: "this chat gets spam",
       });
     });
 
     it("should hand a changed note back instead of editing it", async () => {
-      vi.mocked(edit).mockResolvedValue({ status: "stale", current: CHANGED });
+      await seed(3, "self", "i like dogs");
 
       const result = await runTool("edit", {
         id: 3,
@@ -330,15 +318,18 @@ describe("createMessage", () => {
       expect(JSON.parse(result)).toEqual({
         error:
           "Note #3 has changed since you read it - work from its current text",
-        current: CHANGED,
+        current: {
+          id: 3,
+          category: "self",
+          content: "i like dogs",
+          createdAt: CREATED_AT,
+        },
       });
     });
 
     it("should say when a move would overfill a category", async () => {
-      vi.mocked(edit).mockResolvedValue({
-        status: "full",
-        category: "context",
-      });
+      await seed(3, "style", "this chat gets spam");
+      for (let i = 0; i < 25; i++) await seed(100 + i, "context", `note ${i}`);
 
       const result = await runTool("edit", {
         id: 3,
@@ -354,32 +345,33 @@ describe("createMessage", () => {
     });
 
     it("should delete notes with forget", async () => {
-      vi.mocked(forget).mockResolvedValue({ status: "ok" });
+      await seed(3, "self", "i like cats");
 
       const result = await runTool("forget", { id: 3, content: "i like cats" });
 
-      expect(forget).toHaveBeenCalledWith({ id: 3, content: "i like cats" });
       expect(JSON.parse(result)).toEqual({ forgotten: true });
+      expect(await stored(3)).toBeUndefined();
     });
 
     it("should hand a changed note back instead of forgetting it", async () => {
-      vi.mocked(forget).mockResolvedValue({
-        status: "stale",
-        current: CHANGED,
-      });
+      await seed(3, "self", "i like dogs");
 
       const result = await runTool("forget", { id: 3, content: "i like cats" });
 
       expect(JSON.parse(result)).toEqual({
         error:
           "Note #3 has changed since you read it - work from its current text",
-        current: CHANGED,
+        current: {
+          id: 3,
+          category: "self",
+          content: "i like dogs",
+          createdAt: CREATED_AT,
+        },
       });
+      expect(await stored(3)).toBeDefined();
     });
 
     it("should say when a note to forget is already gone", async () => {
-      vi.mocked(forget).mockResolvedValue({ status: "missing", id: 3 });
-
       const result = await runTool("forget", { id: 3, content: "i like cats" });
 
       expect(JSON.parse(result)).toEqual({
@@ -393,10 +385,10 @@ describe("createMessage", () => {
         content: "x",
       });
 
-      expect(remember).not.toHaveBeenCalled();
       expect(JSON.parse(result)).toEqual({
         error: expect.stringContaining("category"),
       });
+      expect((await query("SELECT * FROM memories")).rows).toEqual([]);
     });
   });
 

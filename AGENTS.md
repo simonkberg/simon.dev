@@ -104,18 +104,16 @@ suggests, and if you cannot find one, raise it rather than silencing it.
 
 Validation via Zod in `app/lib/env.ts`. Required variables:
 
-| Variable                   | Description                                                        |
-| -------------------------- | ------------------------------------------------------------------ |
-| `SESSION_SECRET`           | Session encryption (auto-defaults to "unsafe_dev_secret" in dev)   |
-| `DISCORD_BOT_TOKEN`        | Discord bot token                                                  |
-| `DISCORD_GUILD_ID`         | Discord guild ID                                                   |
-| `DISCORD_CHANNEL_ID`       | Discord channel ID                                                 |
-| `UPSTASH_REDIS_REST_URL`   | Upstash Redis URL                                                  |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token                                                |
-| `LAST_FM_API_KEY`          | Last.fm API key                                                    |
-| `ANTHROPIC_API_KEY`        | Anthropic API key for simon-bot                                    |
-| `TURSO_DATABASE_URL`       | Turso database URL (`libsql://` or `turso://`), simon-bot's memory |
-| `TURSO_AUTH_TOKEN`         | Turso auth token                                                   |
+| Variable             | Description                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `SESSION_SECRET`     | Session encryption (auto-defaults to "unsafe_dev_secret" in dev)   |
+| `DISCORD_BOT_TOKEN`  | Discord bot token                                                  |
+| `DISCORD_GUILD_ID`   | Discord guild ID                                                   |
+| `DISCORD_CHANNEL_ID` | Discord channel ID                                                 |
+| `LAST_FM_API_KEY`    | Last.fm API key                                                    |
+| `ANTHROPIC_API_KEY`  | Anthropic API key for simon-bot                                    |
+| `TURSO_DATABASE_URL` | Turso database URL (`libsql://` or `turso://`), the only datastore |
+| `TURSO_AUTH_TOKEN`   | Turso auth token                                                   |
 
 Set `SKIP_ENV_VALIDATION=true` to skip validation (used in CI/Docker).
 
@@ -144,11 +142,16 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **simon-bot:** `app/lib/anthropic.ts` calls Claude Haiku 5.5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
-  per-request — and dedupes through Redis (60s TTL) so multiple instances don't
-  double-reply.
-- **simon-bot memory:** `app/lib/turso.ts` calls Turso's HTTP pipeline endpoint with raw
+  per-request — and dedupes replies and mentions through Turso's `seen_messages` (kept an hour) so multiple
+  instances don't double-reply. Without Turso it doesn't reply at all, rather than twice.
+- **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
-  at boot under a Redis lock. `app/lib/memory.ts` owns the `memories` table and renders the
+  at boot under a lock row in `locks`. Each records a checksum, and boot fails if an applied
+  one was edited: change the schema with a new migration. Chat posts are rate limited by `app/lib/rateLimit.ts`,
+  a sliding window kept atomic across replicas by doing the count and insert in one statement.
+  It fails open: a limiter error lets the post through. It remembers blocked keys in memory,
+  so a flood is turned away without database round trips.
+- **simon-bot memory:** `app/lib/memory.ts` owns the `memories` table and renders the
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
   with `recall`. `edit` and `forget` are compare-and-swap on the note's text. Memory
@@ -215,7 +218,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema)
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.
@@ -251,7 +254,7 @@ Strict mode enabled with `noUncheckedIndexedAccess` and `noPropertyAccessFromInd
 
 Next bundles `instrumentation.ts` and each route handler into separate module graphs, so a
 module-level `let` is one instance per graph, not per process. State that must be shared
-between them (the gateway connection, the Redis client, readiness) goes through `getGlobal` in
+between them (the gateway connection, readiness) goes through `getGlobal` in
 `app/lib/global.ts`; tests reset it with `resetGlobal` instead of `vi.resetModules()`.
 
 ### Private Fields

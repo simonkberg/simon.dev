@@ -37,8 +37,6 @@ describe("env", () => {
         DISCORD_BOT_TOKEN: string;
         DISCORD_GUILD_ID: string;
         DISCORD_CHANNEL_ID: string;
-        UPSTASH_REDIS_REST_URL: string;
-        UPSTASH_REDIS_REST_TOKEN: string;
         LAST_FM_API_KEY: string;
         ANTHROPIC_API_KEY: string;
         TURSO_DATABASE_URL: string;
@@ -126,8 +124,8 @@ describe("env", () => {
       );
     });
 
-    it("should throw when UPSTASH_REDIS_REST_URL is not a valid URL", async () => {
-      vi.stubEnv("UPSTASH_REDIS_REST_URL", "not-a-url");
+    it("should throw when TURSO_DATABASE_URL is not a valid URL", async () => {
+      vi.stubEnv("TURSO_DATABASE_URL", "not-a-url");
 
       await expect(import("./env")).rejects.toThrow(
         "Invalid environment variables",

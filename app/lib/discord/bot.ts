@@ -1,15 +1,14 @@
 import "server-only";
 import { type ChatMessage, createMessage } from "@/lib/anthropic";
 import { log } from "@/lib/log";
-import { getRedis } from "@/lib/redis";
 import { reflect } from "@/lib/reflection";
+import { query } from "@/lib/turso";
 
 import type { Username } from "../session";
 import { getMessageChain, postChannelMessage } from "./api";
 import { subscribeToMessages } from "./gateway";
 import type { DiscordMessage } from "./schemas";
 
-// Bot identity
 const BOT_USERNAME = "simon-bot" as Username;
 const BOT_PREFIX = `${BOT_USERNAME}: `;
 const BOT_MENTION_PATTERN = /\bsimon[- ]?bot\b/i;
@@ -22,15 +21,27 @@ function mentionsBot(content: string): boolean {
   return BOT_MENTION_PATTERN.test(content);
 }
 
-const SEEN_PREFIX = "discord:seen:";
-const SEEN_TTL = 60;
+// Outlasts any gateway replay of missed events after a reconnect.
+const SEEN_RETENTION_MS = 60 * 60 * 1000;
+
+async function pruneSeen(): Promise<void> {
+  try {
+    await query("DELETE FROM seen_messages WHERE at <= ?", [
+      Date.now() - SEEN_RETENTION_MS,
+    ]);
+  } catch (err) {
+    log.warn({ err }, "Failed to prune seen messages");
+  }
+}
 
 async function markSeen(messageId: string): Promise<boolean> {
-  const result = await getRedis().set(`${SEEN_PREFIX}${messageId}`, "1", {
-    nx: true,
-    ex: SEEN_TTL,
-  });
-  return result === "OK";
+  const { rowsAffected } = await query(
+    "INSERT OR IGNORE INTO seen_messages (id, at) VALUES (?, ?)",
+    [messageId, Date.now()],
+  );
+  if (rowsAffected === 0) return false;
+  void pruneSeen();
+  return true;
 }
 
 export async function handleMessage(message: DiscordMessage): Promise<void> {
@@ -39,21 +50,20 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
     // Only respond to default messages (0) and replies (19)
     if (message.type !== 0 && message.type !== 19) return;
 
-    // Skip our own messages
     if (isBotMessage(message.content)) return;
 
-    // Dedup across instances
+    // A message that isn't a reply can only involve the bot by mentioning it
+    if (!message.message_reference && !mentionsBot(message.content)) return;
+
     const isNew = await markSeen(messageId);
     if (!isNew) {
       log.info({ messageId }, "Message already handled by another instance");
       return;
     }
 
-    // Fetch the reply chain
     const chain = await getMessageChain(messageId);
     if (chain.length === 0) return;
 
-    // Check if bot is mentioned anywhere in chain
     if (!chain.some((m) => mentionsBot(m.content))) return;
 
     // Past this point, we're committed to responding
@@ -102,7 +112,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       }
     }
   } catch (err) {
-    log.error({ err, messageId: messageId }, "Bot message handling failed");
+    log.error({ err, messageId }, "Bot message handling failed");
   }
 }
 

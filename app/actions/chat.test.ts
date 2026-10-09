@@ -1,6 +1,5 @@
-import { cacheLife, cacheTag, refresh, updateTag } from "next/cache"; // Hoisted so it can be referenced in the Ratelimit mock below
-import { after } from "next/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   dismissChatTip,
@@ -14,35 +13,21 @@ import {
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
+import { resetGlobal } from "@/lib/global";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
+import { MIGRATIONS } from "@/lib/migrations";
 import type { Username } from "@/lib/session";
-
-// Hoisted so it can be referenced in the Ratelimit mock below
-const limitMock = vi.hoisted(() => vi.fn());
+import { query } from "@/lib/turso";
+import { createSqliteQuery } from "@/mocks/sqlite";
 
 vi.mock(import("server-only"), () => ({}));
-vi.mock(import("@upstash/redis"));
-// Untyped mock due to complexity of the actual module exports
-vi.mock("@upstash/ratelimit", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@upstash/ratelimit")>();
-  const slidingWindow = actual.Ratelimit.slidingWindow.bind(actual.Ratelimit);
-  return {
-    Ratelimit: vi.fn(
-      class {
-        limit = limitMock;
-        static slidingWindow = slidingWindow;
-      },
-    ),
-  };
-});
 vi.mock(import("next/cache"), () => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
   refresh: vi.fn(),
   updateTag: vi.fn(),
 }));
-vi.mock(import("next/server"), () => ({ after: vi.fn() }));
 vi.mock(import("@/lib/identifiers"), () => ({
   identifiers: vi.fn(() =>
     Promise.resolve({ ip: "0.0.0.0", userAgent: "vitest" }),
@@ -55,7 +40,7 @@ vi.mock(import("@/lib/session"), () => ({
 }));
 vi.mock(import("@/lib/chatTip"), () => ({ setChatTipDismissed: vi.fn() }));
 vi.mock(import("@/lib/discord/api"));
-vi.mock(import("@/lib/redis"));
+vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 
 function createMockMessage(overrides: Partial<Message> = {}): Message {
   return {
@@ -69,24 +54,16 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
   };
 }
 
-function mockRateLimitSuccess() {
-  limitMock.mockResolvedValue({
-    success: true,
-    limit: 5,
-    remaining: 4,
-    reset: Date.now() + 30000,
-    pending: Promise.resolve(),
-  });
+function post(text = "Hello!") {
+  const formData = new FormData();
+  formData.set("text", text);
+  return postChatMessage(formData);
 }
 
-function mockRateLimitExceeded(resetInMs: number) {
-  limitMock.mockResolvedValue({
-    success: false,
-    limit: 5,
-    remaining: 0,
-    reset: Date.now() + resetInMs,
-    pending: Promise.resolve(),
-  });
+async function postUpToTheLimit() {
+  for (let i = 0; i < 5; i++) {
+    expect(await post()).toEqual({ status: "ok" });
+  }
 }
 
 afterEach(() => {
@@ -142,81 +119,30 @@ describe("refreshChatHistory", () => {
 });
 
 describe("postChatMessage", () => {
-  it("returns rate limit error with wait time when limit exceeded", async () => {
-    mockRateLimitExceeded(10000);
-    const formData = new FormData();
-    formData.set("text", "Test message");
-
-    const result = await postChatMessage(formData);
-
-    expect(result.status).toBe("error");
-    if (result.status === "error") {
-      expect(result.error).toMatch(/Rate limit exceeded/);
-      expect(result.error).toMatch(/\d+ seconds/);
-    }
-  });
-
-  it("uses username as rate limit identifier when IP is unavailable", async () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: 1_000_000, toFake: ["Date"] });
     vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(identifiers).mockResolvedValueOnce({
-      ip: undefined,
-      userAgent: "vitest",
-    });
-    mockRateLimitSuccess();
+    vi.spyOn(log, "error").mockImplementation(() => {});
+    resetGlobal("simon.dev/rate-limit-blocked");
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
     vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    const formData = new FormData();
-    formData.set("text", "Hello!");
-
-    await postChatMessage(formData);
-
-    expect(limitMock).toHaveBeenCalledWith("test-user", {
-      ip: undefined,
-      userAgent: "vitest",
-    });
   });
 
-  it("dismisses the tip on a successful post", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    mockRateLimitSuccess();
-    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    const formData = new FormData();
-    formData.set("text", "Hello!");
-
-    await postChatMessage(formData);
-
-    expect(setChatTipDismissed).toHaveBeenCalled();
-  });
-
-  it("does not record a post that failed", async () => {
-    mockRateLimitExceeded(10000);
-    const formData = new FormData();
-    formData.set("text", "Hello!");
-
-    await postChatMessage(formData);
-
-    expect(setChatTipDismissed).not.toHaveBeenCalled();
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it("posts message to Discord and returns ok on success", async () => {
-    const logInfoSpy = vi.spyOn(log, "info").mockImplementation(() => {});
-    mockRateLimitSuccess();
-    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    const formData = new FormData();
-    formData.set("text", "Hello everyone!");
+    expect(await post("Hello everyone!")).toEqual({ status: "ok" });
 
-    const result = await postChatMessage(formData);
-
-    expect(result).toEqual({ status: "ok" });
-    expect(limitMock).toHaveBeenCalledWith("0.0.0.0", {
-      ip: "0.0.0.0",
-      userAgent: "vitest",
-    });
     expect(postChannelMessage).toHaveBeenCalledWith(
       "Hello everyone!",
       "test-user",
       undefined,
     );
-    expect(logInfoSpy).toHaveBeenCalledWith(
+    expect(setChatTipDismissed).toHaveBeenCalled();
+    expect(log.info).toHaveBeenCalledWith(
       expect.objectContaining({
         username: "test-user",
         messageId: "msg-123",
@@ -224,14 +150,48 @@ describe("postChatMessage", () => {
       }),
       "Hello everyone!",
     );
-    // Only one after() call for rate limit pending
-    expect(after).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects the sixth post in 30 seconds with the wait time", async () => {
+    await postUpToTheLimit();
+    vi.clearAllMocks();
+    vi.advanceTimersByTime(10_000);
+
+    expect(await post()).toEqual({
+      status: "error",
+      error: "Rate limit exceeded. Wait 20 seconds before trying again.",
+    });
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    expect(setChatTipDismissed).not.toHaveBeenCalled();
+  });
+
+  it("limits each IP separately", async () => {
+    await postUpToTheLimit();
+    vi.mocked(identifiers).mockResolvedValueOnce({
+      ip: "1.1.1.1",
+      userAgent: "vitest",
+    });
+
+    expect(await post()).toEqual({ status: "ok" });
+  });
+
+  it("limits by username when the IP is unavailable", async () => {
+    vi.mocked(identifiers).mockResolvedValue({
+      ip: undefined,
+      userAgent: "vitest",
+    });
+    await postUpToTheLimit();
+    vi.mocked(identifiers).mockResolvedValueOnce({
+      ip: "0.0.0.0",
+      userAgent: "vitest",
+    });
+
+    expect(await post()).toEqual({ status: "ok" });
   });
 
   it("returns error and logs when Discord API fails", async () => {
     const logErrorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
     const error = new Error("Discord connection failed");
-    mockRateLimitSuccess();
     vi.mocked(postChannelMessage).mockRejectedValue(error);
     const formData = new FormData();
     formData.set("text", "Test message");

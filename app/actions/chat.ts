@@ -1,8 +1,6 @@
 "use server";
 
-import { Ratelimit } from "@upstash/ratelimit";
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
-import { after } from "next/server";
 import { z } from "zod";
 
 import { setChatTipDismissed } from "@/lib/chatTip";
@@ -13,7 +11,7 @@ import {
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { getRedis } from "@/lib/redis";
+import { rateLimit } from "@/lib/rateLimit";
 import { getSession } from "@/lib/session";
 
 export type ChatHistoryResult =
@@ -34,21 +32,7 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
   }
 }
 
-let rateLimiter: Ratelimit | undefined;
-
-function getRateLimiter() {
-  if (!rateLimiter) {
-    rateLimiter = new Ratelimit({
-      redis: getRedis(),
-      limiter: Ratelimit.slidingWindow(5, "30 s"),
-      enableProtection: true,
-      analytics: true,
-      prefix: "postChatMessage",
-    });
-  }
-
-  return rateLimiter;
-}
+const RATE_LIMIT = { limit: 5, windowMs: 30_000 };
 
 export async function refreshChatHistory() {
   updateTag("getChatHistory");
@@ -78,17 +62,12 @@ export async function postChatMessage(
 
     const request = await identifiers();
     const identifier = request.ip ?? username;
-    const { success, pending, reset } = await getRateLimiter().limit(
-      identifier,
-      request,
-    );
+    const result = await rateLimit(`postChatMessage:${identifier}`, RATE_LIMIT);
 
-    after(pending);
-
-    if (!success) {
+    if (!result.success) {
       return {
         status: "error",
-        error: `Rate limit exceeded. Wait ${Math.ceil((reset - Date.now()) / 1000)} seconds before trying again.`,
+        error: `Rate limit exceeded. Wait ${result.retryAfterSeconds} seconds before trying again.`,
       };
     }
 
