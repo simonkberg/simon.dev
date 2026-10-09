@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment node
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
-import { emptyResult } from "@/mocks/sqlite";
+import { createSqliteQuery } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
@@ -14,18 +16,45 @@ import {
   recall,
   remember,
 } from "./memory";
+import { MIGRATIONS } from "./migrations";
 
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 
-function row(
+const CREATED_AT = "2025-01-01T00:00:00.000Z";
+
+async function seed(
   id: number,
   category: string,
   content: string,
-  createdAt = "2025-01-01T00:00:00.000Z",
+  createdAt = CREATED_AT,
 ) {
-  return { id, category, content, created_at: createdAt };
+  await query(
+    "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
+    [id, category, content, createdAt],
+  );
 }
+
+async function fill(category: string, count: number) {
+  for (let i = 0; i < count; i++) await seed(100 + i, category, `note ${i}`);
+}
+
+async function stored(id: number) {
+  const { rows } = await query(
+    "SELECT category, content FROM memories WHERE id = ?",
+    [id],
+  );
+  return rows[0];
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("peopleCategory", () => {
   it("should slugify usernames under the people prefix", () => {
@@ -43,41 +72,26 @@ describe("peopleCategory", () => {
 });
 
 describe("remember", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  it("should store a normalised note and return it", async () => {
+    vi.useFakeTimers({ now: new Date(CREATED_AT), toFake: ["Date"] });
 
-  it("should insert a normalised note and return it", async () => {
-    vi.mocked(query).mockResolvedValueOnce({
-      ...emptyResult,
-      rows: [row(9, "self", "i like trains")],
+    const result = await remember({
+      category: "  Self ",
+      content: "  i like trains  ",
     });
 
-    await expect(
-      remember({ category: "  Self ", content: "  i like trains  " }),
-    ).resolves.toEqual({
+    expect(result).toEqual({
       status: "ok",
       memory: {
-        id: 9,
+        id: expect.any(Number),
         category: "self",
         content: "i like trains",
-        createdAt: "2025-01-01T00:00:00.000Z",
+        createdAt: CREATED_AT,
       },
     });
-
-    expect(query).toHaveBeenCalledTimes(1);
-    const [sql, args] = vi.mocked(query).mock.calls[0] ?? [];
-    expect(sql).toContain("INSERT INTO memories");
-    expect(sql).toContain(
-      "WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?",
+    expect(await recall({})).toEqual(
+      result.status === "ok" ? [result.memory] : [],
     );
-    expect(args).toEqual([
-      "self",
-      "i like trains",
-      expect.any(String),
-      "self",
-      MAX_PER_CATEGORY,
-    ]);
   });
 
   it("should reject invalid categories", async () => {
@@ -87,7 +101,7 @@ describe("remember", () => {
     await expect(
       remember({ category: "a/b/c", content: "x" }),
     ).rejects.toThrow();
-    expect(query).not.toHaveBeenCalled();
+    expect(await recall({})).toEqual([]);
   });
 
   it("should reject empty or overlong content", async () => {
@@ -100,69 +114,83 @@ describe("remember", () => {
         content: "x".repeat(MAX_CONTENT_LENGTH + 1),
       }),
     ).rejects.toThrow();
-    expect(query).not.toHaveBeenCalled();
+    expect(await recall({})).toEqual([]);
   });
 
   it("should refuse when the category is full", async () => {
-    vi.mocked(query).mockResolvedValueOnce(emptyResult);
+    await fill("jokes", MAX_PER_CATEGORY);
 
     await expect(
       remember({ category: "jokes", content: "one more" }),
     ).resolves.toEqual({ status: "full", category: "jokes" });
-    expect(query).toHaveBeenCalledTimes(1);
+    expect(await recall({ category: "jokes", limit: 100 })).toHaveLength(
+      MAX_PER_CATEGORY,
+    );
+  });
+
+  it("should not let parallel notes slip past the cap", async () => {
+    await fill("jokes", MAX_PER_CATEGORY - 1);
+
+    const results = await Promise.all([
+      remember({ category: "jokes", content: "a" }),
+      remember({ category: "jokes", content: "b" }),
+    ]);
+
+    expect(results.filter((result) => result.status === "ok")).toHaveLength(1);
+    expect(await recall({ category: "jokes", limit: 100 })).toHaveLength(
+      MAX_PER_CATEGORY,
+    );
   });
 });
 
 describe("recall", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [row(2, "jokes", "second"), row(1, "jokes", "first")],
+  it("should list everything newest first, 20 by default", async () => {
+    for (let i = 1; i <= 21; i++) {
+      await seed(
+        i,
+        "jokes",
+        `joke ${i}`,
+        `2025-01-${String(i).padStart(2, "0")}T00:00:00.000Z`,
+      );
+    }
+
+    const memories = await recall({});
+
+    expect(memories).toHaveLength(20);
+    expect(memories[0]).toEqual({
+      id: 21,
+      category: "jokes",
+      content: "joke 21",
+      createdAt: "2025-01-21T00:00:00.000Z",
     });
+    expect(memories.at(-1)?.id).toBe(2);
   });
 
-  it("should list everything newest first with the default limit", async () => {
-    await expect(recall({})).resolves.toEqual([
-      {
-        id: 2,
-        category: "jokes",
-        content: "second",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      },
-      {
-        id: 1,
-        category: "jokes",
-        content: "first",
-        createdAt: "2025-01-01T00:00:00.000Z",
-      },
-    ]);
+  it("should break ties on the newest id", async () => {
+    await seed(1, "jokes", "first");
+    await seed(2, "jokes", "second");
 
-    const [sql, args] = vi.mocked(query).mock.calls[0] ?? [];
-    expect(sql).not.toContain("WHERE");
-    expect(sql).toContain("ORDER BY created_at DESC, id DESC LIMIT ?");
-    expect(args).toEqual([20]);
+    expect((await recall({})).map((memory) => memory.id)).toEqual([2, 1]);
   });
 
-  it("should filter by category and escaped search text", async () => {
-    await recall({ category: "Jokes", search: "50%_off\\", limit: 5 });
+  it("should filter by category and search text literally", async () => {
+    await seed(1, "jokes", "50%_off\\ everything");
+    await seed(2, "jokes", "500 offers");
+    await seed(3, "self", "50%_off\\ too");
 
-    const [sql, args] = vi.mocked(query).mock.calls[0] ?? [];
-    expect(sql).toContain("WHERE category = ? AND content LIKE ? ESCAPE '\\'");
-    expect(args).toEqual(["jokes", "%50\\%\\_off\\\\%", 5]);
+    const memories = await recall({
+      category: "Jokes",
+      search: "50%_off\\",
+      limit: 5,
+    });
+
+    expect(memories.map((memory) => memory.id)).toEqual([1]);
   });
 });
 
 describe("edit", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should rewrite a note only when its text still matches", async () => {
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [row(4, "self", "i like trains")],
-    });
+    await seed(4, "self", "i like cats");
 
     await expect(
       edit({ id: 4, oldContent: " i like cats ", newContent: "i like trains" }),
@@ -172,29 +200,13 @@ describe("edit", () => {
         id: 4,
         category: "self",
         content: "i like trains",
-        createdAt: "2025-01-01T00:00:00.000Z",
+        createdAt: CREATED_AT,
       },
     });
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("WHERE id = ? AND content IN (?, ?)"),
-      [
-        "i like trains",
-        null,
-        4,
-        "i like cats",
-        "i like cats",
-        null,
-        null,
-        MAX_PER_CATEGORY,
-      ],
-    );
   });
 
   it("should move a note to another category when asked", async () => {
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [row(4, "context", "this chat gets spam")],
-    });
+    await seed(4, "style", "this chat gets spam");
 
     await expect(
       edit({
@@ -204,28 +216,28 @@ describe("edit", () => {
         category: " Context ",
       }),
     ).resolves.toMatchObject({ status: "ok", memory: { category: "context" } });
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("category = COALESCE(?, category)"),
-      [
-        "this chat gets spam",
-        "context",
-        4,
-        "this chat gets spam",
-        "this chat gets spam",
-        "context",
-        "context",
-        MAX_PER_CATEGORY,
-      ],
-    );
+    expect(await stored(4)).toEqual({
+      category: "context",
+      content: "this chat gets spam",
+    });
+  });
+
+  it("should edit a note in place in a full category", async () => {
+    await fill("self", MAX_PER_CATEGORY);
+
+    await expect(
+      edit({
+        id: 100,
+        oldContent: "note 0",
+        newContent: "note zero",
+        category: "self",
+      }),
+    ).resolves.toMatchObject({ status: "ok" });
   });
 
   it("should refuse to move a note into a full category", async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce(emptyResult)
-      .mockResolvedValueOnce({
-        ...emptyResult,
-        rows: [row(4, "style", "this chat gets spam")],
-      });
+    await seed(4, "style", "this chat gets spam");
+    await fill("context", MAX_PER_CATEGORY);
 
     await expect(
       edit({
@@ -235,53 +247,42 @@ describe("edit", () => {
         category: "context",
       }),
     ).resolves.toEqual({ status: "full", category: "context" });
+    expect(await stored(4)).toEqual({
+      category: "style",
+      content: "this chat gets spam",
+    });
   });
 
   it("should validate the category before moving", async () => {
+    await seed(4, "self", "x");
+
     await expect(
       edit({ id: 4, oldContent: "x", newContent: "y", category: "Not Valid!" }),
     ).rejects.toThrow();
-    expect(query).not.toHaveBeenCalled();
+    expect(await stored(4)).toEqual({ category: "self", content: "x" });
   });
 
-  it("should accept the text copied straight from the listing", async () => {
-    vi.mocked(query).mockResolvedValue({
-      ...emptyResult,
-      rows: [row(4, "self", "i like trains")],
-    });
+  it.each(["- #4 i like cats", "#4 i like cats"])(
+    "should accept the text copied straight from the listing: %s",
+    async (oldContent) => {
+      await seed(4, "self", "i like cats");
 
-    await edit({
-      id: 4,
-      oldContent: "- #4 i like cats",
-      newContent: "i like trains",
-    });
-    await edit({
-      id: 4,
-      oldContent: "#4 i like cats",
-      newContent: "i like trains",
-    });
-    await edit({
-      id: 4,
-      oldContent: "#41 not mine",
-      newContent: "i like trains",
-    });
+      await expect(
+        edit({ id: 4, oldContent, newContent: "i like trains" }),
+      ).resolves.toMatchObject({ status: "ok" });
+    },
+  );
 
-    expect(
-      vi.mocked(query).mock.calls.map(([, args]) => args?.slice(3, 5)),
-    ).toEqual([
-      ["- #4 i like cats", "i like cats"],
-      ["#4 i like cats", "i like cats"],
-      ["#41 not mine", "#41 not mine"],
-    ]);
+  it("should only strip a listing prefix that names this note", async () => {
+    await seed(4, "self", "not mine");
+
+    await expect(
+      edit({ id: 4, oldContent: "#41 not mine", newContent: "mine now" }),
+    ).resolves.toMatchObject({ status: "stale" });
   });
 
   it("should hand back the current text when the note changed", async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce(emptyResult)
-      .mockResolvedValueOnce({
-        ...emptyResult,
-        rows: [row(4, "self", "i like dogs")],
-      });
+    await seed(4, "self", "i like dogs");
 
     await expect(
       edit({ id: 4, oldContent: "i like cats", newContent: "i like trains" }),
@@ -289,58 +290,49 @@ describe("edit", () => {
       status: "stale",
       current: expect.objectContaining({ id: 4, content: "i like dogs" }),
     });
+    expect(await stored(4)).toEqual({
+      category: "self",
+      content: "i like dogs",
+    });
   });
 
   it("should say when the note is gone", async () => {
-    vi.mocked(query).mockResolvedValue(emptyResult);
-
     await expect(
       edit({ id: 4, oldContent: "i like cats", newContent: "i like trains" }),
     ).resolves.toEqual({ status: "missing", id: 4 });
   });
 
   it("should validate the new text before writing", async () => {
+    await seed(4, "self", "x");
+
     await expect(
       edit({ id: 4, oldContent: "x", newContent: " " }),
     ).rejects.toThrow();
-    expect(query).not.toHaveBeenCalled();
+    expect(await stored(4)).toEqual({ category: "self", content: "x" });
   });
 });
 
 describe("forget", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should delete a note only when its text still matches", async () => {
-    vi.mocked(query).mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 });
+    await seed(4, "self", "i like cats");
 
     await expect(
       forget({ id: 4, content: " - #4 i like cats " }),
     ).resolves.toEqual({ status: "ok" });
-    expect(query).toHaveBeenCalledWith(
-      "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
-      [4, "- #4 i like cats", "i like cats"],
-    );
+    expect(await stored(4)).toBeUndefined();
   });
 
   it("should hand back the current text when the note changed", async () => {
-    vi.mocked(query)
-      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 0 })
-      .mockResolvedValueOnce({
-        ...emptyResult,
-        rows: [row(4, "self", "i like dogs")],
-      });
+    await seed(4, "self", "i like dogs");
 
     await expect(forget({ id: 4, content: "i like cats" })).resolves.toEqual({
       status: "stale",
       current: expect.objectContaining({ id: 4, content: "i like dogs" }),
     });
+    expect(await stored(4)).toBeDefined();
   });
 
   it("should say when the note is gone", async () => {
-    vi.mocked(query).mockResolvedValue(emptyResult);
-
     await expect(forget({ id: 4, content: "i like cats" })).resolves.toEqual({
       status: "missing",
       id: 4,
@@ -349,34 +341,14 @@ describe("forget", () => {
 });
 
 describe("buildMemoryContext", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("should render core categories, participants, and an index of the rest", async () => {
-    vi.mocked(query).mockImplementation(async (sql) => {
-      if (sql.includes("GROUP BY category")) {
-        return {
-          ...emptyResult,
-          rows: [
-            { category: "interests", count: 1 },
-            { category: "jokes", count: 7 },
-            { category: "people/alice", count: 1 },
-            { category: "people/zed", count: 2 },
-            { category: "self", count: 2 },
-          ],
-        };
-      }
-      return {
-        ...emptyResult,
-        rows: [
-          row(1, "self", "my name is simon-bot"),
-          row(2, "self", "i live in a docker container"),
-          row(3, "interests", "trains"),
-          row(4, "people/alice", "likes cats"),
-        ],
-      };
-    });
+    await seed(1, "self", "my name is simon-bot");
+    await seed(2, "self", "i live in a docker container");
+    await seed(3, "interests", "trains");
+    await seed(4, "people/alice", "likes cats");
+    await seed(5, "people/zed", "likes dogs");
+    await seed(6, "people/zed", "lives in a shoe");
+    for (let i = 0; i < 7; i++) await seed(10 + i, "jokes", `joke ${i}`);
 
     const context = await buildMemoryContext(["Alice", "Alice", "!!!"]);
 
@@ -403,20 +375,15 @@ describe("buildMemoryContext", () => {
         "</memory>",
       ].join("\n"),
     );
-
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("WHERE category IN (?, ?, ?, ?, ?)"),
-      ["self", "style", "interests", "context", "people/alice"],
-    );
   });
 
   it("should omit the index when every category is shown", async () => {
-    vi.mocked(query).mockResolvedValue(emptyResult);
+    await seed(1, "self", "hi");
 
     const context = await buildMemoryContext([]);
 
     expect(context).not.toContain("Other categories");
-    expect(context).toContain("## self\n(nothing yet)");
+    expect(context).toContain("## style\n(nothing yet)");
   });
 
   it("should return an empty string and log when the database fails", async () => {
