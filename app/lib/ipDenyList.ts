@@ -6,14 +6,16 @@ import { log } from "@/lib/log";
 export const IP_DENY_LIST_URL =
   "https://raw.githubusercontent.com/stamparm/ipsum/master/levels/6.txt";
 
-const REFRESH_MS = 24 * 60 * 60 * 1000;
-const RETRY_MS = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
+const REFRESH_MS = 24 * HOUR;
 const TIMEOUT_MS = 10_000;
 const IPV4 = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 type State = {
   ips: Set<string>;
   nextRefreshAt: number;
+  failures: number;
   refreshing: Promise<void> | undefined;
 };
 
@@ -21,6 +23,7 @@ function state(): State {
   return getGlobal("simon.dev/ip-deny-list", () => ({
     ips: new Set<string>(),
     nextRefreshAt: 0,
+    failures: 0,
     refreshing: undefined,
   }));
 }
@@ -46,10 +49,14 @@ export function refreshIpDenyList(): Promise<void> {
       (ips) => {
         current.ips = ips;
         current.nextRefreshAt = Date.now() + REFRESH_MS;
+        current.failures = 0;
         log.info({ count: ips.size }, "Loaded the IP deny list");
       },
       (err: unknown) => {
-        current.nextRefreshAt = Date.now() + RETRY_MS;
+        // 1, 4 and 16 minutes, then hourly: a boot during an outage soon gets a list.
+        current.nextRefreshAt =
+          Date.now() + Math.min(MINUTE * 4 ** current.failures, HOUR);
+        current.failures++;
         log.warn({ err }, "Failed to load the IP deny list");
       },
     )

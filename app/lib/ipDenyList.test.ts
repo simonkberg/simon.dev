@@ -9,7 +9,8 @@ import { IP_DENY_LIST_URL, isDeniedIp, refreshIpDenyList } from "./ipDenyList";
 
 vi.mock(import("server-only"), () => ({}));
 
-const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
 
 function serveList(body: string, status = 200) {
   let requests = 0;
@@ -95,30 +96,49 @@ describe("isDeniedIp", () => {
     expect(isDeniedIp("5.6.7.8")).toBe(true);
   });
 
-  it("should keep the last list and retry an hour after a failed refresh", async () => {
+  it("should keep the last list when a refresh fails", async () => {
     serveList("1.2.3.4\n");
     await refreshIpDenyList();
-    vi.setSystemTime(24 * HOUR);
     serveList("", 503);
+
     await refreshIpDenyList();
-    serveList("5.6.7.8\n");
-    const fetches = vi.spyOn(globalThis, "fetch");
 
     expect(isDeniedIp("1.2.3.4")).toBe(true);
     expect(log.warn).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Failed to load the IP deny list",
     );
+  });
 
-    vi.setSystemTime(25 * HOUR - 1);
-    isDeniedIp("1.2.3.4");
-    expect(fetches).not.toHaveBeenCalled();
+  it("should back off failed refreshes from a minute to an hour, then reset", async () => {
+    serveList("", 503);
+    const fetches = vi.spyOn(globalThis, "fetch");
+    let now = 0;
 
-    vi.setSystemTime(25 * HOUR);
-    isDeniedIp("1.2.3.4");
-    expect(fetches).toHaveBeenCalledTimes(1);
+    async function expectRetryAfter(delay: number) {
+      fetches.mockClear();
+      vi.setSystemTime(now + delay - 1);
+      isDeniedIp("1.2.3.4");
+      expect(fetches).not.toHaveBeenCalled();
+
+      now += delay;
+      vi.setSystemTime(now);
+      isDeniedIp("1.2.3.4");
+      expect(fetches).toHaveBeenCalledTimes(1);
+      await refreshIpDenyList();
+    }
 
     await refreshIpDenyList();
-    expect(isDeniedIp("5.6.7.8")).toBe(true);
+    for (const minutes of [1, 4, 16, 60, 60]) {
+      await expectRetryAfter(minutes * MINUTE);
+    }
+
+    serveList("1.2.3.4\n");
+    await expectRetryAfter(60 * MINUTE);
+    expect(isDeniedIp("1.2.3.4")).toBe(true);
+
+    serveList("", 503);
+    await expectRetryAfter(24 * HOUR);
+    await expectRetryAfter(MINUTE);
   });
 });
