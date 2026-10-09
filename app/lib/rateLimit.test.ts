@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
-import { createSqliteQuery } from "@/mocks/sqlite";
+import { createSqliteQuery, emptyResult } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { pruneRateLimits, rateLimit } from "./rateLimit";
@@ -20,10 +20,9 @@ async function countRows(): Promise<unknown> {
 }
 
 describe("rateLimit", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.useFakeTimers({ now: 1_000_000 });
-    vi.mocked(query).mockImplementation(createSqliteQuery());
-    for (const sql of MIGRATIONS) await query(sql);
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
   });
 
   afterEach(() => {
@@ -45,13 +44,13 @@ describe("rateLimit", () => {
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
-      reset: 1_030_000,
+      retryAfterSeconds: 20,
     });
 
     vi.advanceTimersByTime(19_999);
     expect(await rateLimit("a", options)).toEqual({
       success: false,
-      reset: 1_030_000,
+      retryAfterSeconds: 1,
     });
 
     vi.advanceTimersByTime(1);
@@ -78,27 +77,28 @@ describe("rateLimit", () => {
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
-      reset: 1_035_000,
+      retryAfterSeconds: 30,
     });
   });
 
-  it("should reset now when the oldest request left the window meanwhile", async () => {
+  it("should ask for a retry soon when the oldest request left the window meanwhile", async () => {
     vi.mocked(query)
-      .mockResolvedValueOnce({
-        rows: [],
-        rowsAffected: 0,
-        lastInsertRowId: null,
-      })
-      .mockResolvedValueOnce({
-        rows: [{ oldest: null }],
-        rowsAffected: 0,
-        lastInsertRowId: null,
-      });
+      .mockResolvedValueOnce(emptyResult)
+      .mockResolvedValueOnce({ ...emptyResult, rows: [{ oldest: null }] });
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,
-      reset: 1_000_000,
+      retryAfterSeconds: 1,
     });
+  });
+
+  it("should fail open when the database fails", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const err = new Error("boom");
+    vi.mocked(query).mockRejectedValueOnce(err);
+
+    expect(await rateLimit("a", options)).toEqual({ success: true });
+    expect(warn).toHaveBeenCalledWith({ err, key: "a" }, "Rate limiter failed");
   });
 
   it("should not record rejected requests", async () => {

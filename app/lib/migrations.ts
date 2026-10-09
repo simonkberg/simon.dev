@@ -30,13 +30,6 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function acquireLock(owner: string): Promise<void> {
-  await query(
-    `CREATE TABLE IF NOT EXISTS locks (
-      name TEXT PRIMARY KEY,
-      owner TEXT NOT NULL,
-      expires_at INTEGER NOT NULL
-    )`,
-  );
   const deadline = Date.now() + LOCK_WAIT_MS;
   let lastError: unknown;
   while (Date.now() < deadline) {
@@ -63,12 +56,6 @@ async function acquireLock(owner: string): Promise<void> {
 }
 
 async function applyPending(): Promise<void> {
-  await query(
-    `CREATE TABLE IF NOT EXISTS migrations (
-      version INTEGER PRIMARY KEY,
-      applied_at TEXT NOT NULL
-    )`,
-  );
   const { rows } = await query("SELECT version FROM migrations");
   const applied = new Set(rows.map((row) => row["version"]));
 
@@ -85,7 +72,21 @@ async function applyPending(): Promise<void> {
   }
 }
 
+// Outside MIGRATIONS: the lock and the version list need these before it can run.
+const BOOTSTRAP = [
+  `CREATE TABLE IF NOT EXISTS locks (
+    name TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL
+  )`,
+];
+
 export async function runMigrations(): Promise<void> {
+  for (const sql of BOOTSTRAP) await query(sql);
   const owner = crypto.randomUUID();
   await acquireLock(owner);
   try {

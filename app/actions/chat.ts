@@ -66,22 +66,14 @@ export async function postChatMessage(
     const limited = await rateLimit(
       `postChatMessage:${identifier}`,
       RATE_LIMIT,
-    ).catch((err: unknown) => {
-      // Fail open: the limiter being down shouldn't take chat down with it.
-      log.warn({ err, action: "postChatMessage" }, "Rate limiter failed");
-      return { success: true } as const;
-    });
+    );
 
     after(() => pruneRateLimits(RATE_LIMIT.windowMs));
 
     if (!limited.success) {
-      const seconds = Math.max(
-        1,
-        Math.ceil((limited.reset - Date.now()) / 1000),
-      );
       return {
         status: "error",
-        error: `Rate limit exceeded. Wait ${seconds} seconds before trying again.`,
+        error: `Rate limit exceeded. Wait ${limited.retryAfterSeconds} seconds before trying again.`,
       };
     }
 

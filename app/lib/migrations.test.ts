@@ -11,22 +11,21 @@ import { MIGRATIONS, runMigrations } from "./migrations";
 vi.mock(import("server-only"), () => ({}));
 vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 
-const sqlite = vi.fn<typeof query>();
+let sqlite: typeof query;
 
-function failOnce(prefix: string, after: "before" | "after" = "before") {
+function failNext(prefix: string, { afterRunning = false } = {}) {
   let failed = false;
   vi.mocked(query).mockImplementation(async (sql, args) => {
     if (failed || !sql.startsWith(prefix)) return sqlite(sql, args);
     failed = true;
-    if (after === "after") await sqlite(sql, args);
+    if (afterRunning) await sqlite(sql, args);
     throw new Error("boom");
   });
 }
 
 async function holdLock(owner: string, expiresAt: number) {
-  await query(
-    "CREATE TABLE locks (name TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL)",
-  );
+  await runMigrations();
+  await query("DELETE FROM migrations");
   await query("INSERT INTO locks VALUES ('migrations', ?, ?)", [
     owner,
     expiresAt,
@@ -34,9 +33,7 @@ async function holdLock(owner: string, expiresAt: number) {
 }
 
 async function appliedVersions(): Promise<unknown[]> {
-  const { rows } = await query("SELECT version FROM migrations").catch(() => ({
-    rows: [],
-  }));
+  const { rows } = await query("SELECT version FROM migrations");
   return rows.map((row) => row["version"]);
 }
 
@@ -52,7 +49,7 @@ describe("runMigrations", () => {
     vi.clearAllMocks();
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.spyOn(log, "warn").mockImplementation(() => {});
-    sqlite.mockImplementation(createSqliteQuery());
+    sqlite = createSqliteQuery();
     vi.mocked(query).mockImplementation(sqlite);
   });
 
@@ -60,26 +57,20 @@ describe("runMigrations", () => {
     vi.useRealTimers();
   });
 
-  it("should apply every migration once across runs and release the lock", async () => {
+  it("should apply only the pending migrations and release the lock", async () => {
     await runMigrations();
+    await query("DELETE FROM migrations WHERE version > 1");
     vi.mocked(log.info).mockClear();
+
     await runMigrations();
 
     expect(await appliedVersions()).toEqual(MIGRATIONS.map((_, i) => i + 1));
-    expect(log.info).not.toHaveBeenCalled();
+    expect(log.info).toHaveBeenCalledTimes(MIGRATIONS.length - 1);
+    expect(log.info).not.toHaveBeenCalledWith(
+      { version: 1 },
+      "Applied migration",
+    );
     expect((await query("SELECT * FROM locks")).rows).toEqual([]);
-  });
-
-  it("should skip migrations that are already applied", async () => {
-    await runMigrations();
-    await query("DELETE FROM migrations WHERE version > 1");
-    vi.mocked(query).mockClear();
-
-    await runMigrations();
-
-    const statements = vi.mocked(query).mock.calls.map(([sql]) => sql);
-    expect(statements).not.toContain(MIGRATIONS[0]);
-    expect(statements).toContain(MIGRATIONS[1]);
   });
 
   it("should use a different owner for each run", async () => {
@@ -133,7 +124,7 @@ describe("runMigrations", () => {
 
   it("should take the lock when the response to taking it was lost", async () => {
     vi.useFakeTimers();
-    failOnce("INSERT INTO locks", "after");
+    failNext("INSERT INTO locks", { afterRunning: true });
 
     const running = runMigrations();
     await vi.runAllTimersAsync();
@@ -148,18 +139,14 @@ describe("runMigrations", () => {
   });
 
   it("should release the lock when a migration fails", async () => {
-    vi.mocked(query).mockImplementation(async (sql, args) =>
-      sql === MIGRATIONS[0]
-        ? Promise.reject(new Error("boom"))
-        : sqlite(sql, args),
-    );
+    failNext(String(MIGRATIONS[0]));
 
     await expect(runMigrations()).rejects.toThrow("boom");
     expect((await query("SELECT * FROM locks")).rows).toEqual([]);
   });
 
   it("should succeed when releasing the lock fails", async () => {
-    failOnce("DELETE FROM locks");
+    failNext("DELETE FROM locks");
 
     await expect(runMigrations()).resolves.toBeUndefined();
     expect(await appliedVersions()).toHaveLength(MIGRATIONS.length);

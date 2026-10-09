@@ -26,7 +26,9 @@ vi.mock(import("next/cache"), () => ({
   refresh: vi.fn(),
   updateTag: vi.fn(),
 }));
-vi.mock(import("next/server"), () => ({ after: vi.fn() }));
+vi.mock(import("next/server"), () => ({
+  after: vi.fn((task) => (typeof task === "function" ? task() : task)),
+}));
 vi.mock(import("@/lib/identifiers"), () => ({
   identifiers: vi.fn(() =>
     Promise.resolve({ ip: "0.0.0.0", userAgent: "vitest" }),
@@ -57,12 +59,11 @@ function mockRateLimitSuccess() {
   vi.mocked(rateLimit).mockResolvedValue({ success: true });
 }
 
-function mockRateLimitExceeded(resetInMs: number) {
-  vi.mocked(rateLimit).mockResolvedValue({
-    success: false,
-    reset: Date.now() + resetInMs,
-  });
+function mockRateLimitExceeded(retryAfterSeconds: number) {
+  vi.mocked(rateLimit).mockResolvedValue({ success: false, retryAfterSeconds });
 }
+
+const RATE_LIMIT = { limit: 5, windowMs: 30_000 };
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -118,7 +119,7 @@ describe("refreshChatHistory", () => {
 
 describe("postChatMessage", () => {
   it("returns rate limit error with wait time when limit exceeded", async () => {
-    mockRateLimitExceeded(10000);
+    mockRateLimitExceeded(10);
     const formData = new FormData();
     formData.set("text", "Test message");
 
@@ -129,37 +130,6 @@ describe("postChatMessage", () => {
       expect(result.error).toMatch(/Rate limit exceeded/);
       expect(result.error).toMatch(/Wait 10 seconds/);
     }
-  });
-
-  it("never tells the user to wait less than a second", async () => {
-    mockRateLimitExceeded(0);
-    const formData = new FormData();
-    formData.set("text", "Test message");
-
-    const result = await postChatMessage(formData);
-
-    expect(result).toEqual({
-      status: "error",
-      error: "Rate limit exceeded. Wait 1 seconds before trying again.",
-    });
-  });
-
-  it("posts anyway when the rate limiter fails", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
-    const err = new Error("Turso down");
-    vi.mocked(rateLimit).mockRejectedValue(err);
-    vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
-    const formData = new FormData();
-    formData.set("text", "Hello!");
-
-    const result = await postChatMessage(formData);
-
-    expect(result).toEqual({ status: "ok" });
-    expect(warn).toHaveBeenCalledWith(
-      { err, action: "postChatMessage" },
-      "Rate limiter failed",
-    );
   });
 
   it("uses username as rate limit identifier when IP is unavailable", async () => {
@@ -175,10 +145,10 @@ describe("postChatMessage", () => {
 
     await postChatMessage(formData);
 
-    expect(rateLimit).toHaveBeenCalledWith("postChatMessage:test-user", {
-      limit: 5,
-      windowMs: 30_000,
-    });
+    expect(rateLimit).toHaveBeenCalledWith(
+      "postChatMessage:test-user",
+      RATE_LIMIT,
+    );
   });
 
   it("dismisses the tip on a successful post", async () => {
@@ -194,7 +164,7 @@ describe("postChatMessage", () => {
   });
 
   it("does not record a post that failed", async () => {
-    mockRateLimitExceeded(10000);
+    mockRateLimitExceeded(10);
     const formData = new FormData();
     formData.set("text", "Hello!");
 
@@ -213,10 +183,10 @@ describe("postChatMessage", () => {
     const result = await postChatMessage(formData);
 
     expect(result).toEqual({ status: "ok" });
-    expect(rateLimit).toHaveBeenCalledWith("postChatMessage:0.0.0.0", {
-      limit: 5,
-      windowMs: 30_000,
-    });
+    expect(rateLimit).toHaveBeenCalledWith(
+      "postChatMessage:0.0.0.0",
+      RATE_LIMIT,
+    );
     expect(postChannelMessage).toHaveBeenCalledWith(
       "Hello everyone!",
       "test-user",
@@ -231,10 +201,7 @@ describe("postChatMessage", () => {
       "Hello everyone!",
     );
     expect(after).toHaveBeenCalledTimes(1);
-    const task = vi.mocked(after).mock.calls[0]?.[0];
-    expect(task).toBeTypeOf("function");
-    if (typeof task === "function") await task();
-    expect(pruneRateLimits).toHaveBeenCalledWith(30_000);
+    expect(pruneRateLimits).toHaveBeenCalledWith(RATE_LIMIT.windowMs);
   });
 
   it("returns error and logs when Discord API fails", async () => {

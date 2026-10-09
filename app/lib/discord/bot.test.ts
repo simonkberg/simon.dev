@@ -7,7 +7,7 @@ import { log } from "@/lib/log";
 import { MIGRATIONS } from "@/lib/migrations";
 import { reflect } from "@/lib/reflection";
 import { query } from "@/lib/turso";
-import { createSqliteQuery } from "@/mocks/sqlite";
+import { createSqliteQuery, emptyResult } from "@/mocks/sqlite";
 
 import { getMessageChain, postChannelMessage } from "./api";
 import { handleMessage, startBotSubscription } from "./bot";
@@ -20,9 +20,8 @@ vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
 
 function mockSeen(isNew: boolean) {
   vi.mocked(query).mockResolvedValue({
-    rows: [],
+    ...emptyResult,
     rowsAffected: isNew ? 1 : 0,
-    lastInsertRowId: null,
   });
 }
 
@@ -62,6 +61,7 @@ describe("handleMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(reflect).mockResolvedValue(undefined);
+    mockSeen(true);
   });
 
   afterEach(() => {
@@ -70,8 +70,6 @@ describe("handleMessage", () => {
 
   it("should respond when bot is mentioned in the message", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
@@ -92,12 +90,6 @@ describe("handleMessage", () => {
   });
 
   it("should not respond when bot is not mentioned", async () => {
-    mockSeen(true);
-
-    vi.mocked(getMessageChain).mockResolvedValue([
-      { id: "msg-1", type: 0, username: "User1", content: "hello world" },
-    ]);
-
     await handleMessage(createMessage({ content: "User1: hello world" }));
 
     expect(query).not.toHaveBeenCalled();
@@ -106,7 +98,6 @@ describe("handleMessage", () => {
   });
 
   it("should not respond to a reply when nothing in the chain mentions the bot", async () => {
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hello" },
       { id: "msg-2", type: 19, username: "User2", content: "hi" },
@@ -126,9 +117,8 @@ describe("handleMessage", () => {
   });
 
   it("should handle a message only once across instances", async () => {
-    vi.spyOn(log, "info").mockImplementation(() => {});
-    vi.mocked(query).mockImplementation(createSqliteQuery());
-    for (const sql of MIGRATIONS) await query(sql);
+    const info = vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
     vi.mocked(getMessageChain).mockResolvedValue([]);
 
     const message = createMessage({ content: "User1: hey simon-bot" });
@@ -136,12 +126,14 @@ describe("handleMessage", () => {
     await handleMessage(message);
 
     expect(getMessageChain).toHaveBeenCalledTimes(1);
+    expect(info).toHaveBeenCalledWith(
+      { messageId: "msg-1" },
+      "Message already handled by another instance",
+    );
   });
 
   it("should respond when bot is mentioned in parent message", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockResolvedValue([
       {
         id: "msg-1",
@@ -176,8 +168,6 @@ describe("handleMessage", () => {
 
   it("should map bot messages to assistant role in conversation", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
       { id: "msg-2", type: 19, username: "simon-bot", content: "hello there!" },
@@ -208,8 +198,6 @@ describe("handleMessage", () => {
 
   it("should reflect on the conversation after replying", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
@@ -233,7 +221,6 @@ describe("handleMessage", () => {
   it("should still reflect when a later reply fails", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
@@ -261,7 +248,6 @@ describe("handleMessage", () => {
   it("should still reflect when the error message can't be posted either", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
@@ -289,7 +275,6 @@ describe("handleMessage", () => {
 
   it("should reflect when the bot chose not to reply", async () => {
     const info = vi.spyOn(log, "info").mockImplementation(() => {});
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([
       {
         id: "msg-1",
@@ -324,7 +309,6 @@ describe("handleMessage", () => {
 
   it("should not reflect when the reply failed before anything was said", async () => {
     vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot" },
     ]);
@@ -342,7 +326,6 @@ describe("handleMessage", () => {
   it("should log a failed reflection without affecting the reply", async () => {
     vi.spyOn(log, "info").mockImplementation(() => {});
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
     vi.mocked(reflect).mockRejectedValue(new Error("reflection broke"));
 
     vi.mocked(getMessageChain).mockResolvedValue([
@@ -366,7 +349,6 @@ describe("handleMessage", () => {
   });
 
   it("should skip if chain is empty", async () => {
-    mockSeen(true);
     vi.mocked(getMessageChain).mockResolvedValue([]);
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
@@ -380,10 +362,6 @@ describe("handleMessage", () => {
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
 
-    expect(query).toHaveBeenCalledWith(
-      "INSERT OR IGNORE INTO seen_messages (id) VALUES (?)",
-      ["msg-1"],
-    );
     expect(getMessageChain).not.toHaveBeenCalled();
     expect(info).toHaveBeenCalledWith(
       { messageId: "msg-1" },
@@ -412,8 +390,6 @@ describe("handleMessage", () => {
 
   it("should log error silently on pre-commitment failure", async () => {
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockRejectedValue(new Error("API error"));
 
     await handleMessage(createMessage({ content: "User1: hey simon-bot" }));
@@ -424,8 +400,6 @@ describe("handleMessage", () => {
 
   it("should post error message on post-commitment failure", async () => {
     const errorSpy = vi.spyOn(log, "error").mockImplementation(() => {});
-    mockSeen(true);
-
     vi.mocked(getMessageChain).mockResolvedValue([
       { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
     ]);
