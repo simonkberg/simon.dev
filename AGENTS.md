@@ -142,7 +142,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **simon-bot:** `app/lib/anthropic.ts` calls Claude Haiku 5.5 (adaptive thinking, `medium` effort for replies,
   `high` for reflection) with raw `fetch`, no SDK; a "simon-bot" mention triggers it. It starts once at
   server boot from `instrumentation.ts` — one long-lived Gateway subscription, not
-  per-request — and dedupes replies and mentions through Turso's `seen_messages` so multiple
+  per-request — and dedupes replies and mentions through Turso's `seen_messages` (kept an hour) so multiple
   instances don't double-reply. Without Turso it doesn't reply at all, rather than twice.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
   `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied

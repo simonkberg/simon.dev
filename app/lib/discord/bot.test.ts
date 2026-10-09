@@ -65,6 +65,7 @@ describe("handleMessage", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -130,6 +131,30 @@ describe("handleMessage", () => {
       { messageId: "msg-1" },
       "Message already handled by another instance",
     );
+  });
+
+  it("should forget handled messages after an hour", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    vi.useFakeTimers({ now: 0 });
+    vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
+    vi.mocked(getMessageChain).mockResolvedValue([]);
+    const seen = async () =>
+      (await query("SELECT id FROM seen_messages ORDER BY id")).rows;
+
+    await handleMessage(
+      createMessage({ id: "1", content: "User1: simon-bot" }),
+    );
+    vi.setSystemTime(60 * 60 * 1000 - 1);
+    await handleMessage(
+      createMessage({ id: "2", content: "User1: simon-bot" }),
+    );
+    expect(await seen()).toEqual([{ id: "1" }, { id: "2" }]);
+
+    vi.setSystemTime(60 * 60 * 1000);
+    await handleMessage(
+      createMessage({ id: "3", content: "User1: simon-bot" }),
+    );
+    expect(await seen()).toEqual([{ id: "2" }, { id: "3" }]);
   });
 
   it("should respond when bot is mentioned in parent message", async () => {

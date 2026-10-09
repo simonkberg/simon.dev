@@ -12,7 +12,7 @@ export const MIGRATIONS: readonly string[] = [
     created_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS memories_category ON memories (category)`,
-  `CREATE TABLE IF NOT EXISTS seen_messages (id TEXT PRIMARY KEY)`,
+  `CREATE TABLE IF NOT EXISTS seen_messages (id TEXT PRIMARY KEY, at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS rate_limits (key TEXT NOT NULL, at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS rate_limits_key_at ON rate_limits (key, at)`,
 ];
