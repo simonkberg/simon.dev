@@ -10,6 +10,7 @@ import {
   postChannelMessage,
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
+import { isDeniedIp } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { rateLimit } from "@/lib/rateLimit";
 import { getSession } from "@/lib/session";
@@ -61,6 +62,17 @@ export async function postChatMessage(
     const { username } = await getSession();
 
     const request = await identifiers();
+    if (request.ip !== undefined && isDeniedIp(request.ip)) {
+      log.info(
+        { ip: request.ip, action: "postChatMessage" },
+        "Denied a listed IP",
+      );
+      return {
+        status: "error",
+        error: "Posting from your network is blocked.",
+      };
+    }
+
     const identifier = request.ip ?? username;
     const result = await rateLimit(`postChatMessage:${identifier}`, RATE_LIMIT);
 

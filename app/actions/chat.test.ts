@@ -1,3 +1,4 @@
+import { http, HttpResponse } from "msw";
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,10 +16,12 @@ import {
 } from "@/lib/discord/api";
 import { resetGlobal } from "@/lib/global";
 import { identifiers } from "@/lib/identifiers";
+import { IP_DENY_LIST_URL, refreshIpDenyList } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { MIGRATIONS } from "@/lib/migrations";
 import type { Username } from "@/lib/session";
 import { query } from "@/lib/turso";
+import { server } from "@/mocks/node";
 import { createSqliteQuery } from "@/mocks/sqlite";
 
 vi.mock(import("server-only"), () => ({}));
@@ -119,11 +122,14 @@ describe("refreshChatHistory", () => {
 });
 
 describe("postChatMessage", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers({ now: 1_000_000, toFake: ["Date"] });
     vi.spyOn(log, "info").mockImplementation(() => {});
     vi.spyOn(log, "error").mockImplementation(() => {});
     resetGlobal("simon.dev/rate-limit-blocked");
+    resetGlobal("simon.dev/ip-deny-list");
+    server.use(http.get(IP_DENY_LIST_URL, () => new HttpResponse("6.6.6.6\n")));
+    await refreshIpDenyList();
     vi.mocked(query).mockImplementation(createSqliteQuery(MIGRATIONS));
     vi.mocked(postChannelMessage).mockResolvedValue("msg-123");
   });
@@ -163,6 +169,20 @@ describe("postChatMessage", () => {
     });
     expect(postChannelMessage).not.toHaveBeenCalled();
     expect(setChatTipDismissed).not.toHaveBeenCalled();
+  });
+
+  it("turns away an IP on the deny list before rate limiting it", async () => {
+    vi.mocked(identifiers).mockResolvedValueOnce({
+      ip: "6.6.6.6",
+      userAgent: "vitest",
+    });
+
+    expect(await post()).toEqual({
+      status: "error",
+      error: "Posting from your network is blocked.",
+    });
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    expect((await query("SELECT * FROM rate_limits")).rows).toEqual([]);
   });
 
   it("limits each IP separately", async () => {
