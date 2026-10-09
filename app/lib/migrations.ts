@@ -98,6 +98,7 @@ async function verifyApplied(): Promise<Set<number>> {
     applied.add(version);
     const sql = MIGRATIONS[version - 1];
     if (sql === undefined) continue;
+    // Applied before checksums existed: today's text becomes the baseline.
     if (row["checksum"] === null) {
       await query("UPDATE migrations SET checksum = ? WHERE version = ?", [
         checksum(sql),
