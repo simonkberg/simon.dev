@@ -78,6 +78,16 @@ describe("runMigrations", () => {
     expect((await query("SELECT * FROM locks")).rows).toEqual([]);
   });
 
+  it("should run on a database migrated by newer code, as after a rollback", async () => {
+    await runMigrations();
+    await query(
+      "INSERT INTO migrations VALUES (?, '2025-01-01T00:00:00.000Z', 'from the future')",
+      [MIGRATIONS.length + 1],
+    );
+
+    await expect(runMigrations()).resolves.toBeUndefined();
+  });
+
   it("should upgrade a migrations table from before checksums", async () => {
     await query(
       "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
