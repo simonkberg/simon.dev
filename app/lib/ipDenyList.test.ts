@@ -35,8 +35,8 @@ describe("isDeniedIp", () => {
     vi.restoreAllMocks();
   });
 
-  it("should deny only listed IPs, skipping comments and blank lines", async () => {
-    serveList("# ipsum\n1.2.3.4\n\n5.6.7.8\n");
+  it("should deny only listed IPs, skipping anything that isn't one", async () => {
+    serveList("# ipsum\n1.2.3.4\n\n5.6.7.8\n<html>\n");
 
     await refreshIpDenyList();
 
@@ -44,6 +44,21 @@ describe("isDeniedIp", () => {
     expect(isDeniedIp("5.6.7.8")).toBe(true);
     expect(isDeniedIp("9.9.9.9")).toBe(false);
     expect(isDeniedIp("# ipsum")).toBe(false);
+    expect(isDeniedIp("<html>")).toBe(false);
+  });
+
+  it("should keep the last list when a refresh comes back without IPs", async () => {
+    serveList("1.2.3.4\n");
+    await refreshIpDenyList();
+    serveList("<html>not a list</html>");
+
+    await refreshIpDenyList();
+
+    expect(isDeniedIp("1.2.3.4")).toBe(true);
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to load the IP deny list",
+    );
   });
 
   it("should let everyone through until the list has loaded, then load it", async () => {

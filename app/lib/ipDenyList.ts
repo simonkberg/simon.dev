@@ -9,6 +9,7 @@ export const IP_DENY_LIST_URL =
 const REFRESH_MS = 24 * 60 * 60 * 1000;
 const RETRY_MS = 60 * 60 * 1000;
 const TIMEOUT_MS = 10_000;
+const IPV4 = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 type State = {
   ips: Set<string>;
@@ -32,7 +33,10 @@ async function fetchList(): Promise<Set<string>> {
     throw new Error(`IP deny list responded ${response.status}`);
   }
   const lines = (await response.text()).split("\n").map((line) => line.trim());
-  return new Set(lines.filter((line) => line && !line.startsWith("#")));
+  const ips = new Set(lines.filter((line) => IPV4.test(line)));
+  // An empty list would let everyone through for a day: retry it like a failure.
+  if (ips.size === 0) throw new Error("IP deny list was empty");
+  return ips;
 }
 
 export function refreshIpDenyList(): Promise<void> {
