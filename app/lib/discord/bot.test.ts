@@ -90,6 +90,32 @@ describe("handleMessage", () => {
     );
   });
 
+  it("should still respond when pruning seen messages fails", async () => {
+    vi.spyOn(log, "info").mockImplementation(() => {});
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    const err = new Error("boom");
+    vi.mocked(query)
+      .mockResolvedValueOnce({ ...emptyResult, rowsAffected: 1 })
+      .mockRejectedValueOnce(err);
+    vi.mocked(getMessageChain).mockResolvedValue([
+      { id: "msg-1", type: 0, username: "User1", content: "hey simon-bot!" },
+    ]);
+    async function* mockResponse() {
+      yield "hello there!";
+    }
+    vi.mocked(createAnthropicMessage).mockReturnValue(mockResponse());
+    vi.mocked(postChannelMessage).mockResolvedValue("response-1");
+
+    await handleMessage(createMessage({ content: "User1: hey simon-bot!" }));
+
+    expect(warn).toHaveBeenCalledWith({ err }, "Failed to prune seen messages");
+    expect(postChannelMessage).toHaveBeenCalledWith(
+      "hello there!",
+      "simon-bot",
+      "msg-1",
+    );
+  });
+
   it("should not respond when bot is not mentioned", async () => {
     await handleMessage(createMessage({ content: "User1: hello world" }));
 
