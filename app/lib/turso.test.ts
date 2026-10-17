@@ -1,9 +1,11 @@
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { resetGlobal } from "@/lib/global";
+import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
 
-import { query } from "./turso";
+import { keepWarm, query } from "./turso";
 
 vi.mock(import("server-only"), () => ({}));
 
@@ -195,4 +197,59 @@ describe("query", () => {
       await expect(freshQuery("SELECT 1")).resolves.toMatchObject({ rows: [] });
     },
   );
+});
+
+describe("keepWarm", () => {
+  afterEach(() => {
+    resetGlobal("simon.dev/turso-keep-warm");
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("should query Turso every minute", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval"] });
+    const statements: unknown[] = [];
+    server.use(
+      http.post(PIPELINE_URL, async ({ request }) => {
+        statements.push(await request.json());
+        return HttpResponse.json(pipelineResponse());
+      }),
+    );
+
+    keepWarm();
+    keepWarm();
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(59_999);
+    expect(statements).toHaveLength(0);
+
+    vi.advanceTimersByTime(1);
+    await vi.waitFor(() => expect(statements).toHaveLength(1));
+    expect(statements[0]).toEqual({
+      requests: [
+        { type: "execute", stmt: { sql: "SELECT 1", args: [] } },
+        { type: "close" },
+      ],
+    });
+
+    vi.advanceTimersByTime(60_000);
+    await vi.waitFor(() => expect(statements).toHaveLength(2));
+  });
+
+  it("should log a failed query and keep going", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval"] });
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => {});
+    server.use(
+      http.post(PIPELINE_URL, () => new HttpResponse(null, { status: 503 })),
+    );
+
+    keepWarm();
+    vi.advanceTimersByTime(60_000);
+
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        { err: expect.any(Error) },
+        "Turso keep-warm query failed",
+      ),
+    );
+  });
 });

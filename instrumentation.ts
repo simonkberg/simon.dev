@@ -5,9 +5,11 @@ export async function register() {
     const { bridgeConsole, log } = await import("@/lib/log");
     const { runMigrationsUntilApplied } = await import("@/lib/migrations");
     const { markReady } = await import("@/lib/readiness");
+    const { keepWarm } = await import("@/lib/turso");
 
     bridgeConsole();
     void refreshIpDenyList();
+    keepWarm();
 
     // Not awaited, so /health can answer 503 while Turso is out.
     runMigrationsUntilApplied()

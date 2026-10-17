@@ -175,7 +175,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The reply chain reaches it as one user turn of escaped `<message>` elements, its own
   included, so ids, authors and reactions sit outside the text people can type.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
-  `fetch`. `app/lib/migrations.ts` is an append-only list of idempotent statements applied
+  `fetch`, plus a `SELECT 1` every minute from `instrumentation.ts`: after a quiet spell
+  Turso stalled the next query past its 5s timeout, so the chat showed only Discord's reactions.
+  `app/lib/migrations.ts` is an append-only list of idempotent statements applied
   at boot under a lock row in `locks`. Each records a checksum, and boot fails if an applied
   one was edited: change the schema with a new migration. Chat posts are rate limited by `app/lib/rateLimit.ts`,
   a sliding window kept atomic across replicas by doing the count and insert in one statement.
