@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { use } from "react";
 
-import type { DayInYear, GetOnThisDayResult } from "@/actions/lastfm";
+import type {
+  DayInYear,
+  GetOnThisDayResult,
+  PlayedYear,
+} from "@/actions/lastfm";
 import { Skeleton } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
 
@@ -10,9 +14,9 @@ export interface OnThisDayTeaserProps {
 }
 
 const busiest = (years: readonly DayInYear[]) =>
-  years.reduce<Required<DayInYear> | undefined>(
-    (busiest, { top, ...year }) =>
-      top && year.count > (busiest?.count ?? 0) ? { ...year, top } : busiest,
+  years.reduce<PlayedYear | undefined>(
+    (busiest, year) =>
+      year.top && year.count > (busiest?.count ?? 0) ? year : busiest,
     undefined,
   );
 

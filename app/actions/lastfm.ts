@@ -168,12 +168,17 @@ export async function getScrobbles(
   }
 }
 
-export interface DayInYear {
-  year: string;
-  count: number;
-  // The day's most played artist and their most played track, earliest first on ties.
-  top?: { artist: string; track: string };
+// The day's most played artist and their most played track, earliest first on ties.
+export interface TopOfDay {
+  artist: string;
+  track: string;
 }
+
+export type PlayedYear = { year: string; count: number; top: TopOfDay };
+
+export type DayInYear =
+  | PlayedYear
+  | { year: string; count: number; top?: never };
 
 export interface OnThisDay {
   date: string;
@@ -192,7 +197,7 @@ function mostPlayed(items: readonly string[]): string | undefined {
   return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
-function topOfDay(tracks: readonly RecentTrack[]): DayInYear["top"] {
+function topOfDay(tracks: readonly RecentTrack[]): TopOfDay | undefined {
   // Last.fm lists newest first.
   const played = tracks.toReversed();
   const artist = mostPlayed(played.map((track) => track.artist));

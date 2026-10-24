@@ -1,6 +1,10 @@
 import { type CSSProperties, use } from "react";
 
-import type { DayInYear, OnThisDay as OnThisDayData } from "@/actions/lastfm";
+import type {
+  DayInYear,
+  OnThisDay as OnThisDayData,
+  PlayedYear,
+} from "@/actions/lastfm";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
 
@@ -10,15 +14,15 @@ export interface OnThisDayProps {
 }
 
 type Stop =
-  | { kind: "played"; year: Required<DayInYear> }
+  | { kind: "played"; year: PlayedYear }
   | { kind: "silent"; from: string; to: string };
 
 // Years with nothing played fold into one quiet stretch of rail.
 const toStops = (years: readonly DayInYear[]): Stop[] => {
   const stops: Stop[] = [];
-  for (const { top, ...year } of years) {
+  for (const year of years) {
     const last = stops.at(-1);
-    if (top) stops.push({ kind: "played", year: { ...year, top } });
+    if (year.top) stops.push({ kind: "played", year });
     else if (last?.kind === "silent") last.from = year.year;
     else stops.push({ kind: "silent", from: year.year, to: year.year });
   }

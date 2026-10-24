@@ -119,12 +119,7 @@
   --stems-hover-bg: transparent;
 
   --timeline-origin: "┬";
-  --timeline-node: "●";
-  --timeline-rail: "│\A";
-  --timeline-silent: "┊\A";
   --timeline-bar: "━";
-  --timeline-node-color: var(--accent);
-  --timeline-rail-color: var(--muted);
   --timeline-bar-color: var(--accent);
 
   --tracks-max: none;
@@ -463,11 +458,7 @@
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
   --timeline-origin: "◇";
-  --timeline-node: "◆";
-  --timeline-rail: "╎\A";
-  --timeline-silent: "┆\A";
   --timeline-bar: "─";
-  --timeline-rail-color: var(--rule);
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -599,9 +590,7 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
-  --timeline-node: "■";
   --timeline-bar: "█";
-  --timeline-rail-color: var(--ink);
   --timeline-bar-color: var(--ink);
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
@@ -1237,9 +1226,8 @@ ul {
   font-variant-numeric: tabular-nums;
 
   > li {
-    --timeline-rails: var(--timeline-rail) var(--timeline-rail)
-      var(--timeline-rail) var(--timeline-rail) var(--timeline-rail)
-      var(--timeline-rail) var(--timeline-rail) var(--timeline-rail);
+    --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
+      var(--stems-glyph);
     position: relative;
     display: grid;
     grid-template-columns: 5ch minmax(0, 1fr);
@@ -1248,24 +1236,25 @@ ul {
 
     /* The rail, down to the next stop. */
     &::before {
-      content: var(--timeline-rails) var(--timeline-rails);
+      content: var(--timeline-rails) var(--timeline-rails) var(--timeline-rails)
+        var(--timeline-rails);
       position: absolute;
       inset: 1lh auto 0 0;
       width: 2ch;
       overflow: hidden;
-      color: var(--timeline-rail-color);
+      color: var(--stems-base-color);
       line-height: 0.6;
       text-align: center;
       white-space: pre;
     }
 
     &::after {
-      content: var(--timeline-node);
+      content: var(--stems-marker);
       position: absolute;
       top: 0;
       left: 0;
       width: 2ch;
-      color: var(--timeline-node-color);
+      color: var(--accent);
       text-align: center;
     }
 
@@ -1275,18 +1264,22 @@ ul {
   }
 
   > .timeline-origin {
-    --timeline-node: var(--timeline-origin);
+    --stems-marker: var(--timeline-origin);
     display: block;
     color: var(--muted);
   }
 
   > li[data-silent] {
-    --timeline-rail: var(--timeline-silent);
+    --stems-glyph: var(--stems-glyph-current);
     display: flex;
     color: var(--muted);
 
     &::after {
       content: none;
+    }
+
+    > .timeline-top {
+      font-style: italic;
     }
 
     /* Rides the rail from the top, since it has no stop of its own. */
@@ -1302,21 +1295,15 @@ ul {
     white-space: nowrap;
   }
 
-  > li[data-silent] > .timeline-top {
-    font-style: italic;
-  }
-
   .timeline-plays {
+    --timeline-bars: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
+      var(--timeline-bar);
     grid-area: 1 / 2;
     color: var(--muted);
 
     &::before {
-      content: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
-        var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
-        var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
-        var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
-        var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
-        var(--timeline-bar);
+      content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
+        var(--timeline-bars);
       display: inline-block;
       width: max(1ch, var(--value, 0) / var(--max, 1) * 16ch);
       margin-inline-end: 1ch;
