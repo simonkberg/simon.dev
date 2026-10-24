@@ -10,8 +10,9 @@ export interface OnThisDayTeaserProps {
 }
 
 const busiest = (years: readonly DayInYear[]) =>
-  years.reduce<DayInYear | undefined>(
-    (top, year) => (year.count > (top?.count ?? 0) ? year : top),
+  years.reduce<Required<DayInYear> | undefined>(
+    (busiest, { top, ...year }) =>
+      top && year.count > (busiest?.count ?? 0) ? { ...year, top } : busiest,
     undefined,
   );
 
@@ -19,7 +20,7 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
   const result = use(onThisDay);
   const year = result.status === "ok" ? busiest(result.days.years) : undefined;
 
-  if (year?.top === undefined) return null;
+  if (year === undefined) return null;
 
   return (
     <p>

@@ -16,11 +16,11 @@ const days = (years: DayInYear[]): GetOnThisDayResult => ({
 });
 
 describe("OnThisDayTeaser", () => {
-  it("shows the past year with the most plays on this day", async () => {
+  it("shows the past year with the most plays and a top track", async () => {
     await renderTeaser(
       days([
         { year: "2025", count: 45, top: { artist: "Destroyer", track: "A" } },
-        { year: "2024", count: 0 },
+        { year: "2024", count: 80 },
         {
           year: "2012",
           count: 62,

@@ -10,15 +10,15 @@ export interface OnThisDayProps {
 }
 
 type Stop =
-  | { kind: "played"; year: DayInYear }
+  | { kind: "played"; year: Required<DayInYear> }
   | { kind: "silent"; from: string; to: string };
 
 // Years with nothing played fold into one quiet stretch of rail.
 const toStops = (years: readonly DayInYear[]): Stop[] => {
   const stops: Stop[] = [];
-  for (const year of years) {
+  for (const { top, ...year } of years) {
     const last = stops.at(-1);
-    if (year.count > 0) stops.push({ kind: "played", year });
+    if (top) stops.push({ kind: "played", year: { ...year, top } });
     else if (last?.kind === "silent") last.from = year.year;
     else stops.push({ kind: "silent", from: year.year, to: year.year });
   }
@@ -45,11 +45,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
           >
             <span className="timeline-year">{stop.year.year}</span>
             <span className="timeline-top">
-              {stop.year.top && (
-                <>
-                  {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
-                </>
-              )}
+              {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
             </span>
             <span className="timeline-plays">
               {formatPlays(stop.year.count)}
