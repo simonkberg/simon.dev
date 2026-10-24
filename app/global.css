@@ -117,13 +117,9 @@
   --stems-base-color: var(--muted);
   --stems-hover: var(--accent);
   --stems-hover-bg: transparent;
-  --spine-width: 1px;
-  --spine-color: var(--rule);
-  --spine-edge-width: 1px;
-  --spine-edge-color: var(--rule);
-  --spine-bg: var(--wash);
-  --spine-hover-bg: var(--heat);
-  --spine-hover-color: var(--ink);
+  --lane-weight: 4px;
+  --lane-hover-bg: var(--heat);
+  --lane-hover-color: var(--accent);
 
   --tracks-max: none;
   --track-display: block;
@@ -452,11 +448,7 @@
   --stems-color: var(--accent);
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
-  --spine-width: 0;
-  --spine-edge-width: 2px;
-  --spine-edge-color: var(--accent);
-  --spine-bg: transparent;
-  --spine-hover-bg: color-mix(in oklch, var(--accent) 12%, transparent);
+  --lane-weight: 2px;
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -584,11 +576,8 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
-  --spine-color: var(--ink);
-  --spine-edge-color: var(--ink);
-  --spine-bg: transparent;
-  --spine-hover-bg: var(--ink);
-  --spine-hover-color: var(--ground);
+  --lane-hover-bg: var(--ink);
+  --lane-hover-color: var(--ground);
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
   --links-display: flex;
@@ -1006,16 +995,13 @@ ul {
 
 /* Charts */
 
-/* The shelf's spines line up under the stems, so both share the columns. */
-:is(.stems, .shelf) {
+/* The lanes' bars line up under the stems, so both share the columns. */
+:is(.stems, .lanes) {
   --stems-columns: minmax(0, 1fr) 7ch;
   display: grid;
   grid-template-columns: var(--stems-columns);
 
   > ol {
-    display: grid;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-flow: column;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -1048,6 +1034,9 @@ ul {
   > ol {
     position: relative;
     z-index: 1;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
     height: calc(
       var(--stems-head) + var(--stems-height) + var(--stems-row) * 2
     );
@@ -1093,7 +1082,7 @@ ul {
       height: calc(var(--stems-height) + var(--stems-head));
     }
 
-    /* Also lit while the column's spine is hovered. */
+    /* Also lit while the column's lane is hovered. */
     &:is(:hover, [data-active] > *) {
       &::before {
         background: var(--stems-hover-bg);
@@ -1222,65 +1211,59 @@ ul {
   }
 }
 
-/* One spine per run of buckets with the same top artist, under their stems. */
-.shelf {
+/* One row per top artist of a year, with a bar under each run of its years. */
+.lanes {
   margin-block: 0.75rem 0;
+  font-size: var(--meta-size);
   line-height: 1;
 
   > ol {
-    height: 9.5rem;
+    display: grid;
+    gap: 0.55rem;
   }
 
   li {
-    grid-column: span var(--span);
-    min-width: 0;
-    padding-inline: 1px;
-    container-type: inline-size;
+    display: grid;
+    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    row-gap: 0.25rem;
 
-    /* TooltipText's span. */
-    > span {
-      display: block;
-      height: 100%;
+    /* The lane's track, dotted under the years it didn't top. */
+    &::before {
+      content: "";
+      grid-row: 2;
+      grid-column: 1 / -1;
+      align-self: center;
+      border-top: 1px dotted var(--rule);
+    }
+
+    &:hover .lane-name {
+      background: var(--lane-hover-bg);
+      color: var(--lane-hover-color);
     }
   }
 
-  .spine {
-    display: flex;
-    justify-content: center;
-    height: 100%;
-    overflow: hidden;
-    border: var(--spine-width) solid var(--spine-color);
-    border-inline-start: var(--spine-edge-width) solid var(--spine-edge-color);
-    background: var(--spine-bg);
+  .lane-label {
+    grid-row: 1;
+    white-space: nowrap;
+
+    /* A late artist's name ends at its bar, so it never runs off the chart. */
+    &[data-end] {
+      text-align: end;
+    }
+  }
+
+  .lane-run {
+    grid-row: 2;
+    height: var(--lane-weight);
+    margin-inline: 2px;
+    background: var(--accent);
 
     /* Like the current stem, still filling up. */
-    li[data-current] & {
-      border-style: dashed;
+    &[data-current] {
+      background: transparent;
+      outline: 1px dashed var(--accent);
+      outline-offset: -1px;
     }
-
-    &:hover {
-      background: var(--spine-hover-bg);
-      color: var(--spine-hover-color);
-    }
-
-    > span {
-      overflow: hidden;
-      padding-block: 0.5em;
-      /* cqw, not cqi: the text runs vertically. Each column's share, so every name is one size. */
-      font-size: min(0.8rem, 65cqw / var(--span));
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      writing-mode: vertical-rl;
-      rotate: 180deg;
-    }
-  }
-
-  .shelf-label {
-    align-self: end;
-    padding-left: 1ch;
-    color: var(--muted);
-    font-size: var(--meta-size);
-    line-height: var(--leading);
   }
 }
 

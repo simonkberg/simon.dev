@@ -33,8 +33,8 @@ const Stems = ({
   active,
 }: {
   items: readonly ScrobbleCount[];
-  // The run of buckets whose spine is hovered.
-  active: Run | undefined;
+  // The runs of buckets whose lane is hovered.
+  active: readonly Run[];
 }) => {
   const animate = useMotion();
   const [from] = useState(animate ? 0 : 1);
@@ -84,8 +84,9 @@ const Stems = ({
               }
               data-current={current || undefined}
               data-active={
-                (active && index >= active.first && index <= active.last) ||
-                undefined
+                active.some(
+                  ({ first, last }) => index >= first && index <= last,
+                ) || undefined
               }
               data-tick={tick}
             >
@@ -121,76 +122,97 @@ const Stems = ({
   );
 };
 
-// Empty buckets stay apart from ones whose artist failed to load.
-const shelfKey = ({ topArtist, count }: ScrobbleCount) =>
-  topArtist?.name ?? count > 0;
+interface Lane {
+  name: string;
+  runs: Run[];
+  plays: number;
+}
 
-// Neighbouring buckets with the same top artist share one spine.
-const runs = (items: readonly ScrobbleCount[]): Run[] =>
-  items.reduce<Run[]>((shelf, item, index) => {
-    const run = shelf.at(-1);
-    const previous = run && items[run.last];
-    if (previous && shelfKey(previous) === shelfKey(item)) {
+// One lane per top artist, in order of first appearance, with a run per stretch of its years.
+const lanes = (items: readonly ScrobbleCount[]): Lane[] => {
+  const byName = new Map<string, Lane>();
+  items.forEach(({ topArtist }, index) => {
+    if (!topArtist) return;
+    const lane = byName.get(topArtist.name) ?? {
+      name: topArtist.name,
+      runs: [],
+      plays: 0,
+    };
+    byName.set(topArtist.name, lane);
+    lane.plays += topArtist.playcount;
+    const run = lane.runs.at(-1);
+    if (run?.last === index - 1) {
       run.last = index;
     } else {
-      shelf.push({ first: index, last: index });
+      lane.runs.push({ first: index, last: index });
     }
-    return shelf;
-  }, []);
+  });
+  return [...byName.values()];
+};
 
-const Shelf = ({
+const Lanes = ({
   items,
   onActive,
 }: {
   items: readonly ScrobbleCount[];
-  onActive: (run: Run | undefined) => void;
+  onActive: (runs: readonly Run[]) => void;
 }) => (
-  <div className="shelf">
-    {/* Cleared on leaving the shelf, not each spine, so gliding across re-renders once. */}
-    <ol aria-label="Top artists" onPointerLeave={() => onActive(undefined)}>
-      {runs(items).map((run) => {
-        const span = items.slice(run.first, run.last + 1);
-        const first = span[0];
-        const last = span.at(-1);
-        const name = first?.topArtist?.name;
-        const plays = span.reduce(
-          (sum, { topArtist }) => sum + (topArtist?.playcount ?? 0),
-          0,
-        );
-        const range =
-          first === last ? first?.label : `${first?.label}–${last?.label}`;
-        const text = name
-          ? `${range}: ${name}, ${formatNumber(plays)} plays${last?.current ? " so far" : ""}`
-          : `${range}: ${first?.count ? "top artist unavailable" : "no scrobbles"}`;
+  <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
+    {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
+    <ol aria-label="Top artist by year" onPointerLeave={() => onActive([])}>
+      {lanes(items).map(({ name, runs, plays }) => {
+        const first = runs[0]?.first ?? 0;
+        const last = runs.at(-1)?.last ?? 0;
+        const end = first > items.length / 2;
+        const years = runs
+          .map((run) => {
+            const from = items[run.first]?.label;
+            return run.first === run.last
+              ? from
+              : `${from}–${items[run.last]?.label}`;
+          })
+          .join(", ");
+        const text = `${name}: ${years}, ${formatNumber(plays)} plays`;
         return (
-          <li
-            key={run.first}
-            style={{ "--span": span.length } as CSSProperties}
-            data-current={last?.current || undefined}
-          >
-            <TooltipText tooltip={text} delay={0}>
-              <span className="spine" onPointerEnter={() => onActive(run)}>
-                <span aria-hidden="true">{name}</span>
-                <span className="visually-hidden">{text}</span>
-              </span>
-            </TooltipText>
+          <li key={name} onPointerEnter={() => onActive(runs)}>
+            <div
+              className="lane-label"
+              style={{
+                gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
+              }}
+              data-end={end || undefined}
+            >
+              <TooltipText tooltip={text} delay={0}>
+                <span className="lane-name">
+                  <span aria-hidden="true">{name}</span>
+                  <span className="visually-hidden">{text}</span>
+                </span>
+              </TooltipText>
+            </div>
+            {runs.map((run) => (
+              <span
+                key={run.first}
+                className="lane-run"
+                style={{ gridColumn: `${run.first + 1} / ${run.last + 2}` }}
+                data-current={items[run.last]?.current || undefined}
+              />
+            ))}
           </li>
         );
       })}
     </ol>
-    <span className="shelf-label" aria-hidden="true">
-      top artist
-    </span>
   </div>
 );
 
 const Chart = ({ items }: { items: readonly ScrobbleCount[] }) => {
-  const [active, setActive] = useState<Run>();
+  const [active, setActive] = useState<readonly Run[]>([]);
 
   return (
     <>
       <Stems items={items} active={active} />
-      <Shelf items={items} onActive={setActive} />
+      {items.some(({ topArtist }) => topArtist) && (
+        <Lanes items={items} onActive={setActive} />
+      )}
     </>
   );
 };
@@ -210,8 +232,5 @@ export const ScrobbleChartSkeleton = () => (
     <figure className="stems" aria-hidden="true">
       <ol />
     </figure>
-    <div className="shelf" aria-hidden="true">
-      <ol />
-    </div>
   </SkeletonStatus>
 );

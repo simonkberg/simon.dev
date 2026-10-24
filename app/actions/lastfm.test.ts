@@ -216,29 +216,32 @@ describe("getScrobbles", () => {
     vi.mocked(userGetTopArtistInRange).mockResolvedValue(topArtist);
   });
 
-  it("should count each bucket and find its top artist", async () => {
+  it("should count each bucket", async () => {
     const result = await getScrobbles("7day");
 
     expect(userGetScrobbleCount).toHaveBeenCalledTimes(7);
-    const range = {
+    expect(userGetScrobbleCount).toHaveBeenLastCalledWith("magijo", {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
-    };
-    expect(userGetScrobbleCount).toHaveBeenLastCalledWith("magijo", range);
-    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", range);
+    });
+    expect(userGetTopArtistInRange).not.toHaveBeenCalled();
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toEqual({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "Oct 23", count: 42, topArtist, current: true },
+        { label: "Oct 23", count: 42, topArtist: undefined, current: true },
       ]),
     });
   });
 
-  it("should count all time per year since the first scrobbles", async () => {
+  it("should count all time per year since the first scrobbles, with each year's top artist", async () => {
     const result = await getScrobbles("overall");
 
     expect(userGetScrobbleCount).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
+      from: new Date("2025-12-31T23:00:00Z"),
+      to: new Date("2026-12-31T23:00:00Z"),
+    });
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
@@ -252,16 +255,16 @@ describe("getScrobbles", () => {
     const mockError = new Error("API error");
     vi.mocked(userGetTopArtistInRange).mockRejectedValueOnce(mockError);
 
-    const result = await getScrobbles("7day");
+    const result = await getScrobbles("overall");
 
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "Oct 17", count: 42, topArtist: undefined, current: false },
+        { label: "2007", count: 42, topArtist: undefined, current: false },
       ]),
     });
     expect(log.warn).toHaveBeenCalledExactlyOnceWith(
-      { err: mockError, label: "Oct 17" },
+      { err: mockError, label: "2007" },
       "Error fetching top artist",
     );
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");

@@ -127,7 +127,7 @@ export async function getTopAlbums(
 export interface ScrobbleCount {
   label: string;
   count: number;
-  // Undefined when the bucket has no scrobbles or the artist failed to load.
+  // Only for years, and undefined when the year has no scrobbles or the artist failed to load.
   topArtist: WeeklyArtist | undefined;
   // Still under way, so its count is partial.
   current: boolean;
@@ -144,29 +144,32 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
-    const buckets =
-      period === "overall"
-        ? yearBuckets(config.lastfmSince, now)
-        : scrobbleBuckets(period, now);
+    // Only years are long enough to be eras.
+    const yearly = period === "overall";
+    const buckets = yearly
+      ? yearBuckets(config.lastfmSince, now)
+      : scrobbleBuckets(period, now);
     let artistFailed = false;
+    // The lanes are a garnish: a failed artist shouldn't take the counts with it.
+    const topArtistOf = (label: string, range: { from: Date; to: Date }) =>
+      userGetTopArtistInRange(config.lastfmUsername, range).catch(
+        (err: unknown) => {
+          log.warn({ err, label }, "Error fetching top artist");
+          artistFailed = true;
+          return undefined;
+        },
+      );
     const scrobbles = await Promise.all(
       buckets.map(async ({ label, from, to }) => {
         const [count, topArtist] = await Promise.all([
           userGetScrobbleCount(config.lastfmUsername, { from, to }),
-          // The spines are a garnish: a failed one shouldn't take the counts with it.
-          userGetTopArtistInRange(config.lastfmUsername, { from, to }).catch(
-            (err: unknown) => {
-              log.warn({ err, label }, "Error fetching top artist");
-              artistFailed = true;
-              return undefined;
-            },
-          ),
+          yearly ? topArtistOf(label, { from, to }) : undefined,
         ]);
         return { label, count, topArtist, current: to > now };
       }),
     );
     if (artistFailed) {
-      // A missing spine shouldn't stay missing for hours.
+      // A missing lane shouldn't stay missing for hours.
       cacheLife("minutes");
     } else {
       cacheLife("hours");

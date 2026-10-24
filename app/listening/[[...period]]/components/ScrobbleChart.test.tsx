@@ -24,6 +24,19 @@ const scrobbles: ScrobbleCount[] = [
 const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
   act(async () => render(<ScrobbleChart scrobbles={Promise.resolve(items)} />));
 
+const years: ScrobbleCount[] = [
+  { label: "2016", count: 50, topArtist: smog(5), current: false },
+  { label: "2017", count: 70, topArtist: smog(7), current: false },
+  {
+    label: "2018",
+    count: 30,
+    topArtist: { name: "Low", playcount: 3 },
+    current: false,
+  },
+  { label: "2019", count: 20, topArtist: smog(2), current: false },
+  { label: "2020", count: 0, topArtist: undefined, current: true },
+];
+
 const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
 
 const ticks = () =>
@@ -47,46 +60,28 @@ describe("ScrobbleChart", () => {
     expect(document.querySelector(".average")).toHaveTextContent("1,100 avg");
   });
 
-  it("shelves neighbouring buckets with the same top artist on one spine", async () => {
-    await renderChart(scrobbles);
+  it("gives each top artist a lane with a bar per run of its years", async () => {
+    await renderChart(years);
 
-    const shelf = screen.getByRole("list", { name: "Top artists" });
+    const lanes = screen.getByRole("list", { name: "Top artist by year" });
     expect(
-      within(shelf)
+      within(lanes)
         .getAllByRole("listitem")
         .map((item) => item.querySelector(".visually-hidden")?.textContent),
-    ).toEqual([
-      "Oct 20–Oct 21: Smog, 12 plays",
-      "Oct 22: Low, 3 plays",
-      "Oct 23: no scrobbles",
-    ]);
+    ).toEqual(["Smog: 2016–2017, 2019, 14 plays", "Low: 2018, 3 plays"]);
   });
 
-  it("keeps empty buckets apart from ones whose artist failed to load", async () => {
-    await renderChart([
-      { label: "2016", count: 0, topArtist: undefined, current: false },
-      { label: "2017", count: 5, topArtist: undefined, current: false },
-    ]);
-
-    expect(screen.getByText("2016: no scrobbles")).toBeInTheDocument();
-    expect(
-      screen.getByText("2017: top artist unavailable"),
-    ).toBeInTheDocument();
-  });
-
-  it("lights a spine's stems while it is hovered", async () => {
-    await renderChart(scrobbles);
-    const spine = screen.getByText(
-      "Oct 20–Oct 21: Smog, 12 plays",
-    ).parentElement;
+  it("lights a lane's stems while it is hovered", async () => {
+    await renderChart(years);
+    const lanes = screen.getByRole("list", { name: "Top artist by year" });
     const active = () =>
       stems().map((item) => item.hasAttribute("data-active"));
 
-    fireEvent.pointerEnter(spine!);
-    expect(active()).toEqual([true, true, false, false]);
+    fireEvent.pointerEnter(within(lanes).getAllByRole("listitem")[0]!);
+    expect(active()).toEqual([true, true, false, true, false]);
 
-    fireEvent.pointerLeave(screen.getByRole("list", { name: "Top artists" }));
-    expect(active()).toEqual([false, false, false, false]);
+    fireEvent.pointerLeave(lanes);
+    expect(active()).toEqual([false, false, false, false, false]);
   });
 
   it("scales a lone empty bucket with no average to show", async () => {
@@ -110,6 +105,9 @@ describe("ScrobbleChart", () => {
     );
 
     expect(ticks()).toEqual(["W0", "W3", "W6", "W9", "W12"]);
+    expect(
+      screen.queryByRole("list", { name: "Top artist by year" }),
+    ).not.toBeInTheDocument();
     expect(document.querySelector('[data-tick="narrow"]')).toHaveTextContent(
       "W0",
     );
