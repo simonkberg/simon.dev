@@ -90,12 +90,12 @@ export default function RootPage() {
         <Suspense fallback={<RecentTracksListSkeleton />}>
           <RecentTracksList recentTracks={recentTracks} />
         </Suspense>
-        <Suspense fallback={<OnThisDayTeaserSkeleton />}>
-          <OnThisDayTeaser onThisDay={onThisDay} />
-        </Suspense>
         <p>
           See <Link href="/listening/">listening statistics</Link>.
         </p>
+        <Suspense fallback={<OnThisDayTeaserSkeleton />}>
+          <OnThisDayTeaser onThisDay={onThisDay} />
+        </Suspense>
       </section>
 
       <section aria-labelledby="links-heading" className="side">
