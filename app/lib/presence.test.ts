@@ -153,6 +153,20 @@ describe("joinPresence", () => {
     expect(await storedStreams()).toEqual(["elsewhere-bob"]);
   });
 
+  it("stores its streams again after heartbeats failed for long enough to expire them", async () => {
+    joinPresence("a1", alice, vi.fn());
+    await settle();
+
+    vi.mocked(query).mockImplementation(failQuery(sqlite(), "SELECT"));
+    await heartbeat();
+    await heartbeat();
+    vi.mocked(query).mockImplementation(sqlite());
+    await sqlite()("DELETE FROM presence");
+    await heartbeat();
+
+    expect(await storedStreams()).toEqual(["a1"]);
+  });
+
   it("keeps who it last saw when a heartbeat fails", async () => {
     await seenElsewhere(bob);
     const listener = vi.fn();
@@ -200,6 +214,16 @@ describe("leavePresence", () => {
 
     expect(listener).toHaveBeenLastCalledWith(["bob"]);
     expect(await storedStreams()).toEqual(["b1"]);
+  });
+
+  it("keeps a stream out once taken out, before its own replica notices it closed", async () => {
+    joinPresence("a1", alice, vi.fn());
+    await settle();
+
+    await leavePresence("a1", alice);
+    await heartbeat();
+
+    expect(await storedStreams()).toEqual([]);
   });
 
   it("leaves another visitor's stream alone", async () => {

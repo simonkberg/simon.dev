@@ -7,6 +7,8 @@ import { batch, query } from "@/lib/turso";
 const HEARTBEAT_MS = 15_000;
 // Three heartbeats, so one slow request doesn't drop anyone.
 const EXPIRY_MS = 45_000;
+// Past this, another replica may have expired this one's rows.
+const LATE_MS = 2 * HEARTBEAT_MS;
 
 type Listener = (here: readonly string[]) => void;
 
@@ -19,6 +21,7 @@ type Presence = {
   listeners: Set<Listener>;
   here: readonly string[];
   timer?: NodeJS.Timeout;
+  written: number;
   beating: boolean;
   again: boolean;
 };
@@ -32,6 +35,7 @@ const presence = () =>
     left: new Set(),
     listeners: new Set(),
     here: [],
+    written: 0,
     beating: false,
     again: false,
   }));
@@ -51,9 +55,12 @@ async function heartbeat(state: Presence): Promise<void> {
   }
   state.beating = true;
   state.again = false;
-  const joined = new Map(state.joined);
-  const left = new Set(state.left);
   const now = Date.now();
+  // Not every stream once late, since that would bring back one a beacon took out.
+  const joined = new Map(
+    now - state.written > LATE_MS ? state.streams : state.joined,
+  );
+  const left = new Set(state.left);
   try {
     const [, , , , { rows }] = await batch([
       {
@@ -74,6 +81,7 @@ async function heartbeat(state: Presence): Promise<void> {
       },
       { sql: "SELECT DISTINCT username FROM presence ORDER BY username" },
     ]);
+    state.written = now;
     for (const stream of joined.keys()) state.joined.delete(stream);
     for (const stream of left) state.left.delete(stream);
     if (state.listeners.size > 0) {
