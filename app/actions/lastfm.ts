@@ -6,7 +6,7 @@ import { config } from "@/config";
 import {
   type Period,
   userGetRecentTracks,
-  userGetScrobbleCount,
+  userGetScrobbles,
   userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
@@ -18,7 +18,12 @@ import {
   type WeeklyArtist,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { scrobbleBuckets, yearBuckets } from "@/lib/scrobbleBuckets";
+import {
+  dayLabel,
+  sameDayBuckets,
+  scrobbleBuckets,
+  yearBuckets,
+} from "@/lib/scrobbleBuckets";
 
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
@@ -149,7 +154,10 @@ export async function getScrobbles(
     const scrobbles = await Promise.all(
       buckets.map(async ({ label, from, to }) => ({
         label,
-        count: await userGetScrobbleCount(config.lastfmUsername, { from, to }),
+        // Only the total is read, so one track per page is enough.
+        count: (
+          await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })
+        ).total,
         current: to > now,
       })),
     );
@@ -196,5 +204,72 @@ export async function getTopArtistByYear(): Promise<GetTopArtistByYearResult> {
       "Error fetching top artist by year",
     );
     return { status: "error", error: "Failed to fetch top artist by year" };
+  }
+}
+
+// The day's most played artist and their most played track, earliest first on ties.
+export interface TopOfDay {
+  artist: string;
+  track: string;
+}
+
+export type PlayedYear = { year: string; count: number; top: TopOfDay };
+
+export type DayInYear =
+  | PlayedYear
+  | { year: string; count: number; top?: never };
+
+export interface OnThisDay {
+  date: string;
+  // Newest first.
+  years: DayInYear[];
+}
+
+export type GetOnThisDayResult =
+  | { status: "ok"; days: OnThisDay }
+  | { status: "error"; error: string };
+
+function mostPlayed(items: readonly string[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
+  // A map keeps first-seen order and sorting is stable, so ties go to the earliest.
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
+function topOfDay(tracks: readonly RecentTrack[]): TopOfDay | undefined {
+  // Last.fm lists newest first.
+  const played = tracks.toReversed();
+  const artist = mostPlayed(played.map((track) => track.artist));
+  const track = mostPlayed(
+    played.filter((t) => t.artist === artist).map((t) => t.name),
+  );
+  return artist === undefined || track === undefined
+    ? undefined
+    : { artist, track };
+}
+
+export async function getOnThisDay(): Promise<GetOnThisDayResult> {
+  "use cache";
+
+  try {
+    const now = new Date();
+    const years = await Promise.all(
+      sameDayBuckets(config.lastfmSince, now).map(
+        async ({ label, from, to }) => {
+          // Last.fm's largest page; a busier day picks its top from the latest 200.
+          const { total, tracks } = await userGetScrobbles(
+            config.lastfmUsername,
+            { from, to, limit: 200 },
+          );
+          return { year: label, count: total, top: topOfDay(tracks) };
+        },
+      ),
+    );
+    cacheLife("hours");
+    return { status: "ok", days: { date: dayLabel.format(now), years } };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getOnThisDay" }, "Error fetching on this day");
+    return { status: "error", error: "Failed to fetch on this day" };
   }
 }

@@ -1,30 +1,23 @@
 "use client";
 
 import { useId, useLayoutEffect, useSyncExternalStore } from "react";
-import { arrayIncludes } from "ts-extras";
 
 import {
   applySavedPreferences,
+  currentPreference,
   type Preference,
-  preferenceCookie,
+  preferenceAttribute,
+  setPreference,
   syncThemeColor,
 } from "@/lib/preferences";
-
-const attributeOf = (preference: Preference) => `data-${preference.name}`;
 
 function subscribe(preference: Preference, onChange: () => void) {
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: [attributeOf(preference)],
+    attributeFilter: [preferenceAttribute(preference)],
   });
   return () => observer.disconnect();
-}
-
-function selectOption<T extends string>(preference: Preference<T>, value: T) {
-  document.documentElement.setAttribute(attributeOf(preference), value);
-  document.cookie = preferenceCookie(preference, value);
-  syncThemeColor();
 }
 
 export interface PreferenceSwitchProps<T extends string> {
@@ -38,14 +31,7 @@ export const PreferenceSwitch = <T extends string>({
 
   const current = useSyncExternalStore(
     (onChange) => subscribe(preference, onChange),
-    () => {
-      const value = document.documentElement.getAttribute(
-        attributeOf(preference),
-      );
-      return arrayIncludes(preference.options, value)
-        ? value
-        : preference.fallback;
-    },
+    () => currentPreference(preference),
     () => preference.fallback,
   );
 
@@ -67,7 +53,7 @@ export const PreferenceSwitch = <T extends string>({
           key={option}
           type="button"
           aria-pressed={current === option}
-          onClick={() => selectOption(preference, option)}
+          onClick={() => setPreference(preference, option)}
         >
           {option}
         </button>

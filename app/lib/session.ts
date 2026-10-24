@@ -56,13 +56,14 @@ async function verify(session: string) {
   }
 }
 
-async function readSession() {
+/** The visitor's session, if any: for routes `proxy.ts` doesn't cover, where there may be none. */
+export async function findSession() {
   const cookieJar = await cookies();
   return decrypt(cookieJar.get("session")?.value);
 }
 
 export async function getSession() {
-  const session = await readSession();
+  const session = await findSession();
 
   // proxy.ts forwards a session on every request it matches.
   if (!session) throw new Error("No session on the request");

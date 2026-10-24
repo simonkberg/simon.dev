@@ -43,11 +43,14 @@ export const contentSchema = z
   .min(1)
   .max(MAX_CONTENT_LENGTH);
 
+const COLUMNS = "id, category, content, created_at, updated_at";
+
 const memoryRowSchema = z.object({
   id: z.number(),
   category: z.string(),
   content: z.string(),
   created_at: z.string(),
+  updated_at: z.string().nullable(),
 });
 
 export type Memory = {
@@ -55,6 +58,7 @@ export type Memory = {
   category: string;
   content: string;
   createdAt: string;
+  updatedAt: string | undefined;
 };
 
 function toMemory(row: unknown): Memory {
@@ -64,6 +68,7 @@ function toMemory(row: unknown): Memory {
     category: parsed.category,
     content: parsed.content,
     createdAt: parsed.created_at,
+    updatedAt: parsed.updated_at ?? undefined,
   };
 }
 
@@ -87,7 +92,7 @@ export async function remember(input: {
     `INSERT INTO memories (category, content, created_at)
      SELECT ?, ?, ?
      WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?
-     RETURNING id, category, content, created_at`,
+     RETURNING ${COLUMNS}`,
     [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
   );
   const row = rows[0];
@@ -120,7 +125,7 @@ export async function recall(input: {
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, category, content, created_at FROM memories
+    `SELECT ${COLUMNS} FROM memories
      ${where} ORDER BY created_at DESC, id DESC LIMIT ?`,
     [...args, input.limit ?? 20],
   );
@@ -151,10 +156,9 @@ export function describeMiss(miss: WriteMiss) {
 }
 
 async function explainMiss(id: number): Promise<WriteMiss> {
-  const { rows } = await query(
-    "SELECT id, category, content, created_at FROM memories WHERE id = ?",
-    [id],
-  );
+  const { rows } = await query(`SELECT ${COLUMNS} FROM memories WHERE id = ?`, [
+    id,
+  ]);
   const row = rows[0];
   return row === undefined
     ? { status: "missing", id }
@@ -188,14 +192,18 @@ export async function edit(input: {
   const read = asRead(input.id, input.oldContent);
   // A move into another category counts against that category's cap.
   const { rows } = await query(
-    `UPDATE memories SET content = ?, category = COALESCE(?, category)
+    `UPDATE memories
+     SET content = ?, category = COALESCE(?, category),
+       updated_at = CASE WHEN content = ? THEN updated_at ELSE ? END
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
-     RETURNING id, category, content, created_at`,
+     RETURNING ${COLUMNS}`,
     [
       newContent,
       category,
+      newContent,
+      new Date().toISOString(),
       input.id,
       ...read,
       category,
@@ -241,7 +249,7 @@ export async function buildMemoryContext(
 
     const [{ rows: memoryRows }, { rows: countRows }] = await batch([
       {
-        sql: `SELECT id, category, content, created_at FROM memories
+        sql: `SELECT ${COLUMNS} FROM memories
          WHERE category IN (${shown.map(() => "?").join(", ")})
          ORDER BY created_at, id`,
         args: shown,
@@ -278,4 +286,28 @@ export async function buildMemoryContext(
     log.error({ err }, "Failed to build memory context");
     return "";
   }
+}
+
+// The bot's own notes, shown on its page; people/* and context stay private.
+export const PUBLIC_CATEGORIES = [
+  "self",
+  "style",
+  "interests",
+] as const satisfies (keyof typeof CORE_CATEGORIES)[];
+
+export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
+
+export async function readPublicNotes(): Promise<
+  Record<PublicCategory, Memory[]>
+> {
+  const { rows } = await query(
+    `SELECT ${COLUMNS} FROM memories
+     WHERE category IN (${PUBLIC_CATEGORIES.map(() => "?").join(", ")})
+     ORDER BY created_at, id`,
+    [...PUBLIC_CATEGORIES],
+  );
+  const notes = Object.groupBy(rows.map(toMemory), (note) => note.category);
+  return Object.fromEntries(
+    PUBLIC_CATEGORIES.map((category) => [category, notes[category] ?? []]),
+  ) as Record<PublicCategory, Memory[]>;
 }

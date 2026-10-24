@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   userGetRecentTracks,
-  userGetScrobbleCount,
+  userGetScrobbles,
   userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
@@ -17,17 +17,19 @@ import { log } from "@/lib/log";
 
 import {
   getRecentTracks,
+  getOnThisDay,
   getScrobbles,
   getTopArtistByYear,
   getTopAlbums,
   getTopArtists,
   getTopTracks,
+  type RecentTrack,
   refreshRecentTracks,
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
   userGetRecentTracks: vi.fn(),
-  userGetScrobbleCount: vi.fn(),
+  userGetScrobbles: vi.fn(),
   userGetTopArtistInRange: vi.fn(),
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
@@ -211,16 +213,17 @@ describe("getScrobbles", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
-    vi.mocked(userGetScrobbleCount).mockResolvedValue(42);
+    vi.mocked(userGetScrobbles).mockResolvedValue({ total: 42, tracks: [] });
   });
 
   it("should count each bucket", async () => {
     const result = await getScrobbles("7day");
 
-    expect(userGetScrobbleCount).toHaveBeenCalledTimes(7);
-    expect(userGetScrobbleCount).toHaveBeenLastCalledWith("magijo", {
+    expect(userGetScrobbles).toHaveBeenCalledTimes(7);
+    expect(userGetScrobbles).toHaveBeenLastCalledWith("magijo", {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
+      limit: 1,
     });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toEqual({
@@ -234,7 +237,7 @@ describe("getScrobbles", () => {
   it("should count all time per year since the first scrobbles", async () => {
     const result = await getScrobbles("overall");
 
-    expect(userGetScrobbleCount).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(userGetScrobbles).toHaveBeenCalledTimes(2026 - 2007 + 1);
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
@@ -246,7 +249,7 @@ describe("getScrobbles", () => {
 
   it("should return error status when a count fails", async () => {
     const mockError = new Error("API error");
-    vi.mocked(userGetScrobbleCount).mockRejectedValue(mockError);
+    vi.mocked(userGetScrobbles).mockRejectedValue(mockError);
 
     const result = await getScrobbles("7day");
 
@@ -303,6 +306,74 @@ describe("getTopArtistByYear", () => {
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getTopArtistByYear" },
       "Error fetching top artist by year",
+    );
+  });
+});
+
+describe("getOnThisDay", () => {
+  const played = (name: string, artist: string): RecentTrack => ({
+    name,
+    artist,
+    album: "",
+    playedAt: new Date("2025-10-23T12:00:00Z"),
+    nowPlaying: false,
+    loved: false,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+    vi.mocked(userGetScrobbles).mockResolvedValue({ total: 0, tracks: [] });
+  });
+
+  it("should read today's date in each past year", async () => {
+    // Newest first, so the earliest play is last.
+    vi.mocked(userGetScrobbles).mockResolvedValueOnce({
+      total: 5,
+      tracks: [
+        played("Late", "Other"),
+        played("Second", "Top"),
+        played("Second", "Top"),
+        played("First", "Top"),
+        played("First", "Top"),
+      ],
+    });
+
+    const result = await getOnThisDay();
+
+    expect(userGetScrobbles).toHaveBeenCalledTimes(2026 - 2007);
+    expect(userGetScrobbles).toHaveBeenNthCalledWith(1, "magijo", {
+      from: new Date("2025-10-22T22:00:00Z"),
+      to: new Date("2025-10-23T22:00:00Z"),
+      limit: 200,
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+    expect(result).toMatchObject({
+      status: "ok",
+      days: {
+        date: "Oct 23",
+        years: expect.arrayContaining([
+          { year: "2025", count: 5, top: { artist: "Top", track: "First" } },
+          { year: "2007", count: 0, top: undefined },
+        ]),
+      },
+    });
+  });
+
+  it("should return error status when a day fails", async () => {
+    const mockError = new Error("API error");
+    vi.mocked(userGetScrobbles).mockRejectedValue(mockError);
+
+    const result = await getOnThisDay();
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch on this day",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getOnThisDay" },
+      "Error fetching on this day",
     );
   });
 });

@@ -3,13 +3,17 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { getChatHistory } from "@/actions/chat";
-import { getRecentTracks } from "@/actions/lastfm";
+import { getOnThisDay, getRecentTracks } from "@/actions/lastfm";
 import { getWakaTimeStats } from "@/actions/wakaTime";
 import { Chat } from "@/components/chat/Chat";
 import { ChatStream } from "@/components/chat/ChatStream";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
+import {
+  OnThisDayTeaser,
+  OnThisDayTeaserSkeleton,
+} from "@/components/OnThisDayTeaser";
 import { Page } from "@/components/Page";
 import { RecentTracksList } from "@/components/RecentTracksList";
 import { RecentTracksListSkeleton } from "@/components/RecentTracksListSkeleton";
@@ -34,6 +38,8 @@ export default function RootPage() {
       : result,
   );
   const recentTracks = request.then(getRecentTracks);
+  // Called bare, so it shares its cache entry with /listening/on-this-day.
+  const onThisDay = request.then(() => getOnThisDay());
   const tipDismissed = getChatTipDismissed();
 
   return (
@@ -73,7 +79,9 @@ export default function RootPage() {
           Currently listening to{" "}
           <Subtitle>
             (Via{" "}
-            <ExternalLink href="https://www.last.fm/user/magijo">
+            <ExternalLink
+              href={`https://www.last.fm/user/${config.lastfmUsername}`}
+            >
               Last.fm
             </ExternalLink>
             )
@@ -85,6 +93,9 @@ export default function RootPage() {
         <p>
           See <Link href="/listening/">listening statistics</Link>.
         </p>
+        <Suspense fallback={<OnThisDayTeaserSkeleton />}>
+          <OnThisDayTeaser onThisDay={onThisDay} />
+        </Suspense>
       </section>
 
       <section aria-labelledby="links-heading" className="side">

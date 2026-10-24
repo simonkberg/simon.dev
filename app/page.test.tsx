@@ -3,7 +3,11 @@ import { use } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { type ChatHistoryResult, getChatHistory } from "@/actions/chat";
-import { getRecentTracks, type GetRecentTracksResult } from "@/actions/lastfm";
+import {
+  type GetOnThisDayResult,
+  getRecentTracks,
+  type GetRecentTracksResult,
+} from "@/actions/lastfm";
 import { getWakaTimeStats, type WakaTimeStatsResult } from "@/actions/wakaTime";
 import type { ChatProps } from "@/components/chat/Chat";
 import type { RecentTracksListProps } from "@/components/RecentTracksList";
@@ -38,6 +42,15 @@ vi.mock(import("@/lib/session"), () => ({
 vi.mock(import("@/actions/lastfm"), () => ({
   getRecentTracks: vi.fn(() =>
     Promise.resolve<GetRecentTracksResult>({ status: "ok", tracks: [] }),
+  ),
+  getOnThisDay: vi.fn(() =>
+    Promise.resolve<GetOnThisDayResult>({
+      status: "ok",
+      days: {
+        date: "Oct 24",
+        years: [{ year: "2012", count: 62, top: { artist: "A", track: "T" } }],
+      },
+    }),
   ),
 }));
 
@@ -165,6 +178,16 @@ describe("RootPage", () => {
       expect(
         within(section).getByRole("link", { name: "listening statistics" }),
       ).toHaveAttribute("href", "/listening");
+    });
+
+    it("should link this day's busiest past year to every year", async () => {
+      await renderPage();
+
+      const section = region(/Currently listening to/);
+      expect(within(section).getByText(/On this day in 2012/)).toBeVisible();
+      expect(
+        within(section).getByRole("link", { name: "every\u00a0year" }),
+      ).toHaveAttribute("href", "/listening/on-this-day");
     });
 
     it("should show loader while tracks are loading", async () => {

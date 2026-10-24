@@ -14,6 +14,7 @@ import {
   MAX_CONTENT_LENGTH,
   MAX_PER_CATEGORY,
   peopleCategory,
+  readPublicNotes,
   recall,
   remember,
 } from "./memory";
@@ -177,7 +178,9 @@ describe("recall", () => {
 
 describe("edit", () => {
   it("should rewrite a note only when its text still matches", async () => {
+    const editedAt = "2025-02-01T00:00:00.000Z";
     await seed(4, "self", "i like cats");
+    vi.useFakeTimers({ now: new Date(editedAt), toFake: ["Date"] });
 
     await expect(
       edit({ id: 4, oldContent: " i like cats ", newContent: "i like trains" }),
@@ -188,6 +191,7 @@ describe("edit", () => {
         category: "self",
         content: "i like trains",
         createdAt: CREATED_AT,
+        updatedAt: editedAt,
       },
     });
   });
@@ -223,6 +227,19 @@ describe("edit", () => {
       category: "context",
       content: "this chat gets spam",
     });
+  });
+
+  it("should not count a move with the same text as a rewrite", async () => {
+    await seed(4, "context", "likes trains");
+
+    await expect(
+      edit({
+        id: 4,
+        oldContent: "likes trains",
+        newContent: "likes trains",
+        category: "interests",
+      }),
+    ).resolves.toMatchObject({ memory: { updatedAt: undefined } });
   });
 
   it("should edit a note in place in a full category", async () => {
@@ -360,7 +377,11 @@ describe("line-break backfill", () => {
     for (const statement of BACKFILL) await query(statement);
   }
 
-  sqliteBeforeEach(query, MIGRATIONS.slice(0, start));
+  // Every other migration, so writes see today's schema.
+  sqliteBeforeEach(query, [
+    ...MIGRATIONS.slice(0, start),
+    ...MIGRATIONS.slice(start + 2),
+  ]);
 
   const nel = String.fromCodePoint(0x85);
   const nbsp = String.fromCodePoint(0xa0);
@@ -462,5 +483,21 @@ describe("buildMemoryContext", () => {
       { err: expect.any(Error) },
       "Failed to build memory context",
     );
+  });
+});
+
+describe("readPublicNotes", () => {
+  it("should group the bot's own notes in order and leave the rest out", async () => {
+    await seed(1, "self", "second", "2025-01-02T00:00:00.000Z");
+    await seed(2, "self", "first");
+    await seed(3, "interests", "trains");
+    await seed(4, "context", "the site runs on railway");
+    await seed(5, "people/alice", "likes cats");
+
+    await expect(readPublicNotes()).resolves.toMatchObject({
+      self: [{ id: 2 }, { id: 1 }],
+      style: [],
+      interests: [{ id: 3 }],
+    });
   });
 });
