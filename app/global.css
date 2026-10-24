@@ -1781,6 +1781,11 @@ ul {
       color: var(--muted);
     }
 
+    /* Only the typing line gives way on a narrow screen. */
+    > * {
+      flex-shrink: 0;
+    }
+
     > .typing {
       display: contents;
 
