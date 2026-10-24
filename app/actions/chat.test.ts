@@ -6,7 +6,6 @@ import {
   getChatHistory,
   postChatMessage,
   reactToChatMessage,
-  refreshChatHistory,
 } from "@/actions/chat";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
@@ -124,14 +123,6 @@ describe("getChatHistory", () => {
 
     expect(cacheLife).toHaveBeenCalledWith("seconds");
     expect(cacheTag).toHaveBeenCalledWith("getChatHistory");
-  });
-});
-
-describe("refreshChatHistory", () => {
-  it("calls updateTag and refresh", async () => {
-    await refreshChatHistory();
-    expect(updateTag).toHaveBeenCalledWith("getChatHistory");
-    expect(refresh).toHaveBeenCalled();
   });
 });
 

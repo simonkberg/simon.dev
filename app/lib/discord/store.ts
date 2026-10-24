@@ -78,6 +78,11 @@ export class ChannelStore {
     }
   }
 
+  /** Changes whenever the window does, a fresh seed included. */
+  get revision(): number {
+    return this.#revision;
+  }
+
   async messages(): Promise<DiscordMessage[]> {
     if (!this.#seeded) await this.#seed();
     return [...this.#messages.values()];
@@ -350,6 +355,7 @@ export class ChannelStore {
         if (reactors.size === 0) this.#reactors.delete(id);
       }
       this.#reactorFetches.clear();
+      this.#revision++;
       this.#seeded = true;
       this.#gap = false;
       this.#stale = this.#changed;
