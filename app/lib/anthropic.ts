@@ -290,7 +290,7 @@ const LOOKUP_TOOLS = [
   {
     name: "get_play_count",
     description:
-      "Count all-time plays of an artist, or of one of their tracks or albums, on Last.fm. Defaults to Simon's account. Misspelled names are corrected, and the result spells them as Last.fm does.",
+      "Count all-time plays of an artist, or of one of their tracks or albums, on Last.fm. Defaults to Simon's account. Misspelled names are corrected, and the result spells them as Last.fm does. plays is missing when Last.fm has no count, as for an unknown username.",
     input_schema: z.toJSONSchema(playCountInputSchema),
   },
   {

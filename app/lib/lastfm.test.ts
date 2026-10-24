@@ -147,6 +147,12 @@ describe("userGetRecentTracks", () => {
     );
   });
 
+  it("should throw a body that isn't JSON", async () => {
+    lastfmReturns(new HttpResponse("<html>", { status: 200 }));
+
+    await expect(userGetRecentTracks("testuser")).rejects.toThrow(SyntaxError);
+  });
+
   it("should enforce limit when now playing track is returned", async () => {
     lastfmReturns({
       recenttracks: {
@@ -419,11 +425,11 @@ describe("getUserPlays", () => {
     expect(params()).toMatchObject({ method: "album.getinfo", album: "kid a" });
   });
 
-  it("should count no plays when Last.fm leaves the count out", async () => {
+  it("should leave the plays out when Last.fm does", async () => {
     lastfmReturns({ artist: { name: "Radiohead", stats: {} } });
 
     await expect(
-      getUserPlays("testuser", { artist: "Radiohead" }),
-    ).resolves.toEqual({ artist: "Radiohead", plays: 0 });
+      getUserPlays("nobody", { artist: "Radiohead" }),
+    ).resolves.toEqual({ artist: "Radiohead", plays: undefined });
   });
 });

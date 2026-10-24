@@ -45,7 +45,9 @@ async function call<T extends z.ZodType>(
   }
 
   const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  const json: unknown = await response.json().catch(() => undefined);
+  const json: unknown = await response.json().catch((err: unknown) => {
+    if (response.ok) throw err;
+  });
   const error = errorSchema.safeParse(json);
   // Last.fm's own message, like an unknown artist, says more than the status.
   if (error.success)
@@ -298,11 +300,8 @@ export async function userGetTopArtistInRange(
   );
 }
 
-// Last.fm leaves the count out for a user who never played it.
-const userPlaysSchema = z.coerce
-  .number()
-  .optional()
-  .transform((plays) => plays ?? 0);
+// Last.fm leaves the count out for an unknown user rather than failing.
+const userPlaysSchema = z.coerce.number().optional();
 
 const artistGetInfoResponseSchema = z
   .object({
