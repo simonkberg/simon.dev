@@ -8,7 +8,7 @@ describe("coverLoader", () => {
   it.each([
     [150, "174s"],
     [400, "500x500"],
-    [3840, "770x0"],
+    [3840, "600x600"],
   ])("serves %ipx from the smallest size covering it", (width, path) => {
     expect(coverLoader({ src, width })).toBe(
       `https://lastfm.freetls.fastly.net/i/u/${path}/abc.jpg`,
