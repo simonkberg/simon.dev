@@ -161,9 +161,10 @@ export const CaretBuddy = ({
   resultStatus,
 }: CaretBuddyProps) => {
   const state = useCaretBuddyState({ inputValue, isPending, resultStatus });
+  const face = useBuddyFace(state);
   return (
     <span className="caret-buddy" aria-hidden="true">
-      {useBuddyFace(state)}
+      {face}
     </span>
   );
 };
