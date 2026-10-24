@@ -3,21 +3,26 @@ import { objectEntries } from "ts-extras";
 
 import { type Period, periodLabels } from "@/lib/lastfm";
 
-const periodsWithLabels = objectEntries(periodLabels);
+type Tab = Period | "on-this-day";
+
+const tabs: readonly (readonly [Tab, string])[] = [
+  ...objectEntries(periodLabels),
+  ["on-this-day", "on this day"],
+];
 
 export interface PeriodSelectorProps {
-  current: Period;
+  current: Tab;
 }
 
 export const PeriodSelector = ({ current }: PeriodSelectorProps) => (
   <menu aria-label="Period">
-    {periodsWithLabels.map(([period, label]) => (
-      <li key={period} aria-current={current === period ? "page" : undefined}>
-        {current === period ? (
+    {tabs.map(([tab, label]) => (
+      <li key={tab} aria-current={current === tab ? "page" : undefined}>
+        {current === tab ? (
           label
         ) : (
           <Link
-            href={`/listening/${period === "overall" ? "" : period}`}
+            href={`/listening/${tab === "overall" ? "" : tab}`}
             prefetch
             replace
           >

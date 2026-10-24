@@ -5,7 +5,7 @@ import { server } from "@/mocks/node";
 
 import {
   userGetRecentTracks,
-  userGetScrobbleCount,
+  userGetScrobbles,
   userGetTopAlbums,
   userGetTopArtists,
   userGetTopTracks,
@@ -325,18 +325,22 @@ describe("userGetTopAlbums", () => {
   });
 });
 
-describe("userGetScrobbleCount", () => {
-  it("should read the range's total from one recent track", async () => {
+describe("userGetScrobbles", () => {
+  it("should read the range's total and played tracks", async () => {
     const params = lastfmReturns({
       recenttracks: {
-        track: [recentTrack("Test", playedAt("1609459200"))],
+        track: [
+          recentTrack("Now", nowPlaying),
+          recentTrack("Test", playedAt("1609459200")),
+        ],
         "@attr": { total: "1234" },
       },
     });
 
-    const count = await userGetScrobbleCount("testuser", {
+    const scrobbles = await userGetScrobbles("testuser", {
       from: new Date("2021-01-01T00:00:00Z"),
       to: new Date("2021-01-02T00:00:00Z"),
+      limit: 1,
     });
 
     expect(params()).toMatchObject({
@@ -346,6 +350,28 @@ describe("userGetScrobbleCount", () => {
       from: "1609459200",
       to: "1609545599",
     });
-    expect(count).toBe(1234);
+    expect(scrobbles).toEqual({
+      total: 1234,
+      tracks: [expect.objectContaining({ name: "Test" })],
+    });
+  });
+
+  it("should read a range with one scrobble, which Last.fm lists bare", async () => {
+    lastfmReturns({
+      recenttracks: {
+        track: recentTrack("Test", playedAt("1609459200")),
+        "@attr": { total: "1" },
+      },
+    });
+
+    const scrobbles = await userGetScrobbles("testuser", {
+      from: new Date("2021-01-01T00:00:00Z"),
+      to: new Date("2021-01-02T00:00:00Z"),
+      limit: 200,
+    });
+
+    expect(scrobbles.tracks).toEqual([
+      expect.objectContaining({ name: "Test" }),
+    ]);
   });
 });

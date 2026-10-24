@@ -155,6 +155,12 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Chat stream:** `ChatStream` (in the chat's title bar) owns the SSE connection and shows
   its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
   the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
+  Each change makes tabs `router.refresh()`, served from history cached per store revision.
+- **Presence:** an open chat stream counts its visitor as here: one Turso `presence` row per
+  stream. A replica's heartbeat is the only writer of its streams' rows: it runs on every open
+  and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
+  drops rows unseen for 45s and reads back everyone (`app/lib/presence.ts`). The server only
+  notices a closed stream when a write fails, so the stream pings every 5s.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as
@@ -178,6 +184,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The reaction picker's ✋ sets one skin tone per visitor, for its emoji and the suggestions
   (`app/components/chat/skinTone.ts`), kept in localStorage rather than a cookie since it never
   changes the server render.
+- **Chat commands:** a leading `/` in the chat input runs a command from
+  `app/components/chat/commands.ts` instead of posting; `//` sends one slash. They run in the
+  browser and print their output above the input for that visitor only, never to Discord. The
+  input suggests them as it does `:` shortcodes, from the same combobox (`ChatSuggestInput`).
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
@@ -186,6 +196,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   (`images.loaderFile`), which picks one of the few sizes Last.fm's CDN serves; any other
   path returns the original upload. Each look filters the covers (`--cover-filter`, manual's
   is the SVG `#cover-dither`), and hover or focus shows them unfiltered.
+- **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
+  date in each past year with one `getRecentTracks` page per year; the home page teases the
+  busiest year through the same cached call.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
   Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never
@@ -221,7 +234,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
   with `recall`. Notes are one line. `edit` and `forget` are compare-and-swap on the note's text. Memory
-  failures degrade to a reply without memory, never to no reply.
+  failures degrade to a reply without memory, never to no reply. `/simon-bot` shows the
+  `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
   `app/lib/reflection.ts` runs after every mention, even one the bot chose not to answer,

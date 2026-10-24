@@ -230,7 +230,7 @@ export const ChatReactionPicker = ({
   );
 };
 
-const reactorList = new Intl.ListFormat("en", { type: "conjunction" });
+export const nameList = new Intl.ListFormat("en", { type: "conjunction" });
 
 const toneOrder = (emoji: string) =>
   SKIN_TONES.findLastIndex(({ modifier }) => emoji.includes(modifier));
@@ -249,7 +249,7 @@ function describeReactors(variants: Reaction[], count: number): string {
   const mine = variants.filter((variant) => variant.mine).length;
   const named = new Set(mine > 0 ? ["you", ...users] : users);
   const onDiscord = count - users.length - mine;
-  return reactorList.format(
+  return nameList.format(
     onDiscord > 0 ? [...named, `${onDiscord} on Discord`] : named,
   );
 }

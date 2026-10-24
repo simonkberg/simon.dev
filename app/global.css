@@ -130,6 +130,10 @@
   --cover-rank-display: block;
   --cover-rank-bg: var(--ink);
   --cover-rank-color: var(--ground);
+  --timeline-origin: "┬";
+  --timeline-bar: "━";
+  --timeline-bar-color: var(--accent);
+  --flashback-rule: 2px solid var(--accent);
 
   --tracks-max: none;
   --track-display: block;
@@ -149,6 +153,12 @@
   --links-suffix: none;
   --links-suffix-color: inherit;
   --links-suffix-size: 1em;
+
+  --notes-max: none;
+  --note-padding: 0;
+  --note-marker: none;
+  --note-gap: 0.5lh;
+  --note-rule: none;
 
   --footer-color: inherit;
   --footer-gap: 0;
@@ -171,7 +181,7 @@
   --topbar-size: inherit;
   --control-padding: 0;
   --status-dot: none;
-  --status-push: 0;
+  --controls-push: 0;
   --status-weight: normal;
   --control-hover-color: var(--accent);
   --control-hover-bg: transparent;
@@ -341,6 +351,8 @@
   --now-playing-color: var(--accent);
   --links-indent: 2.5ch;
   --links-marker: "→";
+  --note-padding: 0 0 0 2.5ch;
+  --note-marker: "›";
   --footer-color: var(--muted);
 
   --terminal-position: static;
@@ -477,6 +489,9 @@
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-blend: multiply;
   --cover-rank-display: none;
+  --timeline-origin: "◇";
+  --timeline-bar: "─";
+  --flashback-rule: 1px solid var(--accent);
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -484,6 +499,10 @@
   --track-time-gap: 2ch;
   --now-playing-color: var(--accent);
   --now-playing-dot: inline-block;
+  --notes-max: 44rem;
+  --note-padding: 0.5rem 0;
+  --note-gap: 0;
+  --note-rule: var(--td-rule);
   --links-display: flex;
   --links-gap: 0 3ch;
   --links-suffix: " ↗";
@@ -501,7 +520,7 @@
   --topbar-justify: flex-end;
   --control-maximize: "expand ⤢";
   --status-dot: inline-block;
-  --status-push: auto;
+  --controls-push: auto;
 
   --fade: 1rem;
   --history-padding: 0.75rem;
@@ -609,6 +628,9 @@
     light-dark(transparent, oklch(0 0 0 / 0.15)) 0 100%
   );
   --cover-frame: 1px solid var(--ink);
+  --timeline-bar: "█";
+  --timeline-bar-color: var(--ink);
+  --flashback-rule: 0.5ch solid var(--ink);
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
   --links-display: flex;
@@ -626,7 +648,7 @@
   --topbar-bg: var(--ink);
   --topbar-color: var(--ground);
   --control-maximize: "+";
-  --status-push: auto;
+  --controls-push: auto;
   --status-weight: bold;
   --control-hover-color: var(--ink);
   --control-hover-bg: var(--ground);
@@ -1234,6 +1256,126 @@ ul {
   }
 }
 
+/* On this day */
+
+.flashback {
+  margin-block: 0 var(--p-gap);
+  padding-inline-start: 2ch;
+  border-inline-start: var(--flashback-rule);
+  color: var(--muted);
+
+  > p {
+    margin: 0;
+  }
+}
+
+.flashback-title {
+  display: block;
+  color: var(--ink);
+  font-size: 0.85em;
+  text-transform: var(--heading-case);
+}
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+
+  > li {
+    --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
+      var(--stems-glyph);
+    position: relative;
+    display: grid;
+    grid-template-columns: 5ch minmax(0, 1fr);
+    gap: 0 1ch;
+    padding: 0 0 0.5lh 3ch;
+
+    /* The rail, down to the next stop. */
+    &::before {
+      content: var(--timeline-rails) var(--timeline-rails) var(--timeline-rails)
+        var(--timeline-rails);
+      position: absolute;
+      inset: 1lh auto 0 0;
+      width: 2ch;
+      overflow: hidden;
+      color: var(--stems-base-color);
+      line-height: 0.6;
+      text-align: center;
+      white-space: pre;
+    }
+
+    &::after {
+      content: var(--stems-marker);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2ch;
+      color: var(--accent);
+      text-align: center;
+    }
+
+    &:last-child::before {
+      content: none;
+    }
+  }
+
+  > .timeline-origin {
+    --stems-marker: var(--timeline-origin);
+    display: block;
+    color: var(--muted);
+  }
+
+  > li[data-silent] {
+    --stems-glyph: var(--stems-glyph-current);
+    display: flex;
+    color: var(--muted);
+
+    &::after {
+      content: none;
+    }
+
+    > .timeline-top {
+      font-style: italic;
+    }
+
+    /* Rides the rail from the top, since it has no stop of its own. */
+    &::before {
+      inset-block-start: 0;
+    }
+  }
+
+  .timeline-top {
+    grid-area: 2 / 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timeline-plays {
+    --timeline-bars: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
+      var(--timeline-bar);
+    grid-area: 1 / 2;
+    color: var(--muted);
+
+    &::before {
+      content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
+        var(--timeline-bars);
+      display: inline-block;
+      width: max(1ch, var(--value, 0) / var(--max, 1) * 16ch);
+      margin-inline-end: 1ch;
+      overflow: hidden;
+      color: var(--timeline-bar-color);
+      vertical-align: bottom;
+      white-space: nowrap;
+    }
+  }
+
+  &.placeholder .timeline-plays::before {
+    content: none;
+  }
+}
+
 /* Lists */
 
 .stats {
@@ -1335,6 +1477,32 @@ ul {
       vertical-align: 0.1em;
       animation: pulse 1.6s ease-in-out infinite;
     }
+  }
+}
+
+.notes {
+  max-width: var(--notes-max);
+
+  > li {
+    position: relative;
+    padding: var(--note-padding);
+    border-bottom: var(--note-rule);
+    overflow-wrap: anywhere;
+
+    + li {
+      margin-top: var(--note-gap);
+    }
+
+    &::before {
+      content: var(--note-marker);
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+  }
+
+  .subtitle {
+    white-space: nowrap;
   }
 }
 
@@ -1537,7 +1705,6 @@ ul {
     font-size: var(--topbar-size);
 
     > .status {
-      margin-right: var(--status-push);
       padding: var(--control-padding);
       font-weight: var(--status-weight);
 
@@ -1561,7 +1728,13 @@ ul {
       }
     }
 
+    > .presence {
+      padding: var(--control-padding);
+      color: var(--muted);
+    }
+
     > .control {
+      margin-left: var(--controls-push);
       padding: var(--control-padding);
 
       &.maximize::before {
@@ -1818,8 +1991,8 @@ ul {
   }
 }
 
-.emoji-picker {
-  grid-template-columns: repeat(8, 2.25em);
+.emoji-picker,
+.command-picker {
   padding: 0.5ch;
   border: 1px solid var(--rule);
   border-radius: var(--code-radius);
@@ -1831,29 +2004,11 @@ ul {
   }
 
   button {
-    padding-block: 0.25em;
-    font-size: 1.25rem;
-    line-height: 1;
-    text-align: center;
-
     &:hover,
     &:focus-visible,
     &[aria-selected="true"] {
       background: var(--wash);
     }
-  }
-
-  > .name {
-    grid-column: 1 / -1;
-    margin: 0;
-    padding: 0.25em 0.5ch 0;
-    color: var(--muted);
-    /* One line, kept when nothing is chosen, so the picker never changes height. */
-    min-height: calc(1lh + 0.25em);
-    overflow: hidden;
-    font-size: var(--tip-size);
-    white-space: nowrap;
-    text-overflow: ellipsis;
   }
 
   /* Opens above what opened it; without anchor positioning it stays centred. */
@@ -1867,6 +2022,46 @@ ul {
       flip-block,
       flip-inline,
       flip-block flip-inline;
+  }
+}
+
+.command-picker {
+  min-width: 24ch;
+
+  button {
+    display: flex;
+    gap: 2ch;
+    justify-content: space-between;
+    padding: 0.25em 1ch;
+    text-align: start;
+
+    > .detail {
+      color: var(--muted);
+    }
+  }
+}
+
+.emoji-picker {
+  grid-template-columns: repeat(8, 2.25em);
+
+  button {
+    padding-block: 0.25em;
+    font-size: 1.25rem;
+    line-height: 1;
+    text-align: center;
+  }
+
+  > .name {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.25em 0.5ch 0;
+    color: var(--muted);
+    /* One line, kept when nothing is chosen, so the picker never changes height. */
+    min-height: calc(1lh + 0.25em);
+    overflow: hidden;
+    font-size: var(--tip-size);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
 
@@ -1887,7 +2082,8 @@ ul {
   }
 }
 
-.chat-replying-to {
+.chat-replying-to,
+.chat-output {
   position: relative;
   margin-bottom: var(--replying-gap);
   padding: var(--replying-padding);
@@ -1899,6 +2095,26 @@ ul {
     top: var(--replying-clear-top);
     right: 1ch;
     color: var(--muted);
+  }
+}
+
+.chat-output {
+  > .echo {
+    margin: 0;
+    color: var(--muted);
+
+    &::before {
+      content: var(--prompt);
+      margin-inline-end: 1ch;
+      color: var(--accent);
+      font-weight: var(--prompt-weight);
+    }
+  }
+
+  > pre {
+    margin: 0;
+    overflow-x: auto;
+    font: inherit;
   }
 }
 
