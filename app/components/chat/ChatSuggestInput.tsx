@@ -89,7 +89,8 @@ export const ChatSuggestInput = ({
       : emojiMatches.map((match) => match.emoji);
 
   const [active, setActive] = useState<number | null>(null);
-  const key = shown && `${shown.kind}:${shown.query}`;
+  // With where it starts, so a picked command's options start over.
+  const key = shown && `${shown.kind}:${shown.start}:${shown.query}`;
   const [previousKey, setPreviousKey] = useState(key);
   if (key !== previousKey) {
     setPreviousKey(key);

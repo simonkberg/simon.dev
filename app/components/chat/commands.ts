@@ -84,7 +84,7 @@ export interface CommandSuggestion {
 }
 
 const NAME = /^\/(\S*)$/;
-const ARGUMENT = /^\/(\S+) (\S*)$/;
+const ARGUMENT = /^\/(\S+)\s+(\S*)$/;
 
 /** The command or argument typed up to the caret, where it starts, and what it could become. */
 export function typedCommand(text: string) {

@@ -300,6 +300,16 @@ describe("ChatSuggestInput", () => {
     expect(postChatMessage).not.toHaveBeenCalled();
   });
 
+  it("chooses the first option of a command picked further down", async () => {
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/");
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+
+    expect(input).toHaveValue("/theme ");
+    expect(chosen()).toHaveTextContent("system");
+  });
+
   it("chooses nothing for a command typed in full, so Enter runs it", async () => {
     const { user, input } = renderChatInput();
 
