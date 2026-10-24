@@ -6,7 +6,6 @@ import { getBotNotes } from "@/actions/simonBot";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
-import type { PublicCategory } from "@/lib/memory";
 
 import { NoteList, NoteListSkeleton } from "./components/NoteList";
 
@@ -19,11 +18,7 @@ const sections = [
   { category: "self", title: "Self", what: "who it is" },
   { category: "style", title: "Style", what: "how it writes" },
   { category: "interests", title: "Interests", what: "what it likes" },
-] as const satisfies readonly {
-  category: PublicCategory;
-  title: string;
-  what: string;
-}[];
+] as const;
 
 export default function SimonBotPage() {
   const result = getBotNotes();

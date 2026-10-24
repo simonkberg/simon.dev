@@ -4,13 +4,13 @@ import { cacheLife } from "next/cache";
 
 import { log } from "@/lib/log";
 import {
+  type Memory,
   type PublicCategory,
-  type PublicNote,
   readPublicNotes,
 } from "@/lib/memory";
 
 export type GetBotNotesResult =
-  | { status: "ok"; notes: Record<PublicCategory, PublicNote[]> }
+  | { status: "ok"; notes: Record<PublicCategory, Memory[]> }
   | { status: "error"; error: string };
 
 export async function getBotNotes(): Promise<GetBotNotesResult> {

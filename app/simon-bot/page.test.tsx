@@ -5,16 +5,30 @@ import { getBotNotes, type GetBotNotesResult } from "@/actions/simonBot";
 
 import SimonBotPage from "./page";
 
-const createdAt = new Date("2025-01-01T00:00:00.000Z");
+const createdAt = "2025-01-01T00:00:00.000Z";
 
 vi.mock(import("@/actions/simonBot"), () => ({
   getBotNotes: vi.fn(() =>
     Promise.resolve<GetBotNotesResult>({
       status: "ok",
       notes: {
-        self: [{ id: 1, content: "dry", createdAt, updatedAt: undefined }],
+        self: [
+          {
+            id: 1,
+            category: "self",
+            content: "dry",
+            createdAt,
+            updatedAt: undefined,
+          },
+        ],
         style: [
-          { id: 2, content: "lowercase", createdAt, updatedAt: undefined },
+          {
+            id: 2,
+            category: "style",
+            content: "lowercase",
+            createdAt,
+            updatedAt: undefined,
+          },
         ],
         interests: [],
       },

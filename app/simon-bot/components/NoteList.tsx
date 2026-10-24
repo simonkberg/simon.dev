@@ -3,11 +3,11 @@ import { Suspense, use } from "react";
 import { RelativeTime } from "@/components/RelativeTime";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { Subtitle } from "@/components/Subtitle";
-import type { PublicNote } from "@/lib/memory";
+import type { Memory } from "@/lib/memory";
 
 export interface NoteListProps {
   // Undefined when the notes failed to load.
-  notes: Promise<PublicNote[] | undefined>;
+  notes: Promise<Memory[] | undefined>;
 }
 
 export const NoteList = ({ notes }: NoteListProps) => {
@@ -30,7 +30,7 @@ export const NoteList = ({ notes }: NoteListProps) => {
             ({note.updatedAt ? "rewritten" : "noted"}{" "}
             <Suspense fallback="Loading">
               {/* Suspends due to usage of Date */}
-              <RelativeTime date={note.updatedAt ?? note.createdAt} />
+              <RelativeTime date={new Date(note.updatedAt ?? note.createdAt)} />
             </Suspense>
             )
           </Subtitle>

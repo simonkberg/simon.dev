@@ -139,7 +139,6 @@
 
   --notes-max: none;
   --note-padding: 0;
-  --note-indent: 0;
   --note-marker: none;
   --note-gap: 0.5lh;
   --note-rule: none;
@@ -1320,7 +1319,6 @@ ul {
   > li {
     position: relative;
     padding: var(--note-padding);
-    text-indent: var(--note-indent);
     border-bottom: var(--note-rule);
     overflow-wrap: anywhere;
 

@@ -1,19 +1,20 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { PublicNote } from "@/lib/memory";
+import type { Memory } from "@/lib/memory";
 
 import { NoteList, NoteListSkeleton } from "./NoteList";
 
-const note = (overrides: Partial<PublicNote> = {}): PublicNote => ({
+const note = (overrides: Partial<Memory> = {}): Memory => ({
   id: 1,
+  category: "self",
   content: "dry and unbothered",
-  createdAt: new Date("2025-01-01T00:00:00.000Z"),
+  createdAt: "2025-01-01T00:00:00.000Z",
   updatedAt: undefined,
   ...overrides,
 });
 
-const renderNotes = (notes: PublicNote[] | undefined) =>
+const renderNotes = (notes: Memory[] | undefined) =>
   act(async () => render(<NoteList notes={Promise.resolve(notes)} />));
 
 describe("NoteList", () => {
@@ -29,9 +30,7 @@ describe("NoteList", () => {
   });
 
   it("dates a rewritten note from its last rewrite", async () => {
-    await renderNotes([
-      note({ updatedAt: new Date("2025-02-01T00:00:00.000Z") }),
-    ]);
+    await renderNotes([note({ updatedAt: "2025-02-01T00:00:00.000Z" })]);
 
     const item = screen.getByRole("listitem");
     expect(item).toHaveTextContent(/\(rewritten .+\)$/);

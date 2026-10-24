@@ -48,6 +48,7 @@ const memoryRowSchema = z.object({
   category: z.string(),
   content: z.string(),
   created_at: z.string(),
+  updated_at: z.string().nullish(),
 });
 
 export type Memory = {
@@ -55,6 +56,8 @@ export type Memory = {
   category: string;
   content: string;
   createdAt: string;
+  // Only set by a read that selects it, and only once the note was rewritten.
+  updatedAt: string | undefined;
 };
 
 function toMemory(row: unknown): Memory {
@@ -64,6 +67,7 @@ function toMemory(row: unknown): Memory {
     category: parsed.category,
     content: parsed.content,
     createdAt: parsed.created_at,
+    updatedAt: parsed.updated_at ?? undefined,
   };
 }
 
@@ -285,27 +289,16 @@ export async function buildMemoryContext(
 }
 
 // The bot's own notes, shown on its page; people/* and context stay private.
-export const PUBLIC_CATEGORIES = ["self", "style", "interests"] as const;
+export const PUBLIC_CATEGORIES = [
+  "self",
+  "style",
+  "interests",
+] as const satisfies (keyof typeof CORE_CATEGORIES)[];
 
 export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
 
-export type PublicNote = {
-  id: number;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date | undefined;
-};
-
-const publicNoteSchema = z.object({
-  id: z.number(),
-  category: z.enum(PUBLIC_CATEGORIES),
-  content: z.string(),
-  created_at: z.string().pipe(z.coerce.date()),
-  updated_at: z.string().pipe(z.coerce.date()).nullable(),
-});
-
 export async function readPublicNotes(): Promise<
-  Record<PublicCategory, PublicNote[]>
+  Record<PublicCategory, Memory[]>
 > {
   const { rows } = await query(
     `SELECT id, category, content, created_at, updated_at FROM memories
@@ -313,19 +306,10 @@ export async function readPublicNotes(): Promise<
      ORDER BY created_at, id`,
     [...PUBLIC_CATEGORIES],
   );
-  const notes: Record<PublicCategory, PublicNote[]> = {
-    self: [],
-    style: [],
-    interests: [],
+  const notes = Object.groupBy(rows.map(toMemory), (note) => note.category);
+  return {
+    self: notes["self"] ?? [],
+    style: notes["style"] ?? [],
+    interests: notes["interests"] ?? [],
   };
-  for (const row of rows) {
-    const note = publicNoteSchema.parse(row);
-    notes[note.category].push({
-      id: note.id,
-      content: note.content,
-      createdAt: note.created_at,
-      updatedAt: note.updated_at ?? undefined,
-    });
-  }
-  return notes;
 }
