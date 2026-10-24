@@ -6,7 +6,6 @@ import { config } from "@/config";
 import {
   type Period,
   userGetRecentTracks,
-  userGetScrobbleCount,
   userGetScrobbles,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
@@ -153,7 +152,10 @@ export async function getScrobbles(
     const scrobbles = await Promise.all(
       buckets.map(async ({ label, from, to }) => ({
         label,
-        count: await userGetScrobbleCount(config.lastfmUsername, { from, to }),
+        // Only the total is read, so one track per page is enough.
+        count: (
+          await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })
+        ).total,
         current: to > now,
       })),
     );

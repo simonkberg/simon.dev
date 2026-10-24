@@ -220,34 +220,16 @@ export async function userGetTopAlbums(
   });
 }
 
-const userGetScrobbleCountResponseSchema = z
-  .object({
-    recenttracks: z.object({
-      "@attr": z.object({ total: z.string().transform(Number) }),
-    }),
-  })
-  .transform((data) => data.recenttracks["@attr"].total);
-
 const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
-
-// Only the response's total is read, so one track per page is enough.
-export async function userGetScrobbleCount(
-  user: string,
-  params: { from: Date; to: Date },
-): Promise<number> {
-  return call("user.getrecenttracks", userGetScrobbleCountResponseSchema, {
-    user,
-    limit: 1,
-    from: toUnixTime(params.from),
-    // `to` is inclusive, and the next range starts on this second.
-    to: toUnixTime(params.to) - 1,
-  });
-}
 
 const userGetScrobblesResponseSchema = z
   .object({
     recenttracks: z.object({
-      track: z.array(recentTrackSchema),
+      // A range with one scrobble lists it bare, not in an array.
+      track: z.union([
+        z.array(recentTrackSchema),
+        recentTrackSchema.transform((track) => [track]),
+      ]),
       "@attr": z.object({ total: z.string().transform(Number) }),
     }),
   })
@@ -269,6 +251,7 @@ export async function userGetScrobbles(
     user,
     limit: params.limit,
     from: toUnixTime(params.from),
+    // `to` is inclusive, and the next range starts on this second.
     to: toUnixTime(params.to) - 1,
   });
 }

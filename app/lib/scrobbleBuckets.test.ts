@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { scrobbleBuckets, yearBuckets } from "./scrobbleBuckets";
+import {
+  sameDayBuckets,
+  scrobbleBuckets,
+  yearBuckets,
+} from "./scrobbleBuckets";
 
 const now = new Date("2026-10-23T09:15:00Z");
 
@@ -93,5 +97,28 @@ describe("yearBuckets", () => {
         to: new Date("2026-12-31T23:00:00Z"),
       },
     ]);
+  });
+});
+
+describe("sameDayBuckets", () => {
+  it("should cover today's Stockholm date in each past year, newest first", () => {
+    expect(sameDayBuckets(2024, now)).toEqual([
+      {
+        label: "2025",
+        from: new Date("2025-10-22T22:00:00Z"),
+        to: new Date("2025-10-23T22:00:00Z"),
+      },
+      {
+        label: "2024",
+        from: new Date("2024-10-22T22:00:00Z"),
+        to: new Date("2024-10-23T22:00:00Z"),
+      },
+    ]);
+  });
+
+  it("should skip years without February 29", () => {
+    const buckets = sameDayBuckets(2019, new Date("2024-02-29T12:00:00Z"));
+
+    expect(buckets.map(({ label }) => label)).toEqual(["2020"]);
   });
 });

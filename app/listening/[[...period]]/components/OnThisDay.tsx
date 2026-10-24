@@ -14,15 +14,16 @@ type Stop =
   | { kind: "silent"; from: string; to: string };
 
 // Years with nothing played fold into one quiet stretch of rail.
-const toStops = (years: readonly DayInYear[]): Stop[] =>
-  years.reduce<Stop[]>((stops, year) => {
+const toStops = (years: readonly DayInYear[]): Stop[] => {
+  const stops: Stop[] = [];
+  for (const year of years) {
     const last = stops.at(-1);
-    if (year.count > 0) return [...stops, { kind: "played", year }];
-    if (last?.kind === "silent") {
-      return [...stops.slice(0, -1), { ...last, from: year.year }];
-    }
-    return [...stops, { kind: "silent", from: year.year, to: year.year }];
-  }, []);
+    if (year.count > 0) stops.push({ kind: "played", year });
+    else if (last?.kind === "silent") last.from = year.year;
+    else stops.push({ kind: "silent", from: year.year, to: year.year });
+  }
+  return stops;
+};
 
 const plays = (count: number) =>
   `${formatNumber(count)} ${count === 1 ? "play" : "plays"}`;
