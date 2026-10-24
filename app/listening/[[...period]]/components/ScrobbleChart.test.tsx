@@ -168,6 +168,18 @@ describe("ScrobbleChart", () => {
     expect(Math.max(...grow)).toBeLessThan(1);
   });
 
+  it("sweeps the lane bars in when mounted on the client", async () => {
+    Globals.assign({ skipAnimation: false });
+
+    await renderLanes(buckets);
+
+    const grow = [...document.querySelectorAll<HTMLElement>(".lane-run")].map(
+      (run) => Number(run.style.getPropertyValue("--grow")),
+    );
+    expect(grow).toHaveLength(4);
+    expect(Math.max(...grow)).toBeLessThan(1);
+  });
+
   it("renders full stems in server markup", () => {
     // A resolved promise still suspends on the server, so render the settled tree.
     const settled = <T,>(value: T) =>

@@ -1317,6 +1317,7 @@ ul {
   /* Sized here, not on the list, so the gutter's ch matches the stems'. */
   .lane-label {
     grid-row: 1;
+    opacity: var(--grow, 1);
     font-size: var(--meta-size);
     white-space: nowrap;
 
@@ -1331,6 +1332,8 @@ ul {
     height: var(--lane-weight);
     margin-inline: 2px;
     background: var(--accent);
+    transform: scaleX(var(--grow, 1));
+    transform-origin: left;
 
     /* Like the current stem, still filling up. */
     &[data-current] {

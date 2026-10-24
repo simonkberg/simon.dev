@@ -30,6 +30,13 @@ interface Run {
   last: number;
 }
 
+// Grows in from nothing on the client; the server markup already shows the end state.
+const useGrowFrom = () => {
+  const animate = useMotion();
+  const [from] = useState(animate ? 0 : 1);
+  return from;
+};
+
 const Stems = ({
   items,
   active,
@@ -37,8 +44,7 @@ const Stems = ({
   items: readonly ScrobbleCount[];
   active: readonly Run[];
 }) => {
-  const animate = useMotion();
-  const [from] = useState(animate ? 0 : 1);
+  const from = useGrowFrom();
   const [springs] = useSprings(items.length, (index) => ({
     from: { grow: from },
     to: { grow: 1 },
@@ -170,49 +176,67 @@ const Lanes = ({
   items: readonly ScrobbleCount[];
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
-}) => (
-  <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
-    {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
-    <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
-      {rows.map(({ name, runs, plays, first, last }) => {
-        const end = first > items.length / 2;
-        const span = runs
-          .map((run) => {
-            const from = items[run.first]?.label;
-            return run.first === run.last
-              ? from
-              : `${from}–${items[run.last]?.label}`;
-          })
-          .join(", ");
-        const text = `${name}: ${formatPlays(plays)} in ${span}`;
-        return (
-          <li key={name} onPointerEnter={() => onActive(runs)}>
-            <div
-              className="lane-label"
-              style={{
-                gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
-              }}
-              data-end={end || undefined}
-            >
-              <span className="lane-name" aria-hidden="true">
-                {name}
-              </span>
-              <span className="visually-hidden">{text}</span>
-            </div>
-            {runs.map((run) => (
-              <span
-                key={run.first}
-                className="lane-run"
-                style={{ gridColumn: `${run.first + 1} / ${run.last + 2}` }}
-                data-current={run.current || undefined}
-              />
-            ))}
-          </li>
-        );
-      })}
-    </ol>
-  </div>
-);
+}) => {
+  const from = useGrowFrom();
+  // One per column, so each bar sweeps out after the stems above its start, left to right.
+  const [springs] = useSprings(items.length, (index) => ({
+    from: { grow: from },
+    to: { grow: 1 },
+    delay: 150 + index * 30,
+  }));
+
+  return (
+    <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
+      {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
+      <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
+        {rows.map(({ name, runs, plays, first, last }) => {
+          const end = first > items.length / 2;
+          const span = runs
+            .map((run) => {
+              const label = items[run.first]?.label;
+              return run.first === run.last
+                ? label
+                : `${label}–${items[run.last]?.label}`;
+            })
+            .join(", ");
+          const text = `${name}: ${formatPlays(plays)} in ${span}`;
+          return (
+            <li key={name} onPointerEnter={() => onActive(runs)}>
+              <animated.div
+                className="lane-label"
+                style={
+                  {
+                    gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
+                    "--grow": springs[first]?.grow,
+                  } as CSSProperties
+                }
+                data-end={end || undefined}
+              >
+                <span className="lane-name" aria-hidden="true">
+                  {name}
+                </span>
+                <span className="visually-hidden">{text}</span>
+              </animated.div>
+              {runs.map((run) => (
+                <animated.span
+                  key={run.first}
+                  className="lane-run"
+                  style={
+                    {
+                      gridColumn: `${run.first + 1} / ${run.last + 2}`,
+                      "--grow": springs[run.first]?.grow,
+                    } as CSSProperties
+                  }
+                  data-current={run.current || undefined}
+                />
+              ))}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+};
 
 export const ScrobbleChart = ({
   scrobbles,
