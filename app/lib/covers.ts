@@ -8,6 +8,7 @@ import { log } from "@/lib/log";
 
 const WARM_MS = 60 * 60 * 1000;
 const WARM_CONCURRENCY = 2;
+const WARM_TIMEOUT_MS = 30_000;
 
 // A fixed width gives each cover just a 1x and a 2x URL to warm.
 export const coverWidth = (index: number) => (index === 0 ? 480 : 160);
@@ -22,6 +23,21 @@ export function coverUrls(src: string, index: number): string[] {
   return String(srcSet)
     .split(", ")
     .map((candidate) => candidate.slice(0, candidate.lastIndexOf(" ")));
+}
+
+async function warmPath(origin: string, path: string): Promise<void> {
+  try {
+    const res = await fetch(new URL(path, origin), {
+      headers: { accept: "image/webp" },
+      signal: AbortSignal.timeout(WARM_TIMEOUT_MS),
+    });
+    await res.arrayBuffer();
+    if (!res.ok) {
+      log.warn({ path, status: res.status }, "Cover warm-up failed");
+    }
+  } catch (err) {
+    log.warn({ err, path }, "Cover warm-up failed");
+  }
 }
 
 async function warmOnce(origin: string): Promise<void> {
@@ -40,13 +56,7 @@ async function warmOnce(origin: string): Promise<void> {
   const queue = [...paths];
   const worker = async () => {
     for (let path = queue.shift(); path; path = queue.shift()) {
-      const res = await fetch(new URL(path, origin), {
-        headers: { accept: "image/webp" },
-      });
-      await res.arrayBuffer();
-      if (!res.ok) {
-        log.warn({ path, status: res.status }, "Cover warm-up failed");
-      }
+      await warmPath(origin, path);
     }
   };
   await Promise.all(Array.from({ length: WARM_CONCURRENCY }, worker));

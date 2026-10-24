@@ -77,6 +77,24 @@ describe("warmCovers", () => {
     );
   });
 
+  it("keeps warming past a cover whose request fails", async () => {
+    const [failing] = coverUrls(`${cdn}/first.jpg`, 0);
+    server.use(
+      http.get(`${origin}/_next/image`, ({ request }) =>
+        request.url.endsWith(failing!) ? HttpResponse.error() : undefined,
+      ),
+    );
+
+    warmCovers(origin);
+
+    await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: expect.any(Error), path: failing },
+      "Cover warm-up failed",
+    );
+    expect(requests).toHaveLength(3);
+  });
+
   it("logs a failed album list", async () => {
     const err = new Error("Last.fm is down");
     vi.mocked(userGetTopAlbums).mockRejectedValue(err);
