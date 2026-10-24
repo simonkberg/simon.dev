@@ -13,7 +13,7 @@ export interface ScrobbleChartProps {
   // Undefined when the counts failed to load.
   scrobbles: Promise<readonly ScrobbleCount[] | undefined>;
   // Undefined when the artists failed to load.
-  topArtistByBucket?: Promise<readonly BucketTopArtist[] | undefined>;
+  topArtistByBucket: Promise<readonly BucketTopArtist[] | undefined>;
 }
 
 // Labels count back from the current bucket. Narrow charts show every other one.
@@ -220,7 +220,7 @@ export const ScrobbleChart = ({
   topArtistByBucket,
 }: ScrobbleChartProps) => {
   const items = use(scrobbles);
-  const buckets = topArtistByBucket && use(topArtistByBucket);
+  const buckets = use(topArtistByBucket);
   const [active, setActive] = useState<readonly Run[]>([]);
 
   if (items === undefined) {

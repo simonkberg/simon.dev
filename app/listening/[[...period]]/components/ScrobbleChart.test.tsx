@@ -15,11 +15,18 @@ const scrobbles: ScrobbleCount[] = [
 ];
 
 const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
-  act(async () => render(<ScrobbleChart scrobbles={Promise.resolve(items)} />));
+  act(async () =>
+    render(
+      <ScrobbleChart
+        scrobbles={Promise.resolve(items)}
+        topArtistByBucket={Promise.resolve(undefined)}
+      />,
+    ),
+  );
 
 const smog = (playcount: number) => ({ name: "Smog", playcount });
 
-const years: BucketTopArtist[] = [
+const buckets: BucketTopArtist[] = [
   { label: "2016", artist: smog(5) },
   { label: "2017", artist: smog(7) },
   { label: "2018", artist: { name: "Low", playcount: 3 } },
@@ -35,10 +42,10 @@ const renderLanes = (
     render(
       <ScrobbleChart
         scrobbles={Promise.resolve(
-          years.map(({ label }, index) => ({
+          buckets.map(({ label }, index) => ({
             label,
             count: 10,
-            current: index === years.length - 1,
+            current: index === buckets.length - 1,
           })),
         )}
         topArtistByBucket={Promise.resolve(topArtistByBucket)}
@@ -74,8 +81,8 @@ describe("ScrobbleChart", () => {
     expect(document.querySelector(".average")).toHaveTextContent("1,100 avg");
   });
 
-  it("gives each top artist a lane with a bar per run of its years", async () => {
-    await renderLanes(years);
+  it("gives each top artist a lane with a bar per run of its buckets", async () => {
+    await renderLanes(buckets);
 
     expect(
       lanes().map(
@@ -89,7 +96,7 @@ describe("ScrobbleChart", () => {
   });
 
   it("ends a late lane's name at its run and dashes the current one", async () => {
-    await renderLanes(years);
+    await renderLanes(buckets);
     const [smogLane, , lateLane] = lanes();
 
     expect(smogLane?.querySelector("[data-end]")).not.toBeInTheDocument();
@@ -101,7 +108,7 @@ describe("ScrobbleChart", () => {
   });
 
   it("lights a lane's stems while it is hovered", async () => {
-    await renderLanes(years);
+    await renderLanes(buckets);
     const active = () =>
       stems().map((item) => item.hasAttribute("data-active"));
 
@@ -114,13 +121,13 @@ describe("ScrobbleChart", () => {
 
   it.each([
     ["failed to load", undefined],
-    ["have none", years.map(({ label }) => ({ label, artist: undefined }))],
+    ["have none", buckets.map(({ label }) => ({ label, artist: undefined }))],
   ])(
     "leaves the lanes out when the artists %s",
     async (_, topArtistByBucket) => {
       await renderLanes(topArtistByBucket);
 
-      expect(stems()).toHaveLength(years.length);
+      expect(stems()).toHaveLength(buckets.length);
       expect(
         screen.queryByRole("list", { name: "Top artists" }),
       ).not.toBeInTheDocument();
@@ -163,12 +170,12 @@ describe("ScrobbleChart", () => {
 
   it("renders full stems in server markup", () => {
     // A resolved promise still suspends on the server, so render the settled tree.
+    const settled = <T,>(value: T) =>
+      Object.assign(Promise.resolve(value), { status: "fulfilled", value });
     const html = renderToString(
       <ScrobbleChart
-        scrobbles={Object.assign(Promise.resolve(scrobbles), {
-          status: "fulfilled",
-          value: scrobbles,
-        })}
+        scrobbles={settled(scrobbles)}
+        topArtistByBucket={settled(undefined)}
       />,
     );
 

@@ -1262,7 +1262,7 @@ ul {
       var(--stems-gutter);
     row-gap: 0.25rem;
 
-    /* The lane's track, dotted under the years it didn't top. */
+    /* The lane's track, dotted under the bars it didn't top. */
     &::before {
       content: "";
       grid-row: 2;
