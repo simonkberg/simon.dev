@@ -48,10 +48,9 @@ describe("AlbumCollage", () => {
       "href",
       "https://www.last.fm/music/Smog/Knock+Knock",
     );
-    expect(within(link).getByRole("presentation")).toHaveAttribute(
-      "src",
-      expect.stringContaining("abc.jpg"),
-    );
+    for (const image of within(link).getAllByRole("presentation")) {
+      expect(image).toHaveAttribute("src", expect.stringContaining("abc.jpg"));
+    }
   });
 
   it("leaves a cover's tile empty when the album has no art", async () => {
