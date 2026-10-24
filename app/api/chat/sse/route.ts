@@ -78,8 +78,10 @@ export async function GET(request: NextRequest) {
   let sentTyping = "[]";
   const sendTyping = () => {
     const typing = JSON.stringify([
-      ...discordTyping,
-      ...siteTyping.filter((name) => name !== username),
+      ...new Set([
+        ...discordTyping,
+        ...siteTyping.filter((name) => name !== username),
+      ]),
     ]);
     if (typing === sentTyping) return;
     sentTyping = typing;

@@ -160,14 +160,14 @@ describe("GET /api/chat/sse", () => {
     },
   );
 
-  it("should send who is typing in Discord, then the site's visitors but this one", async () => {
+  it("should send who is typing in Discord, then the site's visitors but this one, each once", async () => {
     mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
     const reader = await openReader();
     const onTyping = vi.mocked(subscribeToTyping).mock.calls[0]![0];
     const onSiteTyping = vi.mocked(subscribeToSiteTyping).mock.calls[0]![0];
     await reader.read();
 
-    onSiteTyping(["alice", "bob"]);
+    onSiteTyping(["alice", "bob", "simon"]);
     await reader.read();
     onTyping(["simon", "simon-bot"]);
 
