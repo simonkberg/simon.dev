@@ -145,10 +145,6 @@ function useFrameAnimation(frames: AnimationFrames): string {
   return expression;
 }
 
-/** The buddy's face for a state, animated. */
-export const useBuddyFace = (state: BuddyState) =>
-  useFrameAnimation(ANIMATIONS[state]);
-
 export interface CaretBuddyProps {
   inputValue: string;
   isPending: boolean;
@@ -161,10 +157,12 @@ export const CaretBuddy = ({
   resultStatus,
 }: CaretBuddyProps) => {
   const state = useCaretBuddyState({ inputValue, isPending, resultStatus });
-  const face = useBuddyFace(state);
+  const frames = ANIMATIONS[state];
+  const expression = useFrameAnimation(frames);
+
   return (
     <span className="caret-buddy" aria-hidden="true">
-      {face}
+      {expression}
     </span>
   );
 };

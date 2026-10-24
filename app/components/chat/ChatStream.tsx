@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { TooltipText } from "@/components/Tooltip";
 
 import { nameList } from "./ChatReactions";
-import { ChatTyping } from "./ChatTyping";
 
 type Status = "connecting" | "live" | "offline";
 
@@ -108,7 +107,15 @@ export const ChatStream = () => {
           </TooltipText>
         </span>
       )}
-      <ChatTyping typing={typing} />
+      {/* Rendered while empty, so screen readers hear the first typist. */}
+      <span className="typing" aria-live="polite">
+        {typing.length > 0 && (
+          <span className="typists">
+            {nameList.format(typing)} {typing.length === 1 ? "is" : "are"}{" "}
+            typing…
+          </span>
+        )}
+      </span>
     </>
   );
 };

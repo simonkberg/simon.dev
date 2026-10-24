@@ -1797,10 +1797,6 @@ ul {
         overflow: hidden;
         text-overflow: ellipsis;
       }
-
-      .face {
-        margin-right: 1ch;
-      }
     }
 
     > .control {

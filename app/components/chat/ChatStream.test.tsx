@@ -159,7 +159,11 @@ describe("ChatStream", () => {
       act(() => instance().onopen());
 
       act(() => instance().sendTyping(["simon", "simon-bot"]));
-      expect(screen.getByText(/typing…/)).toBeInTheDocument();
+      expect(
+        screen.getByText("simon and simon-bot are typing…"),
+      ).toBeInTheDocument();
+      act(() => instance().sendTyping(["simon"]));
+      expect(screen.getByText("simon is typing…")).toBeInTheDocument();
 
       act(() => instance().onerror());
       expect(screen.queryByText(/typing…/)).not.toBeInTheDocument();
