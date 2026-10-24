@@ -39,7 +39,11 @@ const TYPING_PING_MS = 2_000;
 function useTypingSignal() {
   const sentAt = useRef(0);
   return (text: string) => {
-    if (!messageText(text)?.trim()) return;
+    if (!messageText(text)?.trim()) {
+      // Posting ends the typing on the server, so the next message pings at once.
+      sentAt.current = 0;
+      return;
+    }
     if (Date.now() - sentAt.current < TYPING_PING_MS) return;
     sentAt.current = Date.now();
     // A lost ping only ends the indicator early.
@@ -66,6 +70,10 @@ export const ChatInput = ({
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
   const signalTyping = useTypingSignal();
+  const changeInput = (value: string) => {
+    setInputValue(value);
+    signalTyping(value);
+  };
   const [output, setOutput] = useState<{
     command: string;
     lines: readonly string[];
@@ -115,7 +123,7 @@ export const ChatInput = ({
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
-          setInputValue("");
+          changeInput("");
         });
       }
 
@@ -164,10 +172,7 @@ export const ChatInput = ({
             className="input"
             ref={inputRef}
             value={inputValue}
-            onValueChange={(value) => {
-              setInputValue(value);
-              signalTyping(value);
-            }}
+            onValueChange={changeInput}
             autoComplete="off"
           />
           <CaretBuddy

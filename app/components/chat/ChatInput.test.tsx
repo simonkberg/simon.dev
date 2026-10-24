@@ -392,6 +392,17 @@ describe("typing", () => {
     expect(pings()).toBe(2);
   });
 
+  it("pings at once for the next message after one is sent", async () => {
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "Hi{Enter}");
+    await waitFor(() => expect(input).toHaveValue(""));
+    await user.type(input, "Yo");
+
+    expect(pings()).toBe(2);
+  });
+
   it("doesn't ping for a command", async () => {
     const pings = recordPings();
     const { user, input } = renderChatInput();
