@@ -2415,6 +2415,7 @@ tbody tr:hover {
   /* A tap leaves :hover stuck on touch, and the link opens in a new tab. */
   @media (hover: hover) {
     &:hover {
+      z-index: 1;
       outline: var(--cover-frame-hover);
 
       .cover-filtered {
@@ -2423,7 +2424,9 @@ tbody tr:hover {
     }
   }
 
+  /* Above the later tiles, which would paint over the outline in the gap. */
   &:focus-visible {
+    z-index: 1;
     outline: var(--focus);
 
     .cover-filtered {
