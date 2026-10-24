@@ -41,17 +41,24 @@ async function warmPath(origin: string, path: string): Promise<void> {
 }
 
 async function warmOnce(origin: string): Promise<void> {
-  const lists = await Promise.all(
+  const lists = await Promise.allSettled(
     periods.map((period) =>
       userGetTopAlbums(config.lastfmUsername, { period, limit: TOP_ALBUMS }),
     ),
   );
   const paths = new Set(
-    lists.flatMap((albums) =>
-      albums.flatMap(({ cover }, index) =>
-        cover ? coverUrls(cover, index) : [],
-      ),
-    ),
+    lists.flatMap((list, index) => {
+      if (list.status === "rejected") {
+        log.warn(
+          { err: list.reason, period: periods[index] },
+          "Cover warm-up failed",
+        );
+        return [];
+      }
+      return list.value.flatMap(({ cover }, rank) =>
+        cover ? coverUrls(cover, rank) : [],
+      );
+    }),
   );
   const queue = [...paths];
   const worker = async () => {

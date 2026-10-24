@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+import { getImageProps } from "next/image";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { UserGetTopAlbumsResponse } from "@/lib/lastfm";
@@ -7,6 +8,11 @@ import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
 
 import { coverUrls, warmCovers } from "./covers";
+
+vi.mock(import("next/image"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, getImageProps: vi.fn(actual.getImageProps) };
+});
 
 vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -95,9 +101,25 @@ describe("warmCovers", () => {
     expect(requests).toHaveLength(3);
   });
 
-  it("logs a failed album list", async () => {
+  it("warms the other periods past a failed album list", async () => {
     const err = new Error("Last.fm is down");
-    vi.mocked(userGetTopAlbums).mockRejectedValue(err);
+    vi.mocked(userGetTopAlbums).mockRejectedValueOnce(err);
+
+    warmCovers(origin);
+
+    await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
+    expect(log.warn).toHaveBeenCalledWith(
+      { err, period: "7day" },
+      "Cover warm-up failed",
+    );
+    expect(requests).toHaveLength(4);
+  });
+
+  it("logs a warm-up that throws", async () => {
+    const err = new Error("Invalid image");
+    vi.mocked(getImageProps).mockImplementationOnce(() => {
+      throw err;
+    });
 
     warmCovers(origin);
 

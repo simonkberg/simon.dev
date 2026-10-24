@@ -231,7 +231,7 @@ describe("userGetTopArtists", () => {
 
 describe("userGetTopAlbums", () => {
   const cdn = "https://lastfm-img.freetls.fastly.net/i/u";
-  const images = (hash: string) =>
+  const images = (hash: string, host = cdn) =>
     [
       ["small", "34s"],
       ["medium", "64s"],
@@ -239,7 +239,7 @@ describe("userGetTopAlbums", () => {
       ["extralarge", "300x300"],
     ].map(([size, path]) => ({
       size,
-      "#text": hash && `${cdn}/${path}/${hash}.jpg`,
+      "#text": hash && `${host}/${path}/${hash}.jpg`,
     }));
   const album = (
     name: string,
@@ -299,9 +299,10 @@ describe("userGetTopAlbums", () => {
   it.each([
     ["no art", ""],
     ["Last.fm's placeholder star", "2a96cbd8b46e442fc41c2b86b821562f"],
-  ])("should leave out the cover for %s", async (_, hash) => {
+    ["another host", "abc123", "https://example.com/i/u"],
+  ])("should leave out the cover for %s", async (_, hash, host?: string) => {
     lastfmReturns({
-      topalbums: { album: [album("Test", 1, 250, images(hash))] },
+      topalbums: { album: [album("Test", 1, 250, images(hash, host))] },
     });
 
     const [first] = await userGetTopAlbums("testuser", {
