@@ -173,11 +173,15 @@ describe("ScrobbleChart", () => {
 
     await renderLanes(buckets);
 
-    const grow = [...document.querySelectorAll<HTMLElement>(".lane-run")].map(
-      (run) => Number(run.style.getPropertyValue("--grow")),
-    );
-    expect(grow).toHaveLength(4);
-    expect(Math.max(...grow)).toBeLessThan(1);
+    const grow = (selector: string) =>
+      [...document.querySelectorAll<HTMLElement>(selector)].map((element) =>
+        Number(element.style.getPropertyValue("--grow")),
+      );
+    const runs = grow(".lane-run");
+    expect(runs).toHaveLength(4);
+    expect(Math.max(...runs)).toBeLessThan(1);
+    expect(runs).toEqual(runs.toSorted((a, b) => b - a));
+    expect(grow(".lane-label")).toHaveLength(3);
   });
 
   it("renders full stems in server markup", () => {

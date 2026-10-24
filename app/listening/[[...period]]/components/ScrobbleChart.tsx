@@ -31,10 +31,15 @@ interface Run {
 }
 
 // Grows in from nothing on the client; the server markup already shows the end state.
-const useGrowFrom = () => {
+const useGrow = (count: number, delay: (index: number) => number) => {
   const animate = useMotion();
   const [from] = useState(animate ? 0 : 1);
-  return from;
+  const [springs] = useSprings(count, (index) => ({
+    from: { grow: from },
+    to: { grow: 1 },
+    delay: delay(index),
+  }));
+  return springs;
 };
 
 const Stems = ({
@@ -44,12 +49,7 @@ const Stems = ({
   items: readonly ScrobbleCount[];
   active: readonly Run[];
 }) => {
-  const from = useGrowFrom();
-  const [springs] = useSprings(items.length, (index) => ({
-    from: { grow: from },
-    to: { grow: 1 },
-    delay: index * 15,
-  }));
+  const springs = useGrow(items.length, (index) => index * 15);
 
   const counts = items.map(({ count }) => count);
   // All-zero counts would make the stems' `--value / --max` a 0/0.
@@ -177,13 +177,8 @@ const Lanes = ({
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
 }) => {
-  const from = useGrowFrom();
   // One per column, so each bar sweeps out after the stems above its start, left to right.
-  const [springs] = useSprings(items.length, (index) => ({
-    from: { grow: from },
-    to: { grow: 1 },
-    delay: 150 + index * 30,
-  }));
+  const springs = useGrow(items.length, (index) => 150 + index * 30);
 
   return (
     <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
@@ -207,7 +202,8 @@ const Lanes = ({
                 style={
                   {
                     gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
-                    "--grow": springs[first]?.grow,
+                    // Fades in under the bar's end it's aligned to.
+                    "--grow": springs[end ? last : first]?.grow,
                   } as CSSProperties
                 }
                 data-end={end || undefined}
