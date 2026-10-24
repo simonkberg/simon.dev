@@ -32,7 +32,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
     return <p>This day in past years is temporarily unavailable :(</p>;
   }
 
-  const max = Math.max(0, ...data.years.map(({ count }) => count)) || 1;
+  const max = Math.max(0, ...data.years.map(({ count }) => count));
 
   return (
     <ol className="timeline" style={{ "--max": max } as CSSProperties}>
