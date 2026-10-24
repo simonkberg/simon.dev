@@ -21,14 +21,10 @@ export const ChatStream = () => {
     let connected = false;
     let gatewayDown = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let stream: string | null = null;
 
     const disconnect = () => {
       eventSource?.close();
       eventSource = null;
-      // The server only notices a closed stream at its next ping.
-      if (stream) navigator.sendBeacon("/api/chat/presence", stream);
-      stream = null;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = null;
     };
@@ -46,9 +42,6 @@ export const ChatStream = () => {
         gatewayDown = false;
       };
       eventSource.onmessage = () => router.refresh();
-      eventSource.addEventListener("stream", (event) => {
-        stream = event.data;
-      });
       eventSource.addEventListener("presence", (event) => {
         setHere(JSON.parse(event.data) as string[]);
       });
@@ -84,23 +77,13 @@ export const ChatStream = () => {
       setStatus("offline");
     };
 
-    // Closing or leaving the page runs no cleanup, and a page kept in the
-    // back/forward cache comes back without its stream.
-    const resume = (event: PageTransitionEvent) => {
-      if (event.persisted) goOnline();
-    };
-
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
-    window.addEventListener("pagehide", disconnect);
-    window.addEventListener("pageshow", resume);
     connect();
 
     return () => {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
-      window.removeEventListener("pagehide", disconnect);
-      window.removeEventListener("pageshow", resume);
       disconnect();
     };
   }, [router]);

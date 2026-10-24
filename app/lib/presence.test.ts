@@ -8,7 +8,7 @@ import { batch, query } from "@/lib/turso";
 import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
-import { joinPresence, leavePresence } from "./presence";
+import { joinPresence } from "./presence";
 
 vi.mock(import("@/lib/turso"), async () =>
   (await import("@/mocks/sqlite")).mockTurso(),
@@ -153,7 +153,7 @@ describe("joinPresence", () => {
     expect(await storedStreams()).toEqual(["elsewhere-bob"]);
   });
 
-  it("stores its streams again after heartbeats failed for long enough to expire them", async () => {
+  it("stores its streams again after they expired while heartbeats failed", async () => {
     joinPresence("a1", alice, vi.fn());
     await settle();
 
@@ -196,57 +196,5 @@ describe("joinPresence", () => {
 
     expect(listener).toHaveBeenLastCalledWith(["alice"]);
     expect(await storedStreams()).toEqual(["a1"]);
-  });
-});
-
-describe("leavePresence", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  it("takes the visitor's stream out and tells everyone at once", async () => {
-    await seenElsewhere(alice);
-    const listener = vi.fn();
-    joinPresence("b1", bob, listener);
-    await settle();
-
-    await leavePresence("elsewhere-alice", alice);
-
-    expect(listener).toHaveBeenLastCalledWith(["bob"]);
-    expect(await storedStreams()).toEqual(["b1"]);
-  });
-
-  it("takes out this replica's stream, even before its join is stored", async () => {
-    const resolve = holdNextBatch();
-    const listener = vi.fn();
-    joinPresence("a1", alice, listener);
-    await settle();
-
-    const left = leavePresence("a1", alice);
-    resolve();
-    await left;
-    await heartbeat();
-
-    expect(listener).toHaveBeenLastCalledWith([]);
-    expect(await storedStreams()).toEqual([]);
-  });
-
-  it("leaves another visitor's stream alone", async () => {
-    await seenElsewhere(alice);
-
-    await leavePresence("elsewhere-alice", bob);
-
-    expect(await storedStreams()).toEqual(["elsewhere-alice"]);
-  });
-
-  it("logs a stream it couldn't take out", async () => {
-    vi.mocked(query).mockImplementation(failQuery(sqlite(), "DELETE"));
-
-    await leavePresence("elsewhere-alice", alice);
-
-    expect(log.warn).toHaveBeenCalledWith(
-      { err: new Error("boom") },
-      "Failed to take a stream out of presence",
-    );
   });
 });

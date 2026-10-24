@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { useRouter } from "next/navigation";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatStream } from "./ChatStream";
 
@@ -23,10 +23,6 @@ function createMockEventSource() {
 
     sendStatus(data: string) {
       this.dispatchEvent(new MessageEvent("status", { data }));
-    }
-
-    sendStream(id: string) {
-      this.dispatchEvent(new MessageEvent("stream", { data: id }));
     }
 
     sendPresence(here: string[]) {
@@ -148,53 +144,6 @@ describe("ChatStream", () => {
 
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("leaving", () => {
-    let sendBeacon: Mock;
-
-    beforeEach(() => {
-      sendBeacon = vi.spyOn(navigator, "sendBeacon").mockReturnValue(true);
-    });
-
-    it("tells the server which stream left when it closes one", () => {
-      const { unmount } = renderStream();
-      act(() => instance().sendStream("s1"));
-
-      unmount();
-
-      expect(sendBeacon).toHaveBeenCalledExactlyOnceWith(
-        "/api/chat/presence",
-        "s1",
-      );
-    });
-
-    it("closes the stream as the page hides and opens one if it comes back", () => {
-      const { initialCount } = renderStream();
-      const first = instance();
-      act(() => first.sendStream("s1"));
-
-      act(() => {
-        window.dispatchEvent(new Event("pagehide"));
-      });
-      expect(first.close).toHaveBeenCalled();
-      expect(sendBeacon).toHaveBeenCalledExactlyOnceWith(
-        "/api/chat/presence",
-        "s1",
-      );
-
-      act(() => {
-        window.dispatchEvent(new Event("pageshow"));
-      });
-      expect(mockEventSource.instances).toHaveLength(initialCount);
-      act(() => {
-        // happy-dom has no PageTransitionEvent of its own, only a plain Event.
-        window.dispatchEvent(
-          Object.assign(new Event("pageshow"), { persisted: true }),
-        );
-      });
-      expect(mockEventSource.instances).toHaveLength(initialCount + 1);
     });
   });
 

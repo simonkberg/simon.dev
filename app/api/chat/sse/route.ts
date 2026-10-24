@@ -7,7 +7,8 @@ import { joinPresence } from "@/lib/presence";
 import { findSession } from "@/lib/session";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
-const PING_INTERVAL_MS = 30_000;
+// Often, since a closed stream is only noticed at a write and counts as here until then.
+const PING_INTERVAL_MS = 5_000;
 const PING_MESSAGE = ": ping\n\n";
 
 const ignoreWriteErrors = (err: unknown) => {
@@ -46,12 +47,10 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  // The page names its stream when it leaves, so it drops out before the
-  // server notices. Sent at once, it also opens the stream on the client.
-  const stream = crypto.randomUUID();
-  send(`event: stream\ndata: ${stream}\n\n`);
-  const leavePresence = joinPresence(stream, session?.username, (here) =>
-    send(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
+  const leavePresence = joinPresence(
+    crypto.randomUUID(),
+    session?.username,
+    (here) => send(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
   );
 
   const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
@@ -64,6 +63,8 @@ export async function GET(request: NextRequest) {
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
   });
+
+  send(PING_MESSAGE);
 
   return new NextResponse(responseStream.readable, {
     headers: {

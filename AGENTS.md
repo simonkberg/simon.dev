@@ -158,9 +158,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   Each change makes tabs `router.refresh()`, served from history cached per store revision.
 - **Presence:** an open chat stream counts its visitor as here: one Turso `presence` row per
   stream. A replica's heartbeat is the only writer of its streams' rows: it runs on every open
-  and close and each 15s, retries failed writes (after a gap, every row, in case it expired), drops rows unseen for
-  45s and reads back everyone (`app/lib/presence.ts`). The server only notices a closed stream at its next ping, so the
-  page also beacons its stream id to `/api/chat/presence` as it closes.
+  and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
+  drops rows unseen for 45s and reads back everyone (`app/lib/presence.ts`). The server only
+  notices a closed stream when a write fails, so the stream pings every 5s.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as

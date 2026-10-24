@@ -84,11 +84,10 @@ describe("GET /api/chat/sse", () => {
     expect(connection).toHaveBeenCalledOnce();
   });
 
-  it("should name the stream on connection, as presence knows it", async () => {
+  it("should send initial ping on connection", async () => {
     const reader = await openReader();
 
-    const [stream] = vi.mocked(joinPresence).mock.calls[0]!;
-    expect(await readText(reader)).toBe(`event: stream\ndata: ${stream}\n\n`);
+    expect(await readText(reader)).toBe(": ping\n\n");
   });
 
   it("should send refresh event when gateway notifies", async () => {
@@ -131,11 +130,11 @@ describe("GET /api/chat/sse", () => {
     );
   });
 
-  it("should send periodic pings every 30 seconds", async () => {
+  it("should send periodic pings every 5 seconds", async () => {
     const reader = await openReader();
     await reader.read();
 
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(5_000);
 
     expect(await readText(reader)).toBe(": ping\n\n");
   });
@@ -183,7 +182,7 @@ describe("GET /api/chat/sse", () => {
     const reader = await openReader();
     const onMessage = vi.mocked(subscribeToChannel).mock.calls[0]![0];
     const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
-    const [stream, , onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+    const [, , onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
 
     controller.abort();
     onMessage();
@@ -191,8 +190,8 @@ describe("GET /api/chat/sse", () => {
     onPresence([]);
     await vi.advanceTimersByTimeAsync(30_000);
 
-    // Only what was written on connect, before the abort, reaches the client.
-    expect(await readText(reader)).toBe(`event: stream\ndata: ${stream}\n\n`);
+    // Only the ping written on connect, before the abort, reaches the client.
+    expect(await readText(reader)).toBe(": ping\n\n");
     expect((await reader.read()).done).toBe(true);
   });
 });
