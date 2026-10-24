@@ -9,6 +9,7 @@ export interface HeaderProps {
 const pages = [
   { href: "/", name: "home" },
   { href: "/listening/", name: "listening" },
+  { href: "/simon-bot", name: "simon-bot" },
 ] as const;
 
 export const Header = ({ section = "home" }: HeaderProps) => (
