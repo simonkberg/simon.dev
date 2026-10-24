@@ -81,7 +81,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
               {album.cover && (
                 <Image
                   src={album.cover}
-                  sizes={index === 0 ? "30rem" : "10rem"}
+                  sizes={index === 0 ? "(width < 40rem) 100vw, 30rem" : "10rem"}
                   alt=""
                   fill
                 />
