@@ -20,7 +20,7 @@ describe("ChatTyping", () => {
     act(() => setTyping(["simon"]));
 
     expect(renderToString(<ChatTyping />)).toBe(
-      '<p class="chat-typing" aria-live="polite"></p>',
+      '<div class="chat-typing" aria-live="polite"></div>',
     );
   });
 

@@ -2131,29 +2131,28 @@ ul {
 }
 
 .chat-typing {
-  position: absolute;
-  z-index: 2;
-  /* The history's inline padding, so it lines up with the messages. */
-  bottom: 4px;
-  left: 4px;
-  max-width: calc(100% - 8px);
-  margin: 0;
-  padding: 0 1ch;
-  border: 1px solid var(--rule);
-  border-radius: var(--pill-radius);
-  background: var(--surface);
-  font-size: var(--tip-size);
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: contents;
 
-  /* Kept in the DOM while empty, so screen readers hear the first typist. */
-  &:empty {
-    display: none;
+  > .typists {
+    position: absolute;
+    z-index: 2;
+    /* The history's inline padding, so it lines up with the messages. */
+    bottom: 4px;
+    left: 4px;
+    max-width: calc(100% - 8px);
+    margin: 0;
+    padding: 0 1ch;
+    border: 1px solid var(--rule);
+    border-radius: var(--pill-radius);
+    background: var(--surface);
+    font-size: var(--tip-size);
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  > .face {
+  .face {
     margin-right: 1ch;
   }
 }
