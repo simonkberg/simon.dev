@@ -194,9 +194,8 @@ const Lanes = ({
               }}
               data-end={end || undefined}
             >
-              <span className="lane-text" aria-hidden="true">
-                <span className="lane-name">{name}</span>
-                <span className="lane-plays">{formatPlays(plays)}</span>
+              <span className="lane-name" aria-hidden="true">
+                {name}
               </span>
               <span className="visually-hidden">{text}</span>
             </div>
