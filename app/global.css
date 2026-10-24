@@ -1219,15 +1219,15 @@ ul {
 /* On this day */
 
 .timeline {
-  --timeline-rails: var(--timeline-rail) var(--timeline-rail)
-    var(--timeline-rail) var(--timeline-rail) var(--timeline-rail)
-    var(--timeline-rail) var(--timeline-rail) var(--timeline-rail);
   margin: 0;
   padding: 0;
   list-style: none;
   font-variant-numeric: tabular-nums;
 
   > li {
+    --timeline-rails: var(--timeline-rail) var(--timeline-rail)
+      var(--timeline-rail) var(--timeline-rail) var(--timeline-rail)
+      var(--timeline-rail) var(--timeline-rail) var(--timeline-rail);
     position: relative;
     display: grid;
     grid-template-columns: 5ch minmax(0, 1fr);
