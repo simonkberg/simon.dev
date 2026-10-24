@@ -9,6 +9,7 @@ import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
 import {
   getUserPlays,
   userGetChartInRange,
+  userGetRandomScrobble,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -61,6 +62,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
     userGetTopAlbums: vi.fn(),
     getUserPlays: vi.fn(),
     userGetChartInRange: vi.fn(),
+    userGetRandomScrobble: vi.fn(),
     userGetScrobbles: vi.fn(),
   };
 });
@@ -188,6 +190,7 @@ describe("createMessage", () => {
         { name: "get_play_count" },
         { name: "get_top_in_range" },
         { name: "get_scrobbles_in_range" },
+        { name: "get_random_scrobble" },
         { name: "search_messages" },
         { name: "react" },
         { name: "remember" },
@@ -913,6 +916,12 @@ describe("createMessage", () => {
           to: new Date("2015-12-31T23:00:00Z"),
           limit: 10,
         },
+      ),
+      wiring(
+        "get_random_scrobble",
+        {},
+        userGetRandomScrobble,
+        config.lastfmUsername,
       ),
       wiring(
         "search_messages",

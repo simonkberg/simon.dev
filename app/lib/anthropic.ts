@@ -18,6 +18,7 @@ import {
   periods as lastfmPeriods,
   chartKinds,
   userGetChartInRange,
+  userGetRandomScrobble,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -204,6 +205,7 @@ const topInRangeInputSchema = dateRangeInputSchema
   .extend({ kind: z.enum(chartKinds).describe("What to rank") })
   .refine(...ordered);
 const scrobblesInRangeInputSchema = dateRangeInputSchema.refine(...ordered);
+const randomScrobbleInputSchema = z.object({ username: lastfmUsernameSchema });
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
   limit: z.number().min(1).max(25).default(25).describe("Max results"),
@@ -324,6 +326,12 @@ const LOOKUP_TOOLS = [
     input_schema: z.toJSONSchema(scrobblesInRangeInputSchema),
   },
   {
+    name: "get_random_scrobble",
+    description:
+      "Pick a random track from the whole Last.fm history: the last one played before a random moment since signup, with when it was played. Defaults to Simon's account. null when that moment came before the first scrobble, so try again.",
+    input_schema: z.toJSONSchema(randomScrobbleInputSchema),
+  },
+  {
     name: "search_messages",
     description:
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
@@ -421,6 +429,10 @@ async function executeTool(
             ...params,
           }),
         );
+      }
+      case "get_random_scrobble": {
+        const { username } = randomScrobbleInputSchema.parse(input);
+        return JSON.stringify(await userGetRandomScrobble(username));
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);

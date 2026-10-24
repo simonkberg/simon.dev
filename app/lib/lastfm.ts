@@ -332,6 +332,24 @@ export async function userGetTopArtistInRange(
   return top;
 }
 
+const userGetInfoResponseSchema = z
+  .object({
+    user: z.object({ registered: z.object({ unixtime: z.coerce.number() }) }),
+  })
+  .transform((data) => new Date(data.user.registered.unixtime * 1000));
+
+// Last.fm can't fetch the nth scrobble quickly, so a random moment since signup picks one.
+export async function userGetRandomScrobble(
+  user: string,
+): Promise<UserGetScrobblesResponse["tracks"][number] | null> {
+  const from = await call("user.getinfo", userGetInfoResponseSchema, { user });
+  const to = new Date(
+    from.getTime() + Math.random() * (Date.now() - from.getTime()),
+  );
+  const { tracks } = await userGetScrobbles(user, { from, to, limit: 1 });
+  return tracks[0] ?? null;
+}
+
 // Last.fm leaves the count out for an unknown user rather than failing.
 const userPlaysSchema = z.coerce.number().optional();
 

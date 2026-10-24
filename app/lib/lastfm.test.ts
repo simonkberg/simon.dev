@@ -6,6 +6,7 @@ import { server } from "@/mocks/node";
 import {
   getUserPlays,
   userGetChartInRange,
+  userGetRandomScrobble,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -415,6 +416,55 @@ describe("userGetTopArtistInRange", () => {
     lastfmReturns({ weeklyartistchart: {} });
 
     expect(await userGetTopArtistInRange("testuser", range)).toBeUndefined();
+  });
+});
+
+describe("userGetRandomScrobble", () => {
+  function lastfmHistory(track: object[]) {
+    vi.useFakeTimers({
+      now: new Date("2021-01-03T00:00:00Z"),
+      toFake: ["Date"],
+    });
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const requests: Record<string, string>[] = [];
+    server.use(
+      http.get(LASTFM_BASE_URL, ({ request }) => {
+        const params = Object.fromEntries(new URL(request.url).searchParams);
+        requests.push(params);
+        return HttpResponse.json(
+          params["method"] === "user.getinfo"
+            ? { user: { registered: { unixtime: "1609459200" } } }
+            : { recenttracks: { track, "@attr": { total: "1" } } },
+        );
+      }),
+    );
+    return requests;
+  }
+
+  it("should take the last scrobble before a random moment since signup", async () => {
+    const requests = lastfmHistory([
+      recentTrack("Test", playedAt("1609500000")),
+    ]);
+
+    expect(await userGetRandomScrobble("testuser")).toEqual(
+      expect.objectContaining({ name: "Test" }),
+    );
+    expect(requests).toEqual([
+      expect.objectContaining({ method: "user.getinfo", user: "testuser" }),
+      expect.objectContaining({
+        method: "user.getrecenttracks",
+        user: "testuser",
+        limit: "1",
+        from: "1609459200",
+        to: "1609545599",
+      }),
+    ]);
+  });
+
+  it("should return null when the moment came before the first scrobble", async () => {
+    lastfmHistory([]);
+
+    expect(await userGetRandomScrobble("testuser")).toBeNull();
   });
 });
 
