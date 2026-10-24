@@ -270,34 +270,52 @@ export async function userGetScrobbles(
   });
 }
 
-const weeklyArtistSchema = z.object({
-  name: z.string(),
-  playcount: z.string().transform(Number),
-});
-
-export type WeeklyArtist = z.infer<typeof weeklyArtistSchema>;
-
-const userGetTopArtistInRangeResponseSchema = z
+const chartItemSchema = z
   .object({
-    weeklyartistchart: z.object({
-      // In case an empty range leaves the list out rather than sending [].
-      artist: z.array(z.unknown()).default([]),
-    }),
+    name: z.string(),
+    playcount: z.string().transform(Number),
+    // Tracks and albums only.
+    artist: z.object({ "#text": z.string() }).optional(),
   })
-  // A year's chart lists thousands of artists, so only the top one is parsed.
-  .transform((data) => data.weeklyartistchart.artist[0])
-  .pipe(weeklyArtistSchema.optional());
+  .transform(({ name, playcount, artist }) => ({
+    name,
+    ...(artist && { artist: artist["#text"] }),
+    playcount,
+  }));
 
-// The weekly chart takes any range, not only the weeks Last.fm lists, ranked by plays.
+export type ChartItem = z.infer<typeof chartItemSchema>;
+
+export type ChartKind = "artist" | "track" | "album";
+
+// The weekly charts take any range, not only the weeks Last.fm lists, ranked by plays.
+export async function userGetChartInRange(
+  user: string,
+  kind: ChartKind,
+  params: { from: Date; to: Date; limit: number },
+): Promise<ChartItem[]> {
+  const chart = `weekly${kind}chart`;
+  const schema = z
+    .object({
+      [chart]: z.object({
+        // In case an empty range leaves the list out rather than sending [].
+        [kind]: z.array(z.unknown()).default([]),
+      }),
+    })
+    // A year's chart lists thousands of items, so only those asked for are parsed.
+    .transform((data) => data[chart]?.[kind]?.slice(0, params.limit) ?? [])
+    .pipe(z.array(chartItemSchema));
+  return call(`user.get${chart}`, schema, { user, ...rangeParams(params) });
+}
+
 export async function userGetTopArtistInRange(
   user: string,
   params: { from: Date; to: Date },
-) {
-  return call(
-    "user.getweeklyartistchart",
-    userGetTopArtistInRangeResponseSchema,
-    { user, ...rangeParams(params) },
-  );
+): Promise<ChartItem | undefined> {
+  const [top] = await userGetChartInRange(user, "artist", {
+    ...params,
+    limit: 1,
+  });
+  return top;
 }
 
 // Last.fm leaves the count out for an unknown user rather than failing.

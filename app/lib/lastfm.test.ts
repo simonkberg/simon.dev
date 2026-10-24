@@ -5,6 +5,7 @@ import { server } from "@/mocks/node";
 
 import {
   getUserPlays,
+  userGetChartInRange,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -340,6 +341,33 @@ describe("userGetScrobbles", () => {
 
     expect(scrobbles.tracks).toEqual([
       expect.objectContaining({ name: "Test" }),
+    ]);
+  });
+});
+
+describe("userGetChartInRange", () => {
+  it("should take the most played tracks in the range, up to the limit", async () => {
+    const params = lastfmReturns({
+      weeklytrackchart: {
+        track: ["Thursday", "Overcoat", "Gold"].map((name, i) => ({
+          name,
+          artist: { "#text": `${name} Artist` },
+          playcount: String(9 - i),
+          "@attr": { rank: String(i + 1) },
+        })),
+      },
+    });
+
+    const top = await userGetChartInRange("testuser", "track", {
+      from: new Date("2021-01-01T00:00:00Z"),
+      to: new Date("2021-01-02T00:00:00Z"),
+      limit: 2,
+    });
+
+    expect(params()).toMatchObject({ method: "user.getweeklytrackchart" });
+    expect(top).toEqual([
+      { name: "Thursday", artist: "Thursday Artist", playcount: 9 },
+      { name: "Overcoat", artist: "Overcoat Artist", playcount: 8 },
     ]);
   });
 });

@@ -4,6 +4,7 @@ import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
 import {
+  type ChartItem,
   type Period,
   userGetRecentTracks,
   userGetScrobbles,
@@ -15,7 +16,6 @@ import {
   type UserGetTopArtistsResponse,
   userGetTopTracks,
   type UserGetTopTracksResponse,
-  type WeeklyArtist,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
@@ -174,7 +174,7 @@ export async function getScrobbles(
 export interface BucketTopArtist {
   label: string;
   // Undefined for a bucket without scrobbles.
-  artist: WeeklyArtist | undefined;
+  artist: ChartItem | undefined;
 }
 
 export type GetTopArtistByBucketResult =

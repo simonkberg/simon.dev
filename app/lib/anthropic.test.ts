@@ -8,7 +8,9 @@ import { config } from "@/config";
 import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
 import {
   getUserPlays,
+  userGetChartInRange,
   userGetRecentTracks,
+  userGetScrobbles,
   userGetTopAlbums,
   userGetTopArtists,
   userGetTopTracks,
@@ -58,6 +60,8 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
     userGetTopArtists: vi.fn(),
     userGetTopAlbums: vi.fn(),
     getUserPlays: vi.fn(),
+    userGetChartInRange: vi.fn(),
+    userGetScrobbles: vi.fn(),
   };
 });
 
@@ -182,6 +186,8 @@ describe("createMessage", () => {
         { name: "get_top_artists" },
         { name: "get_top_albums" },
         { name: "get_play_count" },
+        { name: "get_top_in_range" },
+        { name: "get_scrobbles_in_range" },
         { name: "search_messages" },
         { name: "react" },
         { name: "remember" },
@@ -875,6 +881,29 @@ describe("createMessage", () => {
         getUserPlays,
         config.lastfmUsername,
         { artist: "Radiohead", track: "Idioteque" },
+      ),
+      wiring(
+        "get_top_in_range",
+        { kind: "album", from: "2015-01-01", to: "2015-12-31", limit: 5 },
+        userGetChartInRange,
+        config.lastfmUsername,
+        "album",
+        {
+          from: new Date("2014-12-31T23:00:00Z"),
+          to: new Date("2015-12-31T23:00:00Z"),
+          limit: 5,
+        },
+      ),
+      wiring(
+        "get_scrobbles_in_range",
+        { from: "2015-12-31", to: "2015-12-31" },
+        userGetScrobbles,
+        config.lastfmUsername,
+        {
+          from: new Date("2015-12-30T23:00:00Z"),
+          to: new Date("2015-12-31T23:00:00Z"),
+          limit: 10,
+        },
       ),
       wiring(
         "search_messages",
