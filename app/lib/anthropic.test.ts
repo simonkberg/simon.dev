@@ -740,6 +740,15 @@ describe("createMessage", () => {
       result: expect.stringContaining("limit"),
     },
     {
+      case: "a range that ends before it starts",
+      use: toolUse("get_scrobbles_in_range", {
+        from: "2016-01-01",
+        to: "2015-01-01",
+      }),
+      rejection: undefined,
+      result: expect.stringContaining("from must be on or before to"),
+    },
+    {
       case: "a tool that throws",
       use: toolUse("get_wakatime_stats"),
       rejection: new Error("Network failure"),

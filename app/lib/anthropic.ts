@@ -194,13 +194,21 @@ const dateRangeInputSchema = z.object({
   from: z.iso.date().describe("First day, as YYYY-MM-DD in Stockholm time"),
   to: z.iso.date().describe("Last day, included, as YYYY-MM-DD"),
 });
-const topInRangeInputSchema = dateRangeInputSchema.extend({
-  kind: z.enum(["artist", "track", "album"]).describe("What to rank"),
-  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
-});
-const scrobblesInRangeInputSchema = dateRangeInputSchema.extend({
-  limit: z.number().min(1).max(50).default(10).describe("Number of tracks"),
-});
+const ordered = [
+  ({ from, to }: { from: string; to: string }) => from <= to,
+  "from must be on or before to",
+] as const;
+const topInRangeInputSchema = dateRangeInputSchema
+  .extend({
+    kind: z.enum(["artist", "track", "album"]).describe("What to rank"),
+    limit: z.number().min(1).max(50).default(10).describe("Number of items"),
+  })
+  .refine(...ordered);
+const scrobblesInRangeInputSchema = dateRangeInputSchema
+  .extend({
+    limit: z.number().min(1).max(50).default(10).describe("Number of tracks"),
+  })
+  .refine(...ordered);
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
   limit: z.number().min(1).max(25).default(25).describe("Max results"),

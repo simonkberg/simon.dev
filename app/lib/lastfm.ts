@@ -285,7 +285,22 @@ const chartItemSchema = z
 
 export type ChartItem = z.infer<typeof chartItemSchema>;
 
-export type ChartKind = "artist" | "track" | "album";
+// In case an empty range leaves the list out rather than sending [].
+const chartListSchema = z.array(z.unknown()).default([]);
+
+const chartSchemas = {
+  artist: z
+    .object({ weeklyartistchart: z.object({ artist: chartListSchema }) })
+    .transform((data) => data.weeklyartistchart.artist),
+  track: z
+    .object({ weeklytrackchart: z.object({ track: chartListSchema }) })
+    .transform((data) => data.weeklytrackchart.track),
+  album: z
+    .object({ weeklyalbumchart: z.object({ album: chartListSchema }) })
+    .transform((data) => data.weeklyalbumchart.album),
+};
+
+export type ChartKind = keyof typeof chartSchemas;
 
 // The weekly charts take any range, not only the weeks Last.fm lists, ranked by plays.
 export async function userGetChartInRange(
@@ -293,18 +308,14 @@ export async function userGetChartInRange(
   kind: ChartKind,
   params: { from: Date; to: Date; limit: number },
 ): Promise<ChartItem[]> {
-  const chart = `weekly${kind}chart`;
-  const schema = z
-    .object({
-      [chart]: z.object({
-        // In case an empty range leaves the list out rather than sending [].
-        [kind]: z.array(z.unknown()).default([]),
-      }),
-    })
+  const schema = chartSchemas[kind]
     // A year's chart lists thousands of items, so only those asked for are parsed.
-    .transform((data) => data[chart]?.[kind]?.slice(0, params.limit) ?? [])
+    .transform((items) => items.slice(0, params.limit))
     .pipe(z.array(chartItemSchema));
-  return call(`user.get${chart}`, schema, { user, ...rangeParams(params) });
+  return call(`user.getweekly${kind}chart`, schema, {
+    user,
+    ...rangeParams(params),
+  });
 }
 
 export async function userGetTopArtistInRange(

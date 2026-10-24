@@ -346,30 +346,33 @@ describe("userGetScrobbles", () => {
 });
 
 describe("userGetChartInRange", () => {
-  it("should take the most played tracks in the range, up to the limit", async () => {
-    const params = lastfmReturns({
-      weeklytrackchart: {
-        track: ["Thursday", "Overcoat", "Gold"].map((name, i) => ({
-          name,
-          artist: { "#text": `${name} Artist` },
-          playcount: String(9 - i),
-          "@attr": { rank: String(i + 1) },
-        })),
-      },
-    });
+  it.each(["track", "album"] as const)(
+    "should take the most played %ss in the range, up to the limit",
+    async (kind) => {
+      const params = lastfmReturns({
+        [`weekly${kind}chart`]: {
+          [kind]: ["Thursday", "Overcoat", "Gold"].map((name, i) => ({
+            name,
+            artist: { "#text": `${name} Artist` },
+            playcount: String(9 - i),
+            "@attr": { rank: String(i + 1) },
+          })),
+        },
+      });
 
-    const top = await userGetChartInRange("testuser", "track", {
-      from: new Date("2021-01-01T00:00:00Z"),
-      to: new Date("2021-01-02T00:00:00Z"),
-      limit: 2,
-    });
+      const top = await userGetChartInRange("testuser", kind, {
+        from: new Date("2021-01-01T00:00:00Z"),
+        to: new Date("2021-01-02T00:00:00Z"),
+        limit: 2,
+      });
 
-    expect(params()).toMatchObject({ method: "user.getweeklytrackchart" });
-    expect(top).toEqual([
-      { name: "Thursday", artist: "Thursday Artist", playcount: 9 },
-      { name: "Overcoat", artist: "Overcoat Artist", playcount: 8 },
-    ]);
-  });
+      expect(params()).toMatchObject({ method: `user.getweekly${kind}chart` });
+      expect(top).toEqual([
+        { name: "Thursday", artist: "Thursday Artist", playcount: 9 },
+        { name: "Overcoat", artist: "Overcoat Artist", playcount: 8 },
+      ]);
+    },
+  );
 });
 
 describe("userGetTopArtistInRange", () => {
