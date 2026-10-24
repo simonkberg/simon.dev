@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { type CSSProperties, use } from "react";
+import { use } from "react";
 
 import type { TopAlbum } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
@@ -64,9 +64,6 @@ const Dither = () => (
   </svg>
 );
 
-const rows = (count: number) =>
-  ({ "--rows": Math.ceil(count / 2) }) as CSSProperties;
-
 export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   const items = use(albums);
 
@@ -99,7 +96,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
           </li>
         ))}
       </ol>
-      <ol className="collage-legend" style={rows(items.length)}>
+      <ol className="collage-legend">
         {items.map((album) => (
           <li key={`${album.rank}-${album.name}`}>
             <span className="legend-rank">{album.rank}</span>
@@ -138,7 +135,7 @@ export const AlbumCollageSkeleton = () => (
           </li>
         ))}
       </ol>
-      <ol className="collage-legend" style={rows(nameWidths.length)}>
+      <ol className="collage-legend">
         {nameWidths.map(([name, artist], index) => (
           <li key={index}>
             <span className="legend-rank">{index + 1}</span>
