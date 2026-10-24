@@ -126,7 +126,6 @@
   --cover-blend: normal;
   --cover-overlay: none;
   --cover-frame: none;
-  --cover-frame-offset: 0;
   --cover-frame-hover: var(--cover-frame);
   --cover-rank-display: block;
   --cover-rank-bg: var(--ink);
@@ -333,7 +332,6 @@
     transparent 1px 3px
   );
   --cover-frame: 1px solid var(--rule);
-  --cover-frame-offset: 2px;
   --cover-frame-hover: 1px solid var(--accent);
   --cover-rank-bg: var(--accent);
   --cover-rank-color: var(--on-accent);
@@ -2115,7 +2113,6 @@ tbody tr:hover {
   overflow: hidden;
   background: var(--cover-bg);
   outline: var(--cover-frame);
-  outline-offset: var(--cover-frame-offset);
   text-decoration: none;
 
   img {
