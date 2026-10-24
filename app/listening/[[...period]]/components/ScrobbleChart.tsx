@@ -121,11 +121,16 @@ const Stems = ({
   );
 };
 
+// Empty buckets stay apart from ones whose artist failed to load.
+const shelfKey = ({ topArtist, count }: ScrobbleCount) =>
+  topArtist?.name ?? count > 0;
+
 // Neighbouring buckets with the same top artist share one spine.
 const runs = (items: readonly ScrobbleCount[]): Run[] =>
-  items.reduce<Run[]>((runs, { topArtist }, index) => {
+  items.reduce<Run[]>((runs, item, index) => {
     const run = runs.at(-1);
-    if (run && items[run.last]?.topArtist?.name === topArtist?.name) {
+    const previous = run && items[run.last];
+    if (previous && shelfKey(previous) === shelfKey(item)) {
       run.last = index;
     } else {
       runs.push({ first: index, last: index });
@@ -155,7 +160,7 @@ const Shelf = ({
           first === last ? first?.label : `${first?.label}–${last?.label}`;
         const text = name
           ? `${range}: ${name}, ${formatNumber(plays)} plays${last?.current ? " so far" : ""}`
-          : `${range}: no scrobbles`;
+          : `${range}: ${first?.count ? "top artist unavailable" : "no scrobbles"}`;
         return (
           <li
             key={run.first}

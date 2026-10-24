@@ -62,6 +62,18 @@ describe("ScrobbleChart", () => {
     ]);
   });
 
+  it("keeps empty buckets apart from ones whose artist failed to load", async () => {
+    await renderChart([
+      { label: "2016", count: 0, topArtist: undefined, current: false },
+      { label: "2017", count: 5, topArtist: undefined, current: false },
+    ]);
+
+    expect(screen.getByText("2016: no scrobbles")).toBeInTheDocument();
+    expect(
+      screen.getByText("2017: top artist unavailable"),
+    ).toBeInTheDocument();
+  });
+
   it("lights a spine's stems while it is hovered", async () => {
     await renderChart(scrobbles);
     const spine = screen.getByText(

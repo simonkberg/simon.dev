@@ -126,7 +126,7 @@ export async function getTopAlbums(
 export interface ScrobbleCount {
   label: string;
   count: number;
-  // Undefined when the bucket has no scrobbles.
+  // Undefined when the bucket has no scrobbles or the artist failed to load.
   topArtist: { name: string; playcount: number } | undefined;
   // Still under way, so its count is partial.
   current: boolean;
@@ -151,7 +151,13 @@ export async function getScrobbles(
       buckets.map(async ({ label, from, to }) => {
         const [count, topArtist] = await Promise.all([
           userGetScrobbleCount(config.lastfmUsername, { from, to }),
-          userGetTopArtistInRange(config.lastfmUsername, { from, to }),
+          // The spines are a garnish: a failed one shouldn't take the counts with it.
+          userGetTopArtistInRange(config.lastfmUsername, { from, to }).catch(
+            (err: unknown) => {
+              log.warn({ err, label }, "Error fetching top artist");
+              return undefined;
+            },
+          ),
         ]);
         return { label, count, topArtist, current: to > now };
       }),

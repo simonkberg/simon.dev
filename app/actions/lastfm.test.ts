@@ -248,6 +248,24 @@ describe("getScrobbles", () => {
     });
   });
 
+  it("should keep the counts when a top artist fails", async () => {
+    const mockError = new Error("API error");
+    vi.mocked(userGetTopArtistInRange).mockRejectedValueOnce(mockError);
+
+    const result = await getScrobbles("7day");
+
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Oct 17", count: 42, topArtist: undefined, current: false },
+      ]),
+    });
+    expect(log.warn).toHaveBeenCalledExactlyOnceWith(
+      { err: mockError, label: "Oct 17" },
+      "Error fetching top artist",
+    );
+  });
+
   it("should return error status when a count fails", async () => {
     const mockError = new Error("API error");
     vi.mocked(userGetScrobbleCount).mockRejectedValue(mockError);
