@@ -271,6 +271,7 @@ describe("createMessage", () => {
         category: "self",
         content: "i like trains",
         createdAt: CREATED_AT,
+        updatedAt: expect.any(String),
       });
     });
 
