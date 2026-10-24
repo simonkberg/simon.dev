@@ -154,18 +154,13 @@ export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
 
 /** Stockholm's days from `from` through `to`, each a "YYYY-MM-DD" date. */
 export function dayRange(from: string, to: string): { from: Date; to: Date } {
-  const first = new Date(from);
-  const last = new Date(to);
-  return {
-    from: midnight(
-      first.getUTCFullYear(),
-      first.getUTCMonth(),
-      first.getUTCDate(),
-    ),
-    to: midnight(
-      last.getUTCFullYear(),
-      last.getUTCMonth(),
-      last.getUTCDate() + 1,
-    ),
+  const day = (date: string, offset = 0) => {
+    const d = new Date(date);
+    return midnight(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate() + offset,
+    );
   };
+  return { from: day(from), to: day(to, 1) };
 }

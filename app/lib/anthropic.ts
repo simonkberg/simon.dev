@@ -16,6 +16,7 @@ import { env } from "@/lib/env";
 import {
   getUserPlays,
   periods as lastfmPeriods,
+  chartKinds,
   userGetChartInRange,
   userGetRecentTracks,
   userGetScrobbles,
@@ -193,22 +194,16 @@ const dateRangeInputSchema = z.object({
   username: lastfmUsernameSchema,
   from: z.iso.date().describe("First day, as YYYY-MM-DD in Stockholm time"),
   to: z.iso.date().describe("Last day, included, as YYYY-MM-DD"),
+  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
 });
 const ordered = [
   ({ from, to }: { from: string; to: string }) => from <= to,
   "from must be on or before to",
 ] as const;
 const topInRangeInputSchema = dateRangeInputSchema
-  .extend({
-    kind: z.enum(["artist", "track", "album"]).describe("What to rank"),
-    limit: z.number().min(1).max(50).default(10).describe("Number of items"),
-  })
+  .extend({ kind: z.enum(chartKinds).describe("What to rank") })
   .refine(...ordered);
-const scrobblesInRangeInputSchema = dateRangeInputSchema
-  .extend({
-    limit: z.number().min(1).max(50).default(10).describe("Number of tracks"),
-  })
-  .refine(...ordered);
+const scrobblesInRangeInputSchema = dateRangeInputSchema.refine(...ordered);
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
   limit: z.number().min(1).max(25).default(25).describe("Max results"),
@@ -408,20 +403,23 @@ async function executeTool(
         return JSON.stringify(await getUserPlays(username, params));
       }
       case "get_top_in_range": {
-        const { username, kind, from, to, limit } =
+        const { username, kind, from, to, ...params } =
           topInRangeInputSchema.parse(input);
         return JSON.stringify(
           await userGetChartInRange(username, kind, {
             ...dayRange(from, to),
-            limit,
+            ...params,
           }),
         );
       }
       case "get_scrobbles_in_range": {
-        const { username, from, to, limit } =
+        const { username, from, to, ...params } =
           scrobblesInRangeInputSchema.parse(input);
         return JSON.stringify(
-          await userGetScrobbles(username, { ...dayRange(from, to), limit }),
+          await userGetScrobbles(username, {
+            ...dayRange(from, to),
+            ...params,
+          }),
         );
       }
       case "search_messages": {

@@ -232,14 +232,14 @@ export async function userGetTopAlbums(
 
 const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
 
+// A list of one comes back bare, not in an array.
+const oneOrMany = <T extends z.ZodType>(item: T) =>
+  z.union([z.array(item), item.transform((one) => [one])]);
+
 const userGetScrobblesResponseSchema = z
   .object({
     recenttracks: z.object({
-      // A range with one scrobble lists it bare, not in an array.
-      track: z.union([
-        z.array(recentTrackSchema),
-        recentTrackSchema.transform((track) => [track]),
-      ]),
+      track: oneOrMany(recentTrackSchema),
       "@attr": z.object({ total: z.string().transform(Number) }),
     }),
   })
@@ -285,14 +285,13 @@ const chartItemSchema = z
 
 export type ChartItem = z.infer<typeof chartItemSchema>;
 
-const chartListSchema = z
-  .union([
-    z.array(z.unknown()),
-    // A chart of one lists it bare, as a range of one scrobble does.
-    z.looseObject({}).transform((item) => [item]),
-  ])
+const chartListSchema = oneOrMany(z.looseObject({}))
   // In case an empty range leaves the list out rather than sending [].
   .default([]);
+
+export const chartKinds = ["artist", "track", "album"] as const;
+
+export type ChartKind = (typeof chartKinds)[number];
 
 const chartSchemas = {
   artist: z
@@ -304,9 +303,7 @@ const chartSchemas = {
   album: z
     .object({ weeklyalbumchart: z.object({ album: chartListSchema }) })
     .transform((data) => data.weeklyalbumchart.album),
-};
-
-export type ChartKind = keyof typeof chartSchemas;
+} satisfies Record<ChartKind, z.ZodType<unknown[]>>;
 
 // The weekly charts take any range, not only the weeks Last.fm lists, ranked by plays.
 export async function userGetChartInRange(
