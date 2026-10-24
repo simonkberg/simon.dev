@@ -229,23 +229,25 @@ describe("userGetTopArtists", () => {
 });
 
 describe("userGetTopAlbums", () => {
+  const cdn = "https://lastfm.freetls.fastly.net/i/u";
+  const images = (hash: string) =>
+    ["34s", "64s", "174s", "300x300"].map((path, index) => ({
+      size: ["small", "medium", "large", "extralarge"][index],
+      "#text": hash && `${cdn}/${path}/${hash}.jpg`,
+    }));
+  const album = (name: string, rank: number, image?: object[]) => ({
+    name,
+    playcount: String(300 - rank * 50),
+    url: `https://www.last.fm/music/${name}`,
+    artist: { name: `${name} Artist` },
+    image,
+    "@attr": { rank: String(rank) },
+  });
+
   it("should fetch and parse top albums successfully", async () => {
     const params = lastfmReturns({
       topalbums: {
-        album: [
-          {
-            name: "Test Album",
-            playcount: "200",
-            artist: { name: "Test Artist" },
-            "@attr": { rank: "1" },
-          },
-          {
-            name: "Another Album",
-            playcount: "150",
-            artist: { name: "Another Artist" },
-            "@attr": { rank: "2" },
-          },
-        ],
+        album: [album("Test", 1, images("abc123")), album("Another", 2)],
       },
     });
 
@@ -261,14 +263,37 @@ describe("userGetTopAlbums", () => {
       limit: "10",
     });
     expect(albums).toEqual([
-      { name: "Test Album", artist: "Test Artist", playcount: 200, rank: 1 },
       {
-        name: "Another Album",
+        name: "Test",
+        artist: "Test Artist",
+        playcount: 250,
+        rank: 1,
+        url: "https://www.last.fm/music/Test",
+        cover: `${cdn}/300x300/abc123.jpg`,
+      },
+      {
+        name: "Another",
         artist: "Another Artist",
-        playcount: 150,
+        playcount: 200,
         rank: 2,
+        url: "https://www.last.fm/music/Another",
+        cover: undefined,
       },
     ]);
+  });
+
+  it.each([
+    ["no art", ""],
+    ["Last.fm's placeholder star", "2a96cbd8b46e442fc41c2b86b821562f"],
+  ])("should leave out the cover for %s", async (_, hash) => {
+    lastfmReturns({ topalbums: { album: [album("Test", 1, images(hash))] } });
+
+    const [first] = await userGetTopAlbums("testuser", {
+      period: "3month",
+      limit: 10,
+    });
+
+    expect(first?.cover).toBeUndefined();
   });
 });
 

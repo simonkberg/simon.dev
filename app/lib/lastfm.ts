@@ -188,6 +188,16 @@ export async function userGetTopArtists(
   });
 }
 
+// Last.fm serves this grey star for albums without art.
+const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
+
+const coverSchema = z
+  .array(z.object({ size: z.string(), "#text": z.string() }))
+  .transform((images) => {
+    const url = images.find(({ size }) => size === "extralarge")?.["#text"];
+    return url && !url.includes(PLACEHOLDER_COVER) ? url : undefined;
+  });
+
 const userGetTopAlbumsResponseSchema = z
   .object({
     topalbums: z.object({
@@ -196,7 +206,9 @@ const userGetTopAlbumsResponseSchema = z
           .object({
             name: z.string(),
             playcount: z.string().transform(Number),
+            url: z.templateLiteral(["https://", z.string()]),
             artist: z.object({ name: z.string() }),
+            image: coverSchema.optional(),
             "@attr": z.object({ rank: z.string().transform(Number) }),
           })
           .transform((data) => ({
@@ -204,6 +216,8 @@ const userGetTopAlbumsResponseSchema = z
             artist: data.artist.name,
             playcount: data.playcount,
             rank: data["@attr"].rank,
+            url: data.url,
+            cover: data.image,
           })),
       ),
     }),

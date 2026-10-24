@@ -188,6 +188,6 @@ describe("ListeningPage", () => {
     await waitFor(() => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
-    expect(screen.getAllByRole("table")).toHaveLength(3);
+    expect(screen.getAllByRole("table")).toHaveLength(2);
   });
 });

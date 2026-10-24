@@ -118,6 +118,20 @@
   --stems-hover: var(--accent);
   --stems-hover-bg: transparent;
 
+  --collage-gap: 0.75rem;
+  --collage-bg: transparent;
+  --collage-border: none;
+  --cover-bg: var(--wash);
+  --cover-filter: none;
+  --cover-blend: normal;
+  --cover-overlay: none;
+  --cover-frame: none;
+  --cover-frame-offset: 0;
+  --cover-frame-hover: var(--cover-frame);
+  --cover-rank-display: block;
+  --cover-rank-bg: var(--ink);
+  --cover-rank-color: var(--ground);
+
   --tracks-max: none;
   --track-display: block;
   --track-indent: 0;
@@ -313,6 +327,16 @@
   --stats-row-bleed: -1ch;
   --stats-heat: var(--heat);
   --stems-hover-bg: var(--heat);
+  --cover-filter: saturate(0.85) contrast(1.05);
+  --cover-overlay: repeating-linear-gradient(
+    light-dark(oklch(1 0 0 / 0.1), oklch(0 0 0 / 0.18)) 0 1px,
+    transparent 1px 3px
+  );
+  --cover-frame: 1px solid var(--rule);
+  --cover-frame-offset: 2px;
+  --cover-frame-hover: 1px solid var(--accent);
+  --cover-rank-bg: var(--accent);
+  --cover-rank-color: var(--on-accent);
 
   --track-padding: 0 0 0 2.5ch;
   --track-marker: "›";
@@ -445,6 +469,16 @@
   --stems-color: var(--accent);
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
+  --collage-gap: 1px;
+  --collage-bg: var(--rule);
+  --collage-border: 1px solid var(--rule);
+  --cover-bg: light-dark(
+    color-mix(in oklch, var(--accent) 35%, white),
+    color-mix(in oklch, var(--accent) 60%, var(--ground))
+  );
+  --cover-filter: grayscale(1) contrast(1.1);
+  --cover-blend: multiply;
+  --cover-rank-display: none;
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -572,6 +606,12 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
+  --cover-filter: url(#cover-dither);
+  --cover-overlay: linear-gradient(
+    light-dark(transparent, oklch(0 0 0 / 0.15))
+  );
+  --cover-frame: 1px solid var(--ink);
+  --cover-frame-offset: -1px;
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
   --links-display: flex;
@@ -1444,6 +1484,7 @@ ul {
 
 .placeholder {
   --stats-fill: none;
+  --cover-overlay: none;
   --row-hover: transparent;
   user-select: none;
 
@@ -2028,6 +2069,146 @@ td:first-child {
 
 tbody tr:hover {
   background: var(--row-hover);
+}
+
+.collage {
+  display: grid;
+  gap: 1lh;
+  container-type: inline-size;
+}
+
+.collage-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.collage-covers {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--collage-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--collage-bg);
+  border: var(--collage-border);
+
+  /* The top album spans three rows and columns; equal gaps keep it square with them. */
+  > :first-child {
+    grid-column: span 3;
+    grid-row: span 3;
+  }
+
+  @container (width < 36rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    > :first-child {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+  }
+}
+
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--cover-bg);
+  outline: var(--cover-frame);
+  outline-offset: var(--cover-frame-offset);
+  text-decoration: none;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: var(--cover-filter);
+    mix-blend-mode: var(--cover-blend);
+    transition: filter 0.2s;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--cover-overlay);
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  &:is(:hover, :focus-visible) {
+    outline: var(--cover-frame-hover);
+
+    img {
+      filter: none;
+      mix-blend-mode: normal;
+    }
+
+    &::after {
+      opacity: 0;
+    }
+  }
+}
+
+.cover-rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: var(--cover-rank-display);
+  padding: 0 1ch;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cover-rank-color);
+  background: var(--cover-rank-bg);
+}
+
+.collage-legend {
+  display: grid;
+  grid-template-rows: repeat(var(--rows), auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  column-gap: 3ch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @container (width < 36rem) {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-flow: row;
+  }
+
+  > li {
+    display: grid;
+    grid-template-columns: 3ch minmax(0, 1fr) auto;
+    column-gap: 1ch;
+    padding: var(--td-padding);
+    border-bottom: var(--td-rule);
+  }
+}
+
+.legend-rank {
+  text-align: right;
+  color: var(--rank-color);
+}
+
+.legend-name,
+.legend-artist {
+  overflow-wrap: anywhere;
+}
+
+.legend-artist {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.legend-plays {
+  grid-area: 1 / 3;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

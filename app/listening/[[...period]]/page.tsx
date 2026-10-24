@@ -20,6 +20,7 @@ import {
 } from "@/lib/lastfm";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 
+import { AlbumCollage, AlbumCollageSkeleton } from "./components/AlbumCollage";
 import { PeriodSelector } from "./components/PeriodSelector";
 import {
   ScrobbleChart,
@@ -37,10 +38,6 @@ const trackColumns = [
   { label: "Artist", key: "artist" },
 ] as const;
 const artistColumns = [{ label: "Artist", key: "name" }] as const;
-const albumColumns = [
-  { label: "Album", key: "name" },
-  { label: "Artist", key: "artist" },
-] as const;
 
 type ListeningPageProps = PageProps<"/listening/[[...period]]">;
 
@@ -136,8 +133,8 @@ export default function ListeningPage({ params }: ListeningPageProps) {
         <Heading level={2}>
           Top Albums <Subtitle>(Top 10)</Subtitle>
         </Heading>
-        <Suspense fallback={<TopTableSkeleton columns={albumColumns} />}>
-          <TopTable rows={topAlbums} noun="albums" columns={albumColumns} />
+        <Suspense fallback={<AlbumCollageSkeleton />}>
+          <AlbumCollage albums={topAlbums} />
         </Suspense>
       </section>
     </Page>

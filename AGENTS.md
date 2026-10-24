@@ -182,6 +182,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
   page): a request per bar, each hour the chart is cached.
+- **Album covers:** `next/image` loads Last.fm covers through `app/lib/coverLoader.ts`
+  (`images.loaderFile`), which picks one of the few sizes Last.fm's CDN serves; any other
+  path returns the original upload. Each look filters the covers (`--cover-filter`, manual's
+  is the SVG `#cover-dither`), and hover or focus shows them unfiltered.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
   Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never

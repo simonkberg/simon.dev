@@ -1,0 +1,95 @@
+import { act, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import type { TopAlbum } from "@/actions/lastfm";
+
+import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
+
+vi.mock(import("@/components/AnimatedNumber"), () => ({
+  AnimatedNumber: ({ value }: { value: number }) => <span>{value}</span>,
+}));
+
+const cover = "https://lastfm.freetls.fastly.net/i/u/300x300/abc.jpg";
+
+const albums: TopAlbum[] = [
+  {
+    name: "Knock Knock",
+    artist: "Smog",
+    playcount: 31,
+    rank: 1,
+    url: "https://www.last.fm/music/Smog/Knock+Knock",
+    cover,
+  },
+  {
+    name: "Beheaded",
+    artist: "Bedhead",
+    playcount: 30,
+    rank: 2,
+    url: "https://www.last.fm/music/Bedhead/Beheaded",
+    cover: undefined,
+  },
+];
+
+const renderCollage = (items: TopAlbum[] | undefined) =>
+  act(async () => render(<AlbumCollage albums={Promise.resolve(items)} />));
+
+describe("AlbumCollage", () => {
+  it("links each cover to its album on Last.fm", async () => {
+    await renderCollage(albums);
+
+    const link = screen.getByRole("link", {
+      name: "Knock Knock by Smog on Last.fm",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.last.fm/music/Smog/Knock+Knock",
+    );
+    expect(within(link).getByRole("presentation")).toHaveAttribute(
+      "src",
+      expect.stringContaining("abc.jpg"),
+    );
+  });
+
+  it("leaves a cover's tile empty when the album has no art", async () => {
+    await renderCollage(albums);
+
+    const link = screen.getByRole("link", {
+      name: "Beheaded by Bedhead on Last.fm",
+    });
+    expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
+  });
+
+  it("lists each album's rank, name, artist and plays", async () => {
+    await renderCollage(albums);
+
+    const [legend] = screen
+      .getAllByRole("list")
+      .filter((list) => list.classList.contains("collage-legend"));
+    expect(
+      within(legend!)
+        .getAllByRole("listitem")
+        .map((item) => [...item.children].map((child) => child.textContent)),
+    ).toEqual([
+      ["1", "Knock Knock", "Smog", "31"],
+      ["2", "Beheaded", "Bedhead", "30"],
+    ]);
+  });
+
+  it("says the albums are unavailable when they failed to load", async () => {
+    await renderCollage(undefined);
+
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Top albums are temporarily unavailable :("),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AlbumCollageSkeleton", () => {
+  it("announces loading without exposing the placeholder", () => {
+    render(<AlbumCollageSkeleton />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+});

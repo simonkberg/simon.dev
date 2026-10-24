@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   turbopack: { root: import.meta.dirname },
   typedRoutes: true,
   experimental: { turbopackRustReactCompiler: true },
+  images: { loader: "custom", loaderFile: "./app/lib/coverLoader.ts" },
 };
 
 export default nextConfig;
