@@ -16,7 +16,7 @@ import { TooltipButton } from "@/components/Tooltip";
 import { CaretBuddy } from "./CaretBuddy";
 import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
-import { messageText, runCommand } from "./commands";
+import { type CommandResult, messageText, runCommand } from "./commands";
 
 function useEscape(active: boolean, onEscape: () => void) {
   useEffect(() => {
@@ -53,6 +53,16 @@ export const ChatInput = ({
     lines: readonly string[];
   } | null>(null);
 
+  function showCommand(text: string, command: CommandResult) {
+    if (command.status === "error") {
+      setResult(command);
+      return;
+    }
+    setResult({ status: "initial" });
+    setOutput(command.output ? { command: text, lines: command.output } : null);
+    setInputValue("");
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!inputValue.trim()) return;
@@ -60,18 +70,16 @@ export const ChatInput = ({
 
     const message = messageText(inputValue);
     if (message === null) {
-      const command = runCommand(inputValue);
-      if (command.status === "error") {
-        setResult(command);
-        return;
+      const text = inputValue.trim();
+      const command = runCommand(text);
+      if (command instanceof Promise) {
+        startTransition(async () => {
+          const result = await command;
+          startTransition(() => showCommand(text, result));
+        });
+      } else {
+        showCommand(text, command);
       }
-      setResult({ status: "initial" });
-      setOutput(
-        command.output
-          ? { command: inputValue.trim(), lines: command.output }
-          : null,
-      );
-      setInputValue("");
       return;
     }
 
@@ -97,11 +105,12 @@ export const ChatInput = ({
     });
   }
 
+  // Disabling the input while pending blurs it, so give focus back once done.
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (!pending && result.status !== "initial") {
-      inputRef.current?.focus();
-    }
-  }, [pending, result.status]);
+    if (wasPending.current && !pending) inputRef.current?.focus();
+    wasPending.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     if (replyToId) inputRef.current?.focus();

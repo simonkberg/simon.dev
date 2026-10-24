@@ -11,9 +11,11 @@ import {
   buildMemoryContext,
   edit,
   forget,
+  forgetPerson,
   MAX_CONTENT_LENGTH,
   MAX_PER_CATEGORY,
   peopleCategory,
+  readPersonNotes,
   readPublicNotes,
   recall,
   remember,
@@ -499,5 +501,47 @@ describe("readPublicNotes", () => {
       style: [],
       interests: [{ id: 3 }],
     });
+  });
+});
+
+describe("readPersonNotes", () => {
+  it("should read a person's notes, oldest first", async () => {
+    await seed(
+      4,
+      "people/brave-otter",
+      "lives in oslo",
+      "2026-10-02T00:00:00Z",
+    );
+    await seed(5, "people/brave-otter", "likes jazz", "2026-10-01T00:00:00Z");
+    await seed(6, "people/calm-yak", "likes cats");
+
+    const notes = await readPersonNotes("brave-otter");
+
+    expect(notes.map((note) => note.content)).toEqual([
+      "likes jazz",
+      "lives in oslo",
+    ]);
+  });
+});
+
+describe("forgetPerson", () => {
+  it("should delete every note on the person and count them", async () => {
+    await seed(4, "people/brave-otter", "likes jazz");
+    await seed(5, "people/brave-otter", "lives in oslo");
+    await seed(6, "people/calm-yak", "likes cats");
+
+    await expect(forgetPerson("brave-otter")).resolves.toBe(2);
+    expect(await stored(4)).toBeUndefined();
+    expect(await stored(6)).toBeDefined();
+  });
+});
+
+describe.each([
+  ["readPersonNotes", readPersonNotes, []],
+  ["forgetPerson", forgetPerson, 0],
+])("%s", (_name, run, nothing) => {
+  it("should skip a name with no category", async () => {
+    await expect(run("!!!")).resolves.toEqual(nothing);
+    expect(query).not.toHaveBeenCalled();
   });
 });
