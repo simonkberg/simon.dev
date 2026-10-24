@@ -296,6 +296,18 @@ describe("userGetTopAlbums", () => {
     ]);
   });
 
+  it("should reject an album linking off Last.fm", async () => {
+    lastfmReturns({
+      topalbums: {
+        album: [{ ...album("Test", 1, 250), url: "https://example.com/Test" }],
+      },
+    });
+
+    await expect(
+      userGetTopAlbums("testuser", { period: "3month", limit: 10 }),
+    ).rejects.toThrow();
+  });
+
   it.each([
     ["no art", ""],
     ["Last.fm's placeholder star", "2a96cbd8b46e442fc41c2b86b821562f"],

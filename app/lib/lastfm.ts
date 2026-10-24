@@ -211,7 +211,9 @@ const userGetTopAlbumsResponseSchema = z
           .object({
             name: z.string(),
             playcount: z.string().transform(Number),
-            url: z.templateLiteral(["https://", z.string()]),
+            url: z
+              .url({ protocol: /^https$/, hostname: /^www\.last\.fm$/ })
+              .pipe(z.templateLiteral(["https://", z.string()])),
             artist: z.object({ name: z.string() }),
             // A cover is decoration: a malformed one leaves the tile empty, not the list unavailable.
             image: coverSchema.catch(undefined),
