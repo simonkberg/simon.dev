@@ -176,7 +176,7 @@ const Lanes = ({
               : `${from}–${items[run.last]?.label}`;
           })
           .join(", ");
-        const text = `${name}: ${years}, ${formatNumber(plays)} plays`;
+        const text = `${name}: ${formatNumber(plays)} plays in ${years}`;
         return (
           <li key={name} onPointerEnter={() => onActive(runs)}>
             <div

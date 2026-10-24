@@ -123,7 +123,7 @@ describe("ListeningPage", () => {
       screen.getByRole("heading", { name: "Scrobbles (per year)" }),
     ).toBeInTheDocument();
     expect(screen.getByText("2026: 42 so far")).toBeInTheDocument();
-    expect(screen.getByText("Smog: 2026, 7 plays")).toBeInTheDocument();
+    expect(screen.getByText("Smog: 7 plays in 2026")).toBeInTheDocument();
   });
 
   it("should render table sections with headings", async () => {

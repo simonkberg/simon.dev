@@ -74,9 +74,9 @@ describe("ScrobbleChart", () => {
         .getAllByRole("listitem")
         .map((item) => item.querySelector(".visually-hidden")?.textContent),
     ).toEqual([
-      "Smog: 2016–2017, 2019, 14 plays",
-      "Low: 2018, 3 plays",
-      "Bill Callahan: 2020, 4 plays",
+      "Smog: 14 plays in 2016–2017, 2019",
+      "Low: 3 plays in 2018",
+      "Bill Callahan: 4 plays in 2020",
     ]);
   });
 
