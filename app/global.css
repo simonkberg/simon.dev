@@ -118,6 +118,11 @@
   --stems-hover: var(--accent);
   --stems-hover-bg: transparent;
 
+  --timeline-origin: "┬";
+  --timeline-bar: "━";
+  --timeline-bar-color: var(--accent);
+  --flashback-rule: 2px solid var(--accent);
+
   --tracks-max: none;
   --track-display: block;
   --track-indent: 0;
@@ -453,6 +458,9 @@
   --stems-color: var(--accent);
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
+  --timeline-origin: "◇";
+  --timeline-bar: "─";
+  --flashback-rule: 1px solid var(--accent);
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -584,6 +592,9 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
+  --timeline-bar: "█";
+  --timeline-bar-color: var(--ink);
+  --flashback-rule: 0.5ch solid var(--ink);
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
   --links-display: flex;
@@ -1206,6 +1217,126 @@ ul {
         display: none;
       }
     }
+  }
+}
+
+/* On this day */
+
+.flashback {
+  margin-block: 0 var(--p-gap);
+  padding-inline-start: 2ch;
+  border-inline-start: var(--flashback-rule);
+  color: var(--muted);
+
+  > p {
+    margin: 0;
+  }
+}
+
+.flashback-title {
+  display: block;
+  color: var(--ink);
+  font-size: 0.85em;
+  text-transform: var(--heading-case);
+}
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+
+  > li {
+    --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
+      var(--stems-glyph);
+    position: relative;
+    display: grid;
+    grid-template-columns: 5ch minmax(0, 1fr);
+    gap: 0 1ch;
+    padding: 0 0 0.5lh 3ch;
+
+    /* The rail, down to the next stop. */
+    &::before {
+      content: var(--timeline-rails) var(--timeline-rails) var(--timeline-rails)
+        var(--timeline-rails);
+      position: absolute;
+      inset: 1lh auto 0 0;
+      width: 2ch;
+      overflow: hidden;
+      color: var(--stems-base-color);
+      line-height: 0.6;
+      text-align: center;
+      white-space: pre;
+    }
+
+    &::after {
+      content: var(--stems-marker);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2ch;
+      color: var(--accent);
+      text-align: center;
+    }
+
+    &:last-child::before {
+      content: none;
+    }
+  }
+
+  > .timeline-origin {
+    --stems-marker: var(--timeline-origin);
+    display: block;
+    color: var(--muted);
+  }
+
+  > li[data-silent] {
+    --stems-glyph: var(--stems-glyph-current);
+    display: flex;
+    color: var(--muted);
+
+    &::after {
+      content: none;
+    }
+
+    > .timeline-top {
+      font-style: italic;
+    }
+
+    /* Rides the rail from the top, since it has no stop of its own. */
+    &::before {
+      inset-block-start: 0;
+    }
+  }
+
+  .timeline-top {
+    grid-area: 2 / 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timeline-plays {
+    --timeline-bars: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
+      var(--timeline-bar);
+    grid-area: 1 / 2;
+    color: var(--muted);
+
+    &::before {
+      content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
+        var(--timeline-bars);
+      display: inline-block;
+      width: max(1ch, var(--value, 0) / var(--max, 1) * 16ch);
+      margin-inline-end: 1ch;
+      overflow: hidden;
+      color: var(--timeline-bar-color);
+      vertical-align: bottom;
+      white-space: nowrap;
+    }
+  }
+
+  &.placeholder .timeline-plays::before {
+    content: none;
   }
 }
 
