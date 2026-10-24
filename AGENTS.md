@@ -191,9 +191,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
-  page): a request per bar, each hour the chart is cached. On all time, lanes under it follow
-  each year's top artist from `user.getWeeklyArtistChart`, which takes any range, not just
-  Last.fm's weeks: another request per year, cached apart so a failure only drops the lanes.
+  page): a request per bar, each hour the chart is cached. Lanes under it follow each bar's
+  top artist from `user.getWeeklyArtistChart`, which takes any range, not just Last.fm's
+  weeks: another request per bar, cached apart so a failure only drops the lanes.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.
