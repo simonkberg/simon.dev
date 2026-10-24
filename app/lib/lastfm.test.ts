@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { server } from "@/mocks/node";
 
 import {
+  getUserPlays,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -130,6 +131,19 @@ describe("userGetRecentTracks", () => {
 
     await expect(userGetRecentTracks("testuser")).rejects.toThrow(
       "Last.fm API error: 503 Service Unavailable",
+    );
+  });
+
+  it("should throw Last.fm's own error message", async () => {
+    lastfmReturns(
+      HttpResponse.json(
+        { error: 6, message: "User not found" },
+        { status: 404 },
+      ),
+    );
+
+    await expect(userGetRecentTracks("nobody")).rejects.toThrow(
+      "Last.fm API error: User not found",
     );
   });
 
@@ -355,5 +369,61 @@ describe("userGetTopArtistInRange", () => {
     lastfmReturns({ weeklyartistchart: {} });
 
     expect(await userGetTopArtistInRange("testuser", range)).toBeUndefined();
+  });
+});
+
+describe("getUserPlays", () => {
+  it("should count an artist's plays, as Last.fm spells the artist", async () => {
+    const params = lastfmReturns({
+      artist: { name: "Radiohead", stats: { userplaycount: "1234" } },
+    });
+
+    await expect(
+      getUserPlays("testuser", { artist: "radiohed" }),
+    ).resolves.toEqual({ artist: "Radiohead", plays: 1234 });
+    expect(params()).toMatchObject({
+      method: "artist.getinfo",
+      artist: "radiohed",
+      username: "testuser",
+      autocorrect: "1",
+    });
+  });
+
+  it("should count a track's plays", async () => {
+    const params = lastfmReturns({
+      track: {
+        name: "Idioteque",
+        artist: { name: "Radiohead" },
+        userplaycount: "42",
+      },
+    });
+
+    await expect(
+      getUserPlays("testuser", { artist: "Radiohead", track: "idioteque" }),
+    ).resolves.toEqual({ artist: "Radiohead", track: "Idioteque", plays: 42 });
+    expect(params()).toMatchObject({
+      method: "track.getinfo",
+      artist: "Radiohead",
+      track: "idioteque",
+    });
+  });
+
+  it("should count an album's plays", async () => {
+    const params = lastfmReturns({
+      album: { name: "Kid A", artist: "Radiohead", userplaycount: 7 },
+    });
+
+    await expect(
+      getUserPlays("testuser", { artist: "Radiohead", album: "kid a" }),
+    ).resolves.toEqual({ artist: "Radiohead", album: "Kid A", plays: 7 });
+    expect(params()).toMatchObject({ method: "album.getinfo", album: "kid a" });
+  });
+
+  it("should count no plays when Last.fm leaves the count out", async () => {
+    lastfmReturns({ artist: { name: "Radiohead", stats: {} } });
+
+    await expect(
+      getUserPlays("testuser", { artist: "Radiohead" }),
+    ).resolves.toEqual({ artist: "Radiohead", plays: 0 });
   });
 });

@@ -29,6 +29,8 @@ export function isValidPeriod(value: unknown): value is Period {
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
+const errorSchema = z.object({ error: z.number(), message: z.string() });
+
 async function call<T extends z.ZodType>(
   method: string,
   schema: T,
@@ -43,12 +45,16 @@ async function call<T extends z.ZodType>(
   }
 
   const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const json: unknown = await response.json().catch(() => undefined);
+  const error = errorSchema.safeParse(json);
+  // Last.fm's own message, like an unknown artist, says more than the status.
+  if (error.success)
+    throw new Error(`Last.fm API error: ${error.data.message}`);
   if (!response.ok) {
     throw new Error(
       `Last.fm API error: ${response.status} ${response.statusText}`,
     );
   }
-  const json = await response.json();
 
   return schema.parse(json);
 }
@@ -288,4 +294,71 @@ export async function userGetTopArtistInRange(
     userGetTopArtistInRangeResponseSchema,
     { user, ...rangeParams(params) },
   );
+}
+
+// Last.fm leaves the count out for a user who never played it.
+const userPlaysSchema = z.coerce
+  .number()
+  .optional()
+  .transform((plays) => plays ?? 0);
+
+const artistGetInfoResponseSchema = z
+  .object({
+    artist: z.object({
+      name: z.string(),
+      stats: z.object({ userplaycount: userPlaysSchema }),
+    }),
+  })
+  .transform(({ artist }) => ({
+    artist: artist.name,
+    plays: artist.stats.userplaycount,
+  }));
+
+const trackGetInfoResponseSchema = z
+  .object({
+    track: z.object({
+      name: z.string(),
+      artist: z.object({ name: z.string() }),
+      userplaycount: userPlaysSchema,
+    }),
+  })
+  .transform(({ track }) => ({
+    artist: track.artist.name,
+    track: track.name,
+    plays: track.userplaycount,
+  }));
+
+const albumGetInfoResponseSchema = z
+  .object({
+    album: z.object({
+      name: z.string(),
+      artist: z.string(),
+      userplaycount: userPlaysSchema,
+    }),
+  })
+  .transform(({ album }) => ({
+    artist: album.artist,
+    album: album.name,
+    plays: album.userplaycount,
+  }));
+
+/** The user's plays of an artist, or of one of its tracks or albums, named as Last.fm spells them. */
+export async function getUserPlays(
+  user: string,
+  params: { artist: string; track?: string; album?: string },
+) {
+  const common = { username: user, artist: params.artist, autocorrect: 1 };
+  if (params.track !== undefined) {
+    return call("track.getinfo", trackGetInfoResponseSchema, {
+      ...common,
+      track: params.track,
+    });
+  }
+  if (params.album !== undefined) {
+    return call("album.getinfo", albumGetInfoResponseSchema, {
+      ...common,
+      album: params.album,
+    });
+  }
+  return call("artist.getinfo", artistGetInfoResponseSchema, common);
 }
