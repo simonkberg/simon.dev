@@ -177,13 +177,14 @@ const Lanes = ({
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
 }) => {
-  const springs = useGrow(rows.length, (index) => 150 + index * 40);
+  // One per column, so each bar sweeps out after the stems above its start, left to right.
+  const springs = useGrow(items.length, (index) => 150 + index * 30);
 
   return (
     <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
       {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
       <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
-        {rows.map(({ name, runs, plays, first, last }, index) => {
+        {rows.map(({ name, runs, plays, first, last }) => {
           const end = first > items.length / 2;
           const span = runs
             .map((run) => {
@@ -195,37 +196,37 @@ const Lanes = ({
             .join(", ");
           const text = `${name}: ${formatPlays(plays)} in ${span}`;
           return (
-            <animated.li
-              key={name}
-              style={
-                {
-                  "--first": first,
-                  "--grow": springs[index]?.grow,
-                } as CSSProperties
-              }
-              onPointerEnter={() => onActive(runs)}
-            >
-              <div
+            <li key={name} onPointerEnter={() => onActive(runs)}>
+              <animated.div
                 className="lane-label"
-                style={{
-                  gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
-                }}
+                style={
+                  {
+                    gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
+                    // Fades in under the bar's end it's aligned to.
+                    "--grow": springs[end ? last : first]?.grow,
+                  } as CSSProperties
+                }
                 data-end={end || undefined}
               >
                 <span className="lane-name" aria-hidden="true">
                   {name}
                 </span>
                 <span className="visually-hidden">{text}</span>
-              </div>
+              </animated.div>
               {runs.map((run) => (
-                <span
+                <animated.span
                   key={run.first}
                   className="lane-run"
-                  style={{ gridColumn: `${run.first + 1} / ${run.last + 2}` }}
+                  style={
+                    {
+                      gridColumn: `${run.first + 1} / ${run.last + 2}`,
+                      "--grow": springs[run.first]?.grow,
+                    } as CSSProperties
+                  }
                   data-current={run.current || undefined}
                 />
               ))}
-            </animated.li>
+            </li>
           );
         })}
       </ol>

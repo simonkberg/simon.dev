@@ -168,20 +168,20 @@ describe("ScrobbleChart", () => {
     expect(Math.max(...grow)).toBeLessThan(1);
   });
 
-  it("slides the lanes in when mounted on the client", async () => {
+  it("sweeps the lane bars in when mounted on the client", async () => {
     Globals.assign({ skipAnimation: false });
 
     await renderLanes(buckets);
 
-    const grow = lanes().map((lane) =>
-      Number(lane.style.getPropertyValue("--grow")),
-    );
-    expect(grow).toHaveLength(3);
-    expect(Math.max(...grow)).toBeLessThan(1);
-    expect(grow).toEqual(grow.toSorted((a, b) => b - a));
-    expect(
-      lanes().map((lane) => lane.style.getPropertyValue("--first")),
-    ).toEqual(["0", "2", "5"]);
+    const grow = (selector: string) =>
+      [...document.querySelectorAll<HTMLElement>(selector)].map((element) =>
+        Number(element.style.getPropertyValue("--grow")),
+      );
+    const runs = grow(".lane-run");
+    expect(runs).toHaveLength(4);
+    expect(Math.max(...runs)).toBeLessThan(1);
+    expect(runs).toEqual(runs.toSorted((a, b) => b - a));
+    expect(grow(".lane-label")).toHaveLength(3);
   });
 
   it("renders full stems in server markup", () => {
