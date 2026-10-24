@@ -12,13 +12,17 @@ const WARM_CONCURRENCY = 2;
 // A fixed width gives each cover just a 1x and a 2x URL to warm.
 export const coverWidth = (index: number) => (index === 0 ? 480 : 160);
 
-export const coverUrls = (src: string, index: number) =>
-  getImageProps({
+export function coverUrls(src: string, index: number): string[] {
+  const { srcSet } = getImageProps({
     src,
     alt: "",
     width: coverWidth(index),
     height: coverWidth(index),
-  }).props.srcSet?.match(/\S+(?= \dx)/g) ?? [];
+  }).props;
+  return String(srcSet)
+    .split(", ")
+    .map((candidate) => candidate.slice(0, candidate.lastIndexOf(" ")));
+}
 
 async function warmOnce(origin: string): Promise<void> {
   const lists = await Promise.all(
