@@ -197,7 +197,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Album covers:** Next's image optimiser resizes each Last.fm cover from its original
   upload (the CDN path without a size segment): the CDN's own resized sizes 404 in some
   regions. A cold resize can take seconds and the image cache is per replica, so each tile
-  has one width (`coverWidth` in `app/lib/covers.ts`) and `instrumentation.ts` warms every
+  has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and `instrumentation.ts` warms every
   period's covers at boot and hourly. Each look filters the covers (`--cover-filter`, manual's is the SVG
   `#cover-dither`), and hover or focus shows them unfiltered.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm

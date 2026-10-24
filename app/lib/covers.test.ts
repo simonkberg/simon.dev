@@ -6,7 +6,7 @@ import { userGetTopAlbums } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
 
-import { coverSrc, warmCovers } from "./covers";
+import { coverUrls, warmCovers } from "./covers";
 
 vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -50,10 +50,12 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
     expect(userGetTopAlbums).toHaveBeenCalledTimes(6);
-    expect(requests.map(({ url }) => url.replace(origin, ""))).toEqual([
-      coverSrc(`${cdn}/first.jpg`, 0),
-      coverSrc(`${cdn}/second.jpg`, 1),
-    ]);
+    expect(requests.map(({ url }) => url.replace(origin, "")).sort()).toEqual(
+      [
+        ...coverUrls(`${cdn}/first.jpg`, 0),
+        ...coverUrls(`${cdn}/second.jpg`, 1),
+      ].sort(),
+    );
     expect(requests[0]?.headers.get("accept")).toBe("image/webp");
   });
 
@@ -69,7 +71,7 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() =>
       expect(log.warn).toHaveBeenCalledWith(
-        { path: coverSrc(`${cdn}/first.jpg`, 0), status: 504 },
+        { path: coverUrls(`${cdn}/first.jpg`, 0)[0], status: 504 },
         "Cover warm-up failed",
       ),
     );

@@ -9,16 +9,16 @@ import { log } from "@/lib/log";
 const WARM_MS = 60 * 60 * 1000;
 const WARM_CONCURRENCY = 2;
 
-// One width per tile, so each cover is a single resize: `images.imageSizes` and `deviceSizes` hold their 2x.
+// A fixed width gives each cover just a 1x and a 2x URL to warm.
 export const coverWidth = (index: number) => (index === 0 ? 480 : 160);
 
-export const coverSrc = (src: string, index: number) =>
+export const coverUrls = (src: string, index: number) =>
   getImageProps({
     src,
     alt: "",
     width: coverWidth(index),
     height: coverWidth(index),
-  }).props.src;
+  }).props.srcSet?.match(/\S+(?= \dx)/g) ?? [];
 
 async function warmOnce(origin: string): Promise<void> {
   const lists = await Promise.all(
@@ -29,7 +29,7 @@ async function warmOnce(origin: string): Promise<void> {
   const paths = new Set(
     lists.flatMap((albums) =>
       albums.flatMap(({ cover }, index) =>
-        cover ? [coverSrc(cover, index)] : [],
+        cover ? coverUrls(cover, index) : [],
       ),
     ),
   );
