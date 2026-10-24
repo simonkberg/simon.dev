@@ -231,13 +231,23 @@ describe("userGetTopArtists", () => {
 describe("userGetTopAlbums", () => {
   const cdn = "https://lastfm.freetls.fastly.net/i/u";
   const images = (hash: string) =>
-    ["34s", "64s", "174s", "300x300"].map((path, index) => ({
-      size: ["small", "medium", "large", "extralarge"][index],
+    [
+      ["small", "34s"],
+      ["medium", "64s"],
+      ["large", "174s"],
+      ["extralarge", "300x300"],
+    ].map(([size, path]) => ({
+      size,
       "#text": hash && `${cdn}/${path}/${hash}.jpg`,
     }));
-  const album = (name: string, rank: number, image?: object[]) => ({
+  const album = (
+    name: string,
+    rank: number,
+    playcount: number,
+    image?: object[],
+  ) => ({
     name,
-    playcount: String(300 - rank * 50),
+    playcount: String(playcount),
     url: `https://www.last.fm/music/${name}`,
     artist: { name: `${name} Artist` },
     image,
@@ -247,7 +257,10 @@ describe("userGetTopAlbums", () => {
   it("should fetch and parse top albums successfully", async () => {
     const params = lastfmReturns({
       topalbums: {
-        album: [album("Test", 1, images("abc123")), album("Another", 2)],
+        album: [
+          album("Test", 1, 250, images("abc123")),
+          album("Another", 2, 200),
+        ],
       },
     });
 
@@ -286,7 +299,9 @@ describe("userGetTopAlbums", () => {
     ["no art", ""],
     ["Last.fm's placeholder star", "2a96cbd8b46e442fc41c2b86b821562f"],
   ])("should leave out the cover for %s", async (_, hash) => {
-    lastfmReturns({ topalbums: { album: [album("Test", 1, images(hash))] } });
+    lastfmReturns({
+      topalbums: { album: [album("Test", 1, 250, images(hash))] },
+    });
 
     const [first] = await userGetTopAlbums("testuser", {
       period: "3month",

@@ -9,7 +9,13 @@ const nextConfig: NextConfig = {
   turbopack: { root: import.meta.dirname },
   typedRoutes: true,
   experimental: { turbopackRustReactCompiler: true },
-  images: { loader: "custom", loaderFile: "./app/lib/coverLoader.ts" },
+  // Album covers are the only images: the widths are the sizes Last.fm's CDN serves.
+  images: {
+    loader: "custom",
+    loaderFile: "./app/lib/coverLoader.ts",
+    imageSizes: [174, 300, 500],
+    deviceSizes: [600, 770],
+  },
 };
 
 export default nextConfig;

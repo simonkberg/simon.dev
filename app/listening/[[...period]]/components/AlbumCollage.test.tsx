@@ -1,13 +1,9 @@
 import { act, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { TopAlbum } from "@/actions/lastfm";
 
 import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
-
-vi.mock(import("@/components/AnimatedNumber"), () => ({
-  AnimatedNumber: ({ value }: { value: number }) => <span>{value}</span>,
-}));
 
 const cover = "https://lastfm.freetls.fastly.net/i/u/300x300/abc.jpg";
 
@@ -70,9 +66,7 @@ describe("AlbumCollage", () => {
   it("lists each album's rank, name, artist and plays", async () => {
     await renderCollage(albums);
 
-    const [legend] = screen
-      .getAllByRole("list")
-      .filter((list) => list.classList.contains("collage-legend"));
+    const [, legend] = screen.getAllByRole("list");
     expect(
       within(legend!)
         .getAllByRole("listitem")

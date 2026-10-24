@@ -76,7 +76,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
       <Dither />
       <ol className="collage-covers">
         {items.map((album, index) => (
-          <li key={`${album.rank}-${album.name}`}>
+          <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
               {album.cover && (
                 <Image
@@ -98,11 +98,11 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
       </ol>
       <ol className="collage-legend">
         {items.map((album) => (
-          <li key={`${album.rank}-${album.name}`}>
-            <span className="legend-rank">{album.rank}</span>
+          <li key={album.rank}>
+            <span className="legend-rank numeric">{album.rank}</span>
             <span className="legend-name">{album.name}</span>
             <span className="legend-artist">{album.artist}</span>
-            <span className="legend-plays">
+            <span className="legend-plays numeric">
               <AnimatedNumber value={album.playcount} />
             </span>
           </li>
@@ -138,14 +138,14 @@ export const AlbumCollageSkeleton = () => (
       <ol className="collage-legend">
         {nameWidths.map(([name, artist], index) => (
           <li key={index}>
-            <span className="legend-rank">{index + 1}</span>
+            <span className="legend-rank numeric">{index + 1}</span>
             <span className="legend-name">
               <Skeleton width={name} />
             </span>
             <span className="legend-artist">
               <Skeleton width={artist} />
             </span>
-            <span className="legend-plays">
+            <span className="legend-plays numeric">
               <Skeleton width={3} />
             </span>
           </li>
