@@ -121,6 +121,7 @@ describe("ListeningPage", () => {
     await renderPage();
 
     expect(getScrobbles).toHaveBeenCalledWith("overall");
+    expect(getTopArtistByBucket).toHaveBeenCalledWith("overall");
     expect(
       screen.getByRole("heading", { name: "Scrobbles (per year)" }),
     ).toBeInTheDocument();

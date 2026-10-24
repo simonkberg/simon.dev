@@ -194,12 +194,11 @@ const Lanes = ({
               }}
               data-end={end || undefined}
             >
-              <TooltipText tooltip={text} delay={0}>
-                <span className="lane-name">
-                  <span aria-hidden="true">{name}</span>
-                  <span className="visually-hidden">{text}</span>
-                </span>
-              </TooltipText>
+              <span className="lane-text" aria-hidden="true">
+                <span className="lane-name">{name}</span>
+                <span className="lane-plays">{formatPlays(plays)}</span>
+              </span>
+              <span className="visually-hidden">{text}</span>
             </div>
             {runs.map((run) => (
               <span

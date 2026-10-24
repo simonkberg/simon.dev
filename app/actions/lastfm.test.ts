@@ -275,19 +275,19 @@ describe("getTopArtistByBucket", () => {
     const artist = { name: "Smog", playcount: 23 };
     vi.mocked(userGetTopArtistInRange).mockResolvedValue(artist);
 
-    const result = await getTopArtistByBucket("overall");
+    const result = await getTopArtistByBucket("7day");
 
-    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(7);
     expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
-      from: new Date("2025-12-31T23:00:00Z"),
-      to: new Date("2026-12-31T23:00:00Z"),
+      from: new Date("2026-10-22T22:00:00Z"),
+      to: new Date("2026-10-23T22:00:00Z"),
     });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toMatchObject({
       status: "ok",
       buckets: expect.arrayContaining([
-        { label: "2007", artist },
-        { label: "2026", artist },
+        { label: "Oct 17", artist },
+        { label: "Oct 23", artist },
       ]),
     });
   });

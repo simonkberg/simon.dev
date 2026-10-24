@@ -1271,9 +1271,15 @@ ul {
       border-top: 1px dotted var(--rule);
     }
 
-    &:hover .lane-name {
-      background: var(--lane-hover-bg);
-      color: var(--lane-hover-color);
+    &:hover {
+      .lane-name {
+        background: var(--lane-hover-bg);
+        color: var(--lane-hover-color);
+      }
+
+      .lane-plays {
+        display: inline;
+      }
     }
   }
 
@@ -1286,6 +1292,24 @@ ul {
     /* A late artist's name ends at its bar, so it never runs off the chart. */
     &[data-end] {
       text-align: end;
+    }
+  }
+
+  .lane-text {
+    position: relative;
+  }
+
+  /* Out of the flow, so showing it never moves the name. */
+  .lane-plays {
+    display: none;
+    position: absolute;
+    inset-inline-start: 100%;
+    padding-inline-start: 1ch;
+    color: var(--muted);
+
+    [data-end] & {
+      inset-inline: auto 100%;
+      padding-inline: 0 1ch;
     }
   }
 
