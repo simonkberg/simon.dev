@@ -3,15 +3,16 @@ import { runInNewContext } from "node:vm";
 import {
   colorSchemes,
   grounds,
+  preferenceAttribute,
   preferences,
   preferencesScript,
   variantPreference,
 } from "@/lib/preferences";
 
 export function resetPreferences() {
-  for (const { name } of preferences) {
-    document.documentElement.removeAttribute(`data-${name}`);
-    document.cookie = `${name}=; max-age=0; path=/`;
+  for (const preference of preferences) {
+    document.documentElement.removeAttribute(preferenceAttribute(preference));
+    document.cookie = `${preference.name}=; max-age=0; path=/`;
   }
   for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
     meta.remove();

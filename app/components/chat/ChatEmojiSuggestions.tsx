@@ -1,9 +1,10 @@
 "use client";
 
-import type { Ref, ToggleEvent } from "react";
+import type { Ref } from "react";
 
 import type { EmojiMatch } from "@/lib/emoji";
 
+import { ChatSuggestions } from "./ChatSuggestions";
 import { EmojiButton } from "./EmojiButton";
 
 export const ChatEmojiSuggestions = ({
@@ -23,19 +24,12 @@ export const ChatEmojiSuggestions = ({
 }) => {
   const chosen = active === null ? undefined : matches[active];
   return (
-    <div
+    <ChatSuggestions
       ref={ref}
       id={id}
-      popover="auto"
-      role="listbox"
-      aria-label="Emoji"
-      tabIndex={-1}
+      label="Emoji"
       className="emoji-picker"
-      // Keeps focus in the input, so typing carries on filtering.
-      onMouseDown={(event) => event.preventDefault()}
-      onToggle={(event: ToggleEvent<HTMLDivElement>) => {
-        if (event.newState === "closed") onDismiss();
-      }}
+      onDismiss={onDismiss}
     >
       {matches.map(({ emoji, name }, index) => (
         <EmojiButton
@@ -54,6 +48,6 @@ export const ChatEmojiSuggestions = ({
       <p className="name" aria-hidden="true">
         {chosen && `:${chosen.name}:`}
       </p>
-    </div>
+    </ChatSuggestions>
   );
 };

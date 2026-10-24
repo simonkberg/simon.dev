@@ -184,6 +184,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The reaction picker's ✋ sets one skin tone per visitor, for its emoji and the suggestions
   (`app/components/chat/skinTone.ts`), kept in localStorage rather than a cookie since it never
   changes the server render.
+- **Chat commands:** a leading `/` in the chat input runs a command from
+  `app/components/chat/commands.ts` instead of posting; `//` sends one slash. They run in the
+  browser and print their output above the input for that visitor only, never to Discord. The
+  input suggests them as it does `:` shortcodes, from the same combobox (`ChatSuggestInput`).
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
