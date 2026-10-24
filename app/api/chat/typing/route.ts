@@ -1,29 +1,23 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { NextResponse } from "next/server";
 
 import { identifiers } from "@/lib/identifiers";
-import { isDeniedIp } from "@/lib/ipDenyList";
+import { isDeniedRequest } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { findSession } from "@/lib/session";
 import { setTyping } from "@/lib/siteTyping";
 
-const BodySchema = z.object({ typing: z.boolean() });
-
-// A ping, never the text, so the name comes from the session rather than the request.
-export async function POST(request: NextRequest) {
+// A bare ping, so the name comes from the session and the text never leaves the input.
+export async function POST() {
   const session = await findSession();
   if (!session) return new NextResponse(null, { status: 401 });
 
   const { ip } = await identifiers();
-  if (ip !== undefined && isDeniedIp(ip)) {
+  if (isDeniedRequest(ip, "typing")) {
     return new NextResponse(null, { status: 403 });
   }
 
-  const body = BodySchema.safeParse(await request.json().catch(() => null));
-  if (!body.success) return new NextResponse(null, { status: 400 });
-
   try {
-    await setTyping(session.username, body.data.typing);
+    await setTyping(session.username);
   } catch (err) {
     log.warn({ err }, "Failed to store typing");
     return new NextResponse(null, { status: 503 });

@@ -170,8 +170,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   bot types for nothing else, so a bot typist is simon-bot.
   Site visitors' typing can't come from Discord, since the bot posts for them: the input pings
   `/api/chat/typing` every 2s while a message is typed, never with its text, and each ping keeps
-  a Turso `typing` row 4s (`app/lib/siteTyping.ts`). With no pub/sub, a replica with open
-  streams reads the table each second.
+  a Turso `typing` row 4s, or until they post (`app/lib/siteTyping.ts`). With no pub/sub, a
+  replica with open streams reads the table each second.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as

@@ -35,25 +35,18 @@ function useEscape(active: boolean, onEscape: () => void) {
 // The server keeps a typist twice this long, so one late ping doesn't drop them.
 const TYPING_PING_MS = 2_000;
 
-// Tells the others while the visitor types a message, never what, and once when they stop.
-function useTypingSignal(text: string) {
+// Tells the others while the visitor types a message, never what; their post ends it.
+function useTypingSignal() {
   const sentAt = useRef(0);
-  const typing = !!messageText(text)?.trim();
-  useEffect(() => {
-    if (typing) {
-      if (Date.now() - sentAt.current < TYPING_PING_MS) return;
-      sentAt.current = Date.now();
-    } else {
-      if (!sentAt.current) return;
-      sentAt.current = 0;
-    }
-    fetch("/api/chat/typing", {
-      method: "POST",
-      body: JSON.stringify({ typing }),
-      keepalive: true,
-      // A lost ping only ends the indicator early.
-    }).catch(() => {});
-  }, [typing, text]);
+  return (text: string) => {
+    if (!messageText(text)?.trim()) return;
+    if (Date.now() - sentAt.current < TYPING_PING_MS) return;
+    sentAt.current = Date.now();
+    // A lost ping only ends the indicator early.
+    fetch("/api/chat/typing", { method: "POST", keepalive: true }).catch(
+      () => {},
+    );
+  };
 }
 
 export interface ChatInputProps extends PropsWithChildren {
@@ -72,6 +65,7 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
+  const signalTyping = useTypingSignal();
   const [output, setOutput] = useState<{
     command: string;
     lines: readonly string[];
@@ -140,7 +134,6 @@ export const ChatInput = ({
     if (replyToId) inputRef.current?.focus();
   }, [replyToId]);
 
-  useTypingSignal(inputValue);
   useEscape(!!replyToId, () => setReplyToId(null));
   useEscape(!!output, () => setOutput(null));
 
@@ -171,7 +164,10 @@ export const ChatInput = ({
             className="input"
             ref={inputRef}
             value={inputValue}
-            onValueChange={setInputValue}
+            onValueChange={(value) => {
+              setInputValue(value);
+              signalTyping(value);
+            }}
             autoComplete="off"
           />
           <CaretBuddy

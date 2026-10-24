@@ -75,13 +75,16 @@ export async function GET(request: NextRequest) {
   // Who types in Discord, then the site's visitors, leaving out this one: their buddy is in the input.
   let discordTyping: readonly string[] = [];
   let siteTyping: readonly string[] = [];
-  const sendTyping = () =>
-    send(
-      `event: typing\ndata: ${JSON.stringify([
-        ...discordTyping,
-        ...siteTyping.filter((name) => name !== username),
-      ])}\n\n`,
-    );
+  let sentTyping = "[]";
+  const sendTyping = () => {
+    const typing = JSON.stringify([
+      ...discordTyping,
+      ...siteTyping.filter((name) => name !== username),
+    ]);
+    if (typing === sentTyping) return;
+    sentTyping = typing;
+    send(`event: typing\ndata: ${typing}\n\n`);
+  };
   const unsubscribeTyping = subscribeToTyping((names) => {
     discordTyping = names;
     sendTyping();
