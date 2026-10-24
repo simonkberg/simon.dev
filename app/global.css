@@ -1284,7 +1284,7 @@ ul {
   }
 
   .timeline-top {
-    grid-column: 2;
+    grid-area: 2 / 2;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

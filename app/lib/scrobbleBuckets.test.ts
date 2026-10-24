@@ -116,6 +116,15 @@ describe("sameDayBuckets", () => {
     ]);
   });
 
+  it("should end a month's last day on the next month's first", () => {
+    const [bucket] = sameDayBuckets(2025, new Date("2026-10-31T12:00:00Z"));
+
+    expect(bucket).toMatchObject({
+      from: new Date("2025-10-30T23:00:00Z"),
+      to: new Date("2025-10-31T23:00:00Z"),
+    });
+  });
+
   it("should skip years without February 29", () => {
     const buckets = sameDayBuckets(2019, new Date("2024-02-29T12:00:00Z"));
 
