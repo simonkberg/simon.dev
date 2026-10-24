@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
+import { config } from "@/config";
 import { env } from "@/lib/env";
 
 export const periods = [
@@ -194,6 +195,23 @@ export async function userGetTopArtists(
   });
 }
 
+// The listening page shows this many, as a #1 tile beside a 3×3 grid.
+export const TOP_ALBUMS = 10;
+
+// Last.fm serves this grey star for albums without art.
+const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
+
+const coverSchema = z
+  .array(z.object({ size: z.string(), "#text": z.string() }))
+  .transform((images) => {
+    const url = images.find(({ size }) => size === "extralarge")?.["#text"];
+    // The original upload, without the size segment: Next resizes it, and never past its size.
+    return url?.startsWith(config.lastfmCoverCdn) &&
+      !url.includes(PLACEHOLDER_COVER)
+      ? url.replace(/\/i\/u\/[^/]+\//, "/i/u/")
+      : undefined;
+  });
+
 const userGetTopAlbumsResponseSchema = z
   .object({
     topalbums: z.object({
@@ -202,7 +220,12 @@ const userGetTopAlbumsResponseSchema = z
           .object({
             name: z.string(),
             playcount: z.string().transform(Number),
+            url: z
+              .url({ protocol: /^https$/, hostname: /^www\.last\.fm$/ })
+              .pipe(z.templateLiteral(["https://", z.string()])),
             artist: z.object({ name: z.string() }),
+            // A cover is decoration: a malformed one leaves the tile empty, not the list unavailable.
+            image: coverSchema.catch(undefined),
             "@attr": z.object({ rank: z.string().transform(Number) }),
           })
           .transform((data) => ({
@@ -210,6 +233,8 @@ const userGetTopAlbumsResponseSchema = z
             artist: data.artist.name,
             playcount: data.playcount,
             rank: data["@attr"].rank,
+            url: data.url,
+            cover: data.image,
           })),
       ),
     }),

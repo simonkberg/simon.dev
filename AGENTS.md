@@ -206,6 +206,14 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   page): a request per bar, each hour the chart is cached. Lanes under it follow each bar's
   top artist from `user.getWeeklyArtistChart`, which takes any range, not just Last.fm's
   weeks: another request per bar, cached apart so a failure only drops the lanes.
+- **Album covers:** Next's image optimiser resizes each Last.fm cover from its original
+  upload (the CDN path without a size segment): the CDN's own resized sizes 404 in some
+  regions. A cold resize can take seconds and the image cache is per replica, so each tile
+  has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and
+  `instrumentation.ts` warms every period's covers at boot and hourly. Each look filters the
+  covers with properties that transition, so hover or focus fades them to the original from
+  one image: manual dithers by adding a Bayer grain under a `contrast()` threshold, since a
+  `url()` filter can't interpolate.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.
@@ -318,7 +326,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, reduced motion in `mocks/matchMedia.ts`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, reduced motion in `mocks/matchMedia.ts`, top albums in `mocks/lastfm.ts`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.

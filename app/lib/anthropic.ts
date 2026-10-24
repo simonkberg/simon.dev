@@ -396,7 +396,9 @@ async function executeTool(
       }
       case "get_top_albums": {
         const { username, ...params } = topItemsInputSchema.parse(input);
-        return JSON.stringify(await userGetTopAlbums(username, params));
+        const albums = await userGetTopAlbums(username, params);
+        // The cover URL is for the site's collage; the model has no use for it.
+        return JSON.stringify(albums.map(({ cover, ...album }) => album));
       }
       case "get_play_count": {
         const { username, ...params } = playCountInputSchema.parse(input);

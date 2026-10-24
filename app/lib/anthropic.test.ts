@@ -20,6 +20,7 @@ import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
+import { coverCdn, topAlbum } from "@/mocks/lastfm";
 import { CREATED_AT, fillCategory, seed, stored } from "@/mocks/memory";
 import { server } from "@/mocks/node";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
@@ -930,6 +931,18 @@ describe("createMessage", () => {
         expect(mock).toHaveBeenCalledWith(...calledWith);
       },
     );
+
+    it("should leave album covers out of the top albums result", async () => {
+      const { cover, ...album } = topAlbum(
+        "Knock Knock",
+        "Smog",
+        1,
+        `${coverCdn}/a.jpg`,
+      );
+      vi.mocked(userGetTopAlbums).mockResolvedValue([{ ...album, cover }]);
+
+      expect(await runTool("get_top_albums", {})).toBe(JSON.stringify([album]));
+    });
 
     it("should use default values when tool inputs are empty", async () => {
       const names = [

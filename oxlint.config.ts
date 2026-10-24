@@ -27,6 +27,15 @@ export default defineConfig({
     "no-array-constructor": "error",
     "no-var": "error",
     "prefer-const": "error",
+    // Rest siblings are how an object drops a property; options replace the `^_` defaults.
+    "no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+      },
+    ],
     "prefer-rest-params": "error",
     "prefer-spread": "error",
     "react/rules-of-hooks": "error",
