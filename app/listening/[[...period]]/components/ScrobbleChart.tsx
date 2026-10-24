@@ -7,7 +7,7 @@ import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
 import { useMotion } from "@/components/useMotion";
-import { formatNumber } from "@/lib/formatNumber";
+import { formatNumber, formatPlays } from "@/lib/formatNumber";
 
 export interface ScrobbleChartProps {
   // Undefined when the counts failed to load.
@@ -184,7 +184,7 @@ const Lanes = ({
               : `${from}–${items[run.last]?.label}`;
           })
           .join(", ");
-        const text = `${name}: ${formatNumber(plays)} plays in ${span}`;
+        const text = `${name}: ${formatPlays(plays)} in ${span}`;
         return (
           <li key={name} onPointerEnter={() => onActive(runs)}>
             <div
