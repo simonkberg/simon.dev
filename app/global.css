@@ -1289,10 +1289,12 @@ ul {
   > ol {
     display: grid;
     gap: 0.55rem;
+    container-type: inline-size;
   }
 
   /* The track runs on through the gutter, like the stems' axis. */
   li {
+    --lane-column: calc((100cqi - var(--stems-gutter)) / var(--count));
     display: grid;
     grid-template-columns:
       repeat(var(--count), minmax(0, 1fr))
@@ -1315,6 +1317,12 @@ ul {
   }
 
   /* Sized here, not on the list, so the gutter's ch matches the stems'. */
+  /* Each lane slides in from the left edge to its first bar. */
+  :is(.lane-label, .lane-run) {
+    translate: calc((var(--grow, 1) - 1) * var(--first, 0) * var(--lane-column))
+      0;
+  }
+
   .lane-label {
     grid-row: 1;
     opacity: var(--grow, 1);
@@ -1698,6 +1706,13 @@ ul {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Registered so its ch resolves in the lane's font, where the gutter's does, not the label's. */
+@property --lane-column {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
 }
 
 /* Registered so it animates, snapped to whole characters where it is read. */
