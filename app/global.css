@@ -127,7 +127,6 @@
   --cover-overlay: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
-  --cover-rank-display: block;
   --cover-rank-bg: var(--ink);
   --cover-rank-color: var(--ground);
   --timeline-origin: "┬";
@@ -488,7 +487,8 @@
   );
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-blend: multiply;
-  --cover-rank-display: none;
+  --cover-rank-bg: var(--accent);
+  --cover-rank-color: var(--on-accent);
   --timeline-origin: "◇";
   --timeline-bar: "─";
   --flashback-rule: 1px solid var(--accent);
@@ -2367,7 +2367,6 @@ tbody tr:hover {
   position: absolute;
   top: 0;
   left: 0;
-  display: var(--cover-rank-display);
   padding: 0 1ch;
   font-size: 0.875rem;
   line-height: 1.5;
