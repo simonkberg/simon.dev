@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type GetErasResult,
   getScrobbles,
   type GetScrobblesResult,
   getTopAlbums,
@@ -22,6 +23,9 @@ vi.mock(import("next/navigation"), () => ({
 }));
 
 vi.mock(import("@/actions/lastfm"), () => ({
+  getEras: vi.fn(() =>
+    Promise.resolve<GetErasResult>({ status: "ok", eras: [] }),
+  ),
   getScrobbles: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({ status: "ok", scrobbles: [] }),
   ),

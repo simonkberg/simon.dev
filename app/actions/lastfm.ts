@@ -7,6 +7,7 @@ import {
   type Period,
   userGetRecentTracks,
   userGetScrobbleCount,
+  userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   type UserGetTopAlbumsResponse,
@@ -122,6 +123,11 @@ export async function getTopAlbums(
   }
 }
 
+const periodBuckets = (period: Period, now: Date) =>
+  period === "overall"
+    ? yearBuckets(config.lastfmSince, now)
+    : scrobbleBuckets(period, now);
+
 export interface ScrobbleCount {
   label: string;
   count: number;
@@ -140,12 +146,8 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
-    const buckets =
-      period === "overall"
-        ? yearBuckets(config.lastfmSince, now)
-        : scrobbleBuckets(period, now);
     const scrobbles = await Promise.all(
-      buckets.map(async ({ label, from, to }) => ({
+      periodBuckets(period, now).map(async ({ label, from, to }) => ({
         label,
         count: await userGetScrobbleCount(config.lastfmUsername, { from, to }),
         current: to > now,
@@ -157,5 +159,40 @@ export async function getScrobbles(
     cacheLife("seconds");
     log.error({ err, action: "getScrobbles" }, "Error fetching scrobbles");
     return { status: "error", error: "Failed to fetch scrobbles" };
+  }
+}
+
+export interface Era {
+  label: string;
+  // Undefined for a bucket without scrobbles.
+  artist: { name: string; playcount: number } | undefined;
+  current: boolean;
+}
+
+export type GetErasResult =
+  | { status: "ok"; eras: Era[] }
+  | { status: "error"; error: string };
+
+export async function getEras(period: Period): Promise<GetErasResult> {
+  "use cache";
+
+  try {
+    const now = new Date();
+    const eras = await Promise.all(
+      periodBuckets(period, now).map(async ({ label, from, to }) => ({
+        label,
+        artist: await userGetTopArtistInRange(config.lastfmUsername, {
+          from,
+          to,
+        }),
+        current: to > now,
+      })),
+    );
+    cacheLife("hours");
+    return { status: "ok", eras };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getEras" }, "Error fetching eras");
+    return { status: "error", error: "Failed to fetch eras" };
   }
 }

@@ -247,3 +247,25 @@ export async function userGetScrobbleCount(
     to: toUnixTime(params.to) - 1,
   });
 }
+
+const userGetTopArtistInRangeResponseSchema = z
+  .object({
+    weeklyartistchart: z.object({
+      artist: z.array(
+        z.object({ name: z.string(), playcount: z.string().transform(Number) }),
+      ),
+    }),
+  })
+  .transform((data) => data.weeklyartistchart.artist[0]);
+
+// The weekly chart takes any range, not only the weeks Last.fm lists, and ranks by plays.
+export async function userGetTopArtistInRange(
+  user: string,
+  params: { from: Date; to: Date },
+): Promise<{ name: string; playcount: number } | undefined> {
+  return call(
+    "user.getweeklyartistchart",
+    userGetTopArtistInRangeResponseSchema,
+    { user, from: toUnixTime(params.from), to: toUnixTime(params.to) - 1 },
+  );
+}

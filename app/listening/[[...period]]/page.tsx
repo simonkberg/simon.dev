@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense, use } from "react";
 
 import {
+  getEras,
   getScrobbles,
   getTopAlbums,
   getTopArtists,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/lastfm";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 
+import { ListeningEras } from "./components/ListeningEras";
 import { PeriodSelector } from "./components/PeriodSelector";
 import {
   ScrobbleChart,
@@ -80,6 +82,9 @@ export default function ListeningPage({ params }: ListeningPageProps) {
   const scrobbles = getScrobbles(period).then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );
+  const eras = getEras(period).then((result) =>
+    result.status === "ok" ? result.eras : undefined,
+  );
   const topTracks = getTopTracks(period).then((result) =>
     result.status === "ok" ? result.tracks : undefined,
   );
@@ -111,6 +116,9 @@ export default function ListeningPage({ params }: ListeningPageProps) {
         <Suspense fallback={<ScrobbleChartSkeleton />}>
           {/* Keyed so a new period mounts fresh stems that grow in. */}
           <ScrobbleChart key={period} scrobbles={scrobbles} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ListeningEras eras={eras} />
         </Suspense>
       </section>
 
