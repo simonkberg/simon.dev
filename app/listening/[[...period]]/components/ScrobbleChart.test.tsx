@@ -3,44 +3,51 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { ScrobbleCount } from "@/actions/lastfm";
+import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
-const smog = (playcount: number) => ({ name: "Smog", playcount });
-
 const scrobbles: ScrobbleCount[] = [
-  { label: "Oct 20", count: 100, topArtist: smog(5), current: false },
-  { label: "Oct 21", count: 3000, topArtist: smog(7), current: false },
-  {
-    label: "Oct 22",
-    count: 200,
-    topArtist: { name: "Low", playcount: 3 },
-    current: false,
-  },
-  { label: "Oct 23", count: 0, topArtist: undefined, current: true },
+  { label: "Oct 20", count: 100, current: false },
+  { label: "Oct 21", count: 3000, current: false },
+  { label: "Oct 22", count: 200, current: false },
+  { label: "Oct 23", count: 10, current: true },
 ];
 
 const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
   act(async () => render(<ScrobbleChart scrobbles={Promise.resolve(items)} />));
 
-const years: ScrobbleCount[] = [
-  { label: "2016", count: 50, topArtist: smog(5), current: false },
-  { label: "2017", count: 70, topArtist: smog(7), current: false },
-  {
-    label: "2018",
-    count: 30,
-    topArtist: { name: "Low", playcount: 3 },
-    current: false,
-  },
-  { label: "2019", count: 20, topArtist: smog(2), current: false },
-  {
-    label: "2020",
-    count: 10,
-    topArtist: { name: "Bill Callahan", playcount: 4 },
-    current: true,
-  },
+const smog = (playcount: number) => ({ name: "Smog", playcount });
+
+const years: YearTopArtist[] = [
+  { label: "2016", artist: smog(5) },
+  { label: "2017", artist: smog(7) },
+  { label: "2018", artist: { name: "Low", playcount: 3 } },
+  { label: "2019", artist: undefined },
+  { label: "2020", artist: smog(2) },
+  { label: "2021", artist: { name: "Bill Callahan", playcount: 4 } },
 ];
+
+const renderLanes = (topArtistByYear: readonly YearTopArtist[] | undefined) =>
+  act(async () =>
+    render(
+      <ScrobbleChart
+        scrobbles={Promise.resolve(
+          years.map(({ label }, index) => ({
+            label,
+            count: 10,
+            current: index === years.length - 1,
+          })),
+        )}
+        topArtistByYear={Promise.resolve(topArtistByYear)}
+      />,
+    ),
+  );
+
+const lanes = () =>
+  within(screen.getByRole("list", { name: "Top artist by year" })).getAllByRole(
+    "listitem",
+  );
 
 const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
 
@@ -55,7 +62,7 @@ describe("ScrobbleChart", () => {
       "Oct 20: 100Oct 20",
       "Oct 21: 3,0003,000Oct 21",
       "Oct 22: 200Oct 22",
-      "Oct 23: 0 so farOct 23",
+      "Oct 23: 10 so farOct 23",
     ]);
   });
 
@@ -66,25 +73,22 @@ describe("ScrobbleChart", () => {
   });
 
   it("gives each top artist a lane with a bar per run of its years", async () => {
-    await renderChart(years);
+    await renderLanes(years);
 
-    const lanes = screen.getByRole("list", { name: "Top artist by year" });
     expect(
-      within(lanes)
-        .getAllByRole("listitem")
-        .map((item) => item.querySelector(".visually-hidden")?.textContent),
+      lanes().map(
+        (item) => item.querySelector(".visually-hidden")?.textContent,
+      ),
     ).toEqual([
-      "Smog: 14 plays in 2016–2017, 2019",
+      "Smog: 14 plays in 2016–2017, 2020",
       "Low: 3 plays in 2018",
-      "Bill Callahan: 4 plays in 2020",
+      "Bill Callahan: 4 plays in 2021",
     ]);
   });
 
   it("ends a late lane's name at its run and dashes the current one", async () => {
-    await renderChart(years);
-    const [smogLane, , lateLane] = within(
-      screen.getByRole("list", { name: "Top artist by year" }),
-    ).getAllByRole("listitem");
+    await renderLanes(years);
+    const [smogLane, , lateLane] = lanes();
 
     expect(smogLane?.querySelector("[data-end]")).not.toBeInTheDocument();
     expect(smogLane?.querySelector("[data-current]")).not.toBeInTheDocument();
@@ -95,22 +99,33 @@ describe("ScrobbleChart", () => {
   });
 
   it("lights a lane's stems while it is hovered", async () => {
-    await renderChart(years);
-    const lanes = screen.getByRole("list", { name: "Top artist by year" });
+    await renderLanes(years);
     const active = () =>
       stems().map((item) => item.hasAttribute("data-active"));
 
-    fireEvent.pointerEnter(within(lanes).getAllByRole("listitem")[0]!);
-    expect(active()).toEqual([true, true, false, true, false]);
+    fireEvent.pointerEnter(lanes()[0]!);
+    expect(active()).toEqual([true, true, false, false, true, false]);
 
-    fireEvent.pointerLeave(lanes);
-    expect(active()).toEqual([false, false, false, false, false]);
+    fireEvent.pointerLeave(
+      screen.getByRole("list", { name: "Top artist by year" }),
+    );
+    expect(active()).toEqual([false, false, false, false, false, false]);
+  });
+
+  it.each([
+    ["failed to load", undefined],
+    ["have none", years.map(({ label }) => ({ label, artist: undefined }))],
+  ])("leaves the lanes out when the artists %s", async (_, topArtistByYear) => {
+    await renderLanes(topArtistByYear);
+
+    expect(stems()).toHaveLength(years.length);
+    expect(
+      screen.queryByRole("list", { name: "Top artist by year" }),
+    ).not.toBeInTheDocument();
   });
 
   it("scales a lone empty bucket with no average to show", async () => {
-    await renderChart([
-      { label: "2026", count: 0, topArtist: undefined, current: true },
-    ]);
+    await renderChart([{ label: "2026", count: 0, current: true }]);
 
     const figure = document.querySelector<HTMLElement>(".stems");
     expect(figure?.style.getPropertyValue("--max")).toBe("1");
@@ -122,15 +137,11 @@ describe("ScrobbleChart", () => {
       Array.from({ length: 13 }, (_, index) => ({
         label: `W${index}`,
         count: index,
-        topArtist: undefined,
         current: false,
       })),
     );
 
     expect(ticks()).toEqual(["W0", "W3", "W6", "W9", "W12"]);
-    expect(
-      screen.queryByRole("list", { name: "Top artist by year" }),
-    ).not.toBeInTheDocument();
     expect(document.querySelector('[data-tick="narrow"]')).toHaveTextContent(
       "W0",
     );

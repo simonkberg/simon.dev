@@ -127,8 +127,6 @@ export async function getTopAlbums(
 export interface ScrobbleCount {
   label: string;
   count: number;
-  // Only for years, and undefined when the year has no scrobbles or the artist failed to load.
-  topArtist: WeeklyArtist | undefined;
   // Still under way, so its count is partial.
   current: boolean;
 }
@@ -144,40 +142,59 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
-    // Only years are long enough to be eras.
-    const yearly = period === "overall";
-    const buckets = yearly
-      ? yearBuckets(config.lastfmSince, now)
-      : scrobbleBuckets(period, now);
-    let artistFailed = false;
-    // The lanes are a garnish: a failed artist shouldn't take the counts with it.
-    const topArtistOf = (label: string, range: { from: Date; to: Date }) =>
-      userGetTopArtistInRange(config.lastfmUsername, range).catch(
-        (err: unknown) => {
-          log.warn({ err, label }, "Error fetching top artist");
-          artistFailed = true;
-          return undefined;
-        },
-      );
+    const buckets =
+      period === "overall"
+        ? yearBuckets(config.lastfmSince, now)
+        : scrobbleBuckets(period, now);
     const scrobbles = await Promise.all(
-      buckets.map(async ({ label, from, to }) => {
-        const [count, topArtist] = await Promise.all([
-          userGetScrobbleCount(config.lastfmUsername, { from, to }),
-          yearly ? topArtistOf(label, { from, to }) : undefined,
-        ]);
-        return { label, count, topArtist, current: to > now };
-      }),
+      buckets.map(async ({ label, from, to }) => ({
+        label,
+        count: await userGetScrobbleCount(config.lastfmUsername, { from, to }),
+        current: to > now,
+      })),
     );
-    if (artistFailed) {
-      // A missing lane shouldn't stay missing for hours.
-      cacheLife("minutes");
-    } else {
-      cacheLife("hours");
-    }
+    cacheLife("hours");
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");
     log.error({ err, action: "getScrobbles" }, "Error fetching scrobbles");
     return { status: "error", error: "Failed to fetch scrobbles" };
+  }
+}
+
+export interface YearTopArtist {
+  label: string;
+  // Undefined for a year without scrobbles.
+  artist: WeeklyArtist | undefined;
+}
+
+export type GetTopArtistByYearResult =
+  | { status: "ok"; years: YearTopArtist[] }
+  | { status: "error"; error: string };
+
+export async function getTopArtistByYear(): Promise<GetTopArtistByYearResult> {
+  "use cache";
+
+  try {
+    const years = await Promise.all(
+      yearBuckets(config.lastfmSince, new Date()).map(
+        async ({ label, from, to }) => ({
+          label,
+          artist: await userGetTopArtistInRange(config.lastfmUsername, {
+            from,
+            to,
+          }),
+        }),
+      ),
+    );
+    cacheLife("hours");
+    return { status: "ok", years };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error(
+      { err, action: "getTopArtistByYear" },
+      "Error fetching top artist by year",
+    );
+    return { status: "error", error: "Failed to fetch top artist by year" };
   }
 }

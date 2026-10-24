@@ -6,6 +6,8 @@ import {
   type GetScrobblesResult,
   getTopAlbums,
   type GetTopAlbumsResult,
+  getTopArtistByYear,
+  type GetTopArtistByYearResult,
   getTopArtists,
   type GetTopArtistsResult,
   getTopTracks,
@@ -24,6 +26,9 @@ vi.mock(import("next/navigation"), () => ({
 vi.mock(import("@/actions/lastfm"), () => ({
   getScrobbles: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({ status: "ok", scrobbles: [] }),
+  ),
+  getTopArtistByYear: vi.fn(() =>
+    Promise.resolve<GetTopArtistByYearResult>({ status: "ok", years: [] }),
   ),
   getTopTracks: vi.fn(() =>
     Promise.resolve<GetTopTracksResult>({ status: "ok", tracks: [] }),
@@ -106,14 +111,11 @@ describe("ListeningPage", () => {
   it("should render the scrobbles per bucket of the period", async () => {
     vi.mocked(getScrobbles).mockResolvedValue({
       status: "ok",
-      scrobbles: [
-        {
-          label: "2026",
-          count: 42,
-          topArtist: { name: "Smog", playcount: 7 },
-          current: true,
-        },
-      ],
+      scrobbles: [{ label: "2026", count: 42, current: true }],
+    });
+    vi.mocked(getTopArtistByYear).mockResolvedValue({
+      status: "ok",
+      years: [{ label: "2026", artist: { name: "Smog", playcount: 7 } }],
     });
 
     await renderPage();
@@ -124,6 +126,30 @@ describe("ListeningPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("2026: 42 so far")).toBeInTheDocument();
     expect(screen.getByText("Smog: 7 plays in 2026")).toBeInTheDocument();
+  });
+
+  it("should keep the scrobbles when the top artists fail", async () => {
+    vi.mocked(getScrobbles).mockResolvedValue({
+      status: "ok",
+      scrobbles: [{ label: "2026", count: 42, current: true }],
+    });
+    vi.mocked(getTopArtistByYear).mockResolvedValue({
+      status: "error",
+      error: "Failed",
+    });
+
+    await renderPage();
+
+    expect(screen.getByText("2026: 42 so far")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: "Top artist by year" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should only find top artists by year for all time", async () => {
+    await renderPage(["7day"]);
+
+    expect(getTopArtistByYear).not.toHaveBeenCalled();
   });
 
   it("should render table sections with headings", async () => {

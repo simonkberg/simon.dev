@@ -3,7 +3,7 @@
 import { animated, useSprings } from "@react-spring/web";
 import { type CSSProperties, use, useState } from "react";
 
-import type { ScrobbleCount } from "@/actions/lastfm";
+import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
 import { useMotion } from "@/components/useMotion";
@@ -12,6 +12,8 @@ import { formatNumber } from "@/lib/formatNumber";
 export interface ScrobbleChartProps {
   // Undefined when the counts failed to load.
   scrobbles: Promise<readonly ScrobbleCount[] | undefined>;
+  // Only for all time, and undefined when the artists failed to load.
+  topArtistByYear?: Promise<readonly YearTopArtist[] | undefined>;
 }
 
 // Labels count back from the current bucket. Narrow charts show every other one.
@@ -131,9 +133,15 @@ interface Lane {
 }
 
 // One lane per top artist, in order of first appearance, with a run per stretch of its years.
-const lanes = (items: readonly ScrobbleCount[]): Lane[] => {
+const lanes = (
+  items: readonly ScrobbleCount[],
+  years: readonly YearTopArtist[],
+): Lane[] => {
+  // By label, in case the two loads straddle a new year.
+  const artistOf = new Map(years.map(({ label, artist }) => [label, artist]));
   const byName = new Map<string, Lane>();
-  items.forEach(({ topArtist, current }, index) => {
+  items.forEach(({ label, current }, index) => {
+    const topArtist = artistOf.get(label);
     if (!topArtist) return;
     const lane = byName.get(topArtist.name) ?? {
       name: topArtist.name,
@@ -158,17 +166,19 @@ const lanes = (items: readonly ScrobbleCount[]): Lane[] => {
 
 const Lanes = ({
   items,
+  years,
   onActive,
 }: {
   items: readonly ScrobbleCount[];
+  years: readonly YearTopArtist[];
   onActive: (runs: readonly Run[]) => void;
 }) => (
   <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
     {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
     <ol aria-label="Top artist by year" onPointerLeave={() => onActive([])}>
-      {lanes(items).map(({ name, runs, plays, first, last }) => {
+      {lanes(items, years).map(({ name, runs, plays, first, last }) => {
         const end = first > items.length / 2;
-        const years = runs
+        const span = runs
           .map((run) => {
             const from = items[run.first]?.label;
             return run.first === run.last
@@ -176,7 +186,7 @@ const Lanes = ({
               : `${from}–${items[run.last]?.label}`;
           })
           .join(", ");
-        const text = `${name}: ${formatNumber(plays)} plays in ${years}`;
+        const text = `${name}: ${formatNumber(plays)} plays in ${span}`;
         return (
           <li key={name} onPointerEnter={() => onActive(runs)}>
             <div
@@ -208,27 +218,37 @@ const Lanes = ({
   </div>
 );
 
-const Chart = ({ items }: { items: readonly ScrobbleCount[] }) => {
+const Chart = ({
+  items,
+  years,
+}: {
+  items: readonly ScrobbleCount[];
+  years: readonly YearTopArtist[] | undefined;
+}) => {
   const [active, setActive] = useState<readonly Run[]>([]);
 
   return (
     <>
       <Stems items={items} active={active} />
-      {items.some(({ topArtist }) => topArtist) && (
-        <Lanes items={items} onActive={setActive} />
+      {years?.some(({ artist }) => artist) && (
+        <Lanes items={items} years={years} onActive={setActive} />
       )}
     </>
   );
 };
 
-export const ScrobbleChart = ({ scrobbles }: ScrobbleChartProps) => {
+export const ScrobbleChart = ({
+  scrobbles,
+  topArtistByYear,
+}: ScrobbleChartProps) => {
   const items = use(scrobbles);
+  const years = topArtistByYear && use(topArtistByYear);
 
   if (items === undefined) {
     return <p>Scrobbles are temporarily unavailable :(</p>;
   }
 
-  return <Chart items={items} />;
+  return <Chart items={items} years={years} />;
 };
 
 export const ScrobbleChartSkeleton = () => (

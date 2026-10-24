@@ -18,6 +18,7 @@ import { log } from "@/lib/log";
 import {
   getRecentTracks,
   getScrobbles,
+  getTopArtistByYear,
   getTopAlbums,
   getTopArtists,
   getTopTracks,
@@ -207,13 +208,10 @@ describe("getTopAlbums", () => {
 });
 
 describe("getScrobbles", () => {
-  const topArtist = { name: "Smog", playcount: 23 };
-
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
     vi.mocked(userGetScrobbleCount).mockResolvedValue(42);
-    vi.mocked(userGetTopArtistInRange).mockResolvedValue(topArtist);
   });
 
   it("should count each bucket", async () => {
@@ -224,50 +222,26 @@ describe("getScrobbles", () => {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
     });
-    expect(userGetTopArtistInRange).not.toHaveBeenCalled();
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toEqual({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "Oct 23", count: 42, topArtist: undefined, current: true },
+        { label: "Oct 23", count: 42, current: true },
       ]),
     });
   });
 
-  it("should count all time per year since the first scrobbles, with each year's top artist", async () => {
+  it("should count all time per year since the first scrobbles", async () => {
     const result = await getScrobbles("overall");
 
     expect(userGetScrobbleCount).toHaveBeenCalledTimes(2026 - 2007 + 1);
-    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
-      from: new Date("2025-12-31T23:00:00Z"),
-      to: new Date("2026-12-31T23:00:00Z"),
-    });
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "2007", count: 42, topArtist, current: false },
-        { label: "2026", count: 42, topArtist, current: true },
+        { label: "2007", count: 42, current: false },
+        { label: "2026", count: 42, current: true },
       ]),
     });
-  });
-
-  it("should keep the counts when a top artist fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetTopArtistInRange).mockRejectedValueOnce(mockError);
-
-    const result = await getScrobbles("overall");
-
-    expect(result).toMatchObject({
-      status: "ok",
-      scrobbles: expect.arrayContaining([
-        { label: "2007", count: 42, topArtist: undefined, current: false },
-      ]),
-    });
-    expect(log.warn).toHaveBeenCalledExactlyOnceWith(
-      { err: mockError, label: "2007" },
-      "Error fetching top artist",
-    );
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
   });
 
   it("should return error status when a count fails", async () => {
@@ -284,6 +258,51 @@ describe("getScrobbles", () => {
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getScrobbles" },
       "Error fetching scrobbles",
+    );
+  });
+});
+
+describe("getTopArtistByYear", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+  });
+
+  it("should find each year's top artist since the first scrobbles", async () => {
+    const artist = { name: "Smog", playcount: 23 };
+    vi.mocked(userGetTopArtistInRange).mockResolvedValue(artist);
+
+    const result = await getTopArtistByYear();
+
+    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
+      from: new Date("2025-12-31T23:00:00Z"),
+      to: new Date("2026-12-31T23:00:00Z"),
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+    expect(result).toMatchObject({
+      status: "ok",
+      years: expect.arrayContaining([
+        { label: "2007", artist },
+        { label: "2026", artist },
+      ]),
+    });
+  });
+
+  it("should return error status when an artist fails", async () => {
+    const mockError = new Error("API error");
+    vi.mocked(userGetTopArtistInRange).mockRejectedValue(mockError);
+
+    const result = await getTopArtistByYear();
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch top artist by year",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getTopArtistByYear" },
+      "Error fetching top artist by year",
     );
   });
 });
