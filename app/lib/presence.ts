@@ -2,7 +2,7 @@ import "server-only";
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
-import { batch } from "@/lib/turso";
+import { batch, query, type Value } from "@/lib/turso";
 
 const HEARTBEAT_MS = 15_000;
 // Three heartbeats, so one slow request doesn't drop anyone.
@@ -11,27 +11,27 @@ const EXPIRY_MS = 45_000;
 type Listener = (here: readonly string[]) => void;
 
 type Presence = {
-  // One entry per open stream, so a visitor's tabs count once and leave one at a time.
-  streams: string[];
+  // Stream id to username, for the streams this replica holds.
+  streams: Map<string, string>;
   listeners: Set<Listener>;
-  stored: readonly string[];
   here: readonly string[];
   timer?: NodeJS.Timeout;
   // The timer whose heartbeat is running: each first join starts a new one.
   beating?: NodeJS.Timeout;
+  again: boolean;
 };
 
+// One row per stream, so a visitor's tabs and reloads come and go on their own.
 // Each replica sees only its own streams, so Turso holds everyone's.
 const presence = () =>
   getGlobal<Presence>("presence", () => ({
-    streams: [],
+    streams: new Map(),
     listeners: new Set(),
-    stored: [],
     here: [],
+    again: false,
   }));
 
-function publish(state: Presence): void {
-  const here = [...new Set([...state.stored, ...state.streams])].sort();
+function publish(state: Presence, here: readonly string[]): void {
   if (here.join("\n") === state.here.join("\n")) return;
   state.here = here;
   for (const listener of state.listeners) listener(here);
@@ -39,43 +39,55 @@ function publish(state: Presence): void {
 
 async function heartbeat(state: Presence): Promise<void> {
   const { timer } = state;
-  // A slow Turso would otherwise stack heartbeats that land out of order.
-  if (state.beating === timer) return;
+  if (!timer) return;
+  // A heartbeat asked for while one runs follows it, rather than racing it.
+  if (state.beating === timer) {
+    state.again = true;
+    return;
+  }
   state.beating = timer;
+  state.again = false;
   const now = Date.now();
   try {
     const [, , { rows }] = await batch([
       {
-        sql: `INSERT INTO presence (username, seen_at)
-              SELECT DISTINCT value, ? FROM json_each(?) WHERE true
-              ON CONFLICT (username) DO UPDATE SET seen_at = excluded.seen_at`,
-        args: [now, JSON.stringify(state.streams)],
+        sql: "UPDATE presence SET seen_at = ? WHERE stream IN (SELECT value FROM json_each(?))",
+        args: [now, JSON.stringify([...state.streams.keys()])],
       },
       {
         sql: "DELETE FROM presence WHERE seen_at <= ?",
         args: [now - EXPIRY_MS],
       },
-      { sql: "SELECT username FROM presence" },
+      { sql: "SELECT DISTINCT username FROM presence ORDER BY username" },
     ]);
     // Everyone left while it ran, so a later join has its own heartbeat.
     if (state.timer !== timer) return;
-    state.stored = rows.map((row) => String(row["username"]));
-    publish(state);
+    publish(
+      state,
+      rows.map((row) => String(row["username"])),
+    );
   } catch (err) {
     log.warn({ err }, "Presence heartbeat failed");
   } finally {
     if (state.beating === timer) state.beating = undefined;
   }
+  if (state.again && state.timer === timer) await heartbeat(state);
 }
 
-/** Counts `username` as here until it leaves, and tells `listener` who is here now and on every change. */
+function write(sql: string, args: Value[]): Promise<void> {
+  return query(sql, args).then(
+    () => {},
+    (err: unknown) => log.warn({ err }, "Presence write failed"),
+  );
+}
+
+/** Counts `username` as here until the stream leaves, and tells `listener` who is here now and on every change. */
 export function joinPresence(
+  stream: string,
   username: Username | undefined,
   listener: Listener,
 ): () => void {
   const state = presence();
-  if (username) state.streams.push(username);
-  publish(state);
   state.listeners.add(listener);
   listener(state.here);
 
@@ -84,17 +96,40 @@ export function joinPresence(
       () => void heartbeat(state),
       HEARTBEAT_MS,
     ).unref();
-    void heartbeat(state);
   }
+
+  const joined = username
+    ? write(
+        "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
+        [stream, username, Date.now()],
+      )
+    : Promise.resolve();
+  if (username) state.streams.set(stream, username);
+  void joined.then(() => heartbeat(state));
 
   return () => {
     state.listeners.delete(listener);
-    if (username) state.streams.splice(state.streams.indexOf(username), 1);
-
-    if (state.listeners.size > 0) return publish(state);
+    if (state.streams.delete(stream)) {
+      void joined.then(() =>
+        write("DELETE FROM presence WHERE stream = ?", [stream]),
+      );
+    }
+    if (state.listeners.size > 0) return;
     clearInterval(state.timer);
     state.timer = undefined;
-    state.stored = [];
     state.here = [];
   };
+}
+
+/** Takes a stream out at once, for a page that says it is closing before the server notices. */
+export async function leavePresence(
+  stream: string,
+  username: Username,
+): Promise<void> {
+  await write("DELETE FROM presence WHERE stream = ? AND username = ?", [
+    stream,
+    username,
+  ]);
+  const state = presence();
+  if (state.timer) await heartbeat(state);
 }

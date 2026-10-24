@@ -46,9 +46,11 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  send(PING_MESSAGE);
-
-  const leavePresence = joinPresence(session?.username, (here) =>
+  // The page names its stream when it leaves, so it drops out before the
+  // server notices. Sent at once, it also opens the stream on the client.
+  const stream = crypto.randomUUID();
+  send(`event: stream\ndata: ${stream}\n\n`);
+  const leavePresence = joinPresence(stream, session?.username, (here) =>
     send(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
   );
 

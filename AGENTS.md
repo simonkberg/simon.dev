@@ -156,10 +156,11 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
   the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
   Each change makes tabs `router.refresh()`, served from history cached per store revision.
-- **Presence:** an open chat stream counts its visitor as here. Each replica upserts its
-  streams' usernames into Turso's `presence` every 15s while it has any, and reads back
-  everyone seen in the last 45s (`app/lib/presence.ts`). A closed stream is only noticed at
-  its next ping, so leaving can take up to 90s to show.
+- **Presence:** an open chat stream counts its visitor as here: one Turso `presence` row per
+  stream, inserted when it opens and deleted when it closes. While a replica has streams it
+  refreshes theirs every 15s, drops rows unseen for 45s and reads back everyone
+  (`app/lib/presence.ts`). The server only notices a closed stream at its next ping, so the
+  page also beacons its stream id to `/api/chat/presence` as it closes.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as
