@@ -211,8 +211,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   regions. A cold resize can take seconds and the image cache is per replica, so each tile
   has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and
   `instrumentation.ts` warms every period's covers at boot and hourly. Each look filters the
-  covers (`--cover-filter`, manual's is the SVG `#cover-dither`), and hover or focus shows
-  them unfiltered.
+  covers with properties that transition, so hover or focus fades them to the original from
+  one image: manual dithers by adding a Bayer grain under a `contrast()` threshold, since a
+  `url()` filter can't interpolate.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.

@@ -128,6 +128,8 @@
   --cover-filter: none;
   --cover-blend: normal;
   --cover-overlay: none;
+  --cover-grain: 0;
+  --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
   --timeline-origin: "┬";
@@ -622,7 +624,9 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
-  --cover-filter: url(#cover-dither);
+  --cover-filter: grayscale(1) brightness(0.5);
+  --cover-grain: 1;
+  --cover-threshold: contrast(40);
   --cover-overlay: linear-gradient(
     light-dark(transparent, oklch(0 0 0 / 0.15)) 0 100%
   );
@@ -2389,12 +2393,6 @@ tbody tr:hover {
   container-type: inline-size;
 }
 
-.collage-filters {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
 .collage-covers {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -2437,8 +2435,7 @@ tbody tr:hover {
     height: 100%;
     object-fit: cover;
     filter: var(--cover-filter);
-    /* A `url()` filter can't interpolate, so manual's dither switches at once. */
-    transition: filter 0.3s ease;
+    transition: filter 0.3s ease-in;
   }
 
   &:has(img)::after {
@@ -2455,10 +2452,9 @@ tbody tr:hover {
     &:hover {
       z-index: 1;
       outline: var(--cover-frame-hover);
-
-      img {
-        filter: none;
-      }
+      --cover-filter: none;
+      --cover-grain: 0;
+      --cover-threshold: none;
 
       &::after {
         opacity: 0;
@@ -2470,14 +2466,32 @@ tbody tr:hover {
   &:focus-visible {
     z-index: 1;
     outline: var(--focus);
-
-    img {
-      filter: none;
-    }
+    --cover-filter: none;
+    --cover-grain: 0;
+    --cover-threshold: none;
 
     &::after {
       opacity: 0;
     }
+  }
+}
+
+/* Grain under a contrast threshold makes an ordered dither that, unlike a url() filter, transitions. */
+.cover-art {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  filter: var(--cover-threshold);
+  transition: filter 0.3s cubic-bezier(0, 0.9, 0.1, 1);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--cover-dither) 0 0 / 4px 4px;
+    mix-blend-mode: plus-lighter;
+    opacity: var(--cover-grain);
+    transition: opacity 0.3s ease-in;
   }
 }
 

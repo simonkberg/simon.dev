@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { use } from "react";
 
 import type { TopAlbum } from "@/actions/lastfm";
@@ -20,51 +21,21 @@ const bayer = [
   [15, 7, 13, 5],
 ];
 
+// Half-strength levels: added to a cover at half brightness, they threshold to ordered dithering.
 const bayerTile = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">${bayer
     .flatMap((row, y) =>
       row.map((value, x) => {
-        const level = Math.round(((value + 0.5) / 16) * 255);
+        const level = Math.round(((value + 0.5) / 32) * 255);
         return `<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${level},${level},${level})"/>`;
       }),
     )
     .join("")}</svg>`,
 )}`;
 
-// Ordered dithering to black, grey and white, for looks that set
-// `--cover-filter: url(#cover-dither)`.
-const Dither = () => (
-  <svg className="collage-filters" aria-hidden="true">
-    <filter
-      id="cover-dither"
-      colorInterpolationFilters="sRGB"
-      x="0"
-      y="0"
-      width="100%"
-      height="100%"
-    >
-      <feColorMatrix
-        type="matrix"
-        values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0"
-        result="gray"
-      />
-      <feImage href={bayerTile} width="4" height="4" result="cell" />
-      <feTile in="cell" result="threshold" />
-      <feComposite
-        in="gray"
-        in2="threshold"
-        operator="arithmetic"
-        k2="0.667"
-        k3="0.333"
-      />
-      <feComponentTransfer>
-        <feFuncR type="discrete" tableValues="0 0.55 1" />
-        <feFuncG type="discrete" tableValues="0 0.55 1" />
-        <feFuncB type="discrete" tableValues="0 0.55 1" />
-      </feComponentTransfer>
-    </filter>
-  </svg>
-);
+const collageStyle = {
+  "--cover-dither": `url("${bayerTile}")`,
+} as CSSProperties;
 
 export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   const items = use(albums);
@@ -74,19 +45,20 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   }
 
   return (
-    <div className="collage">
-      <Dither />
+    <div className="collage" style={collageStyle}>
       <ol className="collage-covers">
         {items.map((album, index) => (
           <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
               {album.cover && (
-                <Image
-                  src={album.cover}
-                  width={coverWidth(index)}
-                  height={coverWidth(index)}
-                  alt=""
-                />
+                <span className="cover-art">
+                  <Image
+                    src={album.cover}
+                    width={coverWidth(index)}
+                    height={coverWidth(index)}
+                    alt=""
+                  />
+                </span>
               )}
               <span className="cover-rank" aria-hidden="true">
                 {album.rank}
