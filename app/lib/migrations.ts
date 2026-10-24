@@ -39,6 +39,7 @@ export const MIGRATIONS: readonly string[] = [
     username TEXT NOT NULL,
     seen_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS own_posts (id TEXT PRIMARY KEY)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

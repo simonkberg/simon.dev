@@ -10,6 +10,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  postedIn,
   sendTyping,
 } from "./api";
 import { subscribe } from "./gateway";
@@ -123,6 +124,11 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     const chain = await getMessageChain(messageId);
     if (chain.length === 0) return;
+
+    if (!message.author.bot && !(await postedIn(chain))) {
+      log.info({ messageId }, "Discord thread from another environment");
+      return;
+    }
 
     if (!chain.some((m) => mentionsBot(m.content))) return;
 

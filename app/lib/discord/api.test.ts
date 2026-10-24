@@ -4,9 +4,12 @@ import { z } from "zod";
 
 import { resetGlobals } from "@/lib/global";
 import { log } from "@/lib/log";
+import { MIGRATIONS } from "@/lib/migrations";
 import type { Username } from "@/lib/session";
+import { query } from "@/lib/turso";
 import { message, reaction } from "@/mocks/discord";
 import { server } from "@/mocks/node";
+import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
   _setRateLimitGate,
@@ -16,6 +19,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  postedIn,
   removeBotReaction,
   searchChannelMessages,
   sendTyping,
@@ -24,11 +28,15 @@ import {
 import { connect, subscribe } from "./gateway";
 import type { DiscordMessage } from "./schemas";
 
+vi.mock(import("@/lib/turso"), () => ({ query: vi.fn() }));
+
 vi.mock(import("./gateway"), () => ({
   connect: vi.fn(async () => {}),
   subscribe: vi.fn(async () => () => {}),
   getBotUserId: () => "bot-user-id",
 }));
+
+const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
 const MESSAGES_URL = `${DISCORD_BASE_URL}/channels/:channelId/messages`;
@@ -663,6 +671,51 @@ describe("isOwnPost", () => {
 
     expect(isOwnPost(message("message-123", { nonce }))).toBe(true);
     expect(nonce).toHaveLength(25);
+  });
+});
+
+describe("postedIn", () => {
+  const chain = (...ids: string[]) =>
+    ids.map((id) => ({
+      id,
+      type: 0,
+      username: "u",
+      content: "",
+      reactions: [],
+    }));
+
+  beforeEach(() => {
+    server.use(
+      http.post(MESSAGES_URL, () => HttpResponse.json({ id: "message-123" })),
+    );
+  });
+
+  it("should find only this environment's posts in a chain on a shared channel", async () => {
+    await postChannelMessage("Hello", "TestUser" as Username);
+
+    expect(await postedIn(chain("message-123", "message-456"))).toBe(true);
+    expect(await postedIn(chain("message-456"))).toBe(false);
+  });
+
+  it("should still return the posted id when recording it fails", async () => {
+    vi.mocked(query).mockImplementation(failQuery(sqlite(), "INSERT"));
+
+    expect(await postChannelMessage("Hello", "TestUser" as Username)).toBe(
+      "message-123",
+    );
+    expect(log.warn).toHaveBeenCalledExactlyOnceWith(
+      { err: expect.any(Error), messageId: "message-123" },
+      "Failed to record own post",
+    );
+  });
+
+  it("should answer every chain in production, which has its own channel", async () => {
+    vi.stubEnv("RAILWAY_ENVIRONMENT_NAME", "production");
+
+    await postChannelMessage("Hello", "TestUser" as Username);
+
+    expect(await postedIn(chain("message-456"))).toBe(true);
+    expect(query).not.toHaveBeenCalled();
   });
 });
 

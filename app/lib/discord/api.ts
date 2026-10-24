@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { stringToColor } from "@/lib/stringToColor";
+import { query } from "@/lib/turso";
 
 import type { Username } from "../session";
 import { connect, getBotUserId, subscribe } from "./gateway";
@@ -595,6 +596,31 @@ export function isOwnPost(message: DiscordMessage): boolean {
   return message.nonce === postNonce();
 }
 
+// Production has its own channel; previews (and local dev) share the test channel.
+function sharesChannel(): boolean {
+  return process.env["RAILWAY_ENVIRONMENT_NAME"] !== "production";
+}
+
+// Kept on shared channels only, where postedIn() needs them.
+async function recordPost(messageId: string): Promise<void> {
+  if (!sharesChannel()) return;
+  try {
+    await query("INSERT OR IGNORE INTO own_posts (id) VALUES (?)", [messageId]);
+  } catch (err) {
+    log.warn({ err, messageId }, "Failed to record own post");
+  }
+}
+
+/** On a shared channel, a reply typed in Discord is answered only by the environment that posted in its chain. */
+export async function postedIn(chain: ChainMessage[]): Promise<boolean> {
+  if (!sharesChannel()) return true;
+  const { rows } = await query(
+    `SELECT 1 FROM own_posts WHERE id IN (${chain.map(() => "?").join(", ")}) LIMIT 1`,
+    chain.map((m) => m.id),
+  );
+  return rows.length > 0;
+}
+
 export async function postChannelMessage(
   text: string,
   username: Username,
@@ -619,6 +645,7 @@ export async function postChannelMessage(
     body,
   );
 
+  await recordPost(response.id);
   return response.id;
 }
 

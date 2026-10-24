@@ -218,6 +218,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   instances don't double-reply. Without Turso it doesn't reply at all, rather than twice.
   Every environment's site posts as the bot, and PR previews share a channel, so each post
   carries a per-environment `nonce` and the bot answers a site post only where it was sent.
+  Previews also keep the ids they post in `own_posts`, and answer a message typed in Discord
+  only when its reply chain holds one, so a fresh Discord mention there gets no answer.
   The reply chain reaches it as one user turn of escaped `<message>` elements, its own
   included, so ids, authors and reactions sit outside the text people can type.
   A reply's last round rules out tools, so it ends in text rather than running out of rounds.

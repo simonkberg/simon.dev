@@ -15,6 +15,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  postedIn,
   sendTyping,
 } from "./api";
 import { handleMessage, startBotSubscription } from "./bot";
@@ -31,6 +32,7 @@ vi.mock(import("./api"), async (importOriginal) => {
     getMessageChain: vi.fn(),
     isOwnPost: vi.fn(),
     postChannelMessage: vi.fn(),
+    postedIn: vi.fn(async () => true),
     sendTyping: vi.fn(() => Promise.resolve()),
   };
 });
@@ -195,6 +197,21 @@ describe("handleMessage", () => {
     expect(log.info).toHaveBeenCalledExactlyOnceWith(
       { messageId: "msg-1" },
       "Site post from another environment",
+    );
+  });
+
+  it("should leave a Discord reply in another environment's thread", async () => {
+    vi.mocked(postedIn).mockResolvedValue(false);
+
+    await handleMessage(message("msg-1", { content: "User1: hey simon-bot" }));
+
+    expect(postedIn).toHaveBeenCalledExactlyOnceWith([
+      link("msg-1", 0, "User1", "hey simon-bot"),
+    ]);
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    expect(log.info).toHaveBeenCalledWith(
+      { messageId: "msg-1" },
+      "Discord thread from another environment",
     );
   });
 
