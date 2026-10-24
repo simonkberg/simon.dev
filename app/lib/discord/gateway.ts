@@ -29,8 +29,9 @@ const GatewayOpcode = {
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 // MESSAGE_CONTENT too, or a Discord user's text arrives empty and their mentions never match.
-// GUILD_PRESENCES, privileged too, is also what puts every member in GUILD_CREATE.
-const GATEWAY_INTENTS = (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 15); // GUILD_PRESENCES, GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, GUILD_MESSAGE_TYPING, MESSAGE_CONTENT
+// GUILDS sends GUILD_CREATE, and GUILD_PRESENCES, privileged too, puts every member and who is online in it.
+const GATEWAY_INTENTS =
+  (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 15); // GUILDS, GUILD_PRESENCES, GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, GUILD_MESSAGE_TYPING, MESSAGE_CONTENT
 
 const HELLO_TIMEOUT_MS = 10_000;
 
