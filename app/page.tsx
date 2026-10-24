@@ -38,7 +38,8 @@ export default function RootPage() {
       : result,
   );
   const recentTracks = request.then(getRecentTracks);
-  const onThisDay = request.then(getOnThisDay);
+  // Called bare, so it shares its cache entry with /listening/on-this-day.
+  const onThisDay = request.then(() => getOnThisDay());
   const tipDismissed = getChatTipDismissed();
 
   return (
