@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     loader: "custom",
     loaderFile: "./app/lib/coverLoader.ts",
     imageSizes: [174, 300, 500],
-    deviceSizes: [600, 770],
+    deviceSizes: [600],
   },
 };
 
