@@ -130,17 +130,17 @@ describe("joinPresence", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
   });
 
-  it("drops a heartbeat that finishes after everyone left", async () => {
-    await seenElsewhere(bob);
+  it("starts afresh when everyone left during a heartbeat", async () => {
     const resolve = holdNextBatch();
     joinPresence(alice, vi.fn())();
-    resolve();
-    await vi.advanceTimersByTimeAsync(0);
-    vi.mocked(batch).mockImplementation(() => new Promise(() => {}));
 
     const listener = vi.fn();
     joinPresence(undefined, listener);
+    await vi.advanceTimersByTimeAsync(0);
+    resolve();
+    await vi.advanceTimersByTimeAsync(0);
 
+    expect(batch).toHaveBeenCalledTimes(2);
     expect(listener).toHaveBeenCalledExactlyOnceWith([]);
   });
 

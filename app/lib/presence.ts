@@ -17,7 +17,8 @@ type Presence = {
   stored: readonly string[];
   here: readonly string[];
   timer?: NodeJS.Timeout;
-  beating: boolean;
+  // The timer whose heartbeat is running: each first join starts a new one.
+  beating?: NodeJS.Timeout;
 };
 
 // Each replica sees only its own streams, so Turso holds everyone's.
@@ -27,7 +28,6 @@ const presence = () =>
     listeners: new Set(),
     stored: [],
     here: [],
-    beating: false,
   }));
 
 function publish(state: Presence): void {
@@ -38,9 +38,10 @@ function publish(state: Presence): void {
 }
 
 async function heartbeat(state: Presence): Promise<void> {
+  const { timer } = state;
   // A slow Turso would otherwise stack heartbeats that land out of order.
-  if (state.beating) return;
-  state.beating = true;
+  if (state.beating === timer) return;
+  state.beating = timer;
   const now = Date.now();
   try {
     const [, , { rows }] = await batch([
@@ -56,14 +57,14 @@ async function heartbeat(state: Presence): Promise<void> {
       },
       { sql: "SELECT username FROM presence" },
     ]);
-    // Everyone left while it ran, and the next join starts afresh.
-    if (state.listeners.size === 0) return;
+    // Everyone left while it ran, so a later join has its own heartbeat.
+    if (state.timer !== timer) return;
     state.stored = rows.map((row) => String(row["username"]));
     publish(state);
   } catch (err) {
     log.warn({ err }, "Presence heartbeat failed");
   } finally {
-    state.beating = false;
+    if (state.beating === timer) state.beating = undefined;
   }
 }
 
