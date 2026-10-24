@@ -1781,8 +1781,8 @@ ul {
   }
 }
 
-.emoji-picker {
-  grid-template-columns: repeat(8, 2.25em);
+.emoji-picker,
+.command-picker {
   padding: 0.5ch;
   border: 1px solid var(--rule);
   border-radius: var(--code-radius);
@@ -1794,29 +1794,11 @@ ul {
   }
 
   button {
-    padding-block: 0.25em;
-    font-size: 1.25rem;
-    line-height: 1;
-    text-align: center;
-
     &:hover,
     &:focus-visible,
     &[aria-selected="true"] {
       background: var(--wash);
     }
-  }
-
-  > .name {
-    grid-column: 1 / -1;
-    margin: 0;
-    padding: 0.25em 0.5ch 0;
-    color: var(--muted);
-    /* One line, kept when nothing is chosen, so the picker never changes height. */
-    min-height: calc(1lh + 0.25em);
-    overflow: hidden;
-    font-size: var(--tip-size);
-    white-space: nowrap;
-    text-overflow: ellipsis;
   }
 
   /* Opens above what opened it; without anchor positioning it stays centred. */
@@ -1830,6 +1812,46 @@ ul {
       flip-block,
       flip-inline,
       flip-block flip-inline;
+  }
+}
+
+.command-picker {
+  min-width: 24ch;
+
+  button {
+    display: flex;
+    gap: 2ch;
+    justify-content: space-between;
+    padding: 0.25em 1ch;
+    text-align: start;
+
+    > .detail {
+      color: var(--muted);
+    }
+  }
+}
+
+.emoji-picker {
+  grid-template-columns: repeat(8, 2.25em);
+
+  button {
+    padding-block: 0.25em;
+    font-size: 1.25rem;
+    line-height: 1;
+    text-align: center;
+  }
+
+  > .name {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.25em 0.5ch 0;
+    color: var(--muted);
+    /* One line, kept when nothing is chosen, so the picker never changes height. */
+    min-height: calc(1lh + 0.25em);
+    overflow: hidden;
+    font-size: var(--tip-size);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
 
@@ -1850,7 +1872,8 @@ ul {
   }
 }
 
-.chat-replying-to {
+.chat-replying-to,
+.chat-output {
   position: relative;
   margin-bottom: var(--replying-gap);
   padding: var(--replying-padding);
@@ -1862,6 +1885,26 @@ ul {
     top: var(--replying-clear-top);
     right: 1ch;
     color: var(--muted);
+  }
+}
+
+.chat-output {
+  > .echo {
+    margin: 0;
+    color: var(--muted);
+
+    &::before {
+      content: var(--prompt);
+      margin-inline-end: 1ch;
+      color: var(--accent);
+      font-weight: var(--prompt-weight);
+    }
+  }
+
+  > pre {
+    margin: 0;
+    overflow-x: auto;
+    font: inherit;
   }
 }
 

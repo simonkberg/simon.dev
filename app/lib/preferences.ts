@@ -44,6 +44,27 @@ export function preferenceCookie<T extends string>(
   return `${preference.name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
+export const preferenceAttribute = (preference: Preference) =>
+  `data-${preference.name}`;
+
+export function currentPreference<T extends string>(
+  preference: Preference<T>,
+): T {
+  const value = document.documentElement.getAttribute(
+    preferenceAttribute(preference),
+  );
+  return arrayIncludes(preference.options, value) ? value : preference.fallback;
+}
+
+export function setPreference<T extends string>(
+  preference: Preference<T>,
+  value: T,
+) {
+  document.documentElement.setAttribute(preferenceAttribute(preference), value);
+  document.cookie = preferenceCookie(preference, value);
+  syncThemeColor();
+}
+
 // Stringified into the <head> script, so it references nothing outside itself.
 export function applySavedPreferences(saved: readonly Preference[]) {
   for (const { name, options } of saved) {

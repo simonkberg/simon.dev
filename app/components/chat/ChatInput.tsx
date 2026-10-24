@@ -11,10 +11,12 @@ import {
 import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
+import { TooltipButton } from "@/components/Tooltip";
 
 import { CaretBuddy } from "./CaretBuddy";
-import { ChatEmojiInput } from "./ChatEmojiInput";
+import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
+import { isCommand, runCommand } from "./commands";
 
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
@@ -32,14 +34,39 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
+  const [output, setOutput] = useState<{
+    command: string;
+    lines: readonly string[];
+  } | null>(null);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!inputValue.trim()) return;
     const form = event.currentTarget;
 
+    if (isCommand(inputValue)) {
+      const command = runCommand(inputValue);
+      if (command.status === "error") {
+        setResult(command);
+        return;
+      }
+      setResult({ status: "initial" });
+      setOutput(
+        command.output
+          ? { command: inputValue.trim(), lines: command.output }
+          : null,
+      );
+      setInputValue("");
+      return;
+    }
+
+    setOutput(null);
     startTransition(async () => {
       const formData = new FormData(form);
+      // A doubled slash sends one, so a message can start with it.
+      if (inputValue.startsWith("//")) {
+        formData.set("text", inputValue.slice(1));
+      }
       if (replyToId) {
         formData.append("replyToId", replyToId);
       }
@@ -82,6 +109,17 @@ export const ChatInput = ({
     return;
   }, [replyToId, setReplyToId]);
 
+  useEffect(() => {
+    if (!output) return;
+    const keyDownHandler = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) setOutput(null);
+    };
+    window.addEventListener("keydown", keyDownHandler);
+    return () => {
+      window.removeEventListener("keydown", keyDownHandler);
+    };
+  }, [output]);
+
   return (
     <>
       <ChatToast
@@ -90,9 +128,22 @@ export const ChatInput = ({
           !pending && result.status === "error" ? result.error : undefined
         }
       />
+      {output && (
+        <div className="chat-output" role="status" aria-live="polite">
+          <p className="echo">{output.command}</p>
+          <pre>{output.lines.join("\n")}</pre>
+          <TooltipButton
+            tooltip="Close output"
+            className="clear"
+            onClick={() => setOutput(null)}
+          >
+            &times;
+          </TooltipButton>
+        </div>
+      )}
       <form onSubmit={onSubmit} className="chat-input">
         <div className="wrapper">
-          <ChatEmojiInput
+          <ChatSuggestInput
             name="text"
             placeholder={`Write a ${replyToId ? "reply" : "message"}...`}
             disabled={pending}

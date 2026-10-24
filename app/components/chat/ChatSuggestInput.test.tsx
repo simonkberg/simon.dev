@@ -26,7 +26,7 @@ const options = () =>
 
 const chosen = () => screen.queryByRole("option", { selected: true });
 
-describe("ChatEmojiInput", () => {
+describe("ChatSuggestInput", () => {
   beforeEach(() => {
     server.use(http.get("*/api/emoji", () => HttpResponse.json(EMOJI)));
     vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
@@ -278,7 +278,43 @@ describe("ChatEmojiInput", () => {
     );
   });
 
-  it.each(["12:30", "https://simon.dev", ":)", ":zzz"])(
+  it("offers commands after a leading slash, then their options", async () => {
+    document.documentElement.setAttribute("data-variant", "manual");
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/");
+    expect(screen.getByRole("listbox", { name: "Commands" })).toBeVisible();
+    expect(chosen()).toHaveTextContent("/help");
+    await user.type(input, "s{Enter}");
+
+    expect(input).toHaveValue("/style ");
+    expect(options()).toBe("panesledgermanualcurrent");
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    expect(input).toHaveValue("/style ledger ");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(postChatMessage).not.toHaveBeenCalled();
+    document.documentElement.removeAttribute("data-variant");
+  });
+
+  it("chooses nothing for a command typed in full, so Enter runs it", async () => {
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/help");
+
+    expect(screen.getByRole("listbox")).toBeVisible();
+    expect(chosen()).toBeNull();
+  });
+
+  it("suggests emoji after a command that takes no options", async () => {
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/help :fire");
+
+    expect(await screen.findByRole("listbox", { name: "Emoji" })).toBeVisible();
+  });
+
+  it.each(["12:30", "https://simon.dev", ":)", ":zzz", "hi /help", "//"])(
     "stays closed for %s",
     async (text) => {
       const { user, input } = renderChatInput();

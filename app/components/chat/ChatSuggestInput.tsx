@@ -18,7 +18,9 @@ import {
 } from "@/lib/emoji";
 
 import { arrowIndex, gridColumns } from "./arrowFocus";
+import { ChatCommandSuggestions } from "./ChatCommandSuggestions";
 import { ChatEmojiSuggestions } from "./ChatEmojiSuggestions";
+import { typedCommand } from "./commands";
 import { loadShortcodes, reloadShortcodes } from "./shortcodes";
 import { useSkinTone } from "./skinTone";
 
@@ -26,21 +28,33 @@ const LIMIT = 24;
 
 const SHORTCODE = /(?:^|\s):([\w+-]*)$/;
 
-/** The shortcode typed up to the caret, without its colon, and where it starts with its colon. */
-function typedShortcode(input: HTMLInputElement) {
+/** The command or shortcode typed up to the caret, and the range a pick replaces. */
+function typedAt(input: HTMLInputElement) {
   const caret = input.selectionStart;
   if (caret === null || caret !== input.selectionEnd) return null;
-  const query = SHORTCODE.exec(input.value.slice(0, caret))?.[1];
+  const before = input.value.slice(0, caret);
+  const command = typedCommand(before);
+  if (command) {
+    return {
+      kind: "command",
+      query: command.query,
+      start: command.start,
+      end: caret,
+    } as const;
+  }
+  const query = SHORTCODE.exec(before)?.[1];
   return query === undefined
     ? null
-    : { query, start: caret - query.length - 1, end: caret };
+    : ({
+        kind: "emoji",
+        query,
+        start: caret - query.length - 1,
+        end: caret,
+      } as const);
 }
 
-// A short query may be an emoticon like ":D", so Enter only picks once one is chosen.
-const initialActive = (query: string) => (query.length >= 2 ? 0 : null);
-
-/** A text input that suggests emoji for the shortcode typed up to its caret. */
-export const ChatEmojiInput = ({
+/** A text input that suggests commands after a leading slash, and emoji for the shortcode typed up to its caret. */
+export const ChatSuggestInput = ({
   ref,
   value,
   onValueChange,
@@ -58,48 +72,72 @@ export const ChatEmojiInput = ({
   const [emoji, setEmoji] = useState<EmojiShortcodes[] | null>(null);
   // Tagged with the value it was typed in, so a reset by the form forgets it.
   const [typed, setTyped] = useState<{
+    kind: "command" | "emoji";
     query: string;
+    end: number;
     value: string;
     dismissed: boolean;
   } | null>(null);
   if (typed && typed.value !== value) setTyped(null);
-  const query = typed && !typed.dismissed ? typed.query : null;
-
-  const [active, setActive] = useState<number | null>(null);
-  const [previousQuery, setPreviousQuery] = useState(query);
-  if (query !== previousQuery) {
-    setPreviousQuery(query);
-    setActive(query === null ? null : initialActive(query));
-  }
+  const shown = typed && !typed.dismissed ? typed : null;
 
   const { modifier } = useSkinTone();
-  const matches = (
-    query === null || !emoji
+  const emojiMatches = (
+    shown?.kind !== "emoji" || !emoji
       ? []
-      : query
-        ? searchEmoji(emoji, query, LIMIT)
+      : shown.query
+        ? searchEmoji(emoji, shown.query, LIMIT)
         : REACTION_EMOJI
   ).map((match) => ({ ...match, emoji: withSkinTone(match.emoji, modifier) }));
-  const open = matches.length > 0;
-  const chosen = active === null ? undefined : matches[active];
+  const commandMatches =
+    shown?.kind === "command"
+      ? (typedCommand(value.slice(0, shown.end))?.suggestions ?? [])
+      : [];
+  const picks =
+    shown?.kind === "command"
+      ? commandMatches.map((match) => match.value)
+      : emojiMatches.map((match) => match.emoji);
+
+  const [active, setActive] = useState<number | null>(null);
+  const key = shown && `${shown.kind}:${shown.query}`;
+  const [previousKey, setPreviousKey] = useState(key);
+  if (key !== previousKey) {
+    setPreviousKey(key);
+    setActive(shown ? initialActive() : null);
+  }
+
+  // A short query may be an emoticon like ":D", and a command typed in full needs nothing
+  // picked, so Enter only picks once one is chosen.
+  function initialActive() {
+    if (shown?.kind === "emoji") return shown.query.length >= 2 ? 0 : null;
+    const [first] = commandMatches;
+    return first?.final && first.value === shown?.query ? null : 0;
+  }
+
+  const open = picks.length > 0;
+  const chosen = active === null ? undefined : picks[active];
 
   useEffect(() => {
     const input = ref.current;
     if (open && input) list.current?.showPopover({ source: input });
-  }, [open, ref]);
+  }, [open, ref, shown?.kind]);
 
-  // A dismissal holds only for the shortcode it closed on.
+  // A dismissal holds only for the command or shortcode it closed on.
   function track(input: HTMLInputElement) {
-    const next = typedShortcode(input)?.query;
+    const next = typedAt(input);
     const current = input.value;
     // Focus can come before hydration, leaving onFocus unheard.
-    if (next !== undefined && !emoji) void loadShortcodes().then(setEmoji);
+    if (next?.kind === "emoji" && !emoji) void loadShortcodes().then(setEmoji);
     setTyped((previous) => {
-      if (next === undefined) return null;
+      if (!next) return null;
       // Unchanged on a caret move, so React can skip the render.
-      if (previous?.query === next && previous.value === current)
+      if (
+        previous?.kind === next.kind &&
+        previous.query === next.query &&
+        previous.value === current
+      )
         return previous;
-      return { query: next, value: current, dismissed: false };
+      return { ...next, value: current, dismissed: false };
     });
   }
 
@@ -107,18 +145,19 @@ export const ChatEmojiInput = ({
     setTyped((previous) => previous && { ...previous, dismissed: true });
   }
 
-  function pick(glyph: string) {
+  function pick(text: string) {
     const input = ref.current;
-    const shortcode = input && typedShortcode(input);
-    if (!input || !shortcode) return;
-    const spaced = /^\s/.test(input.value.slice(shortcode.end));
+    const range = input && typedAt(input);
+    if (!input || !range) return;
+    const spaced = /^\s/.test(input.value.slice(range.end));
     input.setRangeText(
-      spaced ? glyph : `${glyph} `,
-      shortcode.start,
-      shortcode.end,
+      spaced ? text : `${text} `,
+      range.start,
+      range.end,
       "end",
     );
-    setTyped(null);
+    // A picked command opens its options.
+    track(input);
     onValueChange(input.value);
     input.focus();
   }
@@ -136,7 +175,7 @@ export const ChatEmojiInput = ({
       (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey))
     ) {
       event.preventDefault();
-      pick(chosen.emoji);
+      pick(chosen);
       return;
     }
     // Home and End stay with the caret; until one is chosen, left and right do too.
@@ -147,16 +186,14 @@ export const ChatEmojiInput = ({
       setActive(0);
       return;
     }
-    const buttons = [...listbox.querySelectorAll("button")];
-    const next = arrowIndex(
-      event,
-      active,
-      matches.length - 1,
-      gridColumns(buttons),
-    );
+    const columns =
+      shown?.kind === "emoji"
+        ? gridColumns([...listbox.querySelectorAll("button")])
+        : undefined;
+    const next = arrowIndex(event, active, picks.length - 1, columns);
     if (next === undefined) return;
     event.preventDefault();
-    if (matches[next]) setActive(next);
+    if (picks[next] !== undefined) setActive(next);
   }
 
   return (
@@ -188,16 +225,26 @@ export const ChatEmojiInput = ({
         aria-controls={id}
         aria-activedescendant={chosen ? `${id}-${active}` : undefined}
       />
-      {open && (
-        <ChatEmojiSuggestions
-          ref={list}
-          id={id}
-          matches={matches}
-          active={active}
-          onPick={pick}
-          onDismiss={dismiss}
-        />
-      )}
+      {open &&
+        (shown?.kind === "command" ? (
+          <ChatCommandSuggestions
+            ref={list}
+            id={id}
+            matches={commandMatches}
+            active={active}
+            onPick={pick}
+            onDismiss={dismiss}
+          />
+        ) : (
+          <ChatEmojiSuggestions
+            ref={list}
+            id={id}
+            matches={emojiMatches}
+            active={active}
+            onPick={pick}
+            onDismiss={dismiss}
+          />
+        ))}
     </>
   );
 };
