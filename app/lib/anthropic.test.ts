@@ -892,10 +892,7 @@ describe("createMessage", () => {
         url: "https://www.last.fm/music/Smog/Knock+Knock",
       } as const;
       vi.mocked(userGetTopAlbums).mockResolvedValue([
-        {
-          ...album,
-          cover: "https://lastfm.freetls.fastly.net/i/u/300x300/a.jpg",
-        },
+        { ...album, cover: "https://lastfm-img.freetls.fastly.net/i/u/a.jpg" },
       ]);
 
       expect(await runTool("get_top_albums", {})).toBe(JSON.stringify([album]));
