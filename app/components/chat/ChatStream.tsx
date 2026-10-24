@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
 
+import { nameList } from "./ChatReactions";
+
 type Status = "connecting" | "live" | "offline";
 
 const MAX_BACKOFF = 30_000;
@@ -95,7 +97,7 @@ export const ChatStream = () => {
       </span>
       {status === "live" && here.length > 0 && (
         <span className="presence">
-          <TooltipText tooltip={here.join(", ")}>
+          <TooltipText tooltip={nameList.format(here)}>
             {here.length} here
           </TooltipText>
         </span>

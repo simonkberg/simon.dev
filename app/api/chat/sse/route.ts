@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  const leavePresence = joinPresence(crypto.randomUUID(), username, (here) =>
+  const leavePresence = joinPresence(username, (here) =>
     send(`event: presence\ndata: ${JSON.stringify(you(here))}\n\n`),
   );
 

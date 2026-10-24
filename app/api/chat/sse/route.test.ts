@@ -124,7 +124,7 @@ describe("GET /api/chat/sse", () => {
       );
       const response = await open();
       const reader = response.body!.getReader();
-      const [, username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+      const [username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
       await reader.read();
 
       onPresence(here);
@@ -188,13 +188,13 @@ describe("GET /api/chat/sse", () => {
     const reader = await openReader();
     const onMessage = vi.mocked(subscribeToChannel).mock.calls[0]![0];
     const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
-    const [, , onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+    const [, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
 
     controller.abort();
     onMessage();
     onStatus(false);
     onPresence([]);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(5_000);
 
     // Only the ping written on connect, before the abort, reaches the client.
     expect(await readText(reader)).toBe(": ping\n\n");

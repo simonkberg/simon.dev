@@ -42,14 +42,7 @@ function publish(state: Presence, here: readonly string[]): void {
 
 // Writes this replica's streams in one batch, so a stream's upserts and delete land in order.
 // Upserts, so a row that expired while heartbeats failed comes back.
-async function heartbeat(state: Presence): Promise<void> {
-  // A heartbeat asked for while one runs follows it, rather than racing it.
-  if (state.beating) {
-    state.again = true;
-    return;
-  }
-  state.beating = true;
-  state.again = false;
+async function beat(state: Presence): Promise<void> {
   const now = Date.now();
   const left = new Set(state.left);
   try {
@@ -73,10 +66,8 @@ async function heartbeat(state: Presence): Promise<void> {
     ]);
     for (const stream of left) state.left.delete(stream);
     if (state.listeners.size > 0) {
-      publish(
-        state,
-        rows.map((row) => String(row["username"])),
-      );
+      const here = rows.map((row) => String(row["username"]));
+      publish(state, here);
     } else if (state.left.size === 0) {
       clearInterval(state.timer);
       state.timer = undefined;
@@ -84,31 +75,44 @@ async function heartbeat(state: Presence): Promise<void> {
     }
   } catch (err) {
     log.warn({ err }, "Presence heartbeat failed");
-  } finally {
-    state.beating = false;
   }
-  if (state.again) await heartbeat(state);
+}
+
+// A heartbeat asked for while one runs follows it, rather than racing it.
+async function heartbeat(state: Presence): Promise<void> {
+  if (state.beating) {
+    state.again = true;
+    return;
+  }
+  state.beating = true;
+  do {
+    state.again = false;
+    await beat(state);
+  } while (state.again);
+  state.beating = false;
 }
 
 /** Counts `username` as here until the stream leaves, and tells `listener` who is here now and on every change. */
 export function joinPresence(
-  stream: string,
   username: Username | undefined,
   listener: Listener,
 ): () => void {
   const state = presence();
+  const stream = crypto.randomUUID();
   state.listeners.add(listener);
   listener(state.here);
+  if (username) state.streams.set(stream, username);
+  // Someone without a name changes nothing, and is told on the next beat if one is running.
+  if (username || !state.timer) void heartbeat(state);
   state.timer ??= setInterval(
     () => void heartbeat(state),
     HEARTBEAT_MS,
   ).unref();
-  if (username) state.streams.set(stream, username);
-  void heartbeat(state);
 
   return () => {
     state.listeners.delete(listener);
-    if (state.streams.delete(stream)) state.left.add(stream);
+    if (!state.streams.delete(stream)) return;
+    state.left.add(stream);
     void heartbeat(state);
   };
 }
