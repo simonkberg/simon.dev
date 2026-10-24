@@ -2423,8 +2423,8 @@ tbody tr:hover {
 
 .cover {
   /* Out mirrors in, so the threshold is only high once the colour is gone. */
-  --cover-ease: ease-in;
-  --cover-threshold-ease: cubic-bezier(0.9, 0, 1, 0.1);
+  --cover-grain-ease: ease-in;
+  --cover-threshold-ease: cubic-bezier(1, 0, 1, 0);
   position: relative;
   display: block;
   aspect-ratio: 1;
@@ -2440,7 +2440,7 @@ tbody tr:hover {
     height: 100%;
     object-fit: cover;
     filter: var(--cover-filter);
-    transition: filter 0.2s var(--cover-ease);
+    transition: filter 0.2s linear;
   }
 
   &:has(img)::after {
@@ -2459,8 +2459,8 @@ tbody tr:hover {
       outline: var(--cover-frame-hover);
       --cover-filter: none;
       --cover-threshold: none;
-      --cover-ease: ease-out;
-      --cover-threshold-ease: cubic-bezier(0, 0.9, 0.1, 1);
+      --cover-grain-ease: ease-out;
+      --cover-threshold-ease: cubic-bezier(0, 1, 0, 1);
 
       &::after,
       .cover-art::after {
@@ -2475,8 +2475,8 @@ tbody tr:hover {
     outline: var(--focus);
     --cover-filter: none;
     --cover-threshold: none;
-    --cover-ease: ease-out;
-    --cover-threshold-ease: cubic-bezier(0, 0.9, 0.1, 1);
+    --cover-grain-ease: ease-out;
+    --cover-threshold-ease: cubic-bezier(0, 1, 0, 1);
 
     &::after,
     .cover-art::after {
@@ -2500,7 +2500,7 @@ tbody tr:hover {
     background: var(--cover-grain);
     image-rendering: pixelated;
     mix-blend-mode: plus-lighter;
-    transition: opacity 0.2s var(--cover-ease);
+    transition: opacity 0.2s var(--cover-grain-ease);
   }
 }
 
