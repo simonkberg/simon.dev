@@ -785,7 +785,6 @@ describe("subscribe", () => {
 
     it.each([
       ["TYPING_START", { channel_id: CHANNEL }],
-      ["GUILD_CREATE", { id: GUILD }],
       ["PRESENCE_UPDATE", { guild_id: GUILD }],
     ])(
       "should drop a %s it can't read, without missing anything",
@@ -798,10 +797,25 @@ describe("subscribe", () => {
       },
     );
 
-    it("should ignore events the site doesn't use", async () => {
+    it("should log and drop a GUILD_CREATE it can't read", async () => {
       const { callback } = await subscribed();
 
-      await dispatch("CHANNEL_PINS_UPDATE", { channel_id: CHANNEL });
+      await dispatch("GUILD_CREATE", { id: GUILD });
+
+      expect(callback).not.toHaveBeenCalled();
+      expect(log.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        "Invalid GUILD_CREATE payload",
+      );
+    });
+
+    it.each([
+      ["CHANNEL_PINS_UPDATE", { channel_id: CHANNEL }],
+      ["GUILD_CREATE", { id: "other-guild", members: [], presences: [] }],
+    ])("should ignore a %s the site doesn't use", async (event, data) => {
+      const { callback } = await subscribed();
+
+      await dispatch(event, data);
 
       expect(callback).not.toHaveBeenCalled();
     });

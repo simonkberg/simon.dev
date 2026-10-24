@@ -129,6 +129,10 @@ export const ChannelEventSchema = z.discriminatedUnion("t", [
 
 export type ChannelEvent = z.infer<typeof ChannelEventSchema>;
 
+export const CHANNEL_EVENTS: ReadonlySet<string> = new Set(
+  ChannelEventSchema.options.map((option) => option.shape.t.value),
+);
+
 export const TypingStartSchema = ChannelSchema.extend({
   user_id: z.string(),
   member: GuildMemberSchema.optional(),
@@ -140,6 +144,8 @@ const PresenceSchema = z.object({
   user: DiscordUserSchema.pick({ id: true, bot: true }),
   status: z.string(),
 });
+
+export type Presence = z.infer<typeof PresenceSchema>;
 
 /** A guild's members and who is online, sent at the start of a session. */
 export const GuildCreateSchema = z.object({

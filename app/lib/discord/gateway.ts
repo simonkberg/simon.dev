@@ -7,6 +7,7 @@ import { log } from "@/lib/log";
 
 import {
   type ChannelEvent,
+  CHANNEL_EVENTS,
   ChannelEventSchema,
   type GuildCreate,
   GuildCreateSchema,
@@ -56,10 +57,6 @@ const ReadyDataSchema = z.object({
 });
 
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
-
-const CHANNEL_EVENTS: ReadonlySet<string> = new Set(
-  ChannelEventSchema.options.map((option) => option.shape.t.value),
-);
 
 /**
  * A `READY` starts a new session: events missed since the last one are lost, not replayed.
@@ -380,10 +377,13 @@ class DiscordGateway {
         break;
       }
 
+      // Logged, since it comes once a session and who is online stays empty without it.
       case "GUILD_CREATE": {
-        const { data: guild } = GuildCreateSchema.safeParse(data);
-        if (guild?.id === env.DISCORD_GUILD_ID) {
-          this.#notifySubscribers({ t: "GUILD_CREATE", d: guild });
+        const parsed = GuildCreateSchema.safeParse(data);
+        if (!parsed.success) {
+          log.warn({ err: parsed.error }, "Invalid GUILD_CREATE payload");
+        } else if (parsed.data.id === env.DISCORD_GUILD_ID) {
+          this.#notifySubscribers({ t: "GUILD_CREATE", d: parsed.data });
         }
         break;
       }

@@ -4,11 +4,17 @@ import { LruMap } from "@/lib/LruMap";
 
 import type { GatewayEvent } from "./gateway";
 import {
+  CHANNEL_EVENTS,
   type ChannelEvent,
   type DiscordMessage,
   displayName,
   isShown,
 } from "./schemas";
+
+const isStoreEvent = (
+  event: GatewayEvent,
+): event is ChannelEvent | { t: "READY" } | { t: "MISSED" } =>
+  event.t === "READY" || event.t === "MISSED" || CHANNEL_EVENTS.has(event.t);
 
 /** Where the store gets what the gateway can't tell it. */
 export type StoreSource = {
@@ -177,13 +183,8 @@ export class ChannelStore {
   }
 
   apply(event: GatewayEvent): void {
-    if (
-      event.t === "TYPING_START" ||
-      event.t === "GUILD_CREATE" ||
-      event.t === "PRESENCE_UPDATE"
-    ) {
-      return;
-    }
+    // The rest belong to their own trackers.
+    if (!isStoreEvent(event)) return;
     this.#changed = true;
     // Events may be gone, so the window is fetched again, and a seed already in flight may predate the gap.
     if (event.t === "READY" || event.t === "MISSED") {

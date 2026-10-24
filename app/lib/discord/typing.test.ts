@@ -2,7 +2,6 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { log } from "@/lib/log";
 import { message } from "@/mocks/discord";
 import { mockEnv } from "@/mocks/env";
 
@@ -108,17 +107,5 @@ describe("subscribeToTyping", () => {
 
     expect(listener).toHaveBeenLastCalledWith(["other-bot"]);
     expect(listener).toHaveBeenCalledTimes(2);
-  });
-
-  it("logs when it can't hear the gateway", async () => {
-    vi.mocked(subscribe).mockRejectedValue(new Error("fatal"));
-
-    subscribeToTyping(vi.fn());
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(log.error).toHaveBeenCalledWith(
-      { err: new Error("fatal") },
-      "Typing failed to subscribe to the gateway",
-    );
   });
 });

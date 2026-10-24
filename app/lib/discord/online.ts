@@ -1,44 +1,34 @@
 import "server-only";
-import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 
 import { memberName } from "./api";
-import { type GatewayEvent, getBotUserId, subscribe } from "./gateway";
-import { displayName } from "./schemas";
+import type { GatewayEvent } from "./gateway";
+import { displayName, type Presence } from "./schemas";
+import { gatewayTracker } from "./tracker";
 
 // Idle reads as away, and invisible arrives as offline.
 const HERE = new Set(["online", "dnd"]);
-
-type Listener = (online: readonly string[]) => void;
 
 type Online = {
   names: Map<string, string | undefined>;
   bots: Set<string>;
   online: Set<string>;
-  listeners: Set<Listener>;
 };
 
-const named = (state: Online) =>
-  [...state.online].flatMap((id) => state.names.get(id) ?? []);
-
-function publish(state: Online): void {
-  const online = named(state);
-  for (const listener of state.listeners) listener(online);
-}
-
-// GUILD_MEMBER_ADD needs yet another privileged intent, so a member who joined since is asked for.
-function learnName(state: Online, id: string): void {
+// GUILD_MEMBER_ADD needs yet another privileged intent, so a member who joined since is asked for, once.
+function learnName(state: Online, id: string, publish: () => void): void {
+  state.names.set(id, undefined);
   memberName(id)
     .then((name) => {
       state.names.set(id, name);
-      publish(state);
+      if (name && state.online.has(id)) publish();
     })
     .catch((err: unknown) => {
       log.warn({ err }, "Failed to name an online member");
     });
 }
 
-function apply(state: Online, event: GatewayEvent): void {
+function apply(state: Online, event: GatewayEvent, publish: () => void): void {
   switch (event.t) {
     case "GUILD_CREATE": {
       const { members, presences } = event.d;
@@ -52,58 +42,45 @@ function apply(state: Online, event: GatewayEvent): void {
         members.flatMap(({ user }) => (user.bot ? [user.id] : [])),
       );
       state.online = new Set();
-      for (const presence of presences) set(state, presence);
-      publish(state);
+      for (const presence of presences) set(state, presence, publish);
+      publish();
       return;
     }
     case "PRESENCE_UPDATE": {
       const was = state.online.has(event.d.user.id);
-      set(state, event.d);
-      if (state.online.has(event.d.user.id) !== was) publish(state);
+      set(state, event.d, publish);
+      if (state.online.has(event.d.user.id) !== was) publish();
     }
   }
 }
 
 function set(
   state: Online,
-  { user, status }: { user: { id: string; bot?: boolean }; status: string },
+  { user, status }: Presence,
+  publish: () => void,
 ): void {
-  // simon-bot is the site's own, shown apart from who is here.
-  if (user.bot || state.bots.has(user.id) || user.id === getBotUserId()) {
-    return;
-  }
+  // simon-bot among them, which the site shows apart from who is here.
+  if (user.bot || state.bots.has(user.id)) return;
   if (!HERE.has(status)) {
     state.online.delete(user.id);
     return;
   }
   state.online.add(user.id);
-  if (!state.names.has(user.id)) learnName(state, user.id);
+  if (!state.names.has(user.id)) learnName(state, user.id, publish);
 }
 
-// Every replica hears Discord, so who is online needs no shared state.
-const online = () =>
-  getGlobal<Online>("online", () => {
-    const state: Online = {
-      names: new Map(),
-      bots: new Set(),
-      online: new Set(),
-      listeners: new Set(),
-    };
-    subscribe((event) => apply(state, event)).catch((err: unknown) => {
-      log.error({ err }, "Online failed to subscribe to the gateway");
-    });
-    return state;
-  });
+const online = gatewayTracker(
+  "online",
+  (): Online => ({ names: new Map(), bots: new Set(), online: new Set() }),
+  {
+    apply,
+    names: (state) =>
+      [...state.online].flatMap((id) => state.names.get(id) ?? []),
+  },
+);
 
 /** Starts following who is online. Discord says so only as a session starts, so start it before the gateway connects. */
-export function watchOnline(): void {
-  online();
-}
+export const watchOnline = online.start;
 
 /** Tells `listener` who is online in Discord now and on every change, by chat name. */
-export function subscribeToOnline(listener: Listener): () => void {
-  const state = online();
-  state.listeners.add(listener);
-  listener(named(state));
-  return () => state.listeners.delete(listener);
-}
+export const subscribeToOnline = online.subscribe;

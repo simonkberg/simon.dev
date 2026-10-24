@@ -7,12 +7,11 @@ import { mockEnv } from "@/mocks/env";
 
 import { memberName } from "./api";
 import { type EventSubscriber, subscribe } from "./gateway";
-import { subscribeToOnline, watchOnline } from "./online";
+import { subscribeToOnline } from "./online";
 import type { GuildCreate } from "./schemas";
 
 vi.mock(import("./gateway"), () => ({
   subscribe: vi.fn(() => Promise.resolve(() => {})),
-  getBotUserId: () => "bot",
 }));
 
 vi.mock(import("./api"), () => ({
@@ -90,51 +89,30 @@ describe("subscribeToOnline", () => {
     expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
   });
 
-  it("logs when it can't name a member, and leaves them out", async () => {
+  it("doesn't tell of a name that arrives after its member left", async () => {
+    const { listener, dispatch } = listen();
+
+    dispatch(presence("newcomer-id", "online"));
+    dispatch(presence("newcomer-id", "offline"));
+    const told = listener.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(listener).toHaveBeenCalledTimes(told);
+  });
+
+  it("logs when it can't name a member, and leaves them out without asking again", async () => {
     vi.mocked(memberName).mockRejectedValue(new Error("boom"));
     const { listener, dispatch } = listen();
 
     dispatch(presence("newcomer-id", "online"));
     await vi.advanceTimersByTimeAsync(0);
+    dispatch(presence("newcomer-id", "dnd"));
 
+    expect(memberName).toHaveBeenCalledOnce();
     expect(listener).toHaveBeenLastCalledWith([]);
     expect(log.warn).toHaveBeenCalledWith(
       { err: new Error("boom") },
       "Failed to name an online member",
-    );
-  });
-
-  it("tells a later listener who was online when watching started", () => {
-    watchOnline();
-    const dispatch: EventSubscriber = vi.mocked(subscribe).mock.calls[0]![0];
-    dispatch(guild([{ user: { id: "simon" }, status: "online" }]));
-
-    const listener = vi.fn();
-    subscribeToOnline(listener);
-
-    expect(listener).toHaveBeenCalledWith(["simon"]);
-    expect(subscribe).toHaveBeenCalledOnce();
-  });
-
-  it("stops telling a listener that left", () => {
-    const listener = vi.fn();
-    subscribeToOnline(listener)();
-    const dispatch: EventSubscriber = vi.mocked(subscribe).mock.calls[0]![0];
-
-    dispatch(presence("simon", "online"));
-
-    expect(listener).toHaveBeenCalledOnce();
-  });
-
-  it("logs when it can't hear the gateway", async () => {
-    vi.mocked(subscribe).mockRejectedValue(new Error("fatal"));
-
-    subscribeToOnline(vi.fn());
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(log.error).toHaveBeenCalledWith(
-      { err: new Error("fatal") },
-      "Online failed to subscribe to the gateway",
     );
   });
 });
