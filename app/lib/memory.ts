@@ -230,6 +230,14 @@ export async function forget(input: {
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
+export async function forgetCategory(category: string): Promise<number> {
+  const { rowsAffected } = await query(
+    "DELETE FROM memories WHERE category = ?",
+    [categorySchema.parse(category)],
+  );
+  return rowsAffected;
+}
+
 function renderCategory(category: string, memories: Memory[]): string {
   const lines = memories.map((memory) => `- #${memory.id} ${memory.content}`);
   return [

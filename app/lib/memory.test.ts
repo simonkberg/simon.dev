@@ -11,6 +11,7 @@ import {
   buildMemoryContext,
   edit,
   forget,
+  forgetCategory,
   MAX_CONTENT_LENGTH,
   MAX_PER_CATEGORY,
   peopleCategory,
@@ -499,5 +500,17 @@ describe("readPublicNotes", () => {
       style: [],
       interests: [{ id: 3 }],
     });
+  });
+});
+
+describe("forgetCategory", () => {
+  it("should delete every note in the category and count them", async () => {
+    await seed(4, "people/brave-otter", "likes jazz");
+    await seed(5, "people/brave-otter", "lives in oslo");
+    await seed(6, "people/calm-yak", "likes cats");
+
+    await expect(forgetCategory("people/brave-otter")).resolves.toBe(2);
+    expect(await stored(4)).toBeUndefined();
+    expect(await stored(6)).toBeDefined();
   });
 });

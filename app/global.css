@@ -1945,9 +1945,12 @@ ul {
   }
 
   > pre {
+    max-height: 12lh;
     margin: 0;
-    overflow-x: auto;
+    overflow-y: auto;
     font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 }
 

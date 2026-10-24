@@ -1,11 +1,24 @@
 import { screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
+import { forgetMe, type ForgetMeResult } from "@/actions/simonBot";
 import { renderChatInput } from "@/mocks/chatInput";
 import { resetPreferences } from "@/mocks/preferences";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
+vi.mock(import("@/actions/simonBot"), () => ({
+  forgetMe: vi.fn(),
+  getNotesOnMe: vi.fn(),
+}));
 
 const sentForm = () => vi.mocked(postChatMessage).mock.calls[0]?.[0];
 
@@ -225,9 +238,10 @@ describe("CaretBuddy integration", () => {
   });
 
   it("shows thinking state while message is pending", async () => {
-    vi.mocked(postChatMessage).mockReturnValue(
-      Promise.withResolvers<PostChatMessageResult>().promise,
-    );
+    const { promise, resolve } = Promise.withResolvers<PostChatMessageResult>();
+    vi.mocked(postChatMessage).mockReturnValue(promise);
+    // React holds every later transition until this one's action settles.
+    onTestFinished(() => resolve({ status: "ok" }));
     const { send } = renderChatInput();
 
     await send("Hello");
@@ -275,6 +289,23 @@ describe("CaretBuddy integration", () => {
       await send("/help");
       await user.click(screen.getByRole("button", { name: "Close output" }));
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("waits for a command that runs on the server", async () => {
+      const { promise, resolve } = Promise.withResolvers<ForgetMeResult>();
+      vi.mocked(forgetMe).mockReturnValue(promise);
+      const { input, send } = renderChatInput();
+
+      await send("/forget");
+      expect(input).toBeDisabled();
+
+      resolve({ status: "ok", data: { forgotten: 0 } });
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "simon-bot had nothing to forget about you.",
+      );
+      expect(input).toHaveValue("");
+      expect(input).toHaveFocus();
     });
 
     it("clears the output once a message is sent", async () => {
