@@ -6,17 +6,18 @@ import { useEffect, useState } from "react";
 import { TooltipText } from "@/components/Tooltip";
 
 import { nameList } from "./ChatReactions";
-import { setTyping } from "./typing";
+import { ChatTyping } from "./ChatTyping";
 
 type Status = "connecting" | "live" | "offline";
 
 const MAX_BACKOFF = 30_000;
 
-/** Keeps the chat history live over SSE and shows the connection's state and who is here. */
+/** Keeps the chat history live over SSE and shows the connection's state, who is here and who is typing. */
 export const ChatStream = () => {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("connecting");
   const [here, setHere] = useState<readonly string[]>([]);
+  const [typing, setTyping] = useState<readonly string[]>([]);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -107,6 +108,7 @@ export const ChatStream = () => {
           </TooltipText>
         </span>
       )}
+      <ChatTyping typing={typing} />
     </>
   );
 };

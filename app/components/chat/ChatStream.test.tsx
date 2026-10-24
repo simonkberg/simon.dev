@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatStream } from "./ChatStream";
-import { ChatTyping } from "./ChatTyping";
 
 vi.mock(import("next/navigation"), () => ({ useRouter: vi.fn() }));
 const refresh = vi.fn();
@@ -156,12 +155,7 @@ describe("ChatStream", () => {
 
   describe("typing", () => {
     it("shows who is typing until the stream drops", () => {
-      render(
-        <>
-          <ChatStream />
-          <ChatTyping />
-        </>,
-      );
+      renderStream();
       act(() => instance().onopen());
 
       act(() => instance().sendTyping(["simon", "simon-bot"]));
