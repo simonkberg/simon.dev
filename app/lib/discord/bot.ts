@@ -10,6 +10,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  sendTyping,
 } from "./api";
 import { subscribe } from "./gateway";
 import { type DiscordMessage, isShown, parentId } from "./schemas";
@@ -23,6 +24,43 @@ function isBotMessage(content: string): boolean {
 
 function mentionsBot(content: string): boolean {
   return BOT_MENTION_PATTERN.test(content);
+}
+
+// Within Discord's 10s, so the indicator doesn't flicker off between calls.
+const TYPING_INTERVAL_MS = 8_000;
+
+// One call at a time: typing that lands after a post shows the bot typing again for 10s.
+function keepTyping() {
+  let typing = true;
+  let timer: NodeJS.Timeout | undefined;
+  let sent = Promise.resolve();
+  const type = () => {
+    sent = sendTyping()
+      .catch((err: unknown) => {
+        log.warn({ err }, "Failed to show the bot typing");
+      })
+      .then(() => {
+        if (typing) timer = setTimeout(type, TYPING_INTERVAL_MS);
+      });
+  };
+  const stop = () => {
+    typing = false;
+    clearTimeout(timer);
+    return sent;
+  };
+  type();
+  return {
+    async pause<T>(post: () => Promise<T>): Promise<T> {
+      await stop();
+      try {
+        return await post();
+      } finally {
+        typing = true;
+        timer = setTimeout(type, TYPING_INTERVAL_MS);
+      }
+    },
+    stop,
+  };
 }
 
 // Outlasts any gateway replay of missed events after a reconnect.
@@ -93,9 +131,12 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     const replies: ChatMessage[] = [];
     let finished = false;
+    const typing = keepTyping();
     try {
       for await (const response of createMessage(messages)) {
-        await postChannelMessage(response, BOT_USERNAME, messageId);
+        await typing.pause(() =>
+          postChannelMessage(response, BOT_USERNAME, messageId),
+        );
         replies.push({
           role: "assistant",
           username: BOT_USERNAME,
@@ -111,12 +152,15 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
       );
     } catch (err) {
       log.error({ err, messageId }, "Bot response failed");
-      await postChannelMessage(
-        "oops, something went wrong... try again later!",
-        BOT_USERNAME,
-        messageId,
+      await typing.pause(() =>
+        postChannelMessage(
+          "oops, something went wrong... try again later!",
+          BOT_USERNAME,
+          messageId,
+        ),
       );
     } finally {
+      void typing.stop();
       // Not awaited: reflection must never delay or fail a reply, even a partial one.
       // Staying silent is still a turn worth reflecting on; a turn that failed before
       // anything was said is not.

@@ -1781,6 +1781,24 @@ ul {
       color: var(--muted);
     }
 
+    /* Only the typing line gives way on a narrow screen. */
+    > * {
+      flex-shrink: 0;
+    }
+
+    > .typing {
+      display: contents;
+
+      > .typists {
+        min-width: 0;
+        padding: var(--control-padding);
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
     > .control {
       margin-left: var(--controls-push);
       padding: var(--control-padding);

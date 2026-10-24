@@ -30,6 +30,12 @@ function createMockEventSource() {
         new MessageEvent("presence", { data: JSON.stringify(here) }),
       );
     }
+
+    sendTyping(typing: string[]) {
+      this.dispatchEvent(
+        new MessageEvent("typing", { data: JSON.stringify(typing) }),
+      );
+    }
   }
 
   return {
@@ -144,6 +150,23 @@ describe("ChatStream", () => {
 
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("typing", () => {
+    it("shows who is typing until the stream drops", () => {
+      renderStream();
+      act(() => instance().onopen());
+
+      act(() => instance().sendTyping(["simon", "simon-bot"]));
+      expect(
+        screen.getByText("simon and simon-bot are typing…"),
+      ).toBeInTheDocument();
+      act(() => instance().sendTyping(["simon"]));
+      expect(screen.getByText("simon is typing…")).toBeInTheDocument();
+
+      act(() => instance().onerror());
+      expect(screen.queryByText(/typing…/)).not.toBeInTheDocument();
     });
   });
 

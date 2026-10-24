@@ -177,6 +177,7 @@ export class ChannelStore {
   }
 
   apply(event: GatewayEvent): void {
+    if (event.t === "TYPING_START") return;
     this.#changed = true;
     // Events may be gone, so the window is fetched again, and a seed already in flight may predate the gap.
     if (event.t === "READY" || event.t === "MISSED") {

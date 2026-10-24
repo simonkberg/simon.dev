@@ -53,6 +53,19 @@ export const DiscordMessageSchema = z.object({
 
 export type DiscordMessage = z.infer<typeof DiscordMessageSchema>;
 
+const USERNAME_PREFIX_PATTERN = /^(.+?):(?:\s(.*))?$/s;
+
+/** A post the bot made for the site: its author, from the prefix, and the text after it. */
+export function sitePost(
+  message: Pick<DiscordMessage, "author" | "content">,
+): { username: string; content: string } | undefined {
+  if (!message.author.bot) return undefined;
+  const prefixed = message.content.match(USERNAME_PREFIX_PATTERN);
+  return prefixed
+    ? { username: prefixed[1]!, content: (prefixed[2] ?? "").trim() }
+    : undefined;
+}
+
 const FORWARD = 1;
 
 // A forward references the message it copies, not one it replies to.
@@ -115,3 +128,10 @@ export const ChannelEventSchema = z.discriminatedUnion("t", [
 ]);
 
 export type ChannelEvent = z.infer<typeof ChannelEventSchema>;
+
+export const TypingStartSchema = ChannelSchema.extend({
+  user_id: z.string(),
+  member: GuildMemberSchema.optional(),
+});
+
+export type TypingStart = z.infer<typeof TypingStartSchema>;

@@ -161,6 +161,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
   drops rows unseen for 45s and reads back everyone (`app/lib/presence.ts`). The server only
   notices a closed stream when a write fails, so the stream pings every 5s.
+- **Typing:** Discord's `TYPING_START` reaches every replica, so each tracks typists itself
+  (`app/lib/discord/typing.ts`), by chat name since the bot posts for every visitor, until
+  Discord's 10s run out or they post. simon-bot sends Discord's typing while it composes; the
+  bot types for nothing else, so a bot typist is simon-bot.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as

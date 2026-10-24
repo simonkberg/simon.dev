@@ -742,6 +742,14 @@ describe("subscribe", () => {
         "MESSAGE_REACTION_REMOVE_EMOJI",
         { message_id: "msg-1", channel_id: CHANNEL, emoji: thumbsUp },
       ],
+      [
+        "TYPING_START",
+        {
+          channel_id: CHANNEL,
+          user_id: "user-123",
+          member: { nick: "Simon", user: { username: "simon" } },
+        },
+      ],
     ])("should pass %s", async (event, data) => {
       const { callback } = await subscribed();
 
@@ -762,10 +770,18 @@ describe("subscribe", () => {
       );
     });
 
-    it("should ignore events the site doesn't use", async () => {
+    it("should drop a typing event it can't read, without missing anything", async () => {
       const { callback } = await subscribed();
 
       await dispatch("TYPING_START", { channel_id: CHANNEL });
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("should ignore events the site doesn't use", async () => {
+      const { callback } = await subscribed();
+
+      await dispatch("CHANNEL_PINS_UPDATE", { channel_id: CHANNEL });
 
       expect(callback).not.toHaveBeenCalled();
     });

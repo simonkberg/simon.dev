@@ -18,6 +18,7 @@ import {
   postChannelMessage,
   removeBotReaction,
   searchChannelMessages,
+  sendTyping,
   subscribeToChannel,
 } from "./api";
 import { connect, subscribe } from "./gateway";
@@ -708,6 +709,27 @@ describe("bot reactions", () => {
     await expect(addBotReaction("123", "👍")).rejects.toMatchObject({
       name: "DiscordApiError",
       code: 30010,
+    });
+  });
+});
+
+describe("sendTyping", () => {
+  it("should show the bot typing in the site's channel", async () => {
+    const onRequest = vi.fn();
+    server.use(
+      http.post(
+        `${DISCORD_BASE_URL}/channels/:channelId/typing`,
+        ({ params }) => {
+          onRequest(params);
+          return noContent();
+        },
+      ),
+    );
+
+    await sendTyping();
+
+    expect(onRequest).toHaveBeenCalledWith({
+      channelId: "test-discord-channel-id",
     });
   });
 });

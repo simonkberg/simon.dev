@@ -2,6 +2,7 @@ import { connection, type NextRequest, NextResponse } from "next/server";
 
 import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
+import { subscribeToTyping } from "@/lib/discord/typing";
 import { log } from "@/lib/log";
 import { joinPresence } from "@/lib/presence";
 import { findSession } from "@/lib/session";
@@ -57,6 +58,10 @@ export async function GET(request: NextRequest) {
     send(`event: presence\ndata: ${JSON.stringify(you(here))}\n\n`),
   );
 
+  const unsubscribeTyping = subscribeToTyping((typing) =>
+    send(`event: typing\ndata: ${JSON.stringify(typing)}\n\n`),
+  );
+
   const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
 
   request.signal.addEventListener("abort", () => {
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest) {
     unsubscribe();
     unsubscribeStatus();
     leavePresence();
+    unsubscribeTyping();
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
   });

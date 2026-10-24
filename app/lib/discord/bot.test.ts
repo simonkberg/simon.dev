@@ -15,6 +15,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  sendTyping,
 } from "./api";
 import { handleMessage, startBotSubscription } from "./bot";
 import { subscribe } from "./gateway";
@@ -30,6 +31,7 @@ vi.mock(import("./api"), async (importOriginal) => {
     getMessageChain: vi.fn(),
     isOwnPost: vi.fn(),
     postChannelMessage: vi.fn(),
+    sendTyping: vi.fn(() => Promise.resolve()),
   };
 });
 
@@ -104,6 +106,57 @@ describe("handleMessage", () => {
     expect(log.warn).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Failed to prune seen messages",
+    );
+  });
+
+  it("should show itself typing until it has replied", async () => {
+    vi.useFakeTimers();
+    const { promise: answered, resolve: answer } =
+      Promise.withResolvers<void>();
+    vi.mocked(createAnthropicMessage).mockImplementation(async function* () {
+      await answered;
+      yield "hello there!";
+    });
+
+    const handled = handleMessage(
+      message("msg-1", { content: "User1: hey simon-bot!" }),
+    );
+    await vi.advanceTimersByTimeAsync(16_000);
+    expect(sendTyping).toHaveBeenCalledTimes(3);
+    answer();
+    await handled;
+    await vi.advanceTimersByTimeAsync(16_000);
+
+    expect(sendTyping).toHaveBeenCalledTimes(3);
+  });
+
+  it("should post only once its typing has landed, so it never types after replying", async () => {
+    const { promise: typed, resolve: land } = Promise.withResolvers<void>();
+    vi.mocked(sendTyping).mockReturnValueOnce(typed);
+    replyWith("hello there!");
+
+    const handled = handleMessage(
+      message("msg-1", { content: "User1: hey simon-bot!" }),
+    );
+    await vi.waitFor(() => expect(createAnthropicMessage).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    land();
+    await handled;
+
+    expect(postChannelMessage).toHaveBeenCalledOnce();
+  });
+
+  it("should reply even when it can't show itself typing", async () => {
+    vi.mocked(sendTyping).mockRejectedValue(new Error("rate limited"));
+    replyWith("hello there!");
+
+    await handleMessage(message("msg-1", { content: "User1: hey simon-bot!" }));
+
+    expect(postChannelMessage).toHaveBeenCalledOnce();
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: new Error("rate limited") },
+      "Failed to show the bot typing",
     );
   });
 
