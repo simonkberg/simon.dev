@@ -258,6 +258,12 @@ export type UserGetScrobblesResponse = z.infer<
   typeof userGetScrobblesResponseSchema
 >;
 
+const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
+  from: toUnixTime(from),
+  // `to` is inclusive, and the next range starts on this second.
+  to: toUnixTime(to) - 1,
+});
+
 export async function userGetScrobbles(
   user: string,
   params: { from: Date; to: Date; limit: number },
@@ -265,8 +271,36 @@ export async function userGetScrobbles(
   return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
     user,
     limit: params.limit,
-    from: toUnixTime(params.from),
-    // `to` is inclusive, and the next range starts on this second.
-    to: toUnixTime(params.to) - 1,
+    ...rangeParams(params),
   });
+}
+
+const weeklyArtistSchema = z.object({
+  name: z.string(),
+  playcount: z.string().transform(Number),
+});
+
+export type WeeklyArtist = z.infer<typeof weeklyArtistSchema>;
+
+const userGetTopArtistInRangeResponseSchema = z
+  .object({
+    weeklyartistchart: z.object({
+      // In case an empty range leaves the list out rather than sending [].
+      artist: z.array(z.unknown()).default([]),
+    }),
+  })
+  // A year's chart lists thousands of artists, so only the top one is parsed.
+  .transform((data) => data.weeklyartistchart.artist[0])
+  .pipe(weeklyArtistSchema.optional());
+
+// The weekly chart takes any range, not only the weeks Last.fm lists, ranked by plays.
+export async function userGetTopArtistInRange(
+  user: string,
+  params: { from: Date; to: Date },
+) {
+  return call(
+    "user.getweeklyartistchart",
+    userGetTopArtistInRangeResponseSchema,
+    { user, ...rangeParams(params) },
+  );
 }

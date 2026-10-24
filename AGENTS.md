@@ -191,7 +191,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
-  page): a request per bar, each hour the chart is cached.
+  page): a request per bar, each hour the chart is cached. On all time, lanes under it follow
+  each year's top artist from `user.getWeeklyArtistChart`, which takes any range, not just
+  Last.fm's weeks: another request per year, cached apart so a failure only drops the lanes.
 - **Album covers:** `next/image` loads Last.fm covers through `app/lib/coverLoader.ts`
   (`images.loaderFile`), which picks one of the few sizes Last.fm's CDN serves; any other
   path returns the original upload. Each look filters the covers (`--cover-filter`, manual's
