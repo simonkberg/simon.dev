@@ -4,6 +4,7 @@ import { Suspense, use } from "react";
 
 import {
   getScrobbles,
+  getTopArtistByYear,
   getTopAlbums,
   getTopArtists,
   getTopTracks,
@@ -81,6 +82,12 @@ export default function ListeningPage({ params }: ListeningPageProps) {
   const scrobbles = getScrobbles(period).then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );
+  const topArtistByYear =
+    period === "overall"
+      ? getTopArtistByYear().then((result) =>
+          result.status === "ok" ? result.years : undefined,
+        )
+      : undefined;
   const topTracks = getTopTracks(period).then((result) =>
     result.status === "ok" ? result.tracks : undefined,
   );
@@ -113,7 +120,11 @@ export default function ListeningPage({ params }: ListeningPageProps) {
         </Heading>
         <Suspense fallback={<ScrobbleChartSkeleton />}>
           {/* Keyed so a new period mounts fresh stems that grow in. */}
-          <ScrobbleChart key={period} scrobbles={scrobbles} />
+          <ScrobbleChart
+            key={period}
+            scrobbles={scrobbles}
+            topArtistByYear={topArtistByYear}
+          />
         </Suspense>
       </section>
 

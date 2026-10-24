@@ -1,9 +1,9 @@
 import { Globals } from "@react-spring/web";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { ScrobbleCount } from "@/actions/lastfm";
+import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
@@ -17,6 +17,40 @@ const scrobbles: ScrobbleCount[] = [
 const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
   act(async () => render(<ScrobbleChart scrobbles={Promise.resolve(items)} />));
 
+const smog = (playcount: number) => ({ name: "Smog", playcount });
+
+const years: YearTopArtist[] = [
+  { label: "2016", artist: smog(5) },
+  { label: "2017", artist: smog(7) },
+  { label: "2018", artist: { name: "Low", playcount: 3 } },
+  { label: "2019", artist: undefined },
+  { label: "2020", artist: smog(2) },
+  { label: "2021", artist: { name: "Bill Callahan", playcount: 4 } },
+];
+
+const renderLanes = (topArtistByYear: readonly YearTopArtist[] | undefined) =>
+  act(async () =>
+    render(
+      <ScrobbleChart
+        scrobbles={Promise.resolve(
+          years.map(({ label }, index) => ({
+            label,
+            count: 10,
+            current: index === years.length - 1,
+          })),
+        )}
+        topArtistByYear={Promise.resolve(topArtistByYear)}
+      />,
+    ),
+  );
+
+const lanes = () =>
+  within(screen.getByRole("list", { name: "Top artist by year" })).getAllByRole(
+    "listitem",
+  );
+
+const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
+
 const ticks = () =>
   [...document.querySelectorAll(".tick")].map((tick) => tick.textContent);
 
@@ -24,9 +58,7 @@ describe("ScrobbleChart", () => {
   it("names each bucket's count, the current one so far", async () => {
     await renderChart(scrobbles);
 
-    expect(
-      screen.getAllByRole("listitem").map((item) => item.textContent),
-    ).toEqual([
+    expect(stems().map((item) => item.textContent)).toEqual([
       "Oct 20: 100Oct 20",
       "Oct 21: 3,0003,000Oct 21",
       "Oct 22: 200Oct 22",
@@ -38,6 +70,58 @@ describe("ScrobbleChart", () => {
     await renderChart(scrobbles);
 
     expect(document.querySelector(".average")).toHaveTextContent("1,100 avg");
+  });
+
+  it("gives each top artist a lane with a bar per run of its years", async () => {
+    await renderLanes(years);
+
+    expect(
+      lanes().map(
+        (item) => item.querySelector(".visually-hidden")?.textContent,
+      ),
+    ).toEqual([
+      "Smog: 14 plays in 2016–2017, 2020",
+      "Low: 3 plays in 2018",
+      "Bill Callahan: 4 plays in 2021",
+    ]);
+  });
+
+  it("ends a late lane's name at its run and dashes the current one", async () => {
+    await renderLanes(years);
+    const [smogLane, , lateLane] = lanes();
+
+    expect(smogLane?.querySelector("[data-end]")).not.toBeInTheDocument();
+    expect(smogLane?.querySelector("[data-current]")).not.toBeInTheDocument();
+    expect(lateLane?.querySelector(".lane-label")).toHaveAttribute("data-end");
+    expect(lateLane?.querySelector(".lane-run")).toHaveAttribute(
+      "data-current",
+    );
+  });
+
+  it("lights a lane's stems while it is hovered", async () => {
+    await renderLanes(years);
+    const active = () =>
+      stems().map((item) => item.hasAttribute("data-active"));
+
+    fireEvent.pointerEnter(lanes()[0]!);
+    expect(active()).toEqual([true, true, false, false, true, false]);
+
+    fireEvent.pointerLeave(
+      screen.getByRole("list", { name: "Top artist by year" }),
+    );
+    expect(active()).toEqual([false, false, false, false, false, false]);
+  });
+
+  it.each([
+    ["failed to load", undefined],
+    ["have none", years.map(({ label }) => ({ label, artist: undefined }))],
+  ])("leaves the lanes out when the artists %s", async (_, topArtistByYear) => {
+    await renderLanes(topArtistByYear);
+
+    expect(stems()).toHaveLength(years.length);
+    expect(
+      screen.queryByRole("list", { name: "Top artist by year" }),
+    ).not.toBeInTheDocument();
   });
 
   it("scales a lone empty bucket with no average to show", async () => {
@@ -68,9 +152,9 @@ describe("ScrobbleChart", () => {
 
     await renderChart(scrobbles);
 
-    const grow = screen
-      .getAllByRole("listitem")
-      .map((item) => Number(item.style.getPropertyValue("--grow")));
+    const grow = stems().map((item) =>
+      Number(item.style.getPropertyValue("--grow")),
+    );
     expect(Math.max(...grow)).toBeLessThan(1);
   });
 

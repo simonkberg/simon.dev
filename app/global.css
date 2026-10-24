@@ -117,6 +117,9 @@
   --stems-base-color: var(--muted);
   --stems-hover: var(--accent);
   --stems-hover-bg: transparent;
+  --lane-weight: 4px;
+  --lane-hover-bg: var(--heat);
+  --lane-hover-color: var(--accent);
 
   --timeline-origin: "┬";
   --timeline-bar: "━";
@@ -458,6 +461,7 @@
   --stems-color: var(--accent);
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
+  --lane-weight: 2px;
   --timeline-origin: "◇";
   --timeline-bar: "─";
   --flashback-rule: 1px solid var(--accent);
@@ -592,6 +596,8 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
+  --lane-hover-bg: var(--ink);
+  --lane-hover-color: var(--ground);
   --timeline-bar: "█";
   --timeline-bar-color: var(--ink);
   --flashback-rule: 0.5ch solid var(--ink);
@@ -743,11 +749,21 @@ button {
   border: 0;
   background: none;
   color: var(--ink);
+  /* It sits inside the text it describes, so don't inherit that text's style. Longhands, since
+     manual's --meta-size is inherit, which the font shorthand can't take. */
+  font-style: normal;
+  font-variant: normal;
+  font-weight: normal;
   font-size: var(--meta-size);
-  /* It sits inside the text it describes, so don't inherit that text's layout. */
   line-height: var(--leading);
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: start;
   text-indent: 0;
+  text-transform: none;
+  text-shadow: none;
   white-space: normal;
+  cursor: auto;
   overflow: visible;
 
   > span {
@@ -1012,11 +1028,22 @@ ul {
 
 /* Charts */
 
+/* The lanes' bars line up under the stems, so both keep its gutter for the average. */
+:is(.stems, .lanes) {
+  --stems-gutter: 7ch;
+
+  > ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
 .stems {
   --stems-height: 8.5rem;
   --stems-row: 1rem;
   --stems-head: 1.75rem;
-  --stems-columns: minmax(0, 1fr) 7ch;
+  --stems-columns: minmax(0, 1fr) var(--stems-gutter);
   --stems-zero: calc(var(--stems-row) * 1.5);
   position: relative;
   display: grid;
@@ -1047,9 +1074,6 @@ ul {
     height: calc(
       var(--stems-head) + var(--stems-height) + var(--stems-row) * 2
     );
-    margin: 0;
-    padding: 0;
-    list-style: none;
   }
 
   li {
@@ -1092,7 +1116,8 @@ ul {
       height: calc(var(--stems-height) + var(--stems-head));
     }
 
-    &:hover {
+    /* Also lit while the column's lane is hovered. */
+    &:is(:hover, [data-active] > *) {
       &::before {
         background: var(--stems-hover-bg);
       }
@@ -1216,6 +1241,65 @@ ul {
       > .tick {
         display: none;
       }
+    }
+  }
+}
+
+.lanes {
+  margin-block: 0.75rem 0;
+  line-height: 1;
+
+  > ol {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  /* The track runs on through the gutter, like the stems' axis. */
+  li {
+    display: grid;
+    grid-template-columns:
+      repeat(var(--count), minmax(0, 1fr))
+      var(--stems-gutter);
+    row-gap: 0.25rem;
+
+    /* The lane's track, dotted under the years it didn't top. */
+    &::before {
+      content: "";
+      grid-row: 2;
+      grid-column: 1 / -1;
+      align-self: center;
+      border-top: 1px dotted var(--rule);
+    }
+
+    &:hover .lane-name {
+      background: var(--lane-hover-bg);
+      color: var(--lane-hover-color);
+    }
+  }
+
+  /* Sized here, not on the list, so the gutter's ch matches the stems'. */
+  .lane-label {
+    grid-row: 1;
+    font-size: var(--meta-size);
+    white-space: nowrap;
+
+    /* A late artist's name ends at its bar, so it never runs off the chart. */
+    &[data-end] {
+      text-align: end;
+    }
+  }
+
+  .lane-run {
+    grid-row: 2;
+    height: var(--lane-weight);
+    margin-inline: 2px;
+    background: var(--accent);
+
+    /* Like the current stem, still filling up. */
+    &[data-current] {
+      background: transparent;
+      outline: 1px dashed var(--accent);
+      outline-offset: -1px;
     }
   }
 }
@@ -2104,9 +2188,12 @@ ul {
   }
 
   > pre {
+    max-height: 12lh;
     margin: 0;
-    overflow-x: auto;
+    overflow-y: auto;
     font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 }
 
