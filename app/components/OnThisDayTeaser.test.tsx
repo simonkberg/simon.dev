@@ -29,8 +29,9 @@ describe("OnThisDayTeaser", () => {
       ]),
     );
 
+    expect(screen.getByText("On this day in 2012")).toBeInTheDocument();
     expect(screen.getByRole("paragraph")).toHaveTextContent(
-      "On this day in 2012: B – Lana Del Rey (62 plays). See every year.",
+      "B – Lana Del Rey (62 plays). See every year.",
     );
   });
 

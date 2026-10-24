@@ -121,6 +121,7 @@
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
+  --flashback-rule: 2px solid var(--accent);
 
   --tracks-max: none;
   --track-display: block;
@@ -459,6 +460,7 @@
   --stems-hover: var(--ink);
   --timeline-origin: "◇";
   --timeline-bar: "─";
+  --flashback-rule: 1px solid var(--accent);
   --tracks-max: 44rem;
   --track-display: flow-root;
   --track-padding: 0.2rem 0;
@@ -592,6 +594,7 @@
   --stems-hover: var(--muted);
   --timeline-bar: "█";
   --timeline-bar-color: var(--ink);
+  --flashback-rule: 0.5ch solid var(--ink);
   --track-padding: 0 0 0 2ch;
   --track-indent: -2ch;
   --links-display: flex;
@@ -1218,6 +1221,23 @@ ul {
 }
 
 /* On this day */
+
+.flashback {
+  padding-inline-start: 2ch;
+  border-inline-start: var(--flashback-rule);
+  color: var(--muted);
+
+  > p {
+    margin: 0;
+  }
+}
+
+.flashback-title {
+  display: block;
+  color: var(--ink);
+  font-size: 0.85em;
+  text-transform: var(--heading-case);
+}
 
 .timeline {
   margin: 0;

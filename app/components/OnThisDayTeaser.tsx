@@ -27,16 +27,24 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
   if (year === undefined) return null;
 
   return (
-    <p>
-      On this day in {year.year}: {year.top.track} &ndash;{" "}
-      <em>{year.top.artist}</em> ({formatPlays(year.count)}). See{" "}
-      <Link href="/listening/on-this-day">every year</Link>.
-    </p>
+    <div className="flashback">
+      <strong className="flashback-title">On this day in {year.year}</strong>
+      <p>
+        {year.top.track} &ndash; <em>{year.top.artist}</em> (
+        {formatPlays(year.count)}). See{" "}
+        <Link href="/listening/on-this-day">every year</Link>.
+      </p>
+    </div>
   );
 };
 
 export const OnThisDayTeaserSkeleton = () => (
-  <p aria-hidden="true">
-    <Skeleton width={36} />
-  </p>
+  <div className="flashback" aria-hidden="true">
+    <span className="flashback-title">
+      <Skeleton width={16} />
+    </span>
+    <p>
+      <Skeleton width={36} />
+    </p>
+  </div>
 );
