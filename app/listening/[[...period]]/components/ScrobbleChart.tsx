@@ -177,7 +177,7 @@ const Lanes = ({
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
 }) => {
-  // One per column, so each bar sweeps out after the stems above its start, left to right.
+  // One per column, so each bar starts sweeping out after the stem above its start.
   const springs = useGrow(items.length, (index) => 150 + index * 30);
 
   return (

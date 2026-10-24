@@ -180,7 +180,6 @@ describe("ScrobbleChart", () => {
     const runs = grow(".lane-run");
     expect(runs).toHaveLength(4);
     expect(Math.max(...runs)).toBeLessThan(1);
-    expect(runs).toEqual(runs.toSorted((a, b) => b - a));
     expect(grow(".lane-label")).toHaveLength(3);
   });
 

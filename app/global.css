@@ -1333,7 +1333,7 @@ ul {
     margin-inline: 2px;
     background: var(--accent);
     /* Clipped rather than scaled, so the current run's dashes keep their spacing. */
-    clip-path: inset(0 calc(100% - var(--grow, 1) * 100%) 0 0);
+    clip-path: inset(0 calc((1 - var(--grow, 1)) * 100%) 0 0);
 
     /* Like the current stem, still filling up. */
     &[data-current] {
