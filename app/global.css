@@ -128,7 +128,7 @@
   --cover-filter: none;
   --cover-blend: normal;
   --cover-overlay: none;
-  --cover-grain: 0;
+  --cover-grain: none;
   --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
@@ -625,7 +625,9 @@
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
   --cover-filter: grayscale(1) brightness(0.5);
-  --cover-grain: 1;
+  /* The 4×4 Bayer matrix (0 8 2 10, 12 4 14 6, 3 11 1 9, 15 7 13 5) at (v + 0.5) / 32. */
+  --cover-grain: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAHElEQVR42mNmcfrkxZTwIOEBg0wMjw9TwoOEBwBEkgdaH7LUvwAAAABJRU5ErkJggg==")
+    0 0 / 4px 4px;
   --cover-threshold: contrast(40);
   --cover-overlay: linear-gradient(
     light-dark(transparent, oklch(0 0 0 / 0.15)) 0 100%
@@ -2453,10 +2455,10 @@ tbody tr:hover {
       z-index: 1;
       outline: var(--cover-frame-hover);
       --cover-filter: none;
-      --cover-grain: 0;
       --cover-threshold: none;
 
-      &::after {
+      &::after,
+      .cover-art::after {
         opacity: 0;
       }
     }
@@ -2467,10 +2469,10 @@ tbody tr:hover {
     z-index: 1;
     outline: var(--focus);
     --cover-filter: none;
-    --cover-grain: 0;
     --cover-threshold: none;
 
-    &::after {
+    &::after,
+    .cover-art::after {
       opacity: 0;
     }
   }
@@ -2488,10 +2490,9 @@ tbody tr:hover {
     content: "";
     position: absolute;
     inset: 0;
-    background: var(--cover-dither) 0 0 / 4px 4px;
+    background: var(--cover-grain);
     image-rendering: pixelated;
     mix-blend-mode: plus-lighter;
-    opacity: var(--cover-grain);
     transition: opacity 0.3s ease-in;
   }
 }

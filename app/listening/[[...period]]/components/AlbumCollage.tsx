@@ -1,5 +1,4 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
 import { use } from "react";
 
 import type { TopAlbum } from "@/actions/lastfm";
@@ -14,29 +13,6 @@ export interface AlbumCollageProps {
   albums: Promise<readonly TopAlbum[] | undefined>;
 }
 
-const bayer = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-];
-
-// Half-strength levels: added to a cover at half brightness, they threshold to ordered dithering.
-const bayerTile = `data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">${bayer
-    .flatMap((row, y) =>
-      row.map((value, x) => {
-        const level = Math.round(((value + 0.5) / 32) * 255);
-        return `<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${level},${level},${level})"/>`;
-      }),
-    )
-    .join("")}</svg>`,
-)}`;
-
-const collageStyle = {
-  "--cover-dither": `url("${bayerTile}")`,
-} as CSSProperties;
-
 export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   const items = use(albums);
 
@@ -45,7 +21,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   }
 
   return (
-    <div className="collage" style={collageStyle}>
+    <div className="collage">
       <ol className="collage-covers">
         {items.map((album, index) => (
           <li key={album.rank}>
