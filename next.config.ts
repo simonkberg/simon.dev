@@ -12,9 +12,9 @@ const nextConfig: NextConfig = {
   // Last.fm's CDN 404s some resized covers in some regions, so Next resizes the original.
   images: {
     remotePatterns: [new URL("https://lastfm-img.freetls.fastly.net/i/u/**")],
-    // Covers are the only images: 10rem tiles and a #1 tile up to a phone's width, at 1–3x.
-    imageSizes: [160, 320, 480],
-    deviceSizes: [640, 960, 1280],
+    // Covers are the only images: one width each for the tiles and the #1 tile (`coverWidth`).
+    imageSizes: [320],
+    deviceSizes: [960],
   },
 };
 

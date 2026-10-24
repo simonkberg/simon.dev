@@ -5,6 +5,7 @@ import type { TopAlbum } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
+import { coverWidth } from "@/lib/covers";
 import { TOP_ALBUMS } from "@/lib/lastfm";
 
 export interface AlbumCollageProps {
@@ -66,8 +67,8 @@ const Dither = () => (
 );
 
 // The filtered copy fades out over the plain cover, since `url()` filters and blend modes can't transition.
-const CoverImage = ({ src, sizes }: { src: string; sizes: string }) => {
-  const image = <Image src={src} sizes={sizes} alt="" fill />;
+const CoverImage = ({ src, width }: { src: string; width: number }) => {
+  const image = <Image src={src} width={width} height={width} alt="" />;
   return (
     <>
       {image}
@@ -91,10 +92,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
           <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
               {album.cover && (
-                <CoverImage
-                  src={album.cover}
-                  sizes={index === 0 ? "(width < 40rem) 100vw, 30rem" : "10rem"}
-                />
+                <CoverImage src={album.cover} width={coverWidth(index)} />
               )}
               <span className="cover-rank" aria-hidden="true">
                 {album.rank}
