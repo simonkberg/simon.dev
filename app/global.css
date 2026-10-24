@@ -1214,12 +1214,13 @@ ul {
 /* One row per top artist of a year, with a bar under each run of its years. */
 .lanes {
   margin-block: 0.75rem 0;
-  font-size: var(--meta-size);
   line-height: 1;
 
+  /* On the list, not the grid, so its 7ch column matches the stems'. */
   > ol {
     display: grid;
     gap: 0.55rem;
+    font-size: var(--meta-size);
   }
 
   li {
