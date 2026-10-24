@@ -343,18 +343,6 @@ describe("CaretBuddy integration", () => {
       expect(postChatMessage).not.toHaveBeenCalled();
     });
 
-    it("shows an error when a server command can't be reached", async () => {
-      vi.mocked(forgetMe).mockRejectedValue(new TypeError("Failed to fetch"));
-      const { input, send } = renderChatInput();
-
-      await send("/forget");
-
-      expect(await screen.findByRole("status")).toHaveTextContent(
-        "Couldn't run /forget. Try again.",
-      );
-      expect(input).toHaveValue("/forget");
-    });
-
     it("sends a doubled slash as one", async () => {
       const { send } = renderChatInput();
 

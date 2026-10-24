@@ -77,4 +77,13 @@ describe("runCommand", () => {
 
     await expect(runCommand(text)).resolves.toEqual(error);
   });
+
+  it("turns a server command that can't be reached into an error", async () => {
+    vi.mocked(forgetMe).mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await expect(runCommand("/forget")).resolves.toEqual({
+      status: "error",
+      error: "Couldn't run /forget. Try again.",
+    });
+  });
 });

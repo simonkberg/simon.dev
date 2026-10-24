@@ -104,7 +104,7 @@ const findCommand = (name: string | undefined) =>
 export function runCommand(
   text: string,
 ): CommandResult | Promise<CommandResult> {
-  const body = text.trim().slice(1).toLowerCase();
+  const body = text.slice(1).toLowerCase();
   const space = body.search(/\s/);
   const name = space === -1 ? body : body.slice(0, space);
   const command = findCommand(name);
@@ -114,7 +114,13 @@ export function runCommand(
       error: `Unknown command /${name}. Try /help, or // to send a slash.`,
     };
   }
-  return command.run(space === -1 ? "" : body.slice(space).trim());
+  const result = command.run(space === -1 ? "" : body.slice(space).trim());
+  return result instanceof Promise
+    ? result.catch(() => ({
+        status: "error",
+        error: `Couldn't run /${name}. Try again.`,
+      }))
+    : result;
 }
 
 export interface CommandSuggestion {

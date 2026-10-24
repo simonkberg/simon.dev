@@ -58,7 +58,7 @@ export const ChatInput = ({
       setResult(command);
       return;
     }
-    setResult({ status: "ok" });
+    setResult({ status: "initial" });
     setOutput(command.output ? { command: text, lines: command.output } : null);
     setInputValue("");
   }
@@ -74,10 +74,7 @@ export const ChatInput = ({
       const command = runCommand(text);
       if (command instanceof Promise) {
         startTransition(async () => {
-          const result = await command.catch((): CommandResult => ({
-            status: "error",
-            error: `Couldn't run ${text}. Try again.`,
-          }));
+          const result = await command;
           startTransition(() => showCommand(text, result));
         });
       } else {
@@ -108,11 +105,12 @@ export const ChatInput = ({
     });
   }
 
+  // Disabling the input while pending blurs it, so give focus back once done.
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (!pending && result.status !== "initial") {
-      inputRef.current?.focus();
-    }
-  }, [pending, result.status]);
+    if (wasPending.current && !pending) inputRef.current?.focus();
+    wasPending.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     if (replyToId) inputRef.current?.focus();

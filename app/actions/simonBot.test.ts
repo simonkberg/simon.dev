@@ -2,17 +2,14 @@ import { cacheLife } from "next/cache";
 import { describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
-import { readPublicNotes } from "@/lib/memory";
-import { MIGRATIONS } from "@/lib/migrations";
-import { getSession, type Username } from "@/lib/session";
-import { query } from "@/lib/turso";
-import { seed, stored } from "@/mocks/memory";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { forgetPerson, readPersonNotes, readPublicNotes } from "@/lib/memory";
+import type { Username } from "@/lib/session";
 
 import { forgetMe, getBotNotes, getNotesOnMe } from "./simonBot";
 
-vi.mock(import("@/lib/memory"), async (importOriginal) => ({
-  ...(await importOriginal()),
+vi.mock(import("@/lib/memory"), () => ({
+  forgetPerson: vi.fn(),
+  readPersonNotes: vi.fn(),
   readPublicNotes: vi.fn(),
 }));
 
@@ -23,12 +20,6 @@ vi.mock(import("@/lib/session"), () => ({
     Promise.resolve({ username: "brave-otter" as Username }),
   ),
 }));
-
-vi.mock(import("@/lib/turso"), async () =>
-  (await import("@/mocks/sqlite")).mockTurso(),
-);
-
-sqliteBeforeEach(query, MIGRATIONS);
 
 describe("getBotNotes", () => {
   it("should return the notes and cache them for minutes", async () => {
@@ -57,18 +48,26 @@ describe("getBotNotes", () => {
 
 describe("getNotesOnMe", () => {
   it("should return the visitor's name and the bot's notes on them", async () => {
-    await seed(1, "people/brave-otter", "likes jazz");
-    await seed(2, "people/calm-yak", "likes cats");
+    vi.mocked(readPersonNotes).mockResolvedValue([
+      {
+        id: 1,
+        category: "people/brave-otter",
+        content: "likes jazz",
+        createdAt: "2026-10-01T00:00:00Z",
+        updatedAt: undefined,
+      },
+    ]);
 
     await expect(getNotesOnMe()).resolves.toEqual({
       status: "ok",
       data: { username: "brave-otter", notes: ["likes jazz"] },
     });
+    expect(readPersonNotes).toHaveBeenCalledExactlyOnceWith("brave-otter");
   });
 
   it("should return an error when the read fails", async () => {
     const err = new Error("boom");
-    vi.mocked(query).mockRejectedValue(err);
+    vi.mocked(readPersonNotes).mockRejectedValue(err);
 
     await expect(getNotesOnMe()).resolves.toEqual({
       status: "error",
@@ -82,21 +81,19 @@ describe("getNotesOnMe", () => {
 });
 
 describe("forgetMe", () => {
-  it("should delete only the visitor's notes and count them", async () => {
-    await seed(1, "people/brave-otter", "likes jazz");
-    await seed(2, "people/calm-yak", "likes cats");
+  it("should forget the visitor and count the notes", async () => {
+    vi.mocked(forgetPerson).mockResolvedValue(2);
 
     await expect(forgetMe()).resolves.toEqual({
       status: "ok",
-      data: { forgotten: 1 },
+      data: { forgotten: 2 },
     });
-    expect(await stored(1)).toBeUndefined();
-    expect(await stored(2)).toBeDefined();
+    expect(forgetPerson).toHaveBeenCalledExactlyOnceWith("brave-otter");
   });
 
-  it("should return an error when it fails", async () => {
+  it("should return an error when the delete fails", async () => {
     const err = new Error("boom");
-    vi.mocked(getSession).mockRejectedValue(err);
+    vi.mocked(forgetPerson).mockRejectedValue(err);
 
     await expect(forgetMe()).resolves.toEqual({
       status: "error",
