@@ -19,7 +19,7 @@ import {
   getRecentTracks,
   getOnThisDay,
   getScrobbles,
-  getTopArtistByYear,
+  getTopArtistByBucket,
   getTopAlbums,
   getTopArtists,
   getTopTracks,
@@ -265,29 +265,29 @@ describe("getScrobbles", () => {
   });
 });
 
-describe("getTopArtistByYear", () => {
+describe("getTopArtistByBucket", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
   });
 
-  it("should find each year's top artist since the first scrobbles", async () => {
+  it("should find each bucket's top artist", async () => {
     const artist = { name: "Smog", playcount: 23 };
     vi.mocked(userGetTopArtistInRange).mockResolvedValue(artist);
 
-    const result = await getTopArtistByYear();
+    const result = await getTopArtistByBucket("7day");
 
-    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(7);
     expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
-      from: new Date("2025-12-31T23:00:00Z"),
-      to: new Date("2026-12-31T23:00:00Z"),
+      from: new Date("2026-10-22T22:00:00Z"),
+      to: new Date("2026-10-23T22:00:00Z"),
     });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toMatchObject({
       status: "ok",
-      years: expect.arrayContaining([
-        { label: "2007", artist },
-        { label: "2026", artist },
+      buckets: expect.arrayContaining([
+        { label: "Oct 17", artist },
+        { label: "Oct 23", artist },
       ]),
     });
   });
@@ -296,16 +296,16 @@ describe("getTopArtistByYear", () => {
     const mockError = new Error("API error");
     vi.mocked(userGetTopArtistInRange).mockRejectedValue(mockError);
 
-    const result = await getTopArtistByYear();
+    const result = await getTopArtistByBucket("7day");
 
     expect(result).toEqual({
       status: "error",
-      error: "Failed to fetch top artist by year",
+      error: "Failed to fetch top artist by bucket",
     });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
     expect(log.error).toHaveBeenCalledWith(
-      { err: mockError, action: "getTopArtistByYear" },
-      "Error fetching top artist by year",
+      { err: mockError, action: "getTopArtistByBucket", period: "7day" },
+      "Error fetching top artist by bucket",
     );
   });
 });

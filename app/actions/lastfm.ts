@@ -140,6 +140,11 @@ export type GetScrobblesResult =
   | { status: "ok"; scrobbles: ScrobbleCount[] }
   | { status: "error"; error: string };
 
+const periodBuckets = (period: Period, now: Date) =>
+  period === "overall"
+    ? yearBuckets(config.lastfmSince, now)
+    : scrobbleBuckets(period, now);
+
 export async function getScrobbles(
   period: Period,
 ): Promise<GetScrobblesResult> {
@@ -147,12 +152,8 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
-    const buckets =
-      period === "overall"
-        ? yearBuckets(config.lastfmSince, now)
-        : scrobbleBuckets(period, now);
     const scrobbles = await Promise.all(
-      buckets.map(async ({ label, from, to }) => ({
+      periodBuckets(period, now).map(async ({ label, from, to }) => ({
         label,
         // Only the total is read, so one track per page is enough.
         count: (
@@ -170,40 +171,40 @@ export async function getScrobbles(
   }
 }
 
-export interface YearTopArtist {
+export interface BucketTopArtist {
   label: string;
-  // Undefined for a year without scrobbles.
+  // Undefined for a bucket without scrobbles.
   artist: WeeklyArtist | undefined;
 }
 
-export type GetTopArtistByYearResult =
-  | { status: "ok"; years: YearTopArtist[] }
+export type GetTopArtistByBucketResult =
+  | { status: "ok"; buckets: BucketTopArtist[] }
   | { status: "error"; error: string };
 
-export async function getTopArtistByYear(): Promise<GetTopArtistByYearResult> {
+export async function getTopArtistByBucket(
+  period: Period,
+): Promise<GetTopArtistByBucketResult> {
   "use cache";
 
   try {
-    const years = await Promise.all(
-      yearBuckets(config.lastfmSince, new Date()).map(
-        async ({ label, from, to }) => ({
-          label,
-          artist: await userGetTopArtistInRange(config.lastfmUsername, {
-            from,
-            to,
-          }),
+    const buckets = await Promise.all(
+      periodBuckets(period, new Date()).map(async ({ label, from, to }) => ({
+        label,
+        artist: await userGetTopArtistInRange(config.lastfmUsername, {
+          from,
+          to,
         }),
-      ),
+      })),
     );
     cacheLife("hours");
-    return { status: "ok", years };
+    return { status: "ok", buckets };
   } catch (err) {
     cacheLife("seconds");
     log.error(
-      { err, action: "getTopArtistByYear" },
-      "Error fetching top artist by year",
+      { err, action: "getTopArtistByBucket", period },
+      "Error fetching top artist by bucket",
     );
-    return { status: "error", error: "Failed to fetch top artist by year" };
+    return { status: "error", error: "Failed to fetch top artist by bucket" };
   }
 }
 
