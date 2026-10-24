@@ -307,9 +307,7 @@ export async function readPublicNotes(): Promise<
     [...PUBLIC_CATEGORIES],
   );
   const notes = Object.groupBy(rows.map(toMemory), (note) => note.category);
-  return {
-    self: notes["self"] ?? [],
-    style: notes["style"] ?? [],
-    interests: notes["interests"] ?? [],
-  };
+  return Object.fromEntries(
+    PUBLIC_CATEGORIES.map((category) => [category, notes[category] ?? []]),
+  ) as Record<PublicCategory, Memory[]>;
 }
