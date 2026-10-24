@@ -261,7 +261,10 @@ export type WeeklyArtist = z.infer<typeof weeklyArtistSchema>;
 
 const userGetTopArtistInRangeResponseSchema = z
   .object({
-    weeklyartistchart: z.object({ artist: z.array(weeklyArtistSchema) }),
+    weeklyartistchart: z.object({
+      // In case an empty range leaves the list out rather than sending [].
+      artist: z.array(weeklyArtistSchema).default([]),
+    }),
   })
   .transform((data) => data.weeklyartistchart.artist[0]);
 

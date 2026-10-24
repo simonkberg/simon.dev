@@ -324,4 +324,10 @@ describe("userGetTopArtistInRange", () => {
     });
     expect(top).toEqual({ name: "Smog", playcount: 23 });
   });
+
+  it("should find no artist in an empty range", async () => {
+    lastfmReturns({ weeklyartistchart: {} });
+
+    expect(await userGetTopArtistInRange("testuser", range)).toBeUndefined();
+  });
 });
