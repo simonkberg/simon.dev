@@ -2412,15 +2412,20 @@ tbody tr:hover {
     object-fit: cover;
   }
 
-  &:hover {
-    outline: var(--cover-frame-hover);
+  /* A tap leaves :hover stuck on touch, and the link opens in a new tab. */
+  @media (hover: hover) {
+    &:hover {
+      outline: var(--cover-frame-hover);
+
+      .cover-filtered {
+        opacity: 0;
+      }
+    }
   }
 
   &:focus-visible {
     outline: var(--focus);
-  }
 
-  &:is(:hover, :focus-visible) {
     .cover-filtered {
       opacity: 0;
     }
