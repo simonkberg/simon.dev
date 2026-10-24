@@ -116,15 +116,13 @@ describe("getChatHistory", () => {
     });
   });
 
-  it("caches a success for minutes and an error for seconds, by tag", async () => {
-    vi.mocked(getChannelMessages).mockResolvedValueOnce([]);
-    await getChatHistory();
-    expect(cacheLife).toHaveBeenLastCalledWith("minutes");
-    expect(cacheTag).toHaveBeenCalledWith("getChatHistory");
+  it("sets cache life and tag", async () => {
+    vi.mocked(getChannelMessages).mockResolvedValue([]);
 
-    vi.mocked(getChannelMessages).mockRejectedValueOnce(new Error("down"));
     await getChatHistory();
-    expect(cacheLife).toHaveBeenLastCalledWith("seconds");
+
+    expect(cacheLife).toHaveBeenCalledWith("seconds");
+    expect(cacheTag).toHaveBeenCalledWith("getChatHistory");
   });
 });
 

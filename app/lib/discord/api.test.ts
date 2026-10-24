@@ -12,6 +12,7 @@ import {
   _setRateLimitGate,
   addBotReaction,
   getChannelMessages,
+  getChannelRevision,
   getMessageChain,
   isOwnPost,
   postChannelMessage,
@@ -471,13 +472,15 @@ describe("getChannelMessages", () => {
 });
 
 describe("subscribeToChannel", () => {
-  it("should call back once the store has seeded", async () => {
+  it("should call back, with a new revision, once the store has seeded", async () => {
     server.use(history());
-    const callback = vi.fn();
+    const revision = getChannelRevision();
+    const callback = vi.fn(getChannelRevision);
 
     await subscribeToChannel(callback);
     await getChannelMessages();
     expect(callback).toHaveBeenCalledOnce();
+    expect(callback.mock.results[0]?.value).not.toBe(revision);
   });
 
   it("should stop listening when the gateway can't connect", async () => {

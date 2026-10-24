@@ -33,19 +33,18 @@ export async function getChatHistory(): Promise<ChatHistoryResult> {
   return getChatHistoryAt(getChannelRevision());
 }
 
-// Keyed on the revision, so every render between two changes shares one.
+// Keyed on the revision, so the tabs refreshing for one change share one render.
 async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
   "use cache";
+  // Short anyway: site reactions and failed name lookups don't move the revision.
+  cacheLife("seconds");
   cacheTag("getChatHistory");
 
   try {
     const messages = await withSiteReactions(await getChannelMessages());
-    // Bounds a lookup that failed or a bot reaction no event announced.
-    cacheLife("minutes");
     return { status: "ok", messages };
   } catch (err) {
     log.error({ err, action: "getChatHistory" }, "Error fetching chat history");
-    cacheLife("seconds");
     return { status: "error", error: "Failed to fetch chat history" };
   }
 }
