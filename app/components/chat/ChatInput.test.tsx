@@ -1,8 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
 import { renderChatInput } from "@/mocks/chatInput";
+import { resetPreferences } from "@/mocks/preferences";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 
@@ -252,5 +253,71 @@ describe("CaretBuddy integration", () => {
     await send("Hello");
 
     expect(await screen.findByText("(＾▽＾)")).toBeInTheDocument();
+  });
+
+  describe("commands", () => {
+    afterEach(resetPreferences);
+
+    it("prints a command's output without posting, until Escape", async () => {
+      const { user, input, send } = renderChatInput();
+
+      await send("/help");
+
+      const output = screen.getByRole("status");
+      expect(output).toHaveTextContent("/help");
+      expect(output).toHaveTextContent("List the commands");
+      expect(input).toHaveValue("");
+      expect(postChatMessage).not.toHaveBeenCalled();
+
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+      await send("/help");
+      await user.click(screen.getByRole("button", { name: "Close output" }));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("clears the output once a message is sent", async () => {
+      const { send } = renderChatInput();
+
+      await send("/help");
+      await send("Hello");
+
+      expect(postChatMessage).toHaveBeenCalled();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("runs a command that prints nothing", async () => {
+      const { input, send } = renderChatInput();
+
+      await send("/Style Ledger ");
+
+      expect(document.documentElement).toHaveAttribute(
+        "data-variant",
+        "ledger",
+      );
+      expect(input).toHaveValue("");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("keeps the text of a command that fails and shows why", async () => {
+      const { input, send } = renderChatInput();
+
+      await send("/nope");
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Unknown command /nope. Try /help, or // to send a slash.",
+      );
+      expect(input).toHaveValue("/nope");
+      expect(postChatMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends a doubled slash as one", async () => {
+      const { send } = renderChatInput();
+
+      await send("//shrug");
+
+      expect(sentForm()?.get("text")).toBe("/shrug");
+    });
   });
 });

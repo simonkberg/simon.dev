@@ -41,7 +41,7 @@ function midnight(year: number, month: number, day: number): Date {
   return new Date(utc - (localTime(guess) - guess));
 }
 
-const dayLabel = new Intl.DateTimeFormat("en-US", {
+export const dayLabel = new Intl.DateTimeFormat("en-US", {
   timeZone,
   month: "short",
   day: "numeric",
@@ -128,4 +128,26 @@ export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
   const today = localDate(now);
   const count = today.getUTCFullYear() - since + 1;
   return buckets("year", count, today);
+}
+
+/** Today's Stockholm date in each year from `since` to the last, newest first. */
+export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
+  const today = localDate(now);
+  const month = today.getUTCMonth();
+  const day = today.getUTCDate();
+  return (
+    Array.from(
+      { length: today.getUTCFullYear() - since },
+      (_, index) => today.getUTCFullYear() - 1 - index,
+    )
+      // February 29 only comes around in leap years.
+      .filter(
+        (year) => new Date(Date.UTC(year, month, day)).getUTCDate() === day,
+      )
+      .map((year) => ({
+        label: String(year),
+        from: midnight(year, month, day),
+        to: midnight(year, month, day + 1),
+      }))
+  );
 }

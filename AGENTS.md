@@ -188,10 +188,17 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The reaction picker's ✋ sets one skin tone per visitor, for its emoji and the suggestions
   (`app/components/chat/skinTone.ts`), kept in localStorage rather than a cookie since it never
   changes the server render.
+- **Chat commands:** a leading `/` in the chat input runs a command from
+  `app/components/chat/commands.ts` instead of posting; `//` sends one slash. They run in the
+  browser and print their output above the input for that visitor only, never to Discord. The
+  input suggests them as it does `:` shortcodes, from the same combobox (`ChatSuggestInput`).
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
   page): a request per bar, each hour the chart is cached.
+- **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
+  date in each past year with one `getRecentTracks` page per year; the home page teases the
+  busiest year through the same cached call.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
   Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never

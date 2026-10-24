@@ -11,10 +11,26 @@ import {
 import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
+import { TooltipButton } from "@/components/Tooltip";
 
 import { CaretBuddy } from "./CaretBuddy";
-import { ChatEmojiInput } from "./ChatEmojiInput";
+import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
+import { messageText, runCommand } from "./commands";
+
+function useEscape(active: boolean, onEscape: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    const keyDownHandler = (event: KeyboardEvent) => {
+      // A tooltip's Escape closes only the tooltip.
+      if (event.key === "Escape" && !event.defaultPrevented) onEscape();
+    };
+    window.addEventListener("keydown", keyDownHandler);
+    return () => {
+      window.removeEventListener("keydown", keyDownHandler);
+    };
+  }, [active, onEscape]);
+}
 
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
@@ -32,14 +48,37 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
+  const [output, setOutput] = useState<{
+    command: string;
+    lines: readonly string[];
+  } | null>(null);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!inputValue.trim()) return;
     const form = event.currentTarget;
 
+    const message = messageText(inputValue);
+    if (message === null) {
+      const command = runCommand(inputValue);
+      if (command.status === "error") {
+        setResult(command);
+        return;
+      }
+      setResult({ status: "initial" });
+      setOutput(
+        command.output
+          ? { command: inputValue.trim(), lines: command.output }
+          : null,
+      );
+      setInputValue("");
+      return;
+    }
+
+    setOutput(null);
     startTransition(async () => {
       const formData = new FormData(form);
+      formData.set("text", message);
       if (replyToId) {
         formData.append("replyToId", replyToId);
       }
@@ -65,22 +104,11 @@ export const ChatInput = ({
   }, [pending, result.status]);
 
   useEffect(() => {
-    if (replyToId) {
-      inputRef.current?.focus();
-      const keyDownHandler = (event: KeyboardEvent) => {
-        // A tooltip's Escape closes only the tooltip.
-        if (event.key === "Escape" && !event.defaultPrevented) {
-          setReplyToId(null);
-        }
-      };
-      window.addEventListener("keydown", keyDownHandler);
-      return () => {
-        window.removeEventListener("keydown", keyDownHandler);
-      };
-    }
+    if (replyToId) inputRef.current?.focus();
+  }, [replyToId]);
 
-    return;
-  }, [replyToId, setReplyToId]);
+  useEscape(!!replyToId, () => setReplyToId(null));
+  useEscape(!!output, () => setOutput(null));
 
   return (
     <>
@@ -90,9 +118,22 @@ export const ChatInput = ({
           !pending && result.status === "error" ? result.error : undefined
         }
       />
+      {output && (
+        <div className="chat-output" role="status" aria-live="polite">
+          <p className="echo">{output.command}</p>
+          <pre>{output.lines.join("\n")}</pre>
+          <TooltipButton
+            tooltip="Close output"
+            className="clear"
+            onClick={() => setOutput(null)}
+          >
+            &times;
+          </TooltipButton>
+        </div>
+      )}
       <form onSubmit={onSubmit} className="chat-input">
         <div className="wrapper">
-          <ChatEmojiInput
+          <ChatSuggestInput
             name="text"
             placeholder={`Write a ${replyToId ? "reply" : "message"}...`}
             disabled={pending}
