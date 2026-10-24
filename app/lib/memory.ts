@@ -230,10 +230,22 @@ export async function forget(input: {
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
-export async function forgetCategory(category: string): Promise<number> {
+export async function readPersonNotes(username: string): Promise<Memory[]> {
+  const category = peopleCategory(username);
+  if (category === undefined) return [];
+  const { rows } = await query(
+    `SELECT ${COLUMNS} FROM memories WHERE category = ? ORDER BY created_at, id`,
+    [category],
+  );
+  return rows.map(toMemory);
+}
+
+export async function forgetPerson(username: string): Promise<number> {
+  const category = peopleCategory(username);
+  if (category === undefined) return 0;
   const { rowsAffected } = await query(
     "DELETE FROM memories WHERE category = ?",
-    [categorySchema.parse(category)],
+    [category],
   );
   return rowsAffected;
 }

@@ -4,13 +4,11 @@ import { cacheLife } from "next/cache";
 
 import { log } from "@/lib/log";
 import {
-  forgetCategory,
-  MAX_PER_CATEGORY,
+  forgetPerson,
   type Memory,
-  peopleCategory,
   type PublicCategory,
+  readPersonNotes,
   readPublicNotes,
-  recall,
 } from "@/lib/memory";
 import { getSession, type Username } from "@/lib/session";
 
@@ -39,13 +37,10 @@ export type GetNotesOnMeResult =
 export async function getNotesOnMe(): Promise<GetNotesOnMeResult> {
   try {
     const { username } = await getSession();
-    const category = peopleCategory(username);
-    const notes = category
-      ? await recall({ category, limit: MAX_PER_CATEGORY })
-      : [];
+    const notes = await readPersonNotes(username);
     return {
       status: "ok",
-      data: { username, notes: notes.toReversed().map((note) => note.content) },
+      data: { username, notes: notes.map((note) => note.content) },
     };
   } catch (err) {
     log.error({ err, action: "getNotesOnMe" }, "Error fetching notes on me");
@@ -60,9 +55,7 @@ export type ForgetMeResult =
 export async function forgetMe(): Promise<ForgetMeResult> {
   try {
     const { username } = await getSession();
-    const category = peopleCategory(username);
-    const forgotten = category ? await forgetCategory(category) : 0;
-    if (forgotten > 0) log.info({ username, forgotten }, "Forgot a visitor");
+    const forgotten = await forgetPerson(username);
     return { status: "ok", data: { forgotten } };
   } catch (err) {
     log.error({ err, action: "forgetMe" }, "Error forgetting notes on me");

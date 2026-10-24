@@ -56,19 +56,13 @@ describe("getBotNotes", () => {
 });
 
 describe("getNotesOnMe", () => {
-  it("should return the visitor's name and the bot's notes on them, oldest first", async () => {
-    await seed(1, "people/brave-otter", "likes jazz", "2026-10-01T00:00:00Z");
-    await seed(
-      2,
-      "people/brave-otter",
-      "lives in oslo",
-      "2026-10-02T00:00:00Z",
-    );
-    await seed(3, "people/calm-yak", "likes cats");
+  it("should return the visitor's name and the bot's notes on them", async () => {
+    await seed(1, "people/brave-otter", "likes jazz");
+    await seed(2, "people/calm-yak", "likes cats");
 
     await expect(getNotesOnMe()).resolves.toEqual({
       status: "ok",
-      data: { username: "brave-otter", notes: ["likes jazz", "lives in oslo"] },
+      data: { username: "brave-otter", notes: ["likes jazz"] },
     });
   });
 

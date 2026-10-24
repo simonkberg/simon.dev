@@ -74,7 +74,10 @@ export const ChatInput = ({
       const command = runCommand(text);
       if (command instanceof Promise) {
         startTransition(async () => {
-          const result = await command;
+          const result = await command.catch((): CommandResult => ({
+            status: "error",
+            error: `Couldn't run ${text}. Try again.`,
+          }));
           startTransition(() => showCommand(text, result));
         });
       } else {
