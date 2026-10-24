@@ -7,6 +7,7 @@ import { z } from "zod";
 import { config } from "@/config";
 import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
 import {
+  getUserPlays,
   userGetRecentTracks,
   userGetTopAlbums,
   userGetTopArtists,
@@ -56,6 +57,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
     userGetTopTracks: vi.fn(),
     userGetTopArtists: vi.fn(),
     userGetTopAlbums: vi.fn(),
+    getUserPlays: vi.fn(),
   };
 });
 
@@ -179,6 +181,7 @@ describe("createMessage", () => {
         { name: "get_top_tracks" },
         { name: "get_top_artists" },
         { name: "get_top_albums" },
+        { name: "get_play_count" },
         { name: "search_messages" },
         { name: "react" },
         { name: "remember" },
@@ -865,6 +868,13 @@ describe("createMessage", () => {
         userGetTopAlbums,
         config.lastfmUsername,
         { period: "12month", limit: 7 },
+      ),
+      wiring(
+        "get_play_count",
+        { artist: "Radiohead", track: "Idioteque" },
+        getUserPlays,
+        config.lastfmUsername,
+        { artist: "Radiohead", track: "Idioteque" },
       ),
       wiring(
         "search_messages",

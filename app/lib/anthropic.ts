@@ -14,6 +14,7 @@ import {
 } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 import {
+  getUserPlays,
   periods as lastfmPeriods,
   userGetRecentTracks,
   userGetTopAlbums,
@@ -158,20 +159,32 @@ const wakatimeInputSchema = z.object({
     .describe("Time period"),
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });
+const lastfmUsernameSchema = z
+  .string()
+  .default(config.lastfmUsername)
+  .describe("Last.fm username (defaults to Simon's account)");
 const recentTracksInputSchema = z.object({
-  username: z
-    .string()
-    .default(config.lastfmUsername)
-    .describe("Last.fm username (defaults to Simon's account)"),
+  username: lastfmUsernameSchema,
   limit: z.number().min(1).max(50).default(5).describe("Number of tracks"),
 });
 const topItemsInputSchema = z.object({
-  username: z
-    .string()
-    .default(config.lastfmUsername)
-    .describe("Last.fm username (defaults to Simon's account)"),
+  username: lastfmUsernameSchema,
   period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
   limit: z.number().min(1).max(50).default(10).describe("Number of items"),
+});
+const playCountInputSchema = z.object({
+  username: lastfmUsernameSchema,
+  artist: z.string().min(1).describe("Artist name"),
+  track: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("A track by the artist, to count that instead"),
+  album: z
+    .string()
+    .min(1)
+    .optional()
+    .describe("An album by the artist, to count that instead (if no track)"),
 });
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
@@ -275,6 +288,12 @@ const LOOKUP_TOOLS = [
     input_schema: z.toJSONSchema(topItemsInputSchema),
   },
   {
+    name: "get_play_count",
+    description:
+      "Count all-time plays of an artist, or of one of their tracks or albums, on Last.fm. Defaults to Simon's account. Misspelled names are corrected, and the result spells them as Last.fm does. plays is missing when Last.fm has no count, as for an unknown username.",
+    input_schema: z.toJSONSchema(playCountInputSchema),
+  },
+  {
     name: "search_messages",
     description:
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
@@ -348,6 +367,10 @@ async function executeTool(
       case "get_top_albums": {
         const { username, ...params } = topItemsInputSchema.parse(input);
         return JSON.stringify(await userGetTopAlbums(username, params));
+      }
+      case "get_play_count": {
+        const { username, ...params } = playCountInputSchema.parse(input);
+        return JSON.stringify(await getUserPlays(username, params));
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);
