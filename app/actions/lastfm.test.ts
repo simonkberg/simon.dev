@@ -296,7 +296,7 @@ describe("getTopArtistByBucket", () => {
     const mockError = new Error("API error");
     vi.mocked(userGetTopArtistInRange).mockRejectedValue(mockError);
 
-    const result = await getTopArtistByBucket("overall");
+    const result = await getTopArtistByBucket("7day");
 
     expect(result).toEqual({
       status: "error",
@@ -304,7 +304,7 @@ describe("getTopArtistByBucket", () => {
     });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
     expect(log.error).toHaveBeenCalledWith(
-      { err: mockError, action: "getTopArtistByBucket" },
+      { err: mockError, action: "getTopArtistByBucket", period: "7day" },
       "Error fetching top artist by bucket",
     );
   });

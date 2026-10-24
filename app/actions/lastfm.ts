@@ -201,7 +201,7 @@ export async function getTopArtistByBucket(
   } catch (err) {
     cacheLife("seconds");
     log.error(
-      { err, action: "getTopArtistByBucket" },
+      { err, action: "getTopArtistByBucket", period },
       "Error fetching top artist by bucket",
     );
     return { status: "error", error: "Failed to fetch top artist by bucket" };
