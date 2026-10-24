@@ -13,6 +13,7 @@ import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
 import { joinPresence } from "@/lib/presence";
 import { encrypt, type Username } from "@/lib/session";
+import { mockCookieJar } from "@/mocks/headers";
 
 import { GET } from "./route";
 
@@ -26,6 +27,8 @@ vi.mock(import("@/lib/discord/api"), () => ({ subscribeToChannel: vi.fn() }));
 vi.mock(import("@/lib/discord/gateway"), () => ({
   subscribeToStatus: vi.fn(),
 }));
+
+vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
 
 vi.mock(import("@/lib/presence"), () => ({ joinPresence: vi.fn() }));
 
@@ -41,12 +44,12 @@ describe("GET /api/chat/sse", () => {
   let mockUnsubscribeStatus: Mock;
   let mockLeavePresence: Mock;
 
-  function open(session?: string) {
-    const request = new NextRequest("http://localhost/api/chat/sse", {
-      signal: controller.signal,
-    });
-    if (session) request.cookies.set("session", session);
-    return GET(request);
+  function open() {
+    return GET(
+      new NextRequest("http://localhost/api/chat/sse", {
+        signal: controller.signal,
+      }),
+    );
   }
 
   async function openReader() {
@@ -56,6 +59,7 @@ describe("GET /api/chat/sse", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    mockCookieJar();
     controller = new AbortController();
     mockUnsubscribe = vi.fn();
     mockUnsubscribeStatus = vi.fn();
@@ -110,9 +114,10 @@ describe("GET /api/chat/sse", () => {
   });
 
   it("should count the session's visitor and send who is here", async () => {
-    const response = await open(
-      await encrypt({ username: "alice" as Username }),
+    mockCookieJar(
+      `session=${await encrypt({ username: "alice" as Username })}`,
     );
+    const response = await open();
     const reader = response.body!.getReader();
     const [username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
     await reader.read();

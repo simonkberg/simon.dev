@@ -4,7 +4,7 @@ import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
 import { log } from "@/lib/log";
 import { joinPresence } from "@/lib/presence";
-import { decrypt } from "@/lib/session";
+import { findSession } from "@/lib/session";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
 const PING_INTERVAL_MS = 30_000;
@@ -20,17 +20,15 @@ export async function GET(request: NextRequest) {
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
   let aborted = false;
-  // The proxy skips /api, but the page that opened the stream set the cookie.
-  const session = await decrypt(request.cookies.get("session")?.value);
+  const session = await findSession();
+  const send = (text: string) => {
+    if (aborted) return;
+    void writer.write(encoder.encode(text)).catch(ignoreWriteErrors);
+  };
 
   let unsubscribe: () => void;
   try {
-    unsubscribe = await subscribeToChannel(() => {
-      if (aborted) return;
-      void writer
-        .write(encoder.encode(`data: refresh\n\n`))
-        .catch(ignoreWriteErrors);
-    });
+    unsubscribe = await subscribeToChannel(() => send("data: refresh\n\n"));
   } catch (err) {
     log.error({ err }, "Failed to subscribe to gateway");
     return new NextResponse(null, { status: 503 });
@@ -44,32 +42,17 @@ export async function GET(request: NextRequest) {
 
   // The client counts an open stream as live; this tells it when the gateway
   // behind it drops and comes back.
-  const unsubscribeStatus = subscribeToStatus((ready) => {
-    if (aborted) return;
-    void writer
-      .write(
-        encoder.encode(
-          `event: status\ndata: ${ready ? "live" : "connecting"}\n\n`,
-        ),
-      )
-      .catch(ignoreWriteErrors);
-  });
+  const unsubscribeStatus = subscribeToStatus((ready) =>
+    send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
+  );
 
-  void writer.write(encoder.encode(PING_MESSAGE)).catch(ignoreWriteErrors);
+  send(PING_MESSAGE);
 
-  const leavePresence = joinPresence(session?.username, (here) => {
-    if (aborted) return;
-    void writer
-      .write(
-        encoder.encode(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
-      )
-      .catch(ignoreWriteErrors);
-  });
+  const leavePresence = joinPresence(session?.username, (here) =>
+    send(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
+  );
 
-  const pingInterval = setInterval(() => {
-    if (aborted) return;
-    void writer.write(encoder.encode(PING_MESSAGE)).catch(ignoreWriteErrors);
-  }, PING_INTERVAL_MS);
+  const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
 
   request.signal.addEventListener("abort", () => {
     aborted = true;
