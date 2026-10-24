@@ -1292,7 +1292,7 @@ ul {
       var(--stems-gutter);
     row-gap: 0.25rem;
 
-    /* The lane's track, dotted under the years it didn't top. */
+    /* The lane's track, dotted under the bars it didn't top. */
     &::before {
       content: "";
       grid-row: 2;
@@ -1811,6 +1811,24 @@ ul {
       color: var(--muted);
     }
 
+    /* Only the typing line gives way on a narrow screen. */
+    > * {
+      flex-shrink: 0;
+    }
+
+    > .typing {
+      display: contents;
+
+      > .typists {
+        min-width: 0;
+        padding: var(--control-padding);
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
     > .control {
       margin-left: var(--controls-push);
       padding: var(--control-padding);
@@ -2190,9 +2208,12 @@ ul {
   }
 
   > pre {
+    max-height: 12lh;
     margin: 0;
-    overflow-x: auto;
+    overflow-y: auto;
     font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 }
 

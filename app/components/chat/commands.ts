@@ -1,5 +1,6 @@
 import { arrayIncludes } from "ts-extras";
 
+import { forgetMe, getNotesOnMe } from "@/actions/simonBot";
 import {
   currentPreference,
   type Preference,
@@ -15,7 +16,7 @@ export interface Command {
   name: string;
   description: string;
   preference?: Preference;
-  run: (argument: string) => CommandResult;
+  run: (argument: string) => CommandResult | Promise<CommandResult>;
 }
 
 const usage = ({ name, preference }: Command) =>
@@ -54,6 +55,41 @@ export const commands: readonly Command[] = [
     },
   },
   ...preferences.map(preferenceCommand),
+  {
+    name: "whoami",
+    description: "Show what simon-bot knows about you",
+    async run() {
+      const result = await getNotesOnMe();
+      if (result.status === "error") return result;
+      const { username, notes } = result.data;
+      return {
+        status: "ok",
+        output: [
+          `You are ${username}.`,
+          ...(notes.length > 0
+            ? ["simon-bot remembers:", ...notes.map((note) => `- ${note}`)]
+            : ["simon-bot doesn't remember anything about you yet."]),
+        ],
+      };
+    },
+  },
+  {
+    name: "forget",
+    description: "Make simon-bot forget you",
+    async run() {
+      const result = await forgetMe();
+      if (result.status === "error") return result;
+      const { forgotten } = result.data;
+      return {
+        status: "ok",
+        output: [
+          forgotten > 0
+            ? `simon-bot forgot ${forgotten} ${forgotten === 1 ? "note" : "notes"} about you.`
+            : "simon-bot had nothing to forget about you.",
+        ],
+      };
+    },
+  },
 ];
 
 /** The message to send, or null for a command: a leading slash runs one, and two send one. */
@@ -65,8 +101,10 @@ export function messageText(text: string) {
 const findCommand = (name: string | undefined) =>
   commands.find((command) => command.name === name);
 
-export function runCommand(text: string): CommandResult {
-  const body = text.trim().slice(1).toLowerCase();
+export function runCommand(
+  text: string,
+): CommandResult | Promise<CommandResult> {
+  const body = text.slice(1).toLowerCase();
   const space = body.search(/\s/);
   const name = space === -1 ? body : body.slice(0, space);
   const command = findCommand(name);
@@ -76,7 +114,13 @@ export function runCommand(text: string): CommandResult {
       error: `Unknown command /${name}. Try /help, or // to send a slash.`,
     };
   }
-  return command.run(space === -1 ? "" : body.slice(space).trim());
+  const result = command.run(space === -1 ? "" : body.slice(space).trim());
+  return result instanceof Promise
+    ? result.catch(() => ({
+        status: "error",
+        error: `Couldn't run /${name}. Try again.`,
+      }))
+    : result;
 }
 
 export interface CommandSuggestion {

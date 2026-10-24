@@ -160,7 +160,18 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   stream. A replica's heartbeat is the only writer of its streams' rows: it runs on every open
   and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
   drops rows unseen for 45s and reads back everyone (`app/lib/presence.ts`). The server only
-  notices a closed stream when a write fails, so the stream pings every 5s.
+  notices a closed stream when a write fails, so the stream pings every 5s. Discord members
+  who are `online` or `dnd` join the names, tracked per replica from the gateway like typing
+  (`app/lib/discord/online.ts`, started at boot: Discord lists who is online only as a session
+  starts), and the tooltip names simon-bot without counting it.
+- **Typing:** Discord's `TYPING_START` reaches every replica, so each tracks typists itself
+  (`app/lib/discord/typing.ts`), by chat name since the bot posts for every visitor, until
+  Discord's 10s run out or they post. simon-bot sends Discord's typing while it composes; the
+  bot types for nothing else, so a bot typist is simon-bot.
+  Site visitors' typing can't come from Discord, since the bot posts for them: the input pings
+  `/api/chat/typing` every 2s while a message is typed, never with its text, and each ping keeps
+  a Turso `typing` row 4s, or until they post (`app/lib/siteTyping.ts`). With no pub/sub, a
+  replica with open streams reads the table each second.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as
@@ -186,20 +197,22 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   changes the server render.
 - **Chat commands:** a leading `/` in the chat input runs a command from
   `app/components/chat/commands.ts` instead of posting; `//` sends one slash. They run in the
-  browser and print their output above the input for that visitor only, never to Discord. The
+  browser (`/whoami` and `/forget` through a server action, on simon-bot's `people/<username>`
+  notes) and print their output above the input for that visitor only, never to Discord. The
   input suggests them as it does `:` shortcodes, from the same combobox (`ChatSuggestInput`).
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each
   Stockholm calendar day, week, month or year with `user.getRecentTracks`'s `total` (one track per
-  page): a request per bar, each hour the chart is cached. On all time, lanes under it follow
-  each year's top artist from `user.getWeeklyArtistChart`, which takes any range, not just
-  Last.fm's weeks: another request per year, cached apart so a failure only drops the lanes.
+  page): a request per bar, each hour the chart is cached. Lanes under it follow each bar's
+  top artist from `user.getWeeklyArtistChart`, which takes any range, not just Last.fm's
+  weeks: another request per bar, cached apart so a failure only drops the lanes.
 - **Album covers:** Next's image optimiser resizes each Last.fm cover from its original
   upload (the CDN path without a size segment): the CDN's own resized sizes 404 in some
   regions. A cold resize can take seconds and the image cache is per replica, so each tile
-  has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and `instrumentation.ts` warms every
-  period's covers at boot and hourly. Each look filters the covers (`--cover-filter`, manual's is the SVG
-  `#cover-dither`), and hover or focus shows them unfiltered.
+  has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and
+  `instrumentation.ts` warms every period's covers at boot and hourly. Each look filters the
+  covers (`--cover-filter`, manual's is the SVG `#cover-dither`), and hover or focus shows
+  them unfiltered.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.

@@ -53,6 +53,19 @@ export const DiscordMessageSchema = z.object({
 
 export type DiscordMessage = z.infer<typeof DiscordMessageSchema>;
 
+const USERNAME_PREFIX_PATTERN = /^(.+?):(?:\s(.*))?$/s;
+
+/** A post the bot made for the site: its author, from the prefix, and the text after it. */
+export function sitePost(
+  message: Pick<DiscordMessage, "author" | "content">,
+): { username: string; content: string } | undefined {
+  if (!message.author.bot) return undefined;
+  const prefixed = message.content.match(USERNAME_PREFIX_PATTERN);
+  return prefixed
+    ? { username: prefixed[1]!, content: (prefixed[2] ?? "").trim() }
+    : undefined;
+}
+
 const FORWARD = 1;
 
 // A forward references the message it copies, not one it replies to.
@@ -115,3 +128,36 @@ export const ChannelEventSchema = z.discriminatedUnion("t", [
 ]);
 
 export type ChannelEvent = z.infer<typeof ChannelEventSchema>;
+
+export const CHANNEL_EVENTS: ReadonlySet<string> = new Set(
+  ChannelEventSchema.options.map((option) => option.shape.t.value),
+);
+
+export const TypingStartSchema = ChannelSchema.extend({
+  user_id: z.string(),
+  member: GuildMemberSchema.optional(),
+});
+
+export type TypingStart = z.infer<typeof TypingStartSchema>;
+
+const PresenceSchema = z.object({
+  user: DiscordUserSchema.pick({ id: true, bot: true }),
+  status: z.string(),
+});
+
+export type Presence = z.infer<typeof PresenceSchema>;
+
+/** A guild's members and who is online, sent at the start of a session. */
+export const GuildCreateSchema = z.object({
+  id: z.string(),
+  members: z.array(MemberSchema.extend({ user: DiscordUserSchema })),
+  presences: z.array(PresenceSchema),
+});
+
+export type GuildCreate = z.infer<typeof GuildCreateSchema>;
+
+export const PresenceUpdateSchema = PresenceSchema.extend({
+  guild_id: z.string(),
+});
+
+export type PresenceUpdate = z.infer<typeof PresenceUpdateSchema>;

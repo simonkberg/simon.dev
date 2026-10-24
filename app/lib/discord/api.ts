@@ -17,6 +17,7 @@ import {
   displayName,
   GuildMemberSchema,
   parentId,
+  sitePost,
 } from "./schemas";
 import { ChannelStore, type Reactor, WINDOW } from "./store";
 
@@ -255,20 +256,13 @@ function toUser(name: string): User {
   return UserSchema.decode({ name, color: stringToColor(name) });
 }
 
-const USERNAME_PREFIX_PATTERN = /^(.+?):(?:\s(.*))?$/s;
-
 async function resolveMessageContent(
   msg: DiscordMessage,
 ): Promise<{ username: string; content: string }> {
-  // Messages the bot posts for the site carry their author as a prefix.
-  const prefixed = msg.author.bot
-    ? msg.content.match(USERNAME_PREFIX_PATTERN)
-    : null;
-  if (prefixed) {
-    return { username: prefixed[1]!, content: (prefixed[2] ?? "").trim() };
-  }
+  const posted = sitePost(msg);
+  if (posted) return posted;
   const username =
-    (await getStore().memberName(msg.author.id)) ??
+    (await memberName(msg.author.id)) ??
     displayName(msg.author) ??
     msg.author.id;
   // A forward's own content is empty; what it forwards is in its snapshot.
@@ -379,6 +373,11 @@ function getStore(): ChannelStore {
     });
     return store;
   });
+}
+
+/** A guild member's name, asked of Discord once a session. */
+export function memberName(userId: string): Promise<string | undefined> {
+  return getStore().memberName(userId);
 }
 
 /** Changes whenever the channel's history may have. */
@@ -626,6 +625,11 @@ export async function postChannelMessage(
   );
 
   return response.id;
+}
+
+/** Shows the bot typing in the channel for 10s, or until it posts. */
+export async function sendTyping(): Promise<void> {
+  await call("POST", "/channels/{channel.id}/typing", {}, z.null());
 }
 
 async function botReaction(method: Method, messageId: string, emoji: string) {

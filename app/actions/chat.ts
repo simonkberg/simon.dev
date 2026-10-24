@@ -12,7 +12,7 @@ import {
   postChannelMessage,
 } from "@/lib/discord/api";
 import { identifiers, networkOf } from "@/lib/identifiers";
-import { isDeniedIp } from "@/lib/ipDenyList";
+import { isDeniedRequest } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { rateLimit } from "@/lib/rateLimit";
 import {
@@ -22,6 +22,7 @@ import {
   withSiteReactions,
 } from "@/lib/reactions";
 import { getSession, type Username } from "@/lib/session";
+import { stopTyping } from "@/lib/siteTyping";
 
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -58,8 +59,7 @@ async function admit(
   username: Username,
   limits: { limit: number; windowMs: number },
 ): Promise<{ status: "error"; error: string } | null> {
-  if (ip !== undefined && isDeniedIp(ip)) {
-    log.info({ ip, action }, "Denied a listed IP");
+  if (isDeniedRequest(ip, action)) {
     return { status: "error", error: `${verb} from your network is blocked.` };
   }
 
@@ -113,6 +113,7 @@ export async function postChatMessage(
       .parse(formData.get("replyToId") ?? undefined);
 
     const messageId = await postChannelMessage(text, username, replyToId);
+    void stopTyping(username);
 
     await dismissChatTip();
 

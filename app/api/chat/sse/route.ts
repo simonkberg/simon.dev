@@ -2,9 +2,12 @@ import { connection, type NextRequest, NextResponse } from "next/server";
 
 import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
+import { subscribeToOnline } from "@/lib/discord/online";
+import { subscribeToTyping } from "@/lib/discord/typing";
 import { log } from "@/lib/log";
 import { joinPresence } from "@/lib/presence";
 import { findSession } from "@/lib/session";
+import { subscribeToSiteTyping } from "@/lib/siteTyping";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
 // Often, since a closed stream is only noticed at a write and counts as here until then.
@@ -53,9 +56,45 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  const leavePresence = joinPresence(username, (here) =>
-    send(`event: presence\ndata: ${JSON.stringify(you(here))}\n\n`),
-  );
+  // The site's visitors, then who is online in Discord.
+  let here: readonly string[] = [];
+  let online: readonly string[] = [];
+  const sendPresence = () =>
+    send(
+      `event: presence\ndata: ${JSON.stringify([...you(here), ...online])}\n\n`,
+    );
+  const leavePresence = joinPresence(username, (names) => {
+    here = names;
+    sendPresence();
+  });
+  const unsubscribeOnline = subscribeToOnline((names) => {
+    online = names;
+    sendPresence();
+  });
+
+  // Who types in Discord, then the site's visitors, leaving out this one: their buddy is in the input.
+  let discordTyping: readonly string[] = [];
+  let siteTyping: readonly string[] = [];
+  let sentTyping = "[]";
+  const sendTyping = () => {
+    const typing = JSON.stringify([
+      ...new Set([
+        ...discordTyping,
+        ...siteTyping.filter((name) => name !== username),
+      ]),
+    ]);
+    if (typing === sentTyping) return;
+    sentTyping = typing;
+    send(`event: typing\ndata: ${typing}\n\n`);
+  };
+  const unsubscribeTyping = subscribeToTyping((names) => {
+    discordTyping = names;
+    sendTyping();
+  });
+  const unsubscribeSiteTyping = subscribeToSiteTyping((names) => {
+    siteTyping = names;
+    sendTyping();
+  });
 
   const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
 
@@ -64,6 +103,9 @@ export async function GET(request: NextRequest) {
     unsubscribe();
     unsubscribeStatus();
     leavePresence();
+    unsubscribeOnline();
+    unsubscribeTyping();
+    unsubscribeSiteTyping();
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
   });

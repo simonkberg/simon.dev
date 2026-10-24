@@ -72,3 +72,13 @@ export function isDeniedIp(ip: string): boolean {
   if (Date.now() >= current.nextRefreshAt) void refreshIpDenyList();
   return current.ips.has(ip);
 }
+
+/** Whether a request from `ip` is turned away, logging it when it is. */
+export function isDeniedRequest(
+  ip: string | undefined,
+  action: string,
+): boolean {
+  if (ip === undefined || !isDeniedIp(ip)) return false;
+  log.info({ ip, action }, "Denied a listed IP");
+  return true;
+}

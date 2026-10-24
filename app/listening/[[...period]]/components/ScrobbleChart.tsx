@@ -3,7 +3,7 @@
 import { animated, useSprings } from "@react-spring/web";
 import { type CSSProperties, use, useState } from "react";
 
-import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
+import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
 import { useMotion } from "@/components/useMotion";
@@ -12,8 +12,8 @@ import { formatNumber, formatPlays } from "@/lib/formatNumber";
 export interface ScrobbleChartProps {
   // Undefined when the counts failed to load.
   scrobbles: Promise<readonly ScrobbleCount[] | undefined>;
-  // Only for all time, and undefined when the artists failed to load.
-  topArtistByYear?: Promise<readonly YearTopArtist[] | undefined>;
+  // Undefined when the artists failed to load.
+  topArtistByBucket: Promise<readonly BucketTopArtist[] | undefined>;
 }
 
 // Labels count back from the current bucket. Narrow charts show every other one.
@@ -133,10 +133,10 @@ interface Lane {
 
 const lanes = (
   items: readonly ScrobbleCount[],
-  years: readonly YearTopArtist[],
+  buckets: readonly BucketTopArtist[],
 ): Lane[] => {
-  // By label, in case the two loads straddle a new year.
-  const artistOf = new Map(years.map(({ label, artist }) => [label, artist]));
+  // By label, in case the two loads straddle a new bucket.
+  const artistOf = new Map(buckets.map(({ label, artist }) => [label, artist]));
   const byName = new Map<string, Lane>();
   items.forEach(({ label, current }, index) => {
     const topArtist = artistOf.get(label);
@@ -173,7 +173,7 @@ const Lanes = ({
 }) => (
   <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
     {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
-    <ol aria-label="Top artist by year" onPointerLeave={() => onActive([])}>
+    <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
       {rows.map(({ name, runs, plays, first, last }) => {
         const end = first > items.length / 2;
         const span = runs
@@ -194,12 +194,10 @@ const Lanes = ({
               }}
               data-end={end || undefined}
             >
-              <TooltipText tooltip={text} delay={0}>
-                <span className="lane-name">
-                  <span aria-hidden="true">{name}</span>
-                  <span className="visually-hidden">{text}</span>
-                </span>
-              </TooltipText>
+              <span className="lane-name" aria-hidden="true">
+                {name}
+              </span>
+              <span className="visually-hidden">{text}</span>
             </div>
             {runs.map((run) => (
               <span
@@ -218,17 +216,17 @@ const Lanes = ({
 
 export const ScrobbleChart = ({
   scrobbles,
-  topArtistByYear,
+  topArtistByBucket,
 }: ScrobbleChartProps) => {
   const items = use(scrobbles);
-  const years = topArtistByYear && use(topArtistByYear);
+  const buckets = use(topArtistByBucket);
   const [active, setActive] = useState<readonly Run[]>([]);
 
   if (items === undefined) {
     return <p>Scrobbles are temporarily unavailable :(</p>;
   }
 
-  const rows = years ? lanes(items, years) : [];
+  const rows = buckets ? lanes(items, buckets) : [];
 
   return (
     <>

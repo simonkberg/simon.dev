@@ -1,11 +1,24 @@
 import { screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
+import { forgetMe, type ForgetMeResult } from "@/actions/simonBot";
 import { renderChatInput } from "@/mocks/chatInput";
 import { resetPreferences } from "@/mocks/preferences";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
+vi.mock(import("@/actions/simonBot"), () => ({
+  forgetMe: vi.fn(),
+  getNotesOnMe: vi.fn(),
+}));
 
 const sentForm = () => vi.mocked(postChatMessage).mock.calls[0]?.[0];
 
@@ -225,9 +238,10 @@ describe("CaretBuddy integration", () => {
   });
 
   it("shows thinking state while message is pending", async () => {
-    vi.mocked(postChatMessage).mockReturnValue(
-      Promise.withResolvers<PostChatMessageResult>().promise,
-    );
+    const { promise, resolve } = Promise.withResolvers<PostChatMessageResult>();
+    vi.mocked(postChatMessage).mockReturnValue(promise);
+    // React holds every later transition until this one's action settles.
+    onTestFinished(() => resolve({ status: "ok" }));
     const { send } = renderChatInput();
 
     await send("Hello");
@@ -277,6 +291,23 @@ describe("CaretBuddy integration", () => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
+    it("waits for a command that runs on the server", async () => {
+      const { promise, resolve } = Promise.withResolvers<ForgetMeResult>();
+      vi.mocked(forgetMe).mockReturnValue(promise);
+      const { input, send } = renderChatInput();
+
+      await send("/forget");
+      expect(input).toBeDisabled();
+
+      resolve({ status: "ok", data: { forgotten: 0 } });
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "simon-bot had nothing to forget about you.",
+      );
+      expect(input).toHaveValue("");
+      expect(input).toHaveFocus();
+    });
+
     it("clears the output once a message is sent", async () => {
       const { send } = renderChatInput();
 
@@ -312,6 +343,23 @@ describe("CaretBuddy integration", () => {
       expect(postChatMessage).not.toHaveBeenCalled();
     });
 
+    it("shows a repeated command error again", async () => {
+      const { user, input, send } = renderChatInput();
+
+      await send("/nope");
+      await user.click(
+        await screen.findByRole("button", { name: "Close notification" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+      );
+      await user.type(input, "{Enter}");
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Unknown command /nope.",
+      );
+    });
+
     it("sends a doubled slash as one", async () => {
       const { send } = renderChatInput();
 
@@ -319,5 +367,49 @@ describe("CaretBuddy integration", () => {
 
       expect(sentForm()?.get("text")).toBe("/shrug");
     });
+  });
+});
+
+describe("typing", () => {
+  // How many typing pings were sent. A spy rather than MSW, so a late ping from the previous test can't land here.
+  function recordPings() {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    return () =>
+      fetch.mock.calls.filter(([url]) => url === "/api/chat/typing").length;
+  }
+
+  it("pings at most every 2s while a message is typed", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "Hel");
+    vi.setSystemTime(Date.now() + 2_000);
+    await user.type(input, "lo{Enter}");
+
+    expect(pings()).toBe(2);
+  });
+
+  it("pings at once for the next message after one is sent", async () => {
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "Hi{Enter}");
+    await waitFor(() => expect(input).toHaveValue(""));
+    await user.type(input, "Yo");
+
+    expect(pings()).toBe(2);
+  });
+
+  it("doesn't ping for a command", async () => {
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/help");
+    await user.clear(input);
+
+    expect(pings()).toBe(0);
   });
 });

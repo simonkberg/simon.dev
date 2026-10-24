@@ -16,7 +16,7 @@ import { TooltipButton } from "@/components/Tooltip";
 import { CaretBuddy } from "./CaretBuddy";
 import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
-import { messageText, runCommand } from "./commands";
+import { type CommandResult, messageText, runCommand } from "./commands";
 
 function useEscape(active: boolean, onEscape: () => void) {
   useEffect(() => {
@@ -30,6 +30,27 @@ function useEscape(active: boolean, onEscape: () => void) {
       window.removeEventListener("keydown", keyDownHandler);
     };
   }, [active, onEscape]);
+}
+
+// The server keeps a typist twice this long, so one late ping doesn't drop them.
+const TYPING_PING_MS = 2_000;
+
+// Tells the others while the visitor types a message, never what; their post ends it.
+function useTypingSignal() {
+  const sentAt = useRef(0);
+  return (text: string) => {
+    if (!messageText(text)?.trim()) {
+      // Posting ends the typing on the server, so the next message pings at once.
+      sentAt.current = 0;
+      return;
+    }
+    if (Date.now() - sentAt.current < TYPING_PING_MS) return;
+    sentAt.current = Date.now();
+    // A lost ping only ends the indicator early.
+    fetch("/api/chat/typing", { method: "POST", keepalive: true }).catch(
+      () => {},
+    );
+  };
 }
 
 export interface ChatInputProps extends PropsWithChildren {
@@ -48,10 +69,25 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
+  const signalTyping = useTypingSignal();
+  const changeInput = (value: string) => {
+    setInputValue(value);
+    signalTyping(value);
+  };
   const [output, setOutput] = useState<{
     command: string;
     lines: readonly string[];
   } | null>(null);
+
+  function showCommand(text: string, command: CommandResult) {
+    if (command.status === "error") {
+      setResult(command);
+      return;
+    }
+    setResult({ status: "initial" });
+    setOutput(command.output ? { command: text, lines: command.output } : null);
+    setInputValue("");
+  }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,18 +96,16 @@ export const ChatInput = ({
 
     const message = messageText(inputValue);
     if (message === null) {
-      const command = runCommand(inputValue);
-      if (command.status === "error") {
-        setResult(command);
-        return;
+      const text = inputValue.trim();
+      const command = runCommand(text);
+      if (command instanceof Promise) {
+        startTransition(async () => {
+          const result = await command;
+          startTransition(() => showCommand(text, result));
+        });
+      } else {
+        showCommand(text, command);
       }
-      setResult({ status: "initial" });
-      setOutput(
-        command.output
-          ? { command: inputValue.trim(), lines: command.output }
-          : null,
-      );
-      setInputValue("");
       return;
     }
 
@@ -89,7 +123,7 @@ export const ChatInput = ({
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
-          setInputValue("");
+          changeInput("");
         });
       }
 
@@ -97,11 +131,12 @@ export const ChatInput = ({
     });
   }
 
+  // Disabling the input while pending blurs it, so give focus back once done.
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (!pending && result.status !== "initial") {
-      inputRef.current?.focus();
-    }
-  }, [pending, result.status]);
+    if (wasPending.current && !pending) inputRef.current?.focus();
+    wasPending.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     if (replyToId) inputRef.current?.focus();
@@ -113,10 +148,7 @@ export const ChatInput = ({
   return (
     <>
       <ChatToast
-        variant={result.status === "error" ? "error" : "default"}
-        message={
-          !pending && result.status === "error" ? result.error : undefined
-        }
+        result={!pending && result.status === "error" ? result : undefined}
       />
       {output && (
         <div className="chat-output" role="status" aria-live="polite">
@@ -140,7 +172,7 @@ export const ChatInput = ({
             className="input"
             ref={inputRef}
             value={inputValue}
-            onValueChange={setInputValue}
+            onValueChange={changeInput}
             autoComplete="off"
           />
           <CaretBuddy

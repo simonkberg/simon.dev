@@ -1,6 +1,7 @@
 export async function register() {
   if (process.env["NEXT_RUNTIME"] === "nodejs") {
     const { startBotSubscription } = await import("@/lib/discord/bot");
+    const { watchOnline } = await import("@/lib/discord/online");
     const { refreshIpDenyList } = await import("@/lib/ipDenyList");
     const { warmCovers } = await import("@/lib/covers");
     const { bridgeConsole, log } = await import("@/lib/log");
@@ -16,6 +17,7 @@ export async function register() {
       .then(() => {
         markReady("migrations");
         keepWarm();
+        watchOnline();
         // After migrations, so new bot code never meets an old schema.
         return startBotSubscription();
       })

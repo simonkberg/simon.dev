@@ -11,11 +11,15 @@ type Status = "connecting" | "live" | "offline";
 
 const MAX_BACKOFF = 30_000;
 
-/** Keeps the chat history live over SSE and shows the connection's state and who is here. */
+// One empty list, so clearing it on every disconnect doesn't re-render.
+const NOBODY: readonly string[] = [];
+
+/** Keeps the chat history live over SSE and shows the connection's state, who is here and who is typing. */
 export const ChatStream = () => {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("connecting");
   const [here, setHere] = useState<readonly string[]>([]);
+  const [typing, setTyping] = useState(NOBODY);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -25,6 +29,7 @@ export const ChatStream = () => {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
+      setTyping(NOBODY);
       eventSource?.close();
       eventSource = null;
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -46,6 +51,9 @@ export const ChatStream = () => {
       eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
         setHere(JSON.parse(event.data) as string[]);
+      });
+      eventSource.addEventListener("typing", (event) => {
+        setTyping(JSON.parse(event.data) as string[]);
       });
       eventSource.addEventListener("status", (event) => {
         const live = event.data === "live";
@@ -97,11 +105,21 @@ export const ChatStream = () => {
       </span>
       {status === "live" && here.length > 0 && (
         <span className="presence">
-          <TooltipText tooltip={nameList.format(here)}>
+          {/* simon-bot is always here, but counts as no one. */}
+          <TooltipText tooltip={nameList.format([...here, "simon-bot"])}>
             {here.length} here
           </TooltipText>
         </span>
       )}
+      {/* Rendered while empty, so screen readers hear the first typist. */}
+      <span className="typing" aria-live="polite">
+        {typing.length > 0 && (
+          <span className="typists">
+            {nameList.format(typing)} {typing.length === 1 ? "is" : "are"}{" "}
+            typing…
+          </span>
+        )}
+      </span>
     </>
   );
 };

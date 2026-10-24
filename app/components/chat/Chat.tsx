@@ -102,11 +102,7 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
     (current, { messageId, emoji }: { messageId: string; emoji: string }) =>
       withReactionToggled(current, messageId, emoji),
   );
-  // Counted so the toast remounts and shows a repeated message again.
-  const [reactionError, setReactionError] = useState<{
-    message: string;
-    count: number;
-  }>();
+  const [reactionError, setReactionError] = useState<{ error: string }>();
 
   const react = (messageId: string, emoji: string) => {
     startReacting(async () => {
@@ -121,10 +117,9 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
       );
       // After an await, updates leave the transition unless wrapped again.
       startReacting(() => {
-        setReactionError((previous) =>
-          reaction.status === "error"
-            ? { message: reaction.error, count: (previous?.count ?? 0) + 1 }
-            : undefined,
+        // A fresh object, so the toast shows a repeated error again.
+        setReactionError(
+          reaction.status === "error" ? { error: reaction.error } : undefined,
         );
       });
     });
@@ -143,11 +138,7 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
 
   return (
     <ChatReactionsContext value={{ reacting, react }}>
-      <ChatToast
-        key={reactionError?.count}
-        variant="error"
-        message={reactionError?.message}
-      />
+      <ChatToast result={reactionError} />
       <ChatHistory
         messages={messages}
         replyToId={replyToId}

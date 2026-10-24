@@ -5,7 +5,17 @@ import { env } from "@/lib/env";
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 
-import { type ChannelEvent, ChannelEventSchema } from "./schemas";
+import {
+  type ChannelEvent,
+  CHANNEL_EVENTS,
+  ChannelEventSchema,
+  type GuildCreate,
+  GuildCreateSchema,
+  type PresenceUpdate,
+  PresenceUpdateSchema,
+  type TypingStart,
+  TypingStartSchema,
+} from "./schemas";
 
 const GatewayOpcode = {
   DISPATCH: 0,
@@ -20,7 +30,9 @@ const GatewayOpcode = {
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 // MESSAGE_CONTENT too, or a Discord user's text arrives empty and their mentions never match.
-const GATEWAY_INTENTS = (1 << 9) | (1 << 10) | (1 << 15); // GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, MESSAGE_CONTENT
+// GUILDS sends GUILD_CREATE, and GUILD_PRESENCES, privileged too, puts every member and who is online in it.
+const GATEWAY_INTENTS =
+  (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 15); // GUILDS, GUILD_PRESENCES, GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, GUILD_MESSAGE_TYPING, MESSAGE_CONTENT
 
 const HELLO_TIMEOUT_MS = 10_000;
 
@@ -46,15 +58,17 @@ const ReadyDataSchema = z.object({
 
 const MessageEventDataSchema = z.object({ channel_id: z.string() });
 
-const CHANNEL_EVENTS: ReadonlySet<string> = new Set(
-  ChannelEventSchema.options.map((option) => option.shape.t.value),
-);
-
 /**
  * A `READY` starts a new session: events missed since the last one are lost, not replayed.
  * A `MISSED` is a channel event that couldn't be read.
  */
-export type GatewayEvent = ChannelEvent | { t: "READY" } | { t: "MISSED" };
+export type GatewayEvent =
+  | ChannelEvent
+  | { t: "TYPING_START"; d: TypingStart }
+  | { t: "GUILD_CREATE"; d: GuildCreate }
+  | { t: "PRESENCE_UPDATE"; d: PresenceUpdate }
+  | { t: "READY" }
+  | { t: "MISSED" };
 
 export type EventSubscriber = (event: GatewayEvent) => void;
 export type StatusSubscriber = (ready: boolean) => void;
@@ -354,6 +368,34 @@ class DiscordGateway {
         this.#onReady();
         break;
 
+      // Typing and presence change no message, so one that can't be read is dropped rather than missed.
+      case "TYPING_START": {
+        const { data: typing } = TypingStartSchema.safeParse(data);
+        if (typing?.channel_id === env.DISCORD_CHANNEL_ID) {
+          this.#notifySubscribers({ t: "TYPING_START", d: typing });
+        }
+        break;
+      }
+
+      // Logged, since it comes once a session and who is online stays empty without it.
+      case "GUILD_CREATE": {
+        const parsed = GuildCreateSchema.safeParse(data);
+        if (!parsed.success) {
+          log.warn({ err: parsed.error }, "Invalid GUILD_CREATE payload");
+        } else if (parsed.data.id === env.DISCORD_GUILD_ID) {
+          this.#notifySubscribers({ t: "GUILD_CREATE", d: parsed.data });
+        }
+        break;
+      }
+
+      case "PRESENCE_UPDATE": {
+        const { data: presence } = PresenceUpdateSchema.safeParse(data);
+        if (presence?.guild_id === env.DISCORD_GUILD_ID) {
+          this.#notifySubscribers({ t: "PRESENCE_UPDATE", d: presence });
+        }
+        break;
+      }
+
       default: {
         if (eventName === null || !CHANNEL_EVENTS.has(eventName)) break;
         const { data: target } = MessageEventDataSchema.safeParse(data);
@@ -421,7 +463,7 @@ function getGateway(): DiscordGateway {
   return getGlobal("discord-gateway", () => new DiscordGateway());
 }
 
-/** Calls back with every new session and every message and reaction event in the site's channel. */
+/** Calls back with every new session, every message, reaction and typing event in the site's channel, and who is online in its guild. */
 export async function subscribe(
   callback: EventSubscriber,
 ): Promise<() => void> {

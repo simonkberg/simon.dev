@@ -187,6 +187,18 @@ describe("ChannelStore", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
+  it("should leave events that aren't the channel's to their own trackers", async () => {
+    const { store, source } = createStore();
+
+    store.apply({
+      t: "TYPING_START",
+      d: { channel_id: CHANNEL, user_id: "user-1" },
+    });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(source.fetchMessages).not.toHaveBeenCalled();
+  });
+
   it("should log a throwing listener and still tell the rest", async () => {
     const { store, listener } = createStore();
     store.listen(() => {
