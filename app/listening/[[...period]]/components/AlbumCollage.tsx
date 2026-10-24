@@ -66,17 +66,6 @@ const Dither = () => (
   </svg>
 );
 
-// The filtered copy fades out over the plain cover, since `url()` filters and blend modes can't transition.
-const CoverImage = ({ src, width }: { src: string; width: number }) => {
-  const image = <Image src={src} width={width} height={width} alt="" />;
-  return (
-    <>
-      {image}
-      <span className="cover-filtered">{image}</span>
-    </>
-  );
-};
-
 export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
   const items = use(albums);
 
@@ -92,7 +81,12 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
           <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
               {album.cover && (
-                <CoverImage src={album.cover} width={coverWidth(index)} />
+                <Image
+                  src={album.cover}
+                  width={coverWidth(index)}
+                  height={coverWidth(index)}
+                  alt=""
+                />
               )}
               <span className="cover-rank" aria-hidden="true">
                 {album.rank}
