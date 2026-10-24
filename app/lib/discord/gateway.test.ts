@@ -742,6 +742,13 @@ describe("subscribe", () => {
         "MESSAGE_REACTION_REMOVE_EMOJI",
         { message_id: "msg-1", channel_id: CHANNEL, emoji: thumbsUp },
       ],
+      [
+        "TYPING_START",
+        {
+          channel_id: CHANNEL,
+          member: { nick: "Simon", user: { username: "simon" } },
+        },
+      ],
     ])("should pass %s", async (event, data) => {
       const { callback } = await subscribed();
 
@@ -765,7 +772,7 @@ describe("subscribe", () => {
     it("should ignore events the site doesn't use", async () => {
       const { callback } = await subscribed();
 
-      await dispatch("TYPING_START", { channel_id: CHANNEL });
+      await dispatch("CHANNEL_PINS_UPDATE", { channel_id: CHANNEL });
 
       expect(callback).not.toHaveBeenCalled();
     });

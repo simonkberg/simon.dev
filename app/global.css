@@ -1893,6 +1893,21 @@ ul {
   }
 }
 
+.chat-typing {
+  flex: 0 0 auto;
+  min-height: 1lh;
+  margin: 0;
+  font-size: var(--tip-size);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  > .face {
+    margin-right: 1ch;
+  }
+}
+
 .chat-replying-to {
   position: relative;
   margin-bottom: var(--replying-gap);

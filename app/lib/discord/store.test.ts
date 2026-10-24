@@ -187,6 +187,15 @@ describe("ChannelStore", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
+  it("should leave typing to the typing tracker", async () => {
+    const { store, source } = createStore();
+
+    store.apply({ t: "TYPING_START", d: { channel_id: CHANNEL } });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(source.fetchMessages).not.toHaveBeenCalled();
+  });
+
   it("should log a throwing listener and still tell the rest", async () => {
     const { store, listener } = createStore();
     store.listen(() => {

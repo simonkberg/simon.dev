@@ -10,6 +10,7 @@ import {
   getMessageChain,
   isOwnPost,
   postChannelMessage,
+  sendTyping,
 } from "./api";
 import { subscribe } from "./gateway";
 import { type DiscordMessage, isShown, parentId } from "./schemas";
@@ -23,6 +24,19 @@ function isBotMessage(content: string): boolean {
 
 function mentionsBot(content: string): boolean {
   return BOT_MENTION_PATTERN.test(content);
+}
+
+// Within Discord's 10s, so the indicator doesn't flicker off between calls.
+const TYPING_INTERVAL_MS = 8_000;
+
+function keepTyping(): () => void {
+  const type = () =>
+    sendTyping().catch((err: unknown) => {
+      log.warn({ err }, "Failed to show the bot typing");
+    });
+  void type();
+  const timer = setInterval(() => void type(), TYPING_INTERVAL_MS);
+  return () => clearInterval(timer);
 }
 
 // Outlasts any gateway replay of missed events after a reconnect.
@@ -93,6 +107,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
 
     const replies: ChatMessage[] = [];
     let finished = false;
+    const stopTyping = keepTyping();
     try {
       for await (const response of createMessage(messages)) {
         await postChannelMessage(response, BOT_USERNAME, messageId);
@@ -117,6 +132,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
         messageId,
       );
     } finally {
+      stopTyping();
       // Not awaited: reflection must never delay or fail a reply, even a partial one.
       // Staying silent is still a turn worth reflecting on; a turn that failed before
       // anything was said is not.

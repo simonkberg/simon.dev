@@ -20,7 +20,7 @@ const GatewayOpcode = {
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 // MESSAGE_CONTENT too, or a Discord user's text arrives empty and their mentions never match.
-const GATEWAY_INTENTS = (1 << 9) | (1 << 10) | (1 << 15); // GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, MESSAGE_CONTENT
+const GATEWAY_INTENTS = (1 << 9) | (1 << 10) | (1 << 11) | (1 << 15); // GUILD_MESSAGES, GUILD_MESSAGE_REACTIONS, GUILD_MESSAGE_TYPING, MESSAGE_CONTENT
 
 const HELLO_TIMEOUT_MS = 10_000;
 
@@ -421,7 +421,7 @@ function getGateway(): DiscordGateway {
   return getGlobal("discord-gateway", () => new DiscordGateway());
 }
 
-/** Calls back with every new session and every message and reaction event in the site's channel. */
+/** Calls back with every new session and every message, reaction and typing event in the site's channel. */
 export async function subscribe(
   callback: EventSubscriber,
 ): Promise<() => void> {

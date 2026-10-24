@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatStream } from "./ChatStream";
+import { ChatTyping } from "./ChatTyping";
 
 vi.mock(import("next/navigation"), () => ({ useRouter: vi.fn() }));
 const refresh = vi.fn();
@@ -28,6 +29,12 @@ function createMockEventSource() {
     sendPresence(here: string[]) {
       this.dispatchEvent(
         new MessageEvent("presence", { data: JSON.stringify(here) }),
+      );
+    }
+
+    sendTyping(typing: string[]) {
+      this.dispatchEvent(
+        new MessageEvent("typing", { data: JSON.stringify(typing) }),
       );
     }
   }
@@ -144,6 +151,26 @@ describe("ChatStream", () => {
 
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("typing", () => {
+    it("shows who is typing until the stream drops", () => {
+      render(
+        <>
+          <ChatStream />
+          <ChatTyping />
+        </>,
+      );
+      act(() => instance().onopen());
+
+      act(() => instance().sendTyping(["simon", "simon-bot"]));
+      expect(
+        screen.getByText("simon and simon-bot are typing…"),
+      ).toBeInTheDocument();
+
+      act(() => instance().onerror());
+      expect(screen.queryByText(/typing…/)).not.toBeInTheDocument();
     });
   });
 

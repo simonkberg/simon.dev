@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { TooltipText } from "@/components/Tooltip";
 
 import { nameList } from "./ChatReactions";
+import { setTyping } from "./typing";
 
 type Status = "connecting" | "live" | "offline";
 
@@ -25,6 +26,7 @@ export const ChatStream = () => {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
+      setTyping([]);
       eventSource?.close();
       eventSource = null;
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -46,6 +48,9 @@ export const ChatStream = () => {
       eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
         setHere(JSON.parse(event.data) as string[]);
+      });
+      eventSource.addEventListener("typing", (event) => {
+        setTyping(JSON.parse(event.data) as string[]);
       });
       eventSource.addEventListener("status", (event) => {
         const live = event.data === "live";
