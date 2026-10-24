@@ -770,6 +770,14 @@ describe("subscribe", () => {
       );
     });
 
+    it("should drop a typing event it can't read, without missing anything", async () => {
+      const { callback } = await subscribed();
+
+      await dispatch("TYPING_START", { channel_id: CHANNEL });
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
     it("should ignore events the site doesn't use", async () => {
       const { callback } = await subscribed();
 

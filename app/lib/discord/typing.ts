@@ -11,20 +11,18 @@ const TYPING_MS = 10_000;
 
 type Listener = (typing: readonly string[]) => void;
 
-type Typing = {
-  // Typist to the timer that ends their typing.
-  typists: Map<string, NodeJS.Timeout>;
-  listeners: Set<Listener>;
-};
+type Typing = { timers: Map<string, NodeJS.Timeout>; listeners: Set<Listener> };
+
+const typists = (state: Typing) => [...state.timers.keys()];
 
 function publish(state: Typing): void {
-  const typing = [...state.typists.keys()];
+  const typing = typists(state);
   for (const listener of state.listeners) listener(typing);
 }
 
 function stop(state: Typing, name: string): void {
-  clearTimeout(state.typists.get(name));
-  if (state.typists.delete(name)) publish(state);
+  clearTimeout(state.timers.get(name));
+  if (state.timers.delete(name)) publish(state);
 }
 
 // Keyed by name rather than Discord user, since the bot posts for every site visitor too.
@@ -38,9 +36,9 @@ function apply(state: Typing, event: GatewayEvent): void {
           ? BOT_USERNAME
           : member && displayName(member.user, member);
       if (!name) return;
-      const started = !state.typists.has(name);
-      clearTimeout(state.typists.get(name));
-      state.typists.set(
+      const started = !state.timers.has(name);
+      clearTimeout(state.timers.get(name));
+      state.timers.set(
         name,
         setTimeout(() => stop(state, name), TYPING_MS).unref(),
       );
@@ -59,7 +57,7 @@ function apply(state: Typing, event: GatewayEvent): void {
 // Every replica hears Discord, so typing needs no shared state.
 const typing = () =>
   getGlobal<Typing>("typing", () => {
-    const state: Typing = { typists: new Map(), listeners: new Set() };
+    const state: Typing = { timers: new Map(), listeners: new Set() };
     subscribe((event) => apply(state, event)).catch((err: unknown) => {
       log.error({ err }, "Typing failed to subscribe to the gateway");
     });
@@ -70,6 +68,6 @@ const typing = () =>
 export function subscribeToTyping(listener: Listener): () => void {
   const state = typing();
   state.listeners.add(listener);
-  listener([...state.typists.keys()]);
+  listener(typists(state));
   return () => state.listeners.delete(listener);
 }

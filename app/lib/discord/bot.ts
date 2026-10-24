@@ -29,30 +29,37 @@ function mentionsBot(content: string): boolean {
 // Within Discord's 10s, so the indicator doesn't flicker off between calls.
 const TYPING_INTERVAL_MS = 8_000;
 
+// One call at a time: typing that lands after a post shows the bot typing again for 10s.
 function keepTyping() {
+  let typing = true;
+  let timer: NodeJS.Timeout | undefined;
   let sent = Promise.resolve();
   const type = () => {
-    const sending = sendTyping().catch((err: unknown) => {
-      log.warn({ err }, "Failed to show the bot typing");
-    });
-    // A call held by a rate limit can outlast the next one.
-    sent = Promise.all([sent, sending]).then(() => {});
+    sent = sendTyping()
+      .catch((err: unknown) => {
+        log.warn({ err }, "Failed to show the bot typing");
+      })
+      .then(() => {
+        if (typing) timer = setTimeout(type, TYPING_INTERVAL_MS);
+      });
   };
-  const start = () => setInterval(type, TYPING_INTERVAL_MS);
+  const stop = () => {
+    typing = false;
+    clearTimeout(timer);
+    return sent;
+  };
   type();
-  let timer = start();
   return {
-    // Typing that lands after a post shows the bot typing again for 10s, so none may overlap one.
     async pause<T>(post: () => Promise<T>): Promise<T> {
-      clearInterval(timer);
-      await sent;
+      await stop();
       try {
         return await post();
       } finally {
-        timer = start();
+        typing = true;
+        timer = setTimeout(type, TYPING_INTERVAL_MS);
       }
     },
-    stop: () => clearInterval(timer),
+    stop,
   };
 }
 
@@ -153,7 +160,7 @@ export async function handleMessage(message: DiscordMessage): Promise<void> {
         ),
       );
     } finally {
-      typing.stop();
+      void typing.stop();
       // Not awaited: reflection must never delay or fail a reply, even a partial one.
       // Staying silent is still a turn worth reflecting on; a turn that failed before
       // anything was said is not.

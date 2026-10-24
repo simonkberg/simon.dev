@@ -30,6 +30,9 @@ describe("ChatTyping", () => {
     act(() => setTyping(["simon", "simon-bot"]));
 
     expect(screen.getAllByText("(°▽°)")).toHaveLength(2);
+    expect(
+      screen.getByText("simon and simon-bot are typing…"),
+    ).toBeInTheDocument();
   });
 
   it("says one typist is typing", () => {

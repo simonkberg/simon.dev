@@ -7,6 +7,7 @@ import { message } from "@/mocks/discord";
 import { mockEnv } from "@/mocks/env";
 
 import { type EventSubscriber, subscribe } from "./gateway";
+import type { TypingStart } from "./schemas";
 import { subscribeToTyping } from "./typing";
 
 vi.mock(import("./gateway"), () => ({
@@ -36,10 +37,8 @@ function listen() {
   return { listener, dispatch };
 }
 
-const typing = (typist: {
-  user_id: string;
-  member?: { nick?: string; user: { username: string; bot?: boolean } };
-}) => ({ t: "TYPING_START", d: { channel_id: CHANNEL, ...typist } }) as const;
+const typing = (typist: Omit<TypingStart, "channel_id">) =>
+  ({ t: "TYPING_START", d: { channel_id: CHANNEL, ...typist } }) as const;
 
 describe("subscribeToTyping", () => {
   beforeEach(() => {
@@ -101,7 +100,7 @@ describe("subscribeToTyping", () => {
     expect(listener).toHaveBeenLastCalledWith([]);
   });
 
-  it("leaves out typing it can't name, and names only its own bot simon-bot", () => {
+  it("leaves out typing it can't name, and keeps another bot's own name", () => {
     const { listener, dispatch } = listen();
 
     dispatch(typing(memberless));

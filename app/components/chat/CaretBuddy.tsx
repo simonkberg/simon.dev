@@ -66,7 +66,7 @@ const ANIMATIONS = {
   ],
 } as const satisfies Record<string, AnimationFrames>;
 
-export type BuddyState = keyof typeof ANIMATIONS;
+type BuddyState = keyof typeof ANIMATIONS;
 
 interface CaretBuddyInputs {
   inputValue: string;
@@ -145,16 +145,9 @@ function useFrameAnimation(frames: AnimationFrames): string {
   return expression;
 }
 
-export interface BuddyFaceProps {
-  state: BuddyState;
-  className?: string;
-}
-
-export const BuddyFace = ({ state, className }: BuddyFaceProps) => (
-  <span className={className} aria-hidden="true">
-    {useFrameAnimation(ANIMATIONS[state])}
-  </span>
-);
+/** The buddy's face for a state, animated. */
+export const useBuddyFace = (state: BuddyState) =>
+  useFrameAnimation(ANIMATIONS[state]);
 
 export interface CaretBuddyProps {
   inputValue: string;
@@ -168,5 +161,9 @@ export const CaretBuddy = ({
   resultStatus,
 }: CaretBuddyProps) => {
   const state = useCaretBuddyState({ inputValue, isPending, resultStatus });
-  return <BuddyFace state={state} className="caret-buddy" />;
+  return (
+    <span className="caret-buddy" aria-hidden="true">
+      {useBuddyFace(state)}
+    </span>
+  );
 };

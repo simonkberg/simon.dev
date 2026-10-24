@@ -125,13 +125,13 @@ export const ChannelEventSchema = z.discriminatedUnion("t", [
     t: z.literal("MESSAGE_REACTION_REMOVE_EMOJI"),
     d: ChannelSchema.extend({ message_id: z.string(), emoji: EmojiSchema }),
   }),
-  z.object({
-    t: z.literal("TYPING_START"),
-    d: ChannelSchema.extend({
-      user_id: z.string(),
-      member: GuildMemberSchema.optional(),
-    }),
-  }),
 ]);
 
 export type ChannelEvent = z.infer<typeof ChannelEventSchema>;
+
+export const TypingStartSchema = ChannelSchema.extend({
+  user_id: z.string(),
+  member: GuildMemberSchema.optional(),
+});
+
+export type TypingStart = z.infer<typeof TypingStartSchema>;
