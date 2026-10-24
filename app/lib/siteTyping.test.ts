@@ -84,6 +84,37 @@ describe("siteTyping", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice"]);
   });
 
+  it("takes the next ping at once after one fails to store", async () => {
+    const run = vi.mocked(query).getMockImplementation()!;
+    vi.mocked(query).mockImplementation(failQuery(sqlite(), "INSERT"));
+    await expect(setTyping(alice)).rejects.toThrow("boom");
+    vi.mocked(query).mockImplementation(run);
+
+    await setTyping(alice);
+
+    expect(await stored()).toEqual([{ username: "alice", until: 1_004_000 }]);
+  });
+
+  it("doesn't let an older read undo a newer one", async () => {
+    await typingElsewhere("alice");
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const run = vi.mocked(batch).getMockImplementation()!;
+    vi.mocked(batch).mockImplementationOnce(async (statements) => {
+      const results = await run(statements);
+      await promise;
+      return results;
+    });
+    const listener = vi.fn();
+    subscribeToSiteTyping(listener);
+    await settle();
+
+    await stopTyping(alice);
+    resolve();
+    await settle();
+
+    expect(listener).toHaveBeenLastCalledWith([]);
+  });
+
   it("logs a failed stop rather than throw", async () => {
     vi.mocked(query).mockImplementation(failQuery(sqlite(), "DELETE"));
 

@@ -113,7 +113,7 @@ export async function postChatMessage(
       .parse(formData.get("replyToId") ?? undefined);
 
     const messageId = await postChannelMessage(text, username, replyToId);
-    await stopTyping(username);
+    void stopTyping(username);
 
     await dismissChatTip();
 

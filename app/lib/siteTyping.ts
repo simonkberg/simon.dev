@@ -19,6 +19,8 @@ type SiteTyping = {
   typing: readonly string[];
   pinged: LruMap<string, number>;
   timer?: NodeJS.Timeout;
+  reads: number;
+  shown: number;
   reading: boolean;
   failing: boolean;
 };
@@ -28,6 +30,8 @@ const siteTyping = () =>
     listeners: new Set(),
     typing: [],
     pinged: new LruMap(1000),
+    reads: 0,
+    shown: 0,
     reading: false,
     failing: false,
   }));
@@ -37,6 +41,7 @@ async function read(
   state: SiteTyping,
   writes: Statement[] = [],
 ): Promise<void> {
+  const seq = ++state.reads;
   const results = await batch([
     ...writes,
     {
@@ -45,7 +50,9 @@ async function read(
     },
   ]);
   const typing = results.at(-1)!.rows.map((row) => String(row["username"]));
-  if (state.listeners.size === 0) return;
+  // Reads overlap between polls, pings and posts, so an older one mustn't undo a newer.
+  if (state.listeners.size === 0 || seq < state.shown) return;
+  state.shown = seq;
   if (typing.join("\n") === state.typing.join("\n")) return;
   state.typing = typing;
   for (const listener of state.listeners) listener(typing);
@@ -73,15 +80,21 @@ export async function setTyping(username: Username): Promise<void> {
   const now = Date.now();
   if (now - (state.pinged.get(username) ?? 0) < PING_MIN_MS) return;
   state.pinged.set(username, now);
-  await read(state, [
-    // Pruned here rather than by the polls, so those stay reads.
-    { sql: "DELETE FROM typing WHERE until <= ?", args: [now] },
-    {
-      sql: `INSERT INTO typing (username, until) VALUES (?, ?)
-            ON CONFLICT (username) DO UPDATE SET until = excluded.until`,
-      args: [username, now + TYPING_MS],
-    },
-  ]);
+  try {
+    await read(state, [
+      // Pruned here rather than by the polls, so those stay reads.
+      { sql: "DELETE FROM typing WHERE until <= ?", args: [now] },
+      {
+        sql: `INSERT INTO typing (username, until) VALUES (?, ?)
+              ON CONFLICT (username) DO UPDATE SET until = excluded.until`,
+        args: [username, now + TYPING_MS],
+      },
+    ]);
+  } catch (err) {
+    // So the next ping retries rather than being throttled.
+    state.pinged.delete(username);
+    throw err;
+  }
 }
 
 /** Ends `username`'s typing, as their post lands. Never throws, since the post matters more. */
