@@ -2412,9 +2412,15 @@ tbody tr:hover {
     object-fit: cover;
   }
 
-  &:is(:hover, :focus-visible) {
+  &:hover {
     outline: var(--cover-frame-hover);
+  }
 
+  &:focus-visible {
+    outline: var(--focus);
+  }
+
+  &:is(:hover, :focus-visible) {
     .cover-filtered {
       opacity: 0;
     }
