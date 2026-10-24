@@ -62,13 +62,17 @@ export function isCommand(text: string) {
 }
 
 export function runCommand(text: string): CommandResult {
-  const [, name = "", argument = ""] =
-    /^\/(\S*)\s*(.*)$/s.exec(text.trim()) ?? [];
+  const body = text.trim().slice(1).toLowerCase();
+  const space = body.search(/\s/);
+  const name = space === -1 ? body : body.slice(0, space);
   const command = commands.find((command) => command.name === name);
   if (!command) {
-    return { status: "error", error: `Unknown command /${name}. Try /help.` };
+    return {
+      status: "error",
+      error: `Unknown command /${name}. Try /help, or // to send a slash.`,
+    };
   }
-  return command.run(argument.trim());
+  return command.run(space === -1 ? "" : body.slice(space).trim());
 }
 
 export interface CommandSuggestion {
@@ -83,7 +87,9 @@ const NAME = /^\/(\S*)$/;
 const ARGUMENT = /^\/(\S+) (\S*)$/;
 
 /** The command or argument typed up to the caret, where it starts, and what it could become. */
-export function typedCommand(before: string) {
+export function typedCommand(text: string) {
+  if (!text.startsWith("/")) return null;
+  const before = text.toLowerCase();
   const name = NAME.exec(before)?.[1];
   if (name !== undefined) {
     return {

@@ -271,6 +271,10 @@ describe("CaretBuddy integration", () => {
 
       await user.keyboard("{Escape}");
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+      await send("/help");
+      await user.click(screen.getByRole("button", { name: "Close output" }));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
     it("clears the output once a message is sent", async () => {
@@ -286,7 +290,7 @@ describe("CaretBuddy integration", () => {
     it("runs a command that prints nothing", async () => {
       const { input, send } = renderChatInput();
 
-      await send("/style ledger ");
+      await send("/Style Ledger ");
 
       expect(document.documentElement).toHaveAttribute(
         "data-variant",
@@ -302,7 +306,7 @@ describe("CaretBuddy integration", () => {
       await send("/nope");
 
       expect(await screen.findByRole("status")).toHaveTextContent(
-        "Unknown command /nope. Try /help.",
+        "Unknown command /nope. Try /help, or // to send a slash.",
       );
       expect(input).toHaveValue("/nope");
       expect(postChatMessage).not.toHaveBeenCalled();

@@ -1,12 +1,14 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { postChatMessage } from "@/actions/chat";
 import { type EmojiShortcodes, REACTION_EMOJI } from "@/lib/emoji";
+import { setPreference, variantPreference } from "@/lib/preferences";
 import { renderChatInput } from "@/mocks/chatInput";
 import { server } from "@/mocks/node";
 import { sendToggle } from "@/mocks/popover";
+import { resetPreferences } from "@/mocks/preferences";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 
@@ -31,6 +33,8 @@ describe("ChatSuggestInput", () => {
     server.use(http.get("*/api/emoji", () => HttpResponse.json(EMOJI)));
     vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
   });
+
+  afterEach(resetPreferences);
 
   it("offers the reactions on a bare colon, with none chosen", async () => {
     const { user, input } = renderChatInput();
@@ -279,7 +283,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("offers commands after a leading slash, then their options", async () => {
-    document.documentElement.setAttribute("data-variant", "manual");
+    setPreference(variantPreference, "manual");
     const { user, input } = renderChatInput();
 
     await user.type(input, "/");
@@ -294,7 +298,6 @@ describe("ChatSuggestInput", () => {
     expect(input).toHaveValue("/style ledger ");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(postChatMessage).not.toHaveBeenCalled();
-    document.documentElement.removeAttribute("data-variant");
   });
 
   it("chooses nothing for a command typed in full, so Enter runs it", async () => {
@@ -314,15 +317,20 @@ describe("ChatSuggestInput", () => {
     expect(await screen.findByRole("listbox", { name: "Emoji" })).toBeVisible();
   });
 
-  it.each(["12:30", "https://simon.dev", ":)", ":zzz", "hi /help", "//"])(
-    "stays closed for %s",
-    async (text) => {
-      const { user, input } = renderChatInput();
+  it.each([
+    "12:30",
+    "https://simon.dev",
+    ":)",
+    ":zzz",
+    "hi /help",
+    "//",
+    "/style ledger x",
+  ])("stays closed for %s", async (text) => {
+    const { user, input } = renderChatInput();
 
-      await user.type(input, text);
+    await user.type(input, text);
 
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-      expect(input).toHaveAttribute("aria-expanded", "false");
-    },
-  );
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(input).toHaveAttribute("aria-expanded", "false");
+  });
 });

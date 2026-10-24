@@ -18,6 +18,20 @@ import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
 import { isCommand, runCommand } from "./commands";
 
+function useEscape(active: boolean, onEscape: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    const keyDownHandler = (event: KeyboardEvent) => {
+      // A tooltip's Escape closes only the tooltip.
+      if (event.key === "Escape" && !event.defaultPrevented) onEscape();
+    };
+    window.addEventListener("keydown", keyDownHandler);
+    return () => {
+      window.removeEventListener("keydown", keyDownHandler);
+    };
+  }, [active, onEscape]);
+}
+
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
@@ -92,33 +106,11 @@ export const ChatInput = ({
   }, [pending, result.status]);
 
   useEffect(() => {
-    if (replyToId) {
-      inputRef.current?.focus();
-      const keyDownHandler = (event: KeyboardEvent) => {
-        // A tooltip's Escape closes only the tooltip.
-        if (event.key === "Escape" && !event.defaultPrevented) {
-          setReplyToId(null);
-        }
-      };
-      window.addEventListener("keydown", keyDownHandler);
-      return () => {
-        window.removeEventListener("keydown", keyDownHandler);
-      };
-    }
+    if (replyToId) inputRef.current?.focus();
+  }, [replyToId]);
 
-    return;
-  }, [replyToId, setReplyToId]);
-
-  useEffect(() => {
-    if (!output) return;
-    const keyDownHandler = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented) setOutput(null);
-    };
-    window.addEventListener("keydown", keyDownHandler);
-    return () => {
-      window.removeEventListener("keydown", keyDownHandler);
-    };
-  }, [output]);
+  useEscape(!!replyToId, () => setReplyToId(null));
+  useEscape(!!output, () => setOutput(null));
 
   return (
     <>

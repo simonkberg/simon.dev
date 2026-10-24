@@ -34,14 +34,7 @@ function typedAt(input: HTMLInputElement) {
   if (caret === null || caret !== input.selectionEnd) return null;
   const before = input.value.slice(0, caret);
   const command = typedCommand(before);
-  if (command) {
-    return {
-      kind: "command",
-      query: command.query,
-      start: command.start,
-      end: caret,
-    } as const;
-  }
+  if (command) return { kind: "command", ...command, end: caret } as const;
   const query = SHORTCODE.exec(before)?.[1];
   return query === undefined
     ? null
@@ -71,13 +64,13 @@ export const ChatSuggestInput = ({
   const list = useRef<HTMLDivElement>(null);
   const [emoji, setEmoji] = useState<EmojiShortcodes[] | null>(null);
   // Tagged with the value it was typed in, so a reset by the form forgets it.
-  const [typed, setTyped] = useState<{
-    kind: "command" | "emoji";
-    query: string;
-    end: number;
-    value: string;
-    dismissed: boolean;
-  } | null>(null);
+  const [typed, setTyped] = useState<
+    | (NonNullable<ReturnType<typeof typedAt>> & {
+        value: string;
+        dismissed: boolean;
+      })
+    | null
+  >(null);
   if (typed && typed.value !== value) setTyped(null);
   const shown = typed && !typed.dismissed ? typed : null;
 
@@ -89,10 +82,7 @@ export const ChatSuggestInput = ({
         ? searchEmoji(emoji, shown.query, LIMIT)
         : REACTION_EMOJI
   ).map((match) => ({ ...match, emoji: withSkinTone(match.emoji, modifier) }));
-  const commandMatches =
-    shown?.kind === "command"
-      ? (typedCommand(value.slice(0, shown.end))?.suggestions ?? [])
-      : [];
+  const commandMatches = shown?.kind === "command" ? shown.suggestions : [];
   const picks =
     shown?.kind === "command"
       ? commandMatches.map((match) => match.value)
@@ -110,8 +100,10 @@ export const ChatSuggestInput = ({
   // picked, so Enter only picks once one is chosen.
   function initialActive() {
     if (shown?.kind === "emoji") return shown.query.length >= 2 ? 0 : null;
-    const [first] = commandMatches;
-    return first?.final && first.value === shown?.query ? null : 0;
+    const complete = commandMatches.some(
+      (match) => match.final && match.value === shown?.query,
+    );
+    return complete ? null : 0;
   }
 
   const open = picks.length > 0;
