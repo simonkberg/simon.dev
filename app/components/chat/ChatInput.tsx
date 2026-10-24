@@ -32,6 +32,30 @@ function useEscape(active: boolean, onEscape: () => void) {
   }, [active, onEscape]);
 }
 
+// The server keeps a typist twice this long, so one late ping doesn't drop them.
+const TYPING_PING_MS = 2_000;
+
+// Tells the others while the visitor types a message, never what, and once when they stop.
+function useTypingSignal(text: string) {
+  const sentAt = useRef(0);
+  const typing = !!messageText(text)?.trim();
+  useEffect(() => {
+    if (typing) {
+      if (Date.now() - sentAt.current < TYPING_PING_MS) return;
+      sentAt.current = Date.now();
+    } else {
+      if (!sentAt.current) return;
+      sentAt.current = 0;
+    }
+    fetch("/api/chat/typing", {
+      method: "POST",
+      body: JSON.stringify({ typing }),
+      keepalive: true,
+      // A lost ping only ends the indicator early.
+    }).catch(() => {});
+  }, [typing, text]);
+}
+
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
@@ -116,6 +140,7 @@ export const ChatInput = ({
     if (replyToId) inputRef.current?.focus();
   }, [replyToId]);
 
+  useTypingSignal(inputValue);
   useEscape(!!replyToId, () => setReplyToId(null));
   useEscape(!!output, () => setOutput(null));
 

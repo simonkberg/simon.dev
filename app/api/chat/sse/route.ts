@@ -7,6 +7,7 @@ import { subscribeToTyping } from "@/lib/discord/typing";
 import { log } from "@/lib/log";
 import { joinPresence } from "@/lib/presence";
 import { findSession } from "@/lib/session";
+import { subscribeToSiteTyping } from "@/lib/siteTyping";
 
 // Send periodic pings to keep the connection alive and detect client disconnects.
 // Often, since a closed stream is only noticed at a write and counts as here until then.
@@ -71,9 +72,24 @@ export async function GET(request: NextRequest) {
     sendPresence();
   });
 
-  const unsubscribeTyping = subscribeToTyping((typing) =>
-    send(`event: typing\ndata: ${JSON.stringify(typing)}\n\n`),
-  );
+  // Who types in Discord, then the site's visitors, leaving out this one: their buddy is in the input.
+  let discordTyping: readonly string[] = [];
+  let siteTyping: readonly string[] = [];
+  const sendTyping = () =>
+    send(
+      `event: typing\ndata: ${JSON.stringify([
+        ...discordTyping,
+        ...siteTyping.filter((name) => name !== username),
+      ])}\n\n`,
+    );
+  const unsubscribeTyping = subscribeToTyping((names) => {
+    discordTyping = names;
+    sendTyping();
+  });
+  const unsubscribeSiteTyping = subscribeToSiteTyping((names) => {
+    siteTyping = names;
+    sendTyping();
+  });
 
   const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
 
@@ -84,6 +100,7 @@ export async function GET(request: NextRequest) {
     leavePresence();
     unsubscribeOnline();
     unsubscribeTyping();
+    unsubscribeSiteTyping();
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
   });

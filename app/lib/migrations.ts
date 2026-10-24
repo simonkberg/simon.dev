@@ -39,6 +39,10 @@ export const MIGRATIONS: readonly string[] = [
     username TEXT NOT NULL,
     seen_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS typing (
+    username TEXT PRIMARY KEY,
+    until INTEGER NOT NULL
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

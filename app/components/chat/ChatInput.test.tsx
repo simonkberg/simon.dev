@@ -369,3 +369,44 @@ describe("CaretBuddy integration", () => {
     });
   });
 });
+
+describe("typing", () => {
+  // What each typing ping said, in order. A spy rather than MSW, so a late ping from the previous test can't land here.
+  function recordPings() {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    return () =>
+      fetch.mock.calls
+        .filter(([url]) => url === "/api/chat/typing")
+        .map(([, init]) => JSON.parse(init?.body as string) as unknown);
+  }
+
+  it("pings at most every 2s while a message is typed, and once when it's sent", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "Hel");
+    vi.setSystemTime(Date.now() + 2_000);
+    await user.type(input, "lo{Enter}");
+
+    await waitFor(() => {
+      expect(pings()).toEqual([
+        { typing: true },
+        { typing: true },
+        { typing: false },
+      ]);
+    });
+  });
+
+  it("doesn't ping for a command", async () => {
+    const pings = recordPings();
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "/help");
+    await user.clear(input);
+
+    expect(pings()).toEqual([]);
+  });
+});
