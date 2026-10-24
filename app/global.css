@@ -726,11 +726,19 @@ button {
   border: 0;
   background: none;
   color: var(--ink);
-  font-size: var(--meta-size);
-  /* It sits inside the text it describes, so don't inherit that text's layout. */
-  line-height: var(--leading);
+  /* It sits inside the text it describes, so reset every inherited text style it could pick up. */
+  font:
+    normal var(--meta-size) / var(--leading) var(--font-iosevka),
+    monospace;
+  font-variant-numeric: normal;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: start;
   text-indent: 0;
+  text-transform: none;
+  text-shadow: none;
   white-space: normal;
+  cursor: auto;
   overflow: visible;
 
   > span {
