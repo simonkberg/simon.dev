@@ -262,7 +262,7 @@ async function resolveMessageContent(
   const posted = sitePost(msg);
   if (posted) return posted;
   const username =
-    (await getStore().memberName(msg.author.id)) ??
+    (await memberName(msg.author.id)) ??
     displayName(msg.author) ??
     msg.author.id;
   // A forward's own content is empty; what it forwards is in its snapshot.
@@ -373,6 +373,11 @@ function getStore(): ChannelStore {
     });
     return store;
   });
+}
+
+/** A guild member's name, asked of Discord once a session. */
+export function memberName(userId: string): Promise<string | undefined> {
+  return getStore().memberName(userId);
 }
 
 /** Changes whenever the channel's history may have. */

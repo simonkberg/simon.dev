@@ -105,7 +105,8 @@ export const ChatStream = () => {
       </span>
       {status === "live" && here.length > 0 && (
         <span className="presence">
-          <TooltipText tooltip={nameList.format(here)}>
+          {/* simon-bot is always here, but counts as no one. */}
+          <TooltipText tooltip={nameList.format([...here, "simon-bot"])}>
             {here.length} here
           </TooltipText>
         </span>

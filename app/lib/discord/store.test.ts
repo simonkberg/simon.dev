@@ -187,7 +187,7 @@ describe("ChannelStore", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("should leave typing to the typing tracker", async () => {
+  it("should leave events that aren't the channel's to their own trackers", async () => {
     const { store, source } = createStore();
 
     store.apply({
