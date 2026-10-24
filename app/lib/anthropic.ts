@@ -159,26 +159,21 @@ const wakatimeInputSchema = z.object({
     .describe("Time period"),
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });
+const lastfmUsernameSchema = z
+  .string()
+  .default(config.lastfmUsername)
+  .describe("Last.fm username (defaults to Simon's account)");
 const recentTracksInputSchema = z.object({
-  username: z
-    .string()
-    .default(config.lastfmUsername)
-    .describe("Last.fm username (defaults to Simon's account)"),
+  username: lastfmUsernameSchema,
   limit: z.number().min(1).max(50).default(5).describe("Number of tracks"),
 });
 const topItemsInputSchema = z.object({
-  username: z
-    .string()
-    .default(config.lastfmUsername)
-    .describe("Last.fm username (defaults to Simon's account)"),
+  username: lastfmUsernameSchema,
   period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
   limit: z.number().min(1).max(50).default(10).describe("Number of items"),
 });
 const playCountInputSchema = z.object({
-  username: z
-    .string()
-    .default(config.lastfmUsername)
-    .describe("Last.fm username (defaults to Simon's account)"),
+  username: lastfmUsernameSchema,
   artist: z.string().min(1).describe("Artist name"),
   track: z
     .string()

@@ -143,7 +143,7 @@ describe("userGetRecentTracks", () => {
     );
 
     await expect(userGetRecentTracks("nobody")).rejects.toThrow(
-      "Last.fm API error: User not found",
+      "Last.fm API error 6: User not found",
     );
   });
 

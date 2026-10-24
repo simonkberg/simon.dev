@@ -49,7 +49,9 @@ async function call<T extends z.ZodType>(
   const error = errorSchema.safeParse(json);
   // Last.fm's own message, like an unknown artist, says more than the status.
   if (error.success)
-    throw new Error(`Last.fm API error: ${error.data.message}`);
+    throw new Error(
+      `Last.fm API error ${error.data.error}: ${error.data.message}`,
+    );
   if (!response.ok) {
     throw new Error(
       `Last.fm API error: ${response.status} ${response.statusText}`,
