@@ -285,8 +285,14 @@ const chartItemSchema = z
 
 export type ChartItem = z.infer<typeof chartItemSchema>;
 
-// In case an empty range leaves the list out rather than sending [].
-const chartListSchema = z.array(z.unknown()).default([]);
+const chartListSchema = z
+  .union([
+    z.array(z.unknown()),
+    // A chart of one lists it bare, as a range of one scrobble does.
+    z.looseObject({}).transform((item) => [item]),
+  ])
+  // In case an empty range leaves the list out rather than sending [].
+  .default([]);
 
 const chartSchemas = {
   artist: z

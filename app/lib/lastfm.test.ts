@@ -402,6 +402,15 @@ describe("userGetTopArtistInRange", () => {
     expect(top).toEqual({ name: "Smog", playcount: 23 });
   });
 
+  it("should read a chart of one, which Last.fm lists bare", async () => {
+    lastfmReturns({ weeklyartistchart: { artist: artist("Smog", "1") } });
+
+    expect(await userGetTopArtistInRange("testuser", range)).toEqual({
+      name: "Smog",
+      playcount: 1,
+    });
+  });
+
   it("should find no artist in an empty range", async () => {
     lastfmReturns({ weeklyartistchart: {} });
 
