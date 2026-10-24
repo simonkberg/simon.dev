@@ -1262,7 +1262,7 @@ ul {
     }
 
     /* Below the number, so the number sits on the line. */
-    > span > span:last-child {
+    .average-label {
       position: absolute;
       top: 100%;
       left: 1ch;

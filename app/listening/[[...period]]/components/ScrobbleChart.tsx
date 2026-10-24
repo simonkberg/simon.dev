@@ -38,14 +38,13 @@ const useGrow = (count: number, delay: (index: number) => number) => {
     from: { grow: from },
     to: { grow: 1 },
     delay: delay(index),
+    config: { clamp: true },
   }));
   return springs;
 };
 
-// Capped, since a spring settling past 1 would briefly show more than the count.
 const countUp = (value: number, grow: SpringValue<number> | undefined) =>
-  grow?.to((g) => formatNumber(Math.round(value * Math.min(g, 1)))) ??
-  formatNumber(value);
+  grow?.to((g) => formatNumber(Math.round(value * g)));
 
 const Stems = ({
   items,
@@ -55,8 +54,8 @@ const Stems = ({
   active: readonly Run[];
 }) => {
   const springs = useGrow(items.length, (index) => index * 15);
-  // Rises with the stems, reaching the line as half of them have started.
-  const [averageGrow] = useGrow(1, () => items.length * 7.5);
+  // Rises with the middle stem.
+  const averageGrow = springs[Math.floor(items.length / 2)];
 
   const counts = items.map(({ count }) => count);
   // All-zero counts would make the stems' `--value / --max` a 0/0.
@@ -132,7 +131,7 @@ const Stems = ({
         >
           <span>
             <animated.span>{countUp(average, averageGrow?.grow)}</animated.span>
-            <span> avg</span>
+            <span className="average-label"> avg</span>
           </span>
         </animated.span>
       )}
@@ -199,10 +198,10 @@ const Lanes = ({
           const end = first > items.length / 2;
           const span = runs
             .map((run) => {
-              const label = items[run.first]?.label;
+              const from = items[run.first]?.label;
               return run.first === run.last
-                ? label
-                : `${label}–${items[run.last]?.label}`;
+                ? from
+                : `${from}–${items[run.last]?.label}`;
             })
             .join(", ");
           const text = `${name}: ${formatPlays(plays)} in ${span}`;
