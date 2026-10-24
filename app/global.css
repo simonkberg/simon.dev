@@ -2132,7 +2132,7 @@ tbody tr:hover {
   inset: 0;
   isolation: isolate;
   background: var(--cover-bg);
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
 
   img {
     filter: var(--cover-filter);
