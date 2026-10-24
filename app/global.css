@@ -137,6 +137,13 @@
   --links-suffix-color: inherit;
   --links-suffix-size: 1em;
 
+  --notes-max: none;
+  --note-padding: 0;
+  --note-indent: 0;
+  --note-marker: none;
+  --note-gap: 0.5lh;
+  --note-rule: none;
+
   --footer-color: inherit;
   --footer-gap: 0;
   --footer-padding: 0;
@@ -319,6 +326,8 @@
   --now-playing-color: var(--accent);
   --links-indent: 2.5ch;
   --links-marker: "→";
+  --note-padding: 0 0 0 2.5ch;
+  --note-marker: "›";
   --footer-color: var(--muted);
 
   --terminal-position: static;
@@ -452,6 +461,10 @@
   --track-time-gap: 2ch;
   --now-playing-color: var(--accent);
   --now-playing-dot: inline-block;
+  --notes-max: 44rem;
+  --note-padding: 0.5rem 0;
+  --note-gap: 0;
+  --note-rule: var(--td-rule);
   --links-display: flex;
   --links-gap: 0 3ch;
   --links-suffix: " ↗";
@@ -1298,6 +1311,33 @@ ul {
       vertical-align: 0.1em;
       animation: pulse 1.6s ease-in-out infinite;
     }
+  }
+}
+
+.notes {
+  max-width: var(--notes-max);
+
+  > li {
+    position: relative;
+    padding: var(--note-padding);
+    text-indent: var(--note-indent);
+    border-bottom: var(--note-rule);
+    overflow-wrap: anywhere;
+
+    + li {
+      margin-top: var(--note-gap);
+    }
+
+    &::before {
+      content: var(--note-marker);
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+  }
+
+  .subtitle {
+    white-space: nowrap;
   }
 }
 

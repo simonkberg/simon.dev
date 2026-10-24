@@ -28,13 +28,24 @@ function failNext(prefix: string, { afterRunning = false } = {}) {
   );
 }
 
+// Not every migration can run twice, so these build their state without one.
 async function holdLock(owner: string, expiresAt: number) {
-  await runMigrations();
-  await query("DELETE FROM migrations");
+  await query(
+    "CREATE TABLE locks (name TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL)",
+  );
   await query("INSERT INTO locks VALUES ('migrations', ?, ?)", [
     owner,
     expiresAt,
   ]);
+}
+
+// As made before checksums were recorded, with only the first migration applied.
+async function applyFirstOnly() {
+  await query(
+    "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
+  );
+  await query(String(MIGRATIONS[0]));
+  await query("INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')");
 }
 
 async function appliedVersions(): Promise<unknown[]> {
@@ -82,13 +93,7 @@ describe("runMigrations", () => {
   });
 
   it("should upgrade a migrations table from before checksums", async () => {
-    await query(
-      "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
-    );
-    await query(String(MIGRATIONS[0]));
-    await query(
-      "INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')",
-    );
+    await applyFirstOnly();
 
     await runMigrations();
 
@@ -108,9 +113,7 @@ describe("runMigrations", () => {
   });
 
   it("should apply only the pending migrations and release the lock", async () => {
-    await runMigrations();
-    await query("DELETE FROM migrations WHERE version > 1");
-    vi.mocked(log.info).mockClear();
+    await applyFirstOnly();
 
     await runMigrations();
 

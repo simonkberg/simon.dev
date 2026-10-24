@@ -188,7 +188,8 @@ export async function edit(input: {
   const read = asRead(input.id, input.oldContent);
   // A move into another category counts against that category's cap.
   const { rows } = await query(
-    `UPDATE memories SET content = ?, category = COALESCE(?, category)
+    `UPDATE memories
+     SET content = ?, category = COALESCE(?, category), updated_at = ?
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
@@ -196,6 +197,7 @@ export async function edit(input: {
     [
       newContent,
       category,
+      new Date().toISOString(),
       input.id,
       ...read,
       category,
@@ -278,4 +280,50 @@ export async function buildMemoryContext(
     log.error({ err }, "Failed to build memory context");
     return "";
   }
+}
+
+// The bot's own notes, shown on its page; people/* and context stay private.
+export const PUBLIC_CATEGORIES = ["self", "style", "interests"] as const;
+
+export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
+
+export type PublicNote = {
+  id: number;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date | undefined;
+};
+
+const publicNoteSchema = z.object({
+  id: z.number(),
+  category: z.enum(PUBLIC_CATEGORIES),
+  content: z.string(),
+  created_at: z.string().pipe(z.coerce.date()),
+  updated_at: z.string().pipe(z.coerce.date()).nullable(),
+});
+
+export async function readPublicNotes(): Promise<
+  Record<PublicCategory, PublicNote[]>
+> {
+  const { rows } = await query(
+    `SELECT id, category, content, created_at, updated_at FROM memories
+     WHERE category IN (${PUBLIC_CATEGORIES.map(() => "?").join(", ")})
+     ORDER BY created_at, id`,
+    [...PUBLIC_CATEGORIES],
+  );
+  const notes: Record<PublicCategory, PublicNote[]> = {
+    self: [],
+    style: [],
+    interests: [],
+  };
+  for (const row of rows) {
+    const note = publicNoteSchema.parse(row);
+    notes[note.category].push({
+      id: note.id,
+      content: note.content,
+      createdAt: note.created_at,
+      updatedAt: note.updated_at ?? undefined,
+    });
+  }
+  return notes;
 }

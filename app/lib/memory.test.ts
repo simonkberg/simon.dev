@@ -14,6 +14,7 @@ import {
   MAX_CONTENT_LENGTH,
   MAX_PER_CATEGORY,
   peopleCategory,
+  readPublicNotes,
   recall,
   remember,
 } from "./memory";
@@ -462,5 +463,53 @@ describe("buildMemoryContext", () => {
       { err: expect.any(Error) },
       "Failed to build memory context",
     );
+  });
+});
+
+describe("readPublicNotes", () => {
+  it("should group the bot's own notes in order and leave the rest out", async () => {
+    await seed(1, "self", "second", "2025-01-02T00:00:00.000Z");
+    await seed(2, "self", "first");
+    await seed(3, "interests", "trains");
+    await seed(4, "context", "the site runs on railway");
+    await seed(5, "people/alice", "likes cats");
+
+    await expect(readPublicNotes()).resolves.toEqual({
+      self: [
+        {
+          id: 2,
+          content: "first",
+          createdAt: new Date(CREATED_AT),
+          updatedAt: undefined,
+        },
+        {
+          id: 1,
+          content: "second",
+          createdAt: new Date("2025-01-02T00:00:00.000Z"),
+          updatedAt: undefined,
+        },
+      ],
+      style: [],
+      interests: [
+        {
+          id: 3,
+          content: "trains",
+          createdAt: new Date(CREATED_AT),
+          updatedAt: undefined,
+        },
+      ],
+    });
+  });
+
+  it("should date a rewritten note from its last edit", async () => {
+    const editedAt = "2025-02-01T00:00:00.000Z";
+    await seed(4, "style", "short quips");
+    vi.useFakeTimers({ now: new Date(editedAt), toFake: ["Date"] });
+
+    await edit({ id: 4, oldContent: "short quips", newContent: "long rants" });
+
+    await expect(readPublicNotes()).resolves.toMatchObject({
+      style: [{ content: "long rants", updatedAt: new Date(editedAt) }],
+    });
   });
 });

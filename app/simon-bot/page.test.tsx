@@ -1,0 +1,58 @@
+import { act, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import { getBotNotes, type GetBotNotesResult } from "@/actions/simonBot";
+
+import SimonBotPage from "./page";
+
+const createdAt = new Date("2025-01-01T00:00:00.000Z");
+
+vi.mock(import("@/actions/simonBot"), () => ({
+  getBotNotes: vi.fn(() =>
+    Promise.resolve<GetBotNotesResult>({
+      status: "ok",
+      notes: {
+        self: [{ id: 1, content: "dry", createdAt, updatedAt: undefined }],
+        style: [
+          { id: 2, content: "lowercase", createdAt, updatedAt: undefined },
+        ],
+        interests: [],
+      },
+    }),
+  ),
+}));
+
+const renderPage = () => act(async () => render(<SimonBotPage />));
+
+const section = (name: RegExp) =>
+  screen.getByRole("heading", { name }).closest("section") as HTMLElement;
+
+describe("SimonBotPage", () => {
+  it("shows each category's notes under its own heading", async () => {
+    await renderPage();
+
+    expect(getBotNotes).toHaveBeenCalledOnce();
+    expect(within(section(/^Self/)).getByRole("listitem")).toHaveTextContent(
+      /^dry/,
+    );
+    expect(within(section(/^Style/)).getByRole("listitem")).toHaveTextContent(
+      /^lowercase/,
+    );
+    expect(
+      within(section(/^Interests/)).getByText("Nothing here yet."),
+    ).toBeInTheDocument();
+  });
+
+  it("says every section is unavailable when the notes failed to load", async () => {
+    vi.mocked(getBotNotes).mockResolvedValue({
+      status: "error",
+      error: "Failed",
+    });
+
+    await renderPage();
+
+    expect(
+      screen.getAllByText("simon-bot's notes are temporarily unavailable :("),
+    ).toHaveLength(3);
+  });
+});
