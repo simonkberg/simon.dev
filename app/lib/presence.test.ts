@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
-import { query } from "@/lib/turso";
+import { batch, query } from "@/lib/turso";
 import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
@@ -32,6 +32,17 @@ async function storedUsernames() {
     "SELECT username FROM presence ORDER BY username",
   );
   return rows.map((row) => row["username"]);
+}
+
+// Holds the next batch back until the returned function is called.
+function holdNextBatch() {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  const run = vi.mocked(batch).getMockImplementation()!;
+  vi.mocked(batch).mockImplementationOnce(async (statements) => {
+    await promise;
+    return run(statements);
+  });
+  return resolve;
 }
 
 const heartbeat = () => vi.advanceTimersByTimeAsync(15_000);
@@ -83,6 +94,7 @@ describe("joinPresence", () => {
   it("counts a visitor's tabs once and keeps them until the last closes", async () => {
     const listener = vi.fn();
     joinPresence(undefined, listener);
+    joinPresence(undefined, vi.fn())();
     const leaveFirst = joinPresence(alice, vi.fn());
     const leaveSecond = joinPresence(alice, vi.fn());
 
@@ -102,6 +114,34 @@ describe("joinPresence", () => {
     await heartbeat();
 
     expect(query).not.toHaveBeenCalled();
+  });
+
+  it("skips a heartbeat while the last one is still running", async () => {
+    await seenElsewhere(bob);
+    const resolve = holdNextBatch();
+    const listener = vi.fn();
+    joinPresence(alice, listener);
+
+    await heartbeat();
+    expect(batch).toHaveBeenCalledOnce();
+    resolve();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
+  });
+
+  it("drops a heartbeat that finishes after everyone left", async () => {
+    await seenElsewhere(bob);
+    const resolve = holdNextBatch();
+    joinPresence(alice, vi.fn())();
+    resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    vi.mocked(batch).mockImplementation(() => new Promise(() => {}));
+
+    const listener = vi.fn();
+    joinPresence(undefined, listener);
+
+    expect(listener).toHaveBeenCalledExactlyOnceWith([]);
   });
 
   it("keeps who it last saw when a heartbeat fails", async () => {
