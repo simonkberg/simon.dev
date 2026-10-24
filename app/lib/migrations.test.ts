@@ -7,6 +7,7 @@ import { query } from "@/lib/turso";
 import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
+  BOOTSTRAP,
   MIGRATIONS,
   runMigrations,
   runMigrationsUntilApplied,
@@ -30,9 +31,7 @@ function failNext(prefix: string, { afterRunning = false } = {}) {
 
 // Not every migration can run twice, so these build their state without one.
 async function holdLock(owner: string, expiresAt: number) {
-  await query(
-    "CREATE TABLE locks (name TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL)",
-  );
+  for (const sql of BOOTSTRAP) await query(sql);
   await query("INSERT INTO locks VALUES ('migrations', ?, ?)", [
     owner,
     expiresAt,

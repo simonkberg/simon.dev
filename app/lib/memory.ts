@@ -189,7 +189,8 @@ export async function edit(input: {
   // A move into another category counts against that category's cap.
   const { rows } = await query(
     `UPDATE memories
-     SET content = ?, category = COALESCE(?, category), updated_at = ?
+     SET content = ?, category = COALESCE(?, category),
+       updated_at = CASE WHEN content = ? THEN updated_at ELSE ? END
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
@@ -197,6 +198,7 @@ export async function edit(input: {
     [
       newContent,
       category,
+      newContent,
       new Date().toISOString(),
       input.id,
       ...read,

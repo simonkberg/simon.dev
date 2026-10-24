@@ -37,7 +37,7 @@ export const MIGRATIONS: readonly string[] = [
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.
-const BOOTSTRAP = [
+export const BOOTSTRAP = [
   `CREATE TABLE IF NOT EXISTS locks (
     name TEXT PRIMARY KEY,
     owner TEXT NOT NULL,

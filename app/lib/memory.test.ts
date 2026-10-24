@@ -512,4 +512,19 @@ describe("readPublicNotes", () => {
       style: [{ content: "long rants", updatedAt: new Date(editedAt) }],
     });
   });
+
+  it("should not count a move with the same text as a rewrite", async () => {
+    await seed(4, "context", "likes trains");
+
+    await edit({
+      id: 4,
+      oldContent: "likes trains",
+      newContent: "likes trains",
+      category: "interests",
+    });
+
+    await expect(readPublicNotes()).resolves.toMatchObject({
+      interests: [{ content: "likes trains", updatedAt: undefined }],
+    });
+  });
 });
