@@ -232,14 +232,14 @@ export async function userGetTopAlbums(
 
 const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
 
+// A list of one comes back bare, not in an array.
+const oneOrMany = <T extends z.ZodType>(item: T) =>
+  z.union([z.array(item), item.transform((one) => [one])]);
+
 const userGetScrobblesResponseSchema = z
   .object({
     recenttracks: z.object({
-      // A range with one scrobble lists it bare, not in an array.
-      track: z.union([
-        z.array(recentTrackSchema),
-        recentTrackSchema.transform((track) => [track]),
-      ]),
+      track: oneOrMany(recentTrackSchema),
       "@attr": z.object({ total: z.string().transform(Number) }),
     }),
   })
@@ -270,34 +270,66 @@ export async function userGetScrobbles(
   });
 }
 
-const weeklyArtistSchema = z.object({
-  name: z.string(),
-  playcount: z.string().transform(Number),
-});
-
-export type WeeklyArtist = z.infer<typeof weeklyArtistSchema>;
-
-const userGetTopArtistInRangeResponseSchema = z
+const chartItemSchema = z
   .object({
-    weeklyartistchart: z.object({
-      // In case an empty range leaves the list out rather than sending [].
-      artist: z.array(z.unknown()).default([]),
-    }),
+    name: z.string(),
+    playcount: z.string().transform(Number),
+    // Tracks and albums only.
+    artist: z.object({ "#text": z.string() }).optional(),
   })
-  // A year's chart lists thousands of artists, so only the top one is parsed.
-  .transform((data) => data.weeklyartistchart.artist[0])
-  .pipe(weeklyArtistSchema.optional());
+  .transform(({ name, playcount, artist }) => ({
+    name,
+    ...(artist && { artist: artist["#text"] }),
+    playcount,
+  }));
 
-// The weekly chart takes any range, not only the weeks Last.fm lists, ranked by plays.
+export type ChartItem = z.infer<typeof chartItemSchema>;
+
+const chartListSchema = oneOrMany(z.looseObject({}))
+  // In case an empty range leaves the list out rather than sending [].
+  .default([]);
+
+export const chartKinds = ["artist", "track", "album"] as const;
+
+export type ChartKind = (typeof chartKinds)[number];
+
+const chartSchemas = {
+  artist: z
+    .object({ weeklyartistchart: z.object({ artist: chartListSchema }) })
+    .transform((data) => data.weeklyartistchart.artist),
+  track: z
+    .object({ weeklytrackchart: z.object({ track: chartListSchema }) })
+    .transform((data) => data.weeklytrackchart.track),
+  album: z
+    .object({ weeklyalbumchart: z.object({ album: chartListSchema }) })
+    .transform((data) => data.weeklyalbumchart.album),
+} satisfies Record<ChartKind, z.ZodType<unknown[]>>;
+
+// The weekly charts take any range, not only the weeks Last.fm lists, ranked by plays.
+export async function userGetChartInRange(
+  user: string,
+  kind: ChartKind,
+  params: { from: Date; to: Date; limit: number },
+): Promise<ChartItem[]> {
+  const schema = chartSchemas[kind]
+    // A year's chart lists thousands of items, so only those asked for are parsed.
+    .transform((items) => items.slice(0, params.limit))
+    .pipe(z.array(chartItemSchema));
+  return call(`user.getweekly${kind}chart`, schema, {
+    user,
+    ...rangeParams(params),
+  });
+}
+
 export async function userGetTopArtistInRange(
   user: string,
   params: { from: Date; to: Date },
-) {
-  return call(
-    "user.getweeklyartistchart",
-    userGetTopArtistInRangeResponseSchema,
-    { user, ...rangeParams(params) },
-  );
+): Promise<ChartItem | undefined> {
+  const [top] = await userGetChartInRange(user, "artist", {
+    ...params,
+    limit: 1,
+  });
+  return top;
 }
 
 // Last.fm leaves the count out for an unknown user rather than failing.

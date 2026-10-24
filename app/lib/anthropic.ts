@@ -16,7 +16,10 @@ import { env } from "@/lib/env";
 import {
   getUserPlays,
   periods as lastfmPeriods,
+  chartKinds,
+  userGetChartInRange,
   userGetRecentTracks,
+  userGetScrobbles,
   userGetTopAlbums,
   userGetTopArtists,
   userGetTopTracks,
@@ -34,6 +37,7 @@ import {
   remember,
 } from "@/lib/memory";
 import { addReaction, EmojiSchema, MessageIdSchema } from "@/lib/reactions";
+import { dayRange } from "@/lib/scrobbleBuckets";
 import type { Username } from "@/lib/session";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -186,6 +190,20 @@ const playCountInputSchema = z.object({
     .optional()
     .describe("An album by the artist, to count that instead (if no track)"),
 });
+const dateRangeInputSchema = z.object({
+  username: lastfmUsernameSchema,
+  from: z.iso.date().describe("First day, as YYYY-MM-DD in Stockholm time"),
+  to: z.iso.date().describe("Last day, included, as YYYY-MM-DD"),
+  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
+});
+const ordered = [
+  ({ from, to }: { from: string; to: string }) => from <= to,
+  "from must be on or before to",
+] as const;
+const topInRangeInputSchema = dateRangeInputSchema
+  .extend({ kind: z.enum(chartKinds).describe("What to rank") })
+  .refine(...ordered);
+const scrobblesInRangeInputSchema = dateRangeInputSchema.refine(...ordered);
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
   limit: z.number().min(1).max(25).default(25).describe("Max results"),
@@ -294,6 +312,18 @@ const LOOKUP_TOOLS = [
     input_schema: z.toJSONSchema(playCountInputSchema),
   },
   {
+    name: "get_top_in_range",
+    description:
+      "Get the most played artists, tracks or albums on Last.fm between two dates, like a given year or month. Defaults to Simon's account.",
+    input_schema: z.toJSONSchema(topInRangeInputSchema),
+  },
+  {
+    name: "get_scrobbles_in_range",
+    description:
+      "Get the total scrobbles on Last.fm between two dates and the tracks played, newest first. Defaults to Simon's account.",
+    input_schema: z.toJSONSchema(scrobblesInRangeInputSchema),
+  },
+  {
     name: "search_messages",
     description:
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
@@ -371,6 +401,26 @@ async function executeTool(
       case "get_play_count": {
         const { username, ...params } = playCountInputSchema.parse(input);
         return JSON.stringify(await getUserPlays(username, params));
+      }
+      case "get_top_in_range": {
+        const { username, kind, from, to, ...params } =
+          topInRangeInputSchema.parse(input);
+        return JSON.stringify(
+          await userGetChartInRange(username, kind, {
+            ...dayRange(from, to),
+            ...params,
+          }),
+        );
+      }
+      case "get_scrobbles_in_range": {
+        const { username, from, to, ...params } =
+          scrobblesInRangeInputSchema.parse(input);
+        return JSON.stringify(
+          await userGetScrobbles(username, {
+            ...dayRange(from, to),
+            ...params,
+          }),
+        );
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);

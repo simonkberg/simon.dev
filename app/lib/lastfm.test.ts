@@ -5,6 +5,7 @@ import { server } from "@/mocks/node";
 
 import {
   getUserPlays,
+  userGetChartInRange,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -344,6 +345,36 @@ describe("userGetScrobbles", () => {
   });
 });
 
+describe("userGetChartInRange", () => {
+  it.each(["track", "album"] as const)(
+    "should take the most played %ss in the range, up to the limit",
+    async (kind) => {
+      const params = lastfmReturns({
+        [`weekly${kind}chart`]: {
+          [kind]: ["Thursday", "Overcoat", "Gold"].map((name, i) => ({
+            name,
+            artist: { "#text": `${name} Artist` },
+            playcount: String(9 - i),
+            "@attr": { rank: String(i + 1) },
+          })),
+        },
+      });
+
+      const top = await userGetChartInRange("testuser", kind, {
+        from: new Date("2021-01-01T00:00:00Z"),
+        to: new Date("2021-01-02T00:00:00Z"),
+        limit: 2,
+      });
+
+      expect(params()).toMatchObject({ method: `user.getweekly${kind}chart` });
+      expect(top).toEqual([
+        { name: "Thursday", artist: "Thursday Artist", playcount: 9 },
+        { name: "Overcoat", artist: "Overcoat Artist", playcount: 8 },
+      ]);
+    },
+  );
+});
+
 describe("userGetTopArtistInRange", () => {
   const range = {
     from: new Date("2021-01-01T00:00:00Z"),
@@ -369,6 +400,15 @@ describe("userGetTopArtistInRange", () => {
       to: "1609545599",
     });
     expect(top).toEqual({ name: "Smog", playcount: 23 });
+  });
+
+  it("should read a chart of one, which Last.fm lists bare", async () => {
+    lastfmReturns({ weeklyartistchart: { artist: artist("Smog", "1") } });
+
+    expect(await userGetTopArtistInRange("testuser", range)).toEqual({
+      name: "Smog",
+      playcount: 1,
+    });
   });
 
   it("should find no artist in an empty range", async () => {
