@@ -28,10 +28,11 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
 
   return (
     <div className="flashback">
-      <strong className="flashback-title">On this day in {year.year}</strong>
+      <strong className="flashback-title">
+        On this day in {year.year} ({formatPlays(year.count)})
+      </strong>
       <p>
-        {year.top.track} &ndash; <em>{year.top.artist}</em> (
-        {formatPlays(year.count)}). See{" "}
+        {year.top.track} &ndash; <em>{year.top.artist}</em>. See{" "}
         <Link href="/listening/on-this-day">every year</Link>.
       </p>
     </div>
