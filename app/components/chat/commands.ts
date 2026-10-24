@@ -56,16 +56,20 @@ export const commands: readonly Command[] = [
   ...preferences.map(preferenceCommand),
 ];
 
-/** A command, unless the text is a message: one without a leading slash, or with two to send one. */
-export function isCommand(text: string) {
-  return text.startsWith("/") && !text.startsWith("//");
+/** The message to send, or null for a command: a leading slash runs one, and two send one. */
+export function messageText(text: string) {
+  if (text.startsWith("//")) return text.slice(1);
+  return text.startsWith("/") ? null : text;
 }
+
+const findCommand = (name: string | undefined) =>
+  commands.find((command) => command.name === name);
 
 export function runCommand(text: string): CommandResult {
   const body = text.trim().slice(1).toLowerCase();
   const space = body.search(/\s/);
   const name = space === -1 ? body : body.slice(0, space);
-  const command = commands.find((command) => command.name === name);
+  const command = findCommand(name);
   if (!command) {
     return {
       status: "error",
@@ -79,19 +83,18 @@ export interface CommandSuggestion {
   value: string;
   label: string;
   detail: string;
-  /** Whether picking it leaves nothing more to type. */
-  final: boolean;
 }
 
 const NAME = /^\/(\S*)$/;
 const ARGUMENT = /^\/(\S+)\s+(\S*)$/;
 
-/** The command or argument typed up to the caret, where it starts, and what it could become. */
+/** The command or argument typed up to the caret, where it starts, what it could become, and whether it needs nothing picked. */
 export function typedCommand(text: string) {
   if (!text.startsWith("/")) return null;
   const before = text.toLowerCase();
   const name = NAME.exec(before)?.[1];
   if (name !== undefined) {
+    const typed = findCommand(name);
     return {
       query: name,
       start: 1,
@@ -101,14 +104,12 @@ export function typedCommand(text: string) {
           value: command.name,
           label: usage(command),
           detail: command.description,
-          final: !command.preference,
         })),
+      complete: typed !== undefined && !typed.preference,
     };
   }
   const [, commandName, argument] = ARGUMENT.exec(before) ?? [];
-  const preference = commands.find(
-    (command) => command.name === commandName,
-  )?.preference;
+  const preference = findCommand(commandName)?.preference;
   if (!preference || argument === undefined) return null;
   const current = currentPreference(preference);
   return {
@@ -120,7 +121,7 @@ export function typedCommand(text: string) {
         value: option,
         label: option,
         detail: option === current ? "current" : "",
-        final: true,
       })),
+    complete: arrayIncludes(preference.options, argument),
   };
 }

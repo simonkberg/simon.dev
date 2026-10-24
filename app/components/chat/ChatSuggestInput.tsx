@@ -36,14 +36,9 @@ function typedAt(input: HTMLInputElement) {
   const command = typedCommand(before);
   if (command) return { kind: "command", ...command, end: caret } as const;
   const query = SHORTCODE.exec(before)?.[1];
-  return query === undefined
-    ? null
-    : ({
-        kind: "emoji",
-        query,
-        start: caret - query.length - 1,
-        end: caret,
-      } as const);
+  if (query === undefined) return null;
+  const start = caret - query.length - 1;
+  return { kind: "emoji", query, start, end: caret } as const;
 }
 
 /** A text input that suggests commands after a leading slash, and emoji for the shortcode typed up to its caret. */
@@ -101,10 +96,7 @@ export const ChatSuggestInput = ({
   // picked, so Enter only picks once one is chosen.
   function initialActive() {
     if (shown?.kind === "emoji") return shown.query.length >= 2 ? 0 : null;
-    const complete = commandMatches.some(
-      (match) => match.final && match.value === shown?.query,
-    );
-    return complete ? null : 0;
+    return shown?.complete ? null : 0;
   }
 
   const open = picks.length > 0;

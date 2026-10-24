@@ -16,7 +16,7 @@ import { TooltipButton } from "@/components/Tooltip";
 import { CaretBuddy } from "./CaretBuddy";
 import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
-import { isCommand, runCommand } from "./commands";
+import { messageText, runCommand } from "./commands";
 
 function useEscape(active: boolean, onEscape: () => void) {
   useEffect(() => {
@@ -58,7 +58,8 @@ export const ChatInput = ({
     if (!inputValue.trim()) return;
     const form = event.currentTarget;
 
-    if (isCommand(inputValue)) {
+    const message = messageText(inputValue);
+    if (message === null) {
       const command = runCommand(inputValue);
       if (command.status === "error") {
         setResult(command);
@@ -77,10 +78,7 @@ export const ChatInput = ({
     setOutput(null);
     startTransition(async () => {
       const formData = new FormData(form);
-      // A doubled slash sends one, so a message can start with it.
-      if (inputValue.startsWith("//")) {
-        formData.set("text", inputValue.slice(1));
-      }
+      formData.set("text", message);
       if (replyToId) {
         formData.append("replyToId", replyToId);
       }
