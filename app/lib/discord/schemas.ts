@@ -135,3 +135,23 @@ export const TypingStartSchema = ChannelSchema.extend({
 });
 
 export type TypingStart = z.infer<typeof TypingStartSchema>;
+
+const PresenceSchema = z.object({
+  user: DiscordUserSchema.pick({ id: true, bot: true }),
+  status: z.string(),
+});
+
+/** A guild's members and who is online, sent at the start of a session. */
+export const GuildCreateSchema = z.object({
+  id: z.string(),
+  members: z.array(MemberSchema.extend({ user: DiscordUserSchema })),
+  presences: z.array(PresenceSchema),
+});
+
+export type GuildCreate = z.infer<typeof GuildCreateSchema>;
+
+export const PresenceUpdateSchema = PresenceSchema.extend({
+  guild_id: z.string(),
+});
+
+export type PresenceUpdate = z.infer<typeof PresenceUpdateSchema>;

@@ -2,6 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import { useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dwell } from "@/mocks/popover";
+
 import { ChatStream } from "./ChatStream";
 
 vi.mock(import("next/navigation"), () => ({ useRouter: vi.fn() }));
@@ -141,12 +143,16 @@ describe("ChatStream", () => {
   });
 
   describe("presence", () => {
-    it("shows how many are here while live", () => {
+    it("shows how many are here while live, and simon-bot by name", async () => {
       renderStream();
       act(() => instance().onopen());
 
       act(() => instance().sendPresence(["alice", "bob"]));
       expect(screen.getByText("2 here")).toBeInTheDocument();
+      await dwell(screen.getByText("2 here"));
+      expect(screen.getByRole("tooltip", { hidden: true })).toHaveTextContent(
+        "alice, bob, and simon-bot",
+      );
 
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();

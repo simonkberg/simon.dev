@@ -11,6 +11,7 @@ import {
 
 import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
+import { subscribeToOnline } from "@/lib/discord/online";
 import { subscribeToTyping } from "@/lib/discord/typing";
 import { joinPresence } from "@/lib/presence";
 import { encrypt, type Username } from "@/lib/session";
@@ -31,6 +32,8 @@ vi.mock(import("@/lib/discord/gateway"), () => ({
 
 vi.mock(import("@/lib/discord/typing"), () => ({ subscribeToTyping: vi.fn() }));
 
+vi.mock(import("@/lib/discord/online"), () => ({ subscribeToOnline: vi.fn() }));
+
 vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
 
 vi.mock(import("@/lib/presence"), () => ({ joinPresence: vi.fn() }));
@@ -47,6 +50,7 @@ describe("GET /api/chat/sse", () => {
   let mockUnsubscribeStatus: Mock;
   let mockLeavePresence: Mock;
   let mockUnsubscribeTyping: Mock;
+  let mockUnsubscribeOnline: Mock;
 
   function open() {
     return GET(
@@ -70,6 +74,8 @@ describe("GET /api/chat/sse", () => {
     mockLeavePresence = vi.fn();
     mockUnsubscribeTyping = vi.fn();
     vi.mocked(subscribeToTyping).mockReturnValue(mockUnsubscribeTyping);
+    mockUnsubscribeOnline = vi.fn();
+    vi.mocked(subscribeToOnline).mockReturnValue(mockUnsubscribeOnline);
     vi.mocked(joinPresence).mockReturnValue(mockLeavePresence);
     vi.mocked(subscribeToChannel).mockResolvedValue(mockUnsubscribe);
     vi.mocked(subscribeToStatus).mockReturnValue(mockUnsubscribeStatus);
@@ -120,10 +126,13 @@ describe("GET /api/chat/sse", () => {
   });
 
   it.each([
-    { here: ["alice", "bob", "carol"], sent: ["you", "alice", "carol"] },
-    { here: ["alice"], sent: ["alice"] },
+    {
+      here: ["alice", "bob", "carol"],
+      sent: ["you", "alice", "carol", "simon"],
+    },
+    { here: ["alice"], sent: ["alice", "simon"] },
   ])(
-    "should count the session's visitor and send who is here, as you",
+    "should count the session's visitor and send who is here, as you, then who is in Discord",
     async ({ here, sent }) => {
       mockCookieJar(
         `session=${await encrypt({ username: "bob" as Username })}`,
@@ -131,8 +140,11 @@ describe("GET /api/chat/sse", () => {
       const response = await open();
       const reader = response.body!.getReader();
       const [username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+      const onOnline = vi.mocked(subscribeToOnline).mock.calls[0]![0];
       await reader.read();
 
+      onOnline(["simon"]);
+      await reader.read();
       onPresence(here);
 
       expect(username).toBe("bob");
@@ -195,6 +207,7 @@ describe("GET /api/chat/sse", () => {
     expect(mockUnsubscribeStatus).not.toHaveBeenCalled();
     expect(mockLeavePresence).not.toHaveBeenCalled();
     expect(mockUnsubscribeTyping).not.toHaveBeenCalled();
+    expect(mockUnsubscribeOnline).not.toHaveBeenCalled();
 
     controller.abort();
 
@@ -202,6 +215,7 @@ describe("GET /api/chat/sse", () => {
     expect(mockUnsubscribeStatus).toHaveBeenCalledOnce();
     expect(mockLeavePresence).toHaveBeenCalledOnce();
     expect(mockUnsubscribeTyping).toHaveBeenCalledOnce();
+    expect(mockUnsubscribeOnline).toHaveBeenCalledOnce();
   });
 
   it("should not write after abort", async () => {

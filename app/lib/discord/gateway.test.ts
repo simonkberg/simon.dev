@@ -14,6 +14,7 @@ import { connect, getBotUserId, subscribe, subscribeToStatus } from "./gateway";
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 const RESUME_URL = "wss://resume.discord.gg/?v=10&encoding=json";
 const CHANNEL = mockEnv.DISCORD_CHANNEL_ID;
+const GUILD = mockEnv.DISCORD_GUILD_ID;
 
 const GatewayOpcode = {
   DISPATCH: 0,
@@ -750,6 +751,18 @@ describe("subscribe", () => {
           member: { nick: "Simon", user: { username: "simon" } },
         },
       ],
+      [
+        "GUILD_CREATE",
+        {
+          id: GUILD,
+          members: [{ nick: "Simon", user: { id: "user-123" } }],
+          presences: [{ user: { id: "user-123" }, status: "online" }],
+        },
+      ],
+      [
+        "PRESENCE_UPDATE",
+        { guild_id: GUILD, user: { id: "user-123" }, status: "idle" },
+      ],
     ])("should pass %s", async (event, data) => {
       const { callback } = await subscribed();
 
@@ -770,13 +783,20 @@ describe("subscribe", () => {
       );
     });
 
-    it("should drop a typing event it can't read, without missing anything", async () => {
-      const { callback } = await subscribed();
+    it.each([
+      ["TYPING_START", { channel_id: CHANNEL }],
+      ["GUILD_CREATE", { id: GUILD }],
+      ["PRESENCE_UPDATE", { guild_id: GUILD }],
+    ])(
+      "should drop a %s it can't read, without missing anything",
+      async (event, data) => {
+        const { callback } = await subscribed();
 
-      await dispatch("TYPING_START", { channel_id: CHANNEL });
+        await dispatch(event, data);
 
-      expect(callback).not.toHaveBeenCalled();
-    });
+        expect(callback).not.toHaveBeenCalled();
+      },
+    );
 
     it("should ignore events the site doesn't use", async () => {
       const { callback } = await subscribed();

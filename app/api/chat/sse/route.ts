@@ -2,6 +2,7 @@ import { connection, type NextRequest, NextResponse } from "next/server";
 
 import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
+import { subscribeToOnline } from "@/lib/discord/online";
 import { subscribeToTyping } from "@/lib/discord/typing";
 import { log } from "@/lib/log";
 import { joinPresence } from "@/lib/presence";
@@ -54,9 +55,21 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  const leavePresence = joinPresence(username, (here) =>
-    send(`event: presence\ndata: ${JSON.stringify(you(here))}\n\n`),
-  );
+  // The site's visitors, then who is online in Discord.
+  let here: readonly string[] = [];
+  let online: readonly string[] = [];
+  const sendPresence = () =>
+    send(
+      `event: presence\ndata: ${JSON.stringify([...you(here), ...online])}\n\n`,
+    );
+  const leavePresence = joinPresence(username, (names) => {
+    here = names;
+    sendPresence();
+  });
+  const unsubscribeOnline = subscribeToOnline((names) => {
+    online = names;
+    sendPresence();
+  });
 
   const unsubscribeTyping = subscribeToTyping((typing) =>
     send(`event: typing\ndata: ${JSON.stringify(typing)}\n\n`),
@@ -69,6 +82,7 @@ export async function GET(request: NextRequest) {
     unsubscribe();
     unsubscribeStatus();
     leavePresence();
+    unsubscribeOnline();
     unsubscribeTyping();
     clearInterval(pingInterval);
     void writer.close().catch(ignoreWriteErrors);
