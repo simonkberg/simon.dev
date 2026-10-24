@@ -186,7 +186,7 @@ describe("RootPage", () => {
       const section = region(/Currently listening to/);
       expect(within(section).getByText(/On this day in 2012/)).toBeVisible();
       expect(
-        within(section).getByRole("link", { name: "every year" }),
+        within(section).getByRole("link", { name: "every\u00a0year" }),
       ).toHaveAttribute("href", "/listening/on-this-day");
     });
 
