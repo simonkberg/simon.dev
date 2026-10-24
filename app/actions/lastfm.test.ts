@@ -7,13 +7,13 @@ import {
   userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
-  type UserGetTopAlbumsResponse,
   userGetTopArtists,
   type UserGetTopArtistsResponse,
   userGetTopTracks,
   type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import { topAlbum } from "@/mocks/lastfm";
 
 import {
   getRecentTracks,
@@ -174,16 +174,7 @@ describe("getTopArtists", () => {
 
 describe("getTopAlbums", () => {
   it("should return success status with albums", async () => {
-    const mockAlbums: UserGetTopAlbumsResponse = [
-      {
-        name: "Album 1",
-        artist: "Artist 1",
-        playcount: 200,
-        rank: 1,
-        url: "https://www.last.fm/music/Artist+1/Album+1",
-        cover: undefined,
-      },
-    ];
+    const mockAlbums = [topAlbum("Album 1", "Artist 1", 1)];
 
     vi.mocked(userGetTopAlbums).mockResolvedValue(mockAlbums);
 

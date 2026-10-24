@@ -1,6 +1,7 @@
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
+import { coverCdn } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 
 import {
@@ -230,8 +231,7 @@ describe("userGetTopArtists", () => {
 });
 
 describe("userGetTopAlbums", () => {
-  const cdn = "https://lastfm-img.freetls.fastly.net/i/u";
-  const images = (hash: string, host = cdn) =>
+  const images = (hash: string, host = coverCdn) =>
     [
       ["small", "34s"],
       ["medium", "64s"],
@@ -283,7 +283,7 @@ describe("userGetTopAlbums", () => {
         playcount: 250,
         rank: 1,
         url: "https://www.last.fm/music/Test",
-        cover: `${cdn}/abc123.jpg`,
+        cover: `${coverCdn}/abc123.jpg`,
       },
       {
         name: "Another",

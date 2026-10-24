@@ -17,6 +17,7 @@ import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
+import { coverCdn, topAlbum } from "@/mocks/lastfm";
 import { CREATED_AT, fillCategory, seed, stored } from "@/mocks/memory";
 import { server } from "@/mocks/node";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
@@ -884,16 +885,13 @@ describe("createMessage", () => {
     );
 
     it("should leave album covers out of the top albums result", async () => {
-      const album = {
-        name: "Knock Knock",
-        artist: "Smog",
-        playcount: 31,
-        rank: 1,
-        url: "https://www.last.fm/music/Smog/Knock+Knock",
-      } as const;
-      vi.mocked(userGetTopAlbums).mockResolvedValue([
-        { ...album, cover: "https://lastfm-img.freetls.fastly.net/i/u/a.jpg" },
-      ]);
+      const { cover, ...album } = topAlbum(
+        "Knock Knock",
+        "Smog",
+        1,
+        `${coverCdn}/a.jpg`,
+      );
+      vi.mocked(userGetTopAlbums).mockResolvedValue([{ ...album, cover }]);
 
       expect(await runTool("get_top_albums", {})).toBe(JSON.stringify([album]));
     });

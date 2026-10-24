@@ -2,36 +2,16 @@ import { act, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { TopAlbum } from "@/actions/lastfm";
+import { coverCdn, topAlbum } from "@/mocks/lastfm";
 
 import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
 
-const cover = "https://lastfm-img.freetls.fastly.net/i/u/abc.jpg";
+const cover = `${coverCdn}/abc.jpg`;
 
-const albums: TopAlbum[] = [
-  {
-    name: "Knock Knock",
-    artist: "Smog",
-    playcount: 31,
-    rank: 1,
-    url: "https://www.last.fm/music/Smog/Knock+Knock",
-    cover,
-  },
-  {
-    name: "Beheaded",
-    artist: "Bedhead",
-    playcount: 30,
-    rank: 2,
-    url: "https://www.last.fm/music/Bedhead/Beheaded",
-    cover,
-  },
-  {
-    name: "Stuff Like That There",
-    artist: "Yo La Tengo",
-    playcount: 26,
-    rank: 3,
-    url: "https://www.last.fm/music/Yo+La+Tengo/Stuff+Like+That+There",
-    cover: undefined,
-  },
+const albums = [
+  topAlbum("Knock Knock", "Smog", 1, cover),
+  topAlbum("Beheaded", "Bedhead", 2, cover),
+  topAlbum("Stuff Like That There", "Yo La Tengo", 3),
 ];
 
 const renderCollage = (items: TopAlbum[] | undefined) =>
@@ -81,9 +61,9 @@ describe("AlbumCollage", () => {
         .getAllByRole("listitem")
         .map((item) => [...item.children].map((child) => child.textContent)),
     ).toEqual([
-      ["1", "Knock Knock", "Smog", "31"],
-      ["2", "Beheaded", "Bedhead", "30"],
-      ["3", "Stuff Like That There", "Yo La Tengo", "26"],
+      ["1", "Knock Knock", "Smog", "39"],
+      ["2", "Beheaded", "Bedhead", "38"],
+      ["3", "Stuff Like That There", "Yo La Tengo", "37"],
     ]);
   });
 

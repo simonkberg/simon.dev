@@ -1,5 +1,7 @@
-import "@/lib/env";
 import type { NextConfig } from "next";
+
+import "@/lib/env";
+import { config } from "@/config";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -10,9 +12,7 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
   experimental: { turbopackRustReactCompiler: true },
   // Last.fm's CDN 404s some resized covers in some regions, so Next resizes the original.
-  images: {
-    remotePatterns: [new URL("https://lastfm-img.freetls.fastly.net/i/u/**")],
-  },
+  images: { remotePatterns: [new URL(`${config.lastfmCoverCdn}**`)] },
 };
 
 export default nextConfig;

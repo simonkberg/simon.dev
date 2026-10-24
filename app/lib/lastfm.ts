@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
+import { config } from "@/config";
 import { env } from "@/lib/env";
 
 export const periods = [
@@ -190,15 +191,13 @@ export const TOP_ALBUMS = 10;
 // Last.fm serves this grey star for albums without art.
 const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
 
-// next.config.ts's remotePatterns: the image optimiser refuses any other host.
-const COVER_CDN = "https://lastfm-img.freetls.fastly.net/i/u/";
-
 const coverSchema = z
   .array(z.object({ size: z.string(), "#text": z.string() }))
   .transform((images) => {
     const url = images.find(({ size }) => size === "extralarge")?.["#text"];
     // The original upload, without the size segment: Next resizes it, and never past its size.
-    return url?.startsWith(COVER_CDN) && !url.includes(PLACEHOLDER_COVER)
+    return url?.startsWith(config.lastfmCoverCdn) &&
+      !url.includes(PLACEHOLDER_COVER)
       ? url.replace(/\/i\/u\/[^/]+\//, "/i/u/")
       : undefined;
   });

@@ -143,7 +143,7 @@ export const AlbumCollageSkeleton = () => (
   <SkeletonStatus>
     <div className="collage placeholder" aria-hidden="true">
       <ol className="collage-covers">
-        {nameWidths.map((_, index) => (
+        {Array.from({ length: TOP_ALBUMS }, (_, index) => (
           <li key={index}>
             <span className="cover" />
           </li>
