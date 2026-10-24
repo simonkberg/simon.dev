@@ -102,6 +102,12 @@ async function heartbeat(state: Presence): Promise<void> {
   if (state.again) await heartbeat(state);
 }
 
+function drop(state: Presence, stream: string): void {
+  if (!state.streams.delete(stream)) return;
+  state.joined.delete(stream);
+  state.left.add(stream);
+}
+
 /** Counts `username` as here until the stream leaves, and tells `listener` who is here now and on every change. */
 export function joinPresence(
   stream: string,
@@ -123,10 +129,7 @@ export function joinPresence(
 
   return () => {
     state.listeners.delete(listener);
-    if (state.streams.delete(stream)) {
-      state.joined.delete(stream);
-      state.left.add(stream);
-    }
+    drop(state, stream);
     void heartbeat(state);
   };
 }
@@ -136,6 +139,12 @@ export async function leavePresence(
   stream: string,
   username: Username,
 ): Promise<void> {
+  const state = presence();
+  // Queued rather than deleted here, so a join insert still pending can't bring it back.
+  if (state.streams.get(stream) === username) {
+    drop(state, stream);
+    return heartbeat(state);
+  }
   try {
     await query("DELETE FROM presence WHERE stream = ? AND username = ?", [
       stream,
@@ -145,6 +154,5 @@ export async function leavePresence(
     log.warn({ err }, "Failed to take a stream out of presence");
     return;
   }
-  const state = presence();
   if (state.timer) await heartbeat(state);
 }

@@ -216,13 +216,18 @@ describe("leavePresence", () => {
     expect(await storedStreams()).toEqual(["b1"]);
   });
 
-  it("keeps a stream out once taken out, before its own replica notices it closed", async () => {
-    joinPresence("a1", alice, vi.fn());
+  it("takes out this replica's stream, even before its join is stored", async () => {
+    const resolve = holdNextBatch();
+    const listener = vi.fn();
+    joinPresence("a1", alice, listener);
     await settle();
 
-    await leavePresence("a1", alice);
+    const left = leavePresence("a1", alice);
+    resolve();
+    await left;
     await heartbeat();
 
+    expect(listener).toHaveBeenLastCalledWith([]);
     expect(await storedStreams()).toEqual([]);
   });
 
