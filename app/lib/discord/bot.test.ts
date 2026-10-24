@@ -130,6 +130,23 @@ describe("handleMessage", () => {
     expect(sendTyping).toHaveBeenCalledTimes(3);
   });
 
+  it("should post only once its typing has landed, so it doesn't type after replying", async () => {
+    const { promise: typed, resolve: land } = Promise.withResolvers<void>();
+    vi.mocked(sendTyping).mockReturnValueOnce(typed);
+    replyWith("hello there!");
+
+    const handled = handleMessage(
+      message("msg-1", { content: "User1: hey simon-bot!" }),
+    );
+    await vi.waitFor(() => expect(createAnthropicMessage).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(postChannelMessage).not.toHaveBeenCalled();
+    land();
+    await handled;
+
+    expect(postChannelMessage).toHaveBeenCalledOnce();
+  });
+
   it("should reply even when it can't show itself typing", async () => {
     vi.mocked(sendTyping).mockRejectedValue(new Error("rate limited"));
     replyWith("hello there!");

@@ -746,6 +746,7 @@ describe("subscribe", () => {
         "TYPING_START",
         {
           channel_id: CHANNEL,
+          user_id: "user-123",
           member: { nick: "Simon", user: { username: "simon" } },
         },
       ],

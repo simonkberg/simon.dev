@@ -8,7 +8,7 @@ import { useTyping } from "./typing";
 export const ChatTyping = () => {
   const typing = useTyping();
   return (
-    <p className="chat-typing">
+    <p className="chat-typing" aria-live="polite">
       {typing.length > 0 && (
         <>
           {typing.map((name) => (

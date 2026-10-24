@@ -11,11 +11,23 @@ import { subscribeToTyping } from "./typing";
 
 vi.mock(import("./gateway"), () => ({
   subscribe: vi.fn(() => Promise.resolve(() => {})),
+  getBotUserId: () => "bot",
 }));
 
 const CHANNEL = mockEnv.DISCORD_CHANNEL_ID;
-const simon = { nick: "simon", user: { username: "simonkberg" } };
-const bot = { user: { username: "simon.dev", bot: true } };
+const simon = {
+  user_id: "simon",
+  member: { nick: "simon", user: { username: "simonkberg" } },
+};
+const bot = {
+  user_id: "bot",
+  member: { user: { username: "simon.dev", bot: true } },
+};
+const otherBot = {
+  user_id: "other-bot",
+  member: { user: { username: "other-bot", bot: true } },
+};
+const memberless = { user_id: "someone" };
 
 function listen() {
   const listener = vi.fn();
@@ -24,8 +36,10 @@ function listen() {
   return { listener, dispatch };
 }
 
-const typing = (member?: typeof simon | typeof bot) =>
-  ({ t: "TYPING_START", d: { channel_id: CHANNEL, member } }) as const;
+const typing = (typist: {
+  user_id: string;
+  member?: { nick?: string; user: { username: string; bot?: boolean } };
+}) => ({ t: "TYPING_START", d: { channel_id: CHANNEL, ...typist } }) as const;
 
 describe("subscribeToTyping", () => {
   beforeEach(() => {
@@ -60,6 +74,10 @@ describe("subscribeToTyping", () => {
 
     dispatch({
       t: "MESSAGE_CREATE",
+      d: message("0", { author: { id: "nameless" } }),
+    });
+    dispatch({
+      t: "MESSAGE_CREATE",
       d: message("1", {
         author: { id: "bot", bot: true },
         content: "brave-otter: hi",
@@ -78,17 +96,19 @@ describe("subscribeToTyping", () => {
 
     dispatch({
       t: "MESSAGE_CREATE",
-      d: { ...message("3", { author: { id: "simon" } }), member: simon },
+      d: { ...message("3", { author: { id: "simon" } }), member: simon.member },
     });
     expect(listener).toHaveBeenLastCalledWith([]);
   });
 
-  it("leaves out typing it can't name", () => {
+  it("leaves out typing it can't name, and names only its own bot simon-bot", () => {
     const { listener, dispatch } = listen();
 
-    dispatch(typing());
+    dispatch(typing(memberless));
+    dispatch(typing(otherBot));
 
-    expect(listener).toHaveBeenCalledExactlyOnceWith([]);
+    expect(listener).toHaveBeenLastCalledWith(["other-bot"]);
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 
   it("logs when it can't hear the gateway", async () => {

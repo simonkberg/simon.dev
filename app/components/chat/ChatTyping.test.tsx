@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ChatTyping } from "./ChatTyping";
@@ -13,6 +14,14 @@ describe("ChatTyping", () => {
     const { container } = render(<ChatTyping />);
 
     expect(container.querySelector(".chat-typing")).toBeEmptyDOMElement();
+  });
+
+  it("renders nobody typing on the server", () => {
+    act(() => setTyping(["simon"]));
+
+    expect(renderToString(<ChatTyping />)).toBe(
+      '<p class="chat-typing" aria-live="polite"></p>',
+    );
   });
 
   it("shows a typing buddy for each typist", () => {

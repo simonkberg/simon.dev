@@ -3,7 +3,7 @@ import { BOT_USERNAME } from "@/lib/anthropic";
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 
-import { type GatewayEvent, subscribe } from "./gateway";
+import { type GatewayEvent, getBotUserId, subscribe } from "./gateway";
 import { displayName, sitePost } from "./schemas";
 
 // Discord's own indicator lasts this long, or until the typist posts.
@@ -31,11 +31,12 @@ function stop(state: Typing, name: string): void {
 function apply(state: Typing, event: GatewayEvent): void {
   switch (event.t) {
     case "TYPING_START": {
-      const { member } = event.d;
+      const { user_id, member } = event.d;
       // The bot only types while simon-bot composes a reply.
-      const name = member?.user.bot
-        ? BOT_USERNAME
-        : member && displayName(member.user, member);
+      const name =
+        user_id === getBotUserId()
+          ? BOT_USERNAME
+          : member && displayName(member.user, member);
       if (!name) return;
       const started = !state.typists.has(name);
       clearTimeout(state.typists.get(name));

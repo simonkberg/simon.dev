@@ -190,7 +190,10 @@ describe("ChannelStore", () => {
   it("should leave typing to the typing tracker", async () => {
     const { store, source } = createStore();
 
-    store.apply({ t: "TYPING_START", d: { channel_id: CHANNEL } });
+    store.apply({
+      t: "TYPING_START",
+      d: { channel_id: CHANNEL, user_id: "user-1" },
+    });
     await vi.advanceTimersByTimeAsync(0);
 
     expect(source.fetchMessages).not.toHaveBeenCalled();

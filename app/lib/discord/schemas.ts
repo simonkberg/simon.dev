@@ -127,7 +127,10 @@ export const ChannelEventSchema = z.discriminatedUnion("t", [
   }),
   z.object({
     t: z.literal("TYPING_START"),
-    d: ChannelSchema.extend({ member: GuildMemberSchema.optional() }),
+    d: ChannelSchema.extend({
+      user_id: z.string(),
+      member: GuildMemberSchema.optional(),
+    }),
   }),
 ]);
 
