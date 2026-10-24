@@ -34,7 +34,12 @@ const years: ScrobbleCount[] = [
     current: false,
   },
   { label: "2019", count: 20, topArtist: smog(2), current: false },
-  { label: "2020", count: 0, topArtist: undefined, current: true },
+  {
+    label: "2020",
+    count: 10,
+    topArtist: { name: "Bill Callahan", playcount: 4 },
+    current: true,
+  },
 ];
 
 const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
@@ -68,7 +73,25 @@ describe("ScrobbleChart", () => {
       within(lanes)
         .getAllByRole("listitem")
         .map((item) => item.querySelector(".visually-hidden")?.textContent),
-    ).toEqual(["Smog: 2016–2017, 2019, 14 plays", "Low: 2018, 3 plays"]);
+    ).toEqual([
+      "Smog: 2016–2017, 2019, 14 plays",
+      "Low: 2018, 3 plays",
+      "Bill Callahan: 2020, 4 plays",
+    ]);
+  });
+
+  it("ends a late lane's name at its run and dashes the current one", async () => {
+    await renderChart(years);
+    const [smogLane, , lateLane] = within(
+      screen.getByRole("list", { name: "Top artist by year" }),
+    ).getAllByRole("listitem");
+
+    expect(smogLane?.querySelector("[data-end]")).not.toBeInTheDocument();
+    expect(smogLane?.querySelector("[data-current]")).not.toBeInTheDocument();
+    expect(lateLane?.querySelector(".lane-label")).toHaveAttribute("data-end");
+    expect(lateLane?.querySelector(".lane-run")).toHaveAttribute(
+      "data-current",
+    );
   });
 
   it("lights a lane's stems while it is hovered", async () => {

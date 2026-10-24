@@ -124,27 +124,33 @@ const Stems = ({
 
 interface Lane {
   name: string;
-  runs: Run[];
+  runs: (Run & { current: boolean })[];
   plays: number;
+  first: number;
+  last: number;
 }
 
 // One lane per top artist, in order of first appearance, with a run per stretch of its years.
 const lanes = (items: readonly ScrobbleCount[]): Lane[] => {
   const byName = new Map<string, Lane>();
-  items.forEach(({ topArtist }, index) => {
+  items.forEach(({ topArtist, current }, index) => {
     if (!topArtist) return;
     const lane = byName.get(topArtist.name) ?? {
       name: topArtist.name,
       runs: [],
       plays: 0,
+      first: index,
+      last: index,
     };
     byName.set(topArtist.name, lane);
     lane.plays += topArtist.playcount;
+    lane.last = index;
     const run = lane.runs.at(-1);
     if (run?.last === index - 1) {
       run.last = index;
+      run.current = current;
     } else {
-      lane.runs.push({ first: index, last: index });
+      lane.runs.push({ first: index, last: index, current });
     }
   });
   return [...byName.values()];
@@ -160,9 +166,7 @@ const Lanes = ({
   <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
     {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
     <ol aria-label="Top artist by year" onPointerLeave={() => onActive([])}>
-      {lanes(items).map(({ name, runs, plays }) => {
-        const first = runs[0]?.first ?? 0;
-        const last = runs.at(-1)?.last ?? 0;
+      {lanes(items).map(({ name, runs, plays, first, last }) => {
         const end = first > items.length / 2;
         const years = runs
           .map((run) => {
@@ -194,7 +198,7 @@ const Lanes = ({
                 key={run.first}
                 className="lane-run"
                 style={{ gridColumn: `${run.first + 1} / ${run.last + 2}` }}
-                data-current={items[run.last]?.current || undefined}
+                data-current={run.current || undefined}
               />
             ))}
           </li>
