@@ -1,6 +1,8 @@
 import { arrayIncludes } from "ts-extras";
 
+import { getArtistPlays, getRandomTrack } from "@/actions/lastfm";
 import { forgetMe, getNotesOnMe } from "@/actions/simonBot";
+import { formatNumber } from "@/lib/formatNumber";
 import {
   currentPreference,
   type Preference,
@@ -15,23 +17,27 @@ export type CommandResult =
 export interface Command {
   name: string;
   description: string;
+  /** What the command takes, shown after its name. */
+  argument?: string;
   preference?: Preference;
   run: (argument: string) => CommandResult | Promise<CommandResult>;
 }
 
-const usage = ({ name, preference }: Command) =>
-  preference ? `/${name} ${preference.options.join("|")}` : `/${name}`;
+const usage = ({ name, argument }: Command) =>
+  argument ? `/${name} ${argument}` : `/${name}`;
 
 function preferenceCommand(preference: Preference): Command {
   const command: Command = {
     name: preference.label,
     description: `Switch the ${preference.label}`,
+    argument: preference.options.join("|"),
     preference,
     run(argument) {
-      if (!arrayIncludes(preference.options, argument)) {
+      const option = argument.toLowerCase();
+      if (!arrayIncludes(preference.options, option)) {
         return { status: "error", error: `Usage: ${usage(command)}` };
       }
-      setPreference(preference, argument);
+      setPreference(preference, option);
       return { status: "ok" };
     },
   };
@@ -90,6 +96,40 @@ export const commands: readonly Command[] = [
       };
     },
   },
+  {
+    name: "plays",
+    description: "Count Simon's plays of an artist",
+    argument: "<artist>",
+    async run(argument) {
+      if (!argument)
+        return { status: "error", error: "Usage: /plays <artist>" };
+      const result = await getArtistPlays(argument);
+      if (result.status === "error") return result;
+      if (!result.data) {
+        return { status: "error", error: `Last.fm doesn't know ${argument}.` };
+      }
+      const { name, plays } = result.data;
+      return {
+        status: "ok",
+        output: [
+          `Simon has played ${name} ${formatNumber(plays)} ${plays === 1 ? "time" : "times"}.`,
+        ],
+      };
+    },
+  },
+  {
+    name: "shuffle",
+    description: "Pick a random track from Simon's history",
+    async run() {
+      const result = await getRandomTrack();
+      if (result.status === "error") return result;
+      const { name, artist, played } = result.data;
+      return {
+        status: "ok",
+        output: [`${name} by ${artist}, played ${played}.`],
+      };
+    },
+  },
 ];
 
 /** The message to send, or null for a command: a leading slash runs one, and two send one. */
@@ -104,9 +144,9 @@ const findCommand = (name: string | undefined) =>
 export function runCommand(
   text: string,
 ): CommandResult | Promise<CommandResult> {
-  const body = text.slice(1).toLowerCase();
+  const body = text.slice(1);
   const space = body.search(/\s/);
-  const name = space === -1 ? body : body.slice(0, space);
+  const name = (space === -1 ? body : body.slice(0, space)).toLowerCase();
   const command = findCommand(name);
   if (!command) {
     return {
@@ -149,7 +189,7 @@ export function typedCommand(text: string) {
           label: usage(command),
           detail: command.description,
         })),
-      complete: typed !== undefined && !typed.preference,
+      complete: typed !== undefined && typed.argument === undefined,
     };
   }
   const [, commandName, argument] = ARGUMENT.exec(before) ?? [];

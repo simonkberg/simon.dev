@@ -29,26 +29,41 @@ export function isValidPeriod(value: unknown): value is Period {
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
+export class LastFmError extends Error {
+  readonly code: number;
+
+  constructor(message: string, code: number) {
+    super(message);
+    this.name = "LastFmError";
+    this.code = code;
+  }
+}
+
+const errorSchema = z.object({ error: z.number(), message: z.string() });
+
 async function call<T extends z.ZodType>(
   method: string,
   schema: T,
-  params: Record<string, unknown> = {},
+  params: Record<string, string | number | undefined> = {},
 ): Promise<z.infer<T>> {
   const url = new URL(BASE_URL);
   url.searchParams.set("method", method);
   url.searchParams.set("api_key", env.LAST_FM_API_KEY);
   url.searchParams.set("format", "json");
   for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, String(value));
+    if (value !== undefined) url.searchParams.set(key, String(value));
   }
 
   const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const json: unknown = await response.json().catch(() => undefined);
+  const error = errorSchema.safeParse(json);
+  if (error.success)
+    throw new LastFmError(error.data.message, error.data.error);
   if (!response.ok) {
     throw new Error(
       `Last.fm API error: ${response.status} ${response.statusText}`,
     );
   }
-  const json = await response.json();
 
   return schema.parse(json);
 }
@@ -251,11 +266,12 @@ const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
 
 export async function userGetScrobbles(
   user: string,
-  params: { from: Date; to: Date; limit: number },
+  params: { from: Date; to: Date; limit: number; page?: number },
 ): Promise<UserGetScrobblesResponse> {
   return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
     user,
     limit: params.limit,
+    page: params.page,
     ...rangeParams(params),
   });
 }
@@ -288,4 +304,34 @@ export async function userGetTopArtistInRange(
     userGetTopArtistInRangeResponseSchema,
     { user, ...rangeParams(params) },
   );
+}
+
+const artistGetInfoResponseSchema = z
+  .object({
+    artist: z.object({
+      name: z.string(),
+      stats: z.object({
+        userplaycount: z.string().default("0").transform(Number),
+      }),
+    }),
+  })
+  .transform(({ artist }) => ({
+    name: artist.name,
+    plays: artist.stats.userplaycount,
+  }));
+
+const ARTIST_NOT_FOUND = 6;
+
+/** The artist's name as Last.fm spells it and the user's plays of them, or undefined for an unknown artist. */
+export async function artistGetUserPlays(user: string, artist: string) {
+  try {
+    return await call("artist.getinfo", artistGetInfoResponseSchema, {
+      artist,
+      username: user,
+      autocorrect: 1,
+    });
+  } catch (err) {
+    if (err instanceof LastFmError && err.code === ARTIST_NOT_FOUND) return;
+    throw err;
+  }
 }

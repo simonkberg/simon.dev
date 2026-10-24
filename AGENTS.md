@@ -186,8 +186,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   changes the server render.
 - **Chat commands:** a leading `/` in the chat input runs a command from
   `app/components/chat/commands.ts` instead of posting; `//` sends one slash. They run in the
-  browser (`/whoami` and `/forget` through a server action, on simon-bot's `people/<username>`
-  notes) and print their output above the input for that visitor only, never to Discord. The
+  browser (some through a server action: simon-bot's `people/<username>` notes, Last.fm) and
+  print their output above the input for that visitor only, never to Discord. The
   input suggests them as it does `:` shortcodes, from the same combobox (`ChatSuggestInput`).
 - **WakaTime:** reads a public share URL, so there is no API key. 3s timeout; Last.fm 10s.
 - **Scrobble charts:** Last.fm has no stats endpoint, so the listening page counts each

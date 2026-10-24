@@ -47,6 +47,13 @@ export const dayLabel = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+export const dateLabel = new Intl.DateTimeFormat("en-US", {
+  timeZone,
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
 const labels = {
   day: dayLabel,
   week: dayLabel,

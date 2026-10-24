@@ -2,6 +2,7 @@ import { cacheLife, refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  artistGetUserPlays,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopArtistInRange,
@@ -16,6 +17,8 @@ import {
 import { log } from "@/lib/log";
 
 import {
+  getArtistPlays,
+  getRandomTrack,
   getRecentTracks,
   getOnThisDay,
   getScrobbles,
@@ -28,6 +31,7 @@ import {
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
+  artistGetUserPlays: vi.fn(),
   userGetRecentTracks: vi.fn(),
   userGetScrobbles: vi.fn(),
   userGetTopArtistInRange: vi.fn(),
@@ -374,6 +378,96 @@ describe("getOnThisDay", () => {
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getOnThisDay" },
       "Error fetching on this day",
+    );
+  });
+});
+
+describe("getArtistPlays", () => {
+  it("should return the plays and cache them for minutes", async () => {
+    vi.mocked(artistGetUserPlays).mockResolvedValue({
+      name: "Radiohead",
+      plays: 1234,
+    });
+
+    await expect(getArtistPlays(" radiohead ")).resolves.toEqual({
+      status: "ok",
+      data: { name: "Radiohead", plays: 1234 },
+    });
+    expect(artistGetUserPlays).toHaveBeenCalledExactlyOnceWith(
+      "magijo",
+      "radiohead",
+    );
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+  });
+
+  it("should return null for an artist Last.fm doesn't know", async () => {
+    vi.mocked(artistGetUserPlays).mockResolvedValue(undefined);
+
+    await expect(getArtistPlays("nobody")).resolves.toEqual({
+      status: "ok",
+      data: null,
+    });
+  });
+
+  it("should return an error and cache it briefly when the fetch fails", async () => {
+    const err = new Error("API error");
+    vi.mocked(artistGetUserPlays).mockRejectedValue(err);
+
+    await expect(getArtistPlays("Radiohead")).resolves.toEqual({
+      status: "error",
+      error: "Failed to fetch plays",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err, action: "getArtistPlays" },
+      "Error fetching artist plays",
+    );
+  });
+});
+
+describe("getRandomTrack", () => {
+  const scrobble: RecentTrack = {
+    name: "Idioteque",
+    artist: "Radiohead",
+    album: "Kid A",
+    playedAt: new Date("2014-03-03T12:00:00Z"),
+    nowPlaying: false,
+    loved: false,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-24T20:00:00Z"));
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+  });
+
+  it("should read the scrobble on a random page of all time", async () => {
+    vi.mocked(userGetScrobbles)
+      .mockResolvedValueOnce({ total: 10, tracks: [] })
+      .mockResolvedValueOnce({ total: 10, tracks: [scrobble] });
+
+    await expect(getRandomTrack()).resolves.toEqual({
+      status: "ok",
+      data: { name: "Idioteque", artist: "Radiohead", played: "Mar 3, 2014" },
+    });
+    expect(userGetScrobbles).toHaveBeenLastCalledWith("magijo", {
+      from: new Date(0),
+      to: new Date("2026-10-24T20:00:00Z"),
+      limit: 1,
+      page: 6,
+    });
+  });
+
+  it("should return an error when the page has no scrobble", async () => {
+    vi.mocked(userGetScrobbles).mockResolvedValue({ total: 0, tracks: [] });
+
+    await expect(getRandomTrack()).resolves.toEqual({
+      status: "error",
+      error: "Failed to fetch a random track",
+    });
+    expect(log.error).toHaveBeenCalledWith(
+      { err: new Error("No scrobble on the page"), action: "getRandomTrack" },
+      "Error fetching random track",
     );
   });
 });

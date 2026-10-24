@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getArtistPlays, getRandomTrack } from "@/actions/lastfm";
 import { forgetMe, getNotesOnMe } from "@/actions/simonBot";
 import type { Username } from "@/lib/session";
 import { resetPreferences } from "@/mocks/preferences";
 
 import { runCommand } from "./commands";
+
+vi.mock(import("@/actions/lastfm"), () => ({
+  getArtistPlays: vi.fn(),
+  getRandomTrack: vi.fn(),
+}));
 
 vi.mock(import("@/actions/simonBot"), () => ({
   forgetMe: vi.fn(),
@@ -25,6 +31,8 @@ describe("runCommand", () => {
         "/theme system|light|dark    Switch the theme",
         "/whoami                     Show what simon-bot knows about you",
         "/forget                     Make simon-bot forget you",
+        "/plays <artist>             Count Simon's plays of an artist",
+        "/shuffle                    Pick a random track from Simon's history",
       ],
     });
   });
@@ -71,6 +79,8 @@ describe("runCommand", () => {
   it.each([
     ["/whoami", getNotesOnMe],
     ["/forget", forgetMe],
+    ["/plays Radiohead", getArtistPlays],
+    ["/shuffle", getRandomTrack],
   ])("passes on the error from %s", async (text, action) => {
     const error = { status: "error", error: "Failed" } as const;
     vi.mocked(action).mockResolvedValue(error);
@@ -84,6 +94,51 @@ describe("runCommand", () => {
     await expect(runCommand("/forget")).resolves.toEqual({
       status: "error",
       error: "Couldn't run /forget. Try again.",
+    });
+  });
+
+  it.each([
+    [1, "Simon has played Radiohead 1 time."],
+    [1234, "Simon has played Radiohead 1,234 times."],
+  ])("counts %i plays of an artist", async (plays, line) => {
+    vi.mocked(getArtistPlays).mockResolvedValue({
+      status: "ok",
+      data: { name: "Radiohead", plays },
+    });
+
+    await expect(runCommand("/Plays the Radiohead")).resolves.toEqual({
+      status: "ok",
+      output: [line],
+    });
+    expect(getArtistPlays).toHaveBeenCalledExactlyOnceWith("the Radiohead");
+  });
+
+  it("says when Last.fm doesn't know the artist", async () => {
+    vi.mocked(getArtistPlays).mockResolvedValue({ status: "ok", data: null });
+
+    await expect(runCommand("/plays Nobody")).resolves.toEqual({
+      status: "error",
+      error: "Last.fm doesn't know Nobody.",
+    });
+  });
+
+  it("shows the usage for plays without an artist", async () => {
+    await expect(runCommand("/plays")).resolves.toEqual({
+      status: "error",
+      error: "Usage: /plays <artist>",
+    });
+    expect(getArtistPlays).not.toHaveBeenCalled();
+  });
+
+  it("shows a random track", async () => {
+    vi.mocked(getRandomTrack).mockResolvedValue({
+      status: "ok",
+      data: { name: "Idioteque", artist: "Radiohead", played: "Mar 3, 2014" },
+    });
+
+    await expect(runCommand("/shuffle")).resolves.toEqual({
+      status: "ok",
+      output: ["Idioteque by Radiohead, played Mar 3, 2014."],
     });
   });
 });

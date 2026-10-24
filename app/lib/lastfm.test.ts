@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { server } from "@/mocks/node";
 
 import {
+  artistGetUserPlays,
+  LastFmError,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -118,6 +120,15 @@ describe("userGetRecentTracks", () => {
     await userGetRecentTracks("testuser");
 
     expect(timeoutSpy).toHaveBeenCalledWith(10000);
+  });
+
+  it("should throw Last.fm's own error, whatever the HTTP status", async () => {
+    lastfmReturns({ error: 29, message: "Rate limit exceeded" });
+
+    const error = await userGetRecentTracks("testuser").catch((err) => err);
+
+    expect(error).toBeInstanceOf(LastFmError);
+    expect(error).toMatchObject({ code: 29, message: "Rate limit exceeded" });
   });
 
   it("should handle an HTTP error", async () => {
@@ -291,8 +302,10 @@ describe("userGetScrobbles", () => {
       limit: 1,
     });
 
-    expect(params()).toMatchObject({
+    expect(params()).toEqual({
       method: "user.getrecenttracks",
+      api_key: "test-last-fm-api-key",
+      format: "json",
       user: "testuser",
       limit: "1",
       from: "1609459200",
@@ -302,6 +315,21 @@ describe("userGetScrobbles", () => {
       total: 1234,
       tracks: [expect.objectContaining({ name: "Test" })],
     });
+  });
+
+  it("should ask for a page", async () => {
+    const params = lastfmReturns({
+      recenttracks: { track: [], "@attr": { total: "0" } },
+    });
+
+    await userGetScrobbles("testuser", {
+      from: new Date("2021-01-01T00:00:00Z"),
+      to: new Date("2021-01-02T00:00:00Z"),
+      limit: 1,
+      page: 7,
+    });
+
+    expect(params()).toMatchObject({ page: "7" });
   });
 
   it("should read a range with one scrobble, which Last.fm lists bare", async () => {
@@ -355,5 +383,54 @@ describe("userGetTopArtistInRange", () => {
     lastfmReturns({ weeklyartistchart: {} });
 
     expect(await userGetTopArtistInRange("testuser", range)).toBeUndefined();
+  });
+});
+
+describe("artistGetUserPlays", () => {
+  it("should read the user's plays of the artist, as Last.fm spells them", async () => {
+    const params = lastfmReturns({
+      artist: { name: "Radiohead", stats: { userplaycount: "1234" } },
+    });
+
+    await expect(artistGetUserPlays("testuser", "radiohed")).resolves.toEqual({
+      name: "Radiohead",
+      plays: 1234,
+    });
+    expect(params()).toMatchObject({
+      method: "artist.getinfo",
+      artist: "radiohed",
+      username: "testuser",
+      autocorrect: "1",
+    });
+  });
+
+  it("should count no plays when Last.fm leaves the count out", async () => {
+    lastfmReturns({ artist: { name: "Radiohead", stats: {} } });
+
+    await expect(artistGetUserPlays("testuser", "Radiohead")).resolves.toEqual({
+      name: "Radiohead",
+      plays: 0,
+    });
+  });
+
+  it("should return undefined for an artist Last.fm doesn't know", async () => {
+    lastfmReturns(
+      HttpResponse.json(
+        { error: 6, message: "The artist you supplied could not be found" },
+        { status: 404 },
+      ),
+    );
+
+    await expect(
+      artistGetUserPlays("testuser", "nobody"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("should throw any other error", async () => {
+    lastfmReturns({ error: 29, message: "Rate limit exceeded" });
+
+    await expect(artistGetUserPlays("testuser", "Radiohead")).rejects.toThrow(
+      "Rate limit exceeded",
+    );
   });
 });

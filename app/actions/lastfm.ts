@@ -1,9 +1,11 @@
 "use server";
 
 import { cacheLife, refresh } from "next/cache";
+import { z } from "zod";
 
 import { config } from "@/config";
 import {
+  artistGetUserPlays,
   type Period,
   userGetRecentTracks,
   userGetScrobbles,
@@ -19,6 +21,7 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
+  dateLabel,
   dayLabel,
   sameDayBuckets,
   scrobbleBuckets,
@@ -271,5 +274,73 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
     cacheLife("seconds");
     log.error({ err, action: "getOnThisDay" }, "Error fetching on this day");
     return { status: "error", error: "Failed to fetch on this day" };
+  }
+}
+
+export type GetArtistPlaysResult =
+  | { status: "ok"; data: { name: string; plays: number } | null }
+  | { status: "error"; error: string };
+
+const ArtistSchema = z.string().trim().min(1).max(200);
+
+export async function getArtistPlays(
+  artist: string,
+): Promise<GetArtistPlaysResult> {
+  "use cache";
+
+  try {
+    const plays = await artistGetUserPlays(
+      config.lastfmUsername,
+      ArtistSchema.parse(artist),
+    );
+    cacheLife("minutes");
+    return { status: "ok", data: plays ?? null };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getArtistPlays" }, "Error fetching artist plays");
+    return { status: "error", error: "Failed to fetch plays" };
+  }
+}
+
+const allTime = () => ({ from: new Date(0), to: new Date() });
+
+async function getScrobbleTotal(): Promise<number> {
+  "use cache";
+  cacheLife("hours");
+  const scrobbles = await userGetScrobbles(config.lastfmUsername, {
+    ...allTime(),
+    limit: 1,
+  });
+  return scrobbles.total;
+}
+
+export type ShuffledTrack = { name: string; artist: string; played: string };
+
+export type GetRandomTrackResult =
+  | { status: "ok"; data: ShuffledTrack }
+  | { status: "error"; error: string };
+
+export async function getRandomTrack(): Promise<GetRandomTrackResult> {
+  try {
+    const total = await getScrobbleTotal();
+    // One track per page, so a page is a scrobble.
+    const { tracks } = await userGetScrobbles(config.lastfmUsername, {
+      ...allTime(),
+      limit: 1,
+      page: 1 + Math.floor(Math.random() * total),
+    });
+    const track = tracks[0];
+    if (!track?.playedAt) throw new Error("No scrobble on the page");
+    return {
+      status: "ok",
+      data: {
+        name: track.name,
+        artist: track.artist,
+        played: dateLabel.format(track.playedAt),
+      },
+    };
+  } catch (err) {
+    log.error({ err, action: "getRandomTrack" }, "Error fetching random track");
+    return { status: "error", error: "Failed to fetch a random track" };
   }
 }
