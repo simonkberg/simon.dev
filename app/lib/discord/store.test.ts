@@ -35,7 +35,7 @@ function createStore(messages: DiscordMessage[] = [message("1")]) {
     botUserId: vi.fn<StoreSource["botUserId"]>(() => BOT),
   };
   const store = new ChannelStore(source);
-  const listener = vi.fn();
+  const listener = vi.fn(() => store.revision);
   store.listen(listener);
   return { store, source, listener };
 }
@@ -135,9 +135,10 @@ beforeEach(() => {
 });
 
 describe("ChannelStore", () => {
-  it("should tell listeners when a seed lands and after each change, not before", async () => {
+  it("should tell listeners, with a new revision, when a seed lands and after each change, not before", async () => {
     const { store, source, listener } = createStore();
     const first = defer(source.fetchMessages);
+    const initial = store.revision;
 
     const messages = store.messages();
     store.apply({ t: "READY" });
@@ -148,6 +149,8 @@ describe("ChannelStore", () => {
 
     store.apply(del("1"));
     expect(listener).toHaveBeenCalledTimes(2);
+    const revisions = listener.mock.results.map((r) => r.value);
+    expect(new Set([initial, ...revisions]).size).toBe(3);
   });
 
   it("should retry a failed first seed later, sooner after an event", async () => {

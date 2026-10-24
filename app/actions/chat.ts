@@ -7,6 +7,7 @@ import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
   getChannelMessages,
+  getChannelRevision,
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
@@ -29,15 +30,22 @@ export type ChatHistoryResult =
   | { status: "error"; error: string };
 
 export async function getChatHistory(): Promise<ChatHistoryResult> {
+  return getChatHistoryAt(getChannelRevision());
+}
+
+// Keyed on the revision, so every render between two changes shares one.
+async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
   "use cache";
-  cacheLife("seconds");
   cacheTag("getChatHistory");
 
   try {
     const messages = await withSiteReactions(await getChannelMessages());
+    // Bounds a lookup that failed or a bot reaction no event announced.
+    cacheLife("minutes");
     return { status: "ok", messages };
   } catch (err) {
     log.error({ err, action: "getChatHistory" }, "Error fetching chat history");
+    cacheLife("seconds");
     return { status: "error", error: "Failed to fetch chat history" };
   }
 }
@@ -65,11 +73,6 @@ async function admit(
     };
   }
   return null;
-}
-
-export async function refreshChatHistory() {
-  updateTag("getChatHistory");
-  refresh();
 }
 
 export async function dismissChatTip() {

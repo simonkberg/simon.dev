@@ -6,7 +6,6 @@ import {
   getChatHistory,
   postChatMessage,
   reactToChatMessage,
-  refreshChatHistory,
 } from "@/actions/chat";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
@@ -117,21 +116,15 @@ describe("getChatHistory", () => {
     });
   });
 
-  it("sets cache life and tag", async () => {
-    vi.mocked(getChannelMessages).mockResolvedValue([]);
-
+  it("caches a success for minutes and an error for seconds, by tag", async () => {
+    vi.mocked(getChannelMessages).mockResolvedValueOnce([]);
     await getChatHistory();
-
-    expect(cacheLife).toHaveBeenCalledWith("seconds");
+    expect(cacheLife).toHaveBeenLastCalledWith("minutes");
     expect(cacheTag).toHaveBeenCalledWith("getChatHistory");
-  });
-});
 
-describe("refreshChatHistory", () => {
-  it("calls updateTag and refresh", async () => {
-    await refreshChatHistory();
-    expect(updateTag).toHaveBeenCalledWith("getChatHistory");
-    expect(refresh).toHaveBeenCalled();
+    vi.mocked(getChannelMessages).mockRejectedValueOnce(new Error("down"));
+    await getChatHistory();
+    expect(cacheLife).toHaveBeenLastCalledWith("seconds");
   });
 });
 
