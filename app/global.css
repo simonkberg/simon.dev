@@ -121,6 +121,15 @@
   --lane-hover-bg: var(--heat);
   --lane-hover-color: var(--accent);
 
+  --collage-gap: 0.75rem;
+  --collage-bg: transparent;
+  --collage-border: none;
+  --cover-bg: var(--wash);
+  --cover-filter: none;
+  --cover-blend: normal;
+  --cover-overlay: none;
+  --cover-frame: none;
+  --cover-frame-hover: var(--cover-frame);
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -327,6 +336,13 @@
   --stats-row-bleed: -1ch;
   --stats-heat: var(--heat);
   --stems-hover-bg: var(--heat);
+  --cover-filter: saturate(0.85) contrast(1.05);
+  --cover-overlay: repeating-linear-gradient(
+    light-dark(oklch(1 0 0 / 0.1), oklch(0 0 0 / 0.18)) 0 1px,
+    transparent 1px 3px
+  );
+  --cover-frame: 1px solid var(--rule);
+  --cover-frame-hover: 1px solid var(--accent);
 
   --track-padding: 0 0 0 2.5ch;
   --track-marker: "›";
@@ -461,6 +477,15 @@
   --stems-color: var(--accent);
   --stems-base-color: var(--rule);
   --stems-hover: var(--ink);
+  --collage-gap: 1px;
+  --collage-bg: var(--rule);
+  --collage-border: 1px solid var(--rule);
+  --cover-bg: light-dark(
+    color-mix(in oklch, var(--accent) 35%, white),
+    color-mix(in oklch, var(--accent) 60%, var(--ground))
+  );
+  --cover-filter: grayscale(1) contrast(1.1);
+  --cover-blend: multiply;
   --lane-weight: 2px;
   --timeline-origin: "◇";
   --timeline-bar: "─";
@@ -596,6 +621,11 @@
   --stems-color: var(--ink);
   --stems-base-color: var(--ink);
   --stems-hover: var(--muted);
+  --cover-filter: url(#cover-dither);
+  --cover-overlay: linear-gradient(
+    light-dark(transparent, oklch(0 0 0 / 0.15)) 0 100%
+  );
+  --cover-frame: 1px solid var(--ink);
   --lane-hover-bg: var(--ink);
   --lane-hover-color: var(--ground);
   --timeline-bar: "█";
@@ -2312,11 +2342,11 @@ td {
   + td {
     padding-left: 2ch;
   }
+}
 
-  &.numeric {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 tbody tr:first-child td {
@@ -2329,6 +2359,137 @@ td:first-child {
 
 tbody tr:hover {
   background: var(--row-hover);
+}
+
+.collage {
+  display: grid;
+  gap: 1lh;
+  container-type: inline-size;
+}
+
+.collage-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.collage-covers {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--collage-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--collage-bg);
+  border: var(--collage-border);
+
+  /* The top album spans three rows and columns; equal gaps keep it square with them. */
+  > :first-child {
+    grid-column: span 3;
+    grid-row: span 3;
+  }
+
+  @container (width < 36rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    > :first-child {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+  }
+}
+
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--cover-bg);
+  outline: var(--cover-frame);
+  text-decoration: none;
+
+  img {
+    object-fit: cover;
+  }
+
+  &:is(:hover, :focus-visible) {
+    outline: var(--cover-frame-hover);
+
+    .cover-filtered {
+      opacity: 0;
+    }
+  }
+}
+
+.cover-filtered {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  background: var(--cover-bg);
+  transition: opacity 0.3s ease;
+
+  img {
+    filter: var(--cover-filter);
+    mix-blend-mode: var(--cover-blend);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--cover-overlay);
+  }
+}
+
+.cover-rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0 1ch;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
+.collage-legend {
+  columns: 2;
+  column-gap: 3ch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @container (width < 36rem) {
+    columns: 1;
+  }
+
+  > li {
+    display: grid;
+    break-inside: avoid;
+    grid-template-columns: 3ch minmax(0, 1fr) auto;
+    column-gap: 1ch;
+    padding: var(--td-padding);
+    border-bottom: var(--td-rule);
+  }
+}
+
+.legend-rank {
+  color: var(--rank-color);
+}
+
+.legend-name,
+.legend-artist {
+  overflow-wrap: anywhere;
+}
+
+.legend-artist {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.legend-plays {
+  grid-area: 1 / 3;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

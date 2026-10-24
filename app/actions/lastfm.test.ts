@@ -34,6 +34,7 @@ vi.mock(import("@/lib/lastfm"), () => ({
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
+  TOP_ALBUMS: 10 as const,
 }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));
@@ -174,8 +175,14 @@ describe("getTopArtists", () => {
 describe("getTopAlbums", () => {
   it("should return success status with albums", async () => {
     const mockAlbums: UserGetTopAlbumsResponse = [
-      { name: "Album 1", artist: "Artist 1", playcount: 200, rank: 1 },
-      { name: "Album 2", artist: "Artist 2", playcount: 150, rank: 2 },
+      {
+        name: "Album 1",
+        artist: "Artist 1",
+        playcount: 200,
+        rank: 1,
+        url: "https://www.last.fm/music/Artist+1/Album+1",
+        cover: undefined,
+      },
     ];
 
     vi.mocked(userGetTopAlbums).mockResolvedValue(mockAlbums);

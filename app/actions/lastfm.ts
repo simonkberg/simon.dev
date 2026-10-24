@@ -5,6 +5,7 @@ import { cacheLife, refresh } from "next/cache";
 import { config } from "@/config";
 import {
   type Period,
+  TOP_ALBUMS,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopArtistInRange,
@@ -118,7 +119,7 @@ export async function getTopAlbums(
   try {
     const albums = await userGetTopAlbums(config.lastfmUsername, {
       period,
-      limit: 10,
+      limit: TOP_ALBUMS,
     });
     cacheLife("hours");
     return { status: "ok", albums };

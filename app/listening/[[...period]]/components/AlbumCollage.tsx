@@ -1,0 +1,172 @@
+import Image from "next/image";
+import { use } from "react";
+
+import type { TopAlbum } from "@/actions/lastfm";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { ExternalLink } from "@/components/ExternalLink";
+import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
+import { TOP_ALBUMS } from "@/lib/lastfm";
+
+export interface AlbumCollageProps {
+  // Undefined when the list failed to load.
+  albums: Promise<readonly TopAlbum[] | undefined>;
+}
+
+const bayer = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
+
+const bayerTile = `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4">${bayer
+    .flatMap((row, y) =>
+      row.map((value, x) => {
+        const level = Math.round(((value + 0.5) / 16) * 255);
+        return `<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${level},${level},${level})"/>`;
+      }),
+    )
+    .join("")}</svg>`,
+)}`;
+
+// Ordered dithering to black, grey and white, for looks that set
+// `--cover-filter: url(#cover-dither)`.
+const Dither = () => (
+  <svg className="collage-filters" aria-hidden="true">
+    <filter
+      id="cover-dither"
+      colorInterpolationFilters="sRGB"
+      x="0"
+      y="0"
+      width="100%"
+      height="100%"
+    >
+      <feColorMatrix
+        type="matrix"
+        values="0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0.2126 0.7152 0.0722 0 0 0 0 0 1 0"
+        result="gray"
+      />
+      <feImage href={bayerTile} width="4" height="4" result="cell" />
+      <feTile in="cell" result="threshold" />
+      <feComposite
+        in="gray"
+        in2="threshold"
+        operator="arithmetic"
+        k2="0.667"
+        k3="0.333"
+      />
+      <feComponentTransfer>
+        <feFuncR type="discrete" tableValues="0 0.55 1" />
+        <feFuncG type="discrete" tableValues="0 0.55 1" />
+        <feFuncB type="discrete" tableValues="0 0.55 1" />
+      </feComponentTransfer>
+    </filter>
+  </svg>
+);
+
+// The filtered copy fades out over the plain cover, since `url()` filters and blend modes can't transition.
+const CoverImage = ({ src, sizes }: { src: string; sizes: string }) => {
+  const image = <Image src={src} sizes={sizes} alt="" fill />;
+  return (
+    <>
+      {image}
+      <span className="cover-filtered">{image}</span>
+    </>
+  );
+};
+
+export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
+  const items = use(albums);
+
+  if (items === undefined) {
+    return <p>Top albums are temporarily unavailable :(</p>;
+  }
+
+  return (
+    <div className="collage">
+      <Dither />
+      <ol className="collage-covers">
+        {items.map((album, index) => (
+          <li key={album.rank}>
+            <ExternalLink href={album.url} className="cover">
+              {album.cover && (
+                <CoverImage
+                  src={album.cover}
+                  sizes={index === 0 ? "(width < 40rem) 100vw, 30rem" : "10rem"}
+                />
+              )}
+              <span className="cover-rank" aria-hidden="true">
+                {album.rank}
+              </span>
+              <span className="visually-hidden">
+                {album.name} by {album.artist} on Last.fm
+              </span>
+            </ExternalLink>
+          </li>
+        ))}
+        {/* Short lists are padded so the #1 tile never sits beside gaps. */}
+        {Array.from({ length: TOP_ALBUMS - items.length }, (_, index) => (
+          <li key={`empty-${index}`} aria-hidden="true">
+            <span className="cover" />
+          </li>
+        ))}
+      </ol>
+      <ol className="collage-legend">
+        {items.map((album) => (
+          <li key={album.rank}>
+            <span className="legend-rank numeric">{album.rank}</span>
+            <span className="legend-name">{album.name}</span>
+            <span className="legend-artist">{album.artist}</span>
+            <span className="legend-plays numeric">
+              <AnimatedNumber value={album.playcount} />
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+};
+
+const nameWidths = [
+  [14, 6],
+  [19, 11],
+  [8, 7],
+  [22, 7],
+  [15, 8],
+  [13, 18],
+  [26, 11],
+  [16, 9],
+  [10, 12],
+  [20, 10],
+] as const;
+
+export const AlbumCollageSkeleton = () => (
+  <SkeletonStatus>
+    <div className="collage placeholder" aria-hidden="true">
+      <ol className="collage-covers">
+        {nameWidths.map((_, index) => (
+          <li key={index}>
+            <span className="cover" />
+          </li>
+        ))}
+      </ol>
+      <ol className="collage-legend">
+        {nameWidths.map(([name, artist], index) => (
+          <li key={index}>
+            <span className="legend-rank numeric">{index + 1}</span>
+            <span className="legend-name">
+              <Skeleton width={name} />
+            </span>
+            <span className="legend-artist">
+              <Skeleton width={artist} />
+            </span>
+            <span className="legend-plays numeric">
+              <Skeleton width={3} />
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </SkeletonStatus>
+);

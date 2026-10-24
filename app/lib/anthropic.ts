@@ -347,7 +347,11 @@ async function executeTool(
       }
       case "get_top_albums": {
         const { username, ...params } = topItemsInputSchema.parse(input);
-        return JSON.stringify(await userGetTopAlbums(username, params));
+        const albums = await userGetTopAlbums(username, params);
+        // The cover URL is for the site's collage; the model has no use for it.
+        return JSON.stringify(albums, (key, value: unknown) =>
+          key === "cover" ? undefined : value,
+        );
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);

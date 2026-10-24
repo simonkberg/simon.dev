@@ -883,6 +883,24 @@ describe("createMessage", () => {
       },
     );
 
+    it("should leave album covers out of the top albums result", async () => {
+      const album = {
+        name: "Knock Knock",
+        artist: "Smog",
+        playcount: 31,
+        rank: 1,
+        url: "https://www.last.fm/music/Smog/Knock+Knock",
+      } as const;
+      vi.mocked(userGetTopAlbums).mockResolvedValue([
+        {
+          ...album,
+          cover: "https://lastfm.freetls.fastly.net/i/u/300x300/a.jpg",
+        },
+      ]);
+
+      expect(await runTool("get_top_albums", {})).toBe(JSON.stringify([album]));
+    });
+
     it("should use default values when tool inputs are empty", async () => {
       const names = [
         "get_chat_history",
