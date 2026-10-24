@@ -1,6 +1,6 @@
 "use client";
 
-import { animated, useSprings } from "@react-spring/web";
+import { animated, type SpringValue, useSprings } from "@react-spring/web";
 import { type CSSProperties, use, useState } from "react";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
@@ -42,6 +42,11 @@ const useGrow = (count: number, delay: (index: number) => number) => {
   return springs;
 };
 
+// Capped, since a spring settling past 1 would briefly show more than the count.
+const countUp = (value: number, grow: SpringValue<number> | undefined) =>
+  grow?.to((g) => formatNumber(Math.round(value * Math.min(g, 1)))) ??
+  formatNumber(value);
+
 const Stems = ({
   items,
   active,
@@ -50,6 +55,8 @@ const Stems = ({
   active: readonly Run[];
 }) => {
   const springs = useGrow(items.length, (index) => index * 15);
+  // Rises with the stems, reaching the line as half of them have started.
+  const [averageGrow] = useGrow(1, () => items.length * 7.5);
 
   const counts = items.map(({ count }) => count);
   // All-zero counts would make the stems' `--value / --max` a 0/0.
@@ -104,9 +111,9 @@ const Stems = ({
                 </span>
               </TooltipText>
               {index === peak && (
-                <span className="peak" aria-hidden="true">
-                  {formatNumber(count)}
-                </span>
+                <animated.span className="peak" aria-hidden="true">
+                  {countUp(count, springs[index]?.grow)}
+                </animated.span>
               )}
               {tick && (
                 <span className="tick" aria-hidden="true">
@@ -118,12 +125,16 @@ const Stems = ({
         })}
       </ol>
       {average !== undefined && (
-        <span className="average" aria-hidden="true">
+        <animated.span
+          className="average"
+          style={{ "--grow": averageGrow?.grow } as CSSProperties}
+          aria-hidden="true"
+        >
           <span>
-            {formatNumber(average)}
+            <animated.span>{countUp(average, averageGrow?.grow)}</animated.span>
             <span> avg</span>
           </span>
-        </span>
+        </animated.span>
       )}
     </figure>
   );

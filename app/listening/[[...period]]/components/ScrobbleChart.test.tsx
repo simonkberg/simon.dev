@@ -168,6 +168,15 @@ describe("ScrobbleChart", () => {
     expect(Math.max(...grow)).toBeLessThan(1);
   });
 
+  it("counts the peak and average up from zero when mounted on the client", async () => {
+    Globals.assign({ skipAnimation: false });
+
+    await renderChart(scrobbles);
+
+    expect(document.querySelector(".peak")).toHaveTextContent("0");
+    expect(document.querySelector(".average")).toHaveTextContent("0 avg");
+  });
+
   it("sweeps the lane bars in when mounted on the client", async () => {
     Globals.assign({ skipAnimation: false });
 

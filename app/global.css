@@ -1239,7 +1239,8 @@ ul {
     position: absolute;
     inset-inline: 0;
     bottom: calc(
-      var(--stems-zero) + var(--average) / var(--max) * var(--stems-height)
+      var(--stems-zero) + var(--average) / var(--max) * var(--grow, 1) *
+        var(--stems-height)
     );
     display: grid;
     grid-template-columns: var(--stems-columns);
@@ -1261,7 +1262,7 @@ ul {
     }
 
     /* Below the number, so the number sits on the line. */
-    > span > span {
+    > span > span:last-child {
       position: absolute;
       top: 100%;
       left: 1ch;
