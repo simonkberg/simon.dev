@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type GetOnThisDayResult,
   getScrobbles,
   type GetScrobblesResult,
   getTopAlbums,
@@ -22,6 +23,12 @@ vi.mock(import("next/navigation"), () => ({
 }));
 
 vi.mock(import("@/actions/lastfm"), () => ({
+  getOnThisDay: vi.fn(() =>
+    Promise.resolve<GetOnThisDayResult>({
+      status: "ok",
+      days: { date: "Oct 24", years: [] },
+    }),
+  ),
   getScrobbles: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({ status: "ok", scrobbles: [] }),
   ),

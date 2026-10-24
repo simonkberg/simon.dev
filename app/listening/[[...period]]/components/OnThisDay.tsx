@@ -1,0 +1,99 @@
+import { type CSSProperties, use } from "react";
+
+import type { DayInYear, OnThisDay as OnThisDayData } from "@/actions/lastfm";
+import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
+import { formatNumber } from "@/lib/formatNumber";
+
+export interface OnThisDayProps {
+  // Undefined when the days failed to load.
+  days: Promise<OnThisDayData | undefined>;
+}
+
+type Stop =
+  | { kind: "played"; year: DayInYear }
+  | { kind: "silent"; from: string; to: string };
+
+// Years with nothing played fold into one quiet stretch of rail.
+const toStops = (years: readonly DayInYear[]): Stop[] =>
+  years.reduce<Stop[]>((stops, year) => {
+    const last = stops.at(-1);
+    if (year.count > 0) return [...stops, { kind: "played", year }];
+    if (last?.kind === "silent") {
+      return [...stops.slice(0, -1), { ...last, from: year.year }];
+    }
+    return [...stops, { kind: "silent", from: year.year, to: year.year }];
+  }, []);
+
+const plays = (count: number) =>
+  `${formatNumber(count)} ${count === 1 ? "play" : "plays"}`;
+
+export const OnThisDay = ({ days }: OnThisDayProps) => {
+  const data = use(days);
+
+  if (data === undefined) {
+    return <p>This day in past years is temporarily unavailable :(</p>;
+  }
+
+  const max = Math.max(0, ...data.years.map(({ count }) => count)) || 1;
+
+  return (
+    <ol className="timeline" style={{ "--max": max } as CSSProperties}>
+      <li className="timeline-origin">{data.date}</li>
+      {toStops(data.years).map((stop) =>
+        stop.kind === "played" ? (
+          <li
+            key={stop.year.year}
+            style={{ "--value": stop.year.count } as CSSProperties}
+          >
+            <span className="timeline-year">{stop.year.year}</span>
+            <span className="timeline-top">
+              {stop.year.top && (
+                <>
+                  {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
+                </>
+              )}
+            </span>
+            <span className="timeline-plays">{plays(stop.year.count)}</span>
+          </li>
+        ) : (
+          <li key={stop.to} data-silent>
+            <span className="timeline-year">
+              {stop.from === stop.to ? stop.to : `${stop.from}–${stop.to}`}
+            </span>
+            <span className="timeline-top">nothing played</span>
+          </li>
+        ),
+      )}
+    </ol>
+  );
+};
+
+const widths = [
+  [14, 9],
+  [19, 7],
+  [11, 8],
+  [16, 6],
+] as const;
+
+export const OnThisDaySkeleton = () => (
+  <SkeletonStatus>
+    <ol className="timeline placeholder" aria-hidden="true">
+      <li className="timeline-origin">
+        <Skeleton width={6} />
+      </li>
+      {widths.map(([top, count], index) => (
+        <li key={index}>
+          <span className="timeline-year">
+            <Skeleton width={4} />
+          </span>
+          <span className="timeline-top">
+            <Skeleton width={top} />
+          </span>
+          <span className="timeline-plays">
+            <Skeleton width={count} />
+          </span>
+        </li>
+      ))}
+    </ol>
+  </SkeletonStatus>
+);

@@ -53,47 +53,43 @@ async function call<T extends z.ZodType>(
   return schema.parse(json);
 }
 
-const userGetRecentTracksResponseSchema = z
+const recentTrackSchema = z
   .object({
-    recenttracks: z.object({
-      track: z.array(
-        z
-          .object({
-            name: z.string(),
-            artist: z
-              .union([
-                z.object({ "#text": z.string() }),
-                z.object({ name: z.string() }),
-              ])
-              .transform((artist) =>
-                "name" in artist ? artist.name : artist["#text"],
-              ),
-            album: z
-              .object({ "#text": z.string() })
-              .transform((album) => album["#text"]),
-            date: z
-              .object({ uts: z.string() })
-              .optional()
-              .transform((data) =>
-                data ? new Date(Number(data.uts) * 1000) : undefined,
-              ),
-            loved: z
-              .union([z.literal("0"), z.literal("1")])
-              .optional()
-              .transform((val) => val === "1"),
-            "@attr": z.object({ nowplaying: z.string() }).optional(),
-          })
-          .transform((data) => ({
-            name: data.name,
-            artist: data.artist,
-            album: data.album,
-            playedAt: data.date,
-            nowPlaying: !!data["@attr"]?.nowplaying,
-            loved: data.loved,
-          })),
+    name: z.string(),
+    artist: z
+      .union([
+        z.object({ "#text": z.string() }),
+        z.object({ name: z.string() }),
+      ])
+      .transform((artist) =>
+        "name" in artist ? artist.name : artist["#text"],
       ),
-    }),
+    album: z
+      .object({ "#text": z.string() })
+      .transform((album) => album["#text"]),
+    date: z
+      .object({ uts: z.string() })
+      .optional()
+      .transform((data) =>
+        data ? new Date(Number(data.uts) * 1000) : undefined,
+      ),
+    loved: z
+      .union([z.literal("0"), z.literal("1")])
+      .optional()
+      .transform((val) => val === "1"),
+    "@attr": z.object({ nowplaying: z.string() }).optional(),
   })
+  .transform((data) => ({
+    name: data.name,
+    artist: data.artist,
+    album: data.album,
+    playedAt: data.date,
+    nowPlaying: !!data["@attr"]?.nowplaying,
+    loved: data.loved,
+  }));
+
+const userGetRecentTracksResponseSchema = z
+  .object({ recenttracks: z.object({ track: z.array(recentTrackSchema) }) })
   .transform((data) => data.recenttracks.track);
 
 export type UserGetRecentTracksResponse = z.infer<
@@ -244,6 +240,35 @@ export async function userGetScrobbleCount(
     limit: 1,
     from: toUnixTime(params.from),
     // `to` is inclusive, and the next range starts on this second.
+    to: toUnixTime(params.to) - 1,
+  });
+}
+
+const userGetScrobblesResponseSchema = z
+  .object({
+    recenttracks: z.object({
+      track: z.array(recentTrackSchema),
+      "@attr": z.object({ total: z.string().transform(Number) }),
+    }),
+  })
+  .transform((data) => ({
+    total: data.recenttracks["@attr"].total,
+    // The track playing now is listed whatever the range.
+    tracks: data.recenttracks.track.filter((track) => !track.nowPlaying),
+  }));
+
+export type UserGetScrobblesResponse = z.infer<
+  typeof userGetScrobblesResponseSchema
+>;
+
+export async function userGetScrobbles(
+  user: string,
+  params: { from: Date; to: Date; limit: number },
+): Promise<UserGetScrobblesResponse> {
+  return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
+    user,
+    limit: params.limit,
+    from: toUnixTime(params.from),
     to: toUnixTime(params.to) - 1,
   });
 }
