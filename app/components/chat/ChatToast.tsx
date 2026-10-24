@@ -3,34 +3,30 @@
 import { useDeferredValue, useEffect, useState, ViewTransition } from "react";
 
 export interface ChatToastProps {
-  variant?: "default" | "error";
-  message?: string | undefined;
+  // Compared by identity, so a repeated error shows again.
+  result?: { error: string } | undefined;
   duration?: number;
 }
 
-export const ChatToast = ({
-  variant = "default",
-  message,
-  duration = 5000,
-}: ChatToastProps) => {
-  const [isVisible, setIsVisible] = useState(!!message);
-  const [prevMessage, setPrevMessage] = useState(message);
-  const deferredMessage = useDeferredValue(message);
+export const ChatToast = ({ result, duration = 5000 }: ChatToastProps) => {
+  const [isVisible, setIsVisible] = useState(!!result);
+  const [prevResult, setPrevResult] = useState(result);
+  const deferredResult = useDeferredValue(result);
   const deferredIsVisible = useDeferredValue(isVisible);
 
-  if (message !== prevMessage) {
-    setPrevMessage(message);
-    setIsVisible(!!message);
+  if (result !== prevResult) {
+    setPrevResult(result);
+    setIsVisible(!!result);
   }
 
-  // message is unread here: it restarts the timer for each new message.
+  // result is unread here: it restarts the timer for each new result.
   useEffect(() => {
     if (!isVisible) return;
 
     const timer = setTimeout(() => setIsVisible(false), duration);
 
     return () => clearTimeout(timer);
-  }, [duration, isVisible, message]);
+  }, [duration, isVisible, result]);
 
   if (!deferredIsVisible) return null;
 
@@ -38,11 +34,11 @@ export const ChatToast = ({
     <ViewTransition>
       <div
         role="status"
-        aria-live={variant === "error" ? "assertive" : "polite"}
+        aria-live="assertive"
         aria-atomic="true"
-        className={`chat-toast ${variant}`}
+        className="chat-toast error"
       >
-        <span>{deferredMessage}</span>
+        <span>{deferredResult?.error}</span>
         <button
           type="button"
           onClick={() => setIsVisible(false)}

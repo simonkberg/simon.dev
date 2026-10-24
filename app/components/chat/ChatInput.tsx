@@ -113,10 +113,7 @@ export const ChatInput = ({
   return (
     <>
       <ChatToast
-        variant={result.status === "error" ? "error" : "default"}
-        message={
-          !pending && result.status === "error" ? result.error : undefined
-        }
+        result={!pending && result.status === "error" ? result : undefined}
       />
       {output && (
         <div className="chat-output" role="status" aria-live="polite">

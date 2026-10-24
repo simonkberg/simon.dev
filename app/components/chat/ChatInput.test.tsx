@@ -312,6 +312,23 @@ describe("CaretBuddy integration", () => {
       expect(postChatMessage).not.toHaveBeenCalled();
     });
 
+    it("shows a repeated command error again", async () => {
+      const { user, input, send } = renderChatInput();
+
+      await send("/nope");
+      await user.click(
+        await screen.findByRole("button", { name: "Close notification" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+      );
+      await user.type(input, "{Enter}");
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Unknown command /nope.",
+      );
+    });
+
     it("sends a doubled slash as one", async () => {
       const { send } = renderChatInput();
 
