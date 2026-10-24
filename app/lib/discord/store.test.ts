@@ -135,9 +135,10 @@ beforeEach(() => {
 });
 
 describe("ChannelStore", () => {
-  it("should tell listeners when a seed lands and after each change, not before", async () => {
+  it("should tell listeners, with a new revision, when a seed lands and after each change, not before", async () => {
     const { store, source, listener } = createStore();
     const first = defer(source.fetchMessages);
+    const initial = store.revision;
 
     const messages = store.messages();
     store.apply({ t: "READY" });
@@ -145,9 +146,12 @@ describe("ChannelStore", () => {
     first.resolve([message("1")]);
     await messages;
     expect(listener).toHaveBeenCalledOnce();
+    const seeded = store.revision;
+    expect(seeded).not.toBe(initial);
 
     store.apply(del("1"));
     expect(listener).toHaveBeenCalledTimes(2);
+    expect(store.revision).not.toBe(seeded);
   });
 
   it("should retry a failed first seed later, sooner after an event", async () => {

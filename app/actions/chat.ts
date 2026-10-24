@@ -7,6 +7,7 @@ import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
   getChannelMessages,
+  getChannelRevision,
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
@@ -29,7 +30,13 @@ export type ChatHistoryResult =
   | { status: "error"; error: string };
 
 export async function getChatHistory(): Promise<ChatHistoryResult> {
+  return getChatHistoryAt(getChannelRevision());
+}
+
+// Keyed on the revision, so the tabs refreshing for one change share one render.
+async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
   "use cache";
+  // Short anyway: site reactions and failed name lookups don't move the revision.
   cacheLife("seconds");
   cacheTag("getChatHistory");
 
@@ -65,11 +72,6 @@ async function admit(
     };
   }
   return null;
-}
-
-export async function refreshChatHistory() {
-  updateTag("getChatHistory");
-  refresh();
 }
 
 export async function dismissChatTip() {
