@@ -43,12 +43,14 @@ export const contentSchema = z
   .min(1)
   .max(MAX_CONTENT_LENGTH);
 
+const COLUMNS = "id, category, content, created_at, updated_at";
+
 const memoryRowSchema = z.object({
   id: z.number(),
   category: z.string(),
   content: z.string(),
   created_at: z.string(),
-  updated_at: z.string().nullish(),
+  updated_at: z.string().nullable(),
 });
 
 export type Memory = {
@@ -56,7 +58,6 @@ export type Memory = {
   category: string;
   content: string;
   createdAt: string;
-  // Only set by a read that selects it, and only once the note was rewritten.
   updatedAt: string | undefined;
 };
 
@@ -91,7 +92,7 @@ export async function remember(input: {
     `INSERT INTO memories (category, content, created_at)
      SELECT ?, ?, ?
      WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?
-     RETURNING id, category, content, created_at`,
+     RETURNING ${COLUMNS}`,
     [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
   );
   const row = rows[0];
@@ -124,7 +125,7 @@ export async function recall(input: {
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await query(
-    `SELECT id, category, content, created_at FROM memories
+    `SELECT ${COLUMNS} FROM memories
      ${where} ORDER BY created_at DESC, id DESC LIMIT ?`,
     [...args, input.limit ?? 20],
   );
@@ -155,10 +156,9 @@ export function describeMiss(miss: WriteMiss) {
 }
 
 async function explainMiss(id: number): Promise<WriteMiss> {
-  const { rows } = await query(
-    "SELECT id, category, content, created_at FROM memories WHERE id = ?",
-    [id],
-  );
+  const { rows } = await query(`SELECT ${COLUMNS} FROM memories WHERE id = ?`, [
+    id,
+  ]);
   const row = rows[0];
   return row === undefined
     ? { status: "missing", id }
@@ -198,7 +198,7 @@ export async function edit(input: {
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
-     RETURNING id, category, content, created_at`,
+     RETURNING ${COLUMNS}`,
     [
       newContent,
       category,
@@ -249,7 +249,7 @@ export async function buildMemoryContext(
 
     const [{ rows: memoryRows }, { rows: countRows }] = await batch([
       {
-        sql: `SELECT id, category, content, created_at FROM memories
+        sql: `SELECT ${COLUMNS} FROM memories
          WHERE category IN (${shown.map(() => "?").join(", ")})
          ORDER BY created_at, id`,
         args: shown,
@@ -301,7 +301,7 @@ export async function readPublicNotes(): Promise<
   Record<PublicCategory, Memory[]>
 > {
   const { rows } = await query(
-    `SELECT id, category, content, created_at, updated_at FROM memories
+    `SELECT ${COLUMNS} FROM memories
      WHERE category IN (${PUBLIC_CATEGORIES.map(() => "?").join(", ")})
      ORDER BY created_at, id`,
     [...PUBLIC_CATEGORIES],

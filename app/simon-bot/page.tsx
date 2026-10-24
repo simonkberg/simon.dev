@@ -6,6 +6,7 @@ import { getBotNotes } from "@/actions/simonBot";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
+import { PUBLIC_CATEGORIES, type PublicCategory } from "@/lib/memory";
 
 import { NoteList, NoteListSkeleton } from "./components/NoteList";
 
@@ -14,11 +15,11 @@ export const metadata: Metadata = {
   description: "Who simon-bot thinks it is, in its own notes",
 };
 
-const sections = [
-  { category: "self", title: "Self", what: "who it is" },
-  { category: "style", title: "Style", what: "how it writes" },
-  { category: "interests", title: "Interests", what: "what it likes" },
-] as const;
+const headings: Record<PublicCategory, { title: string; what: string }> = {
+  self: { title: "Self", what: "who it is" },
+  style: { title: "Style", what: "how it writes" },
+  interests: { title: "Interests", what: "what it likes" },
+};
 
 export default function SimonBotPage() {
   const result = getBotNotes();
@@ -33,10 +34,11 @@ export default function SimonBotPage() {
         </p>
       </section>
 
-      {sections.map(({ category, title, what }) => (
+      {PUBLIC_CATEGORIES.map((category) => (
         <section key={category}>
           <Heading level={2}>
-            {title} <Subtitle>({what})</Subtitle>
+            {headings[category].title}{" "}
+            <Subtitle>({headings[category].what})</Subtitle>
           </Heading>
           <Suspense fallback={<NoteListSkeleton />}>
             <NoteList
