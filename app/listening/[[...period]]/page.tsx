@@ -12,6 +12,7 @@ import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
+import { config } from "@/config";
 import {
   isValidPeriod,
   type Period,
@@ -95,7 +96,9 @@ export default function ListeningPage({ params }: ListeningPageProps) {
       <section>
         <p>
           My {periodLabels[period]} listening statistics from{" "}
-          <ExternalLink href="https://www.last.fm/user/magijo">
+          <ExternalLink
+            href={`https://www.last.fm/user/${config.lastfmUsername}`}
+          >
             Last.fm
           </ExternalLink>
           .

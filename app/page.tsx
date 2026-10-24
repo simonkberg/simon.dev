@@ -78,7 +78,9 @@ export default function RootPage() {
           Currently listening to{" "}
           <Subtitle>
             (Via{" "}
-            <ExternalLink href="https://www.last.fm/user/magijo">
+            <ExternalLink
+              href={`https://www.last.fm/user/${config.lastfmUsername}`}
+            >
               Last.fm
             </ExternalLink>
             )

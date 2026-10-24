@@ -5,6 +5,7 @@ import { getOnThisDay } from "@/actions/lastfm";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
+import { config } from "@/config";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
 import { OnThisDay, OnThisDaySkeleton } from "./components/OnThisDay";
@@ -24,7 +25,9 @@ export default function OnThisDayPage() {
       <section>
         <p>
           What I played on this day in past years, from{" "}
-          <ExternalLink href="https://www.last.fm/user/magijo">
+          <ExternalLink
+            href={`https://www.last.fm/user/${config.lastfmUsername}`}
+          >
             Last.fm
           </ExternalLink>
           .
