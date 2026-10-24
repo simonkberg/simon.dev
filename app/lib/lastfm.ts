@@ -194,7 +194,10 @@ const coverSchema = z
   .array(z.object({ size: z.string(), "#text": z.string() }))
   .transform((images) => {
     const url = images.find(({ size }) => size === "extralarge")?.["#text"];
-    return url && !url.includes(PLACEHOLDER_COVER) ? url : undefined;
+    // The original upload, without the size segment: Next resizes it, and never past its size.
+    return url && !url.includes(PLACEHOLDER_COVER)
+      ? url.replace(/\/i\/u\/[^/]+\//, "/i/u/")
+      : undefined;
   });
 
 const userGetTopAlbumsResponseSchema = z

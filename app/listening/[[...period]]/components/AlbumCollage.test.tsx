@@ -5,7 +5,7 @@ import type { TopAlbum } from "@/actions/lastfm";
 
 import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
 
-const cover = "https://lastfm.freetls.fastly.net/i/u/300x300/abc.jpg";
+const cover = "https://lastfm-img.freetls.fastly.net/i/u/abc.jpg";
 
 const albums: TopAlbum[] = [
   {

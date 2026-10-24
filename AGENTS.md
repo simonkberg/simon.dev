@@ -194,10 +194,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   page): a request per bar, each hour the chart is cached. On all time, lanes under it follow
   each year's top artist from `user.getWeeklyArtistChart`, which takes any range, not just
   Last.fm's weeks: another request per year, cached apart so a failure only drops the lanes.
-- **Album covers:** `next/image` loads Last.fm covers through `app/lib/coverLoader.ts`
-  (`images.loaderFile`), which picks one of the few sizes Last.fm's CDN serves; any other
-  path returns the original upload. Each look filters the covers (`--cover-filter`, manual's
-  is the SVG `#cover-dither`), and hover or focus shows them unfiltered.
+- **Album covers:** Next's image optimiser resizes each Last.fm cover from its original
+  upload (the CDN path without a size segment): the CDN's own resized sizes 404 in some
+  regions. Each look filters the covers (`--cover-filter`, manual's is the SVG
+  `#cover-dither`), and hover or focus shows them unfiltered.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.

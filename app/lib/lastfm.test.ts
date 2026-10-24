@@ -230,7 +230,7 @@ describe("userGetTopArtists", () => {
 });
 
 describe("userGetTopAlbums", () => {
-  const cdn = "https://lastfm.freetls.fastly.net/i/u";
+  const cdn = "https://lastfm-img.freetls.fastly.net/i/u";
   const images = (hash: string) =>
     [
       ["small", "34s"],
@@ -283,7 +283,7 @@ describe("userGetTopAlbums", () => {
         playcount: 250,
         rank: 1,
         url: "https://www.last.fm/music/Test",
-        cover: `${cdn}/300x300/abc123.jpg`,
+        cover: `${cdn}/abc123.jpg`,
       },
       {
         name: "Another",
