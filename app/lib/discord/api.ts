@@ -381,6 +381,11 @@ function getStore(): ChannelStore {
   });
 }
 
+/** Changes whenever the channel's history may have. */
+export function getChannelRevision(): number {
+  return getStore().revision;
+}
+
 /** Calls back once the history may have changed; rejects if the gateway can't connect. */
 export async function subscribeToChannel(
   callback: () => void,

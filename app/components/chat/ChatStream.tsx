@@ -1,8 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { refreshChatHistory } from "@/actions/chat";
 import { TooltipText } from "@/components/Tooltip";
 
 type Status = "connecting" | "live" | "offline";
@@ -11,6 +11,7 @@ const MAX_BACKOFF = 30_000;
 
 /** Keeps the chat history live over SSE and shows the connection's state and who is here. */
 export const ChatStream = () => {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("connecting");
   const [here, setHere] = useState<readonly string[]>([]);
 
@@ -37,17 +38,17 @@ export const ChatStream = () => {
       eventSource.onopen = () => {
         reconnectAttempts = 0;
         setStatus("live");
-        if (reconnecting) void refreshChatHistory();
+        if (reconnecting) router.refresh();
         gatewayDown = false;
       };
-      eventSource.onmessage = () => void refreshChatHistory();
+      eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
         setHere(JSON.parse(event.data) as string[]);
       });
       eventSource.addEventListener("status", (event) => {
         const live = event.data === "live";
         // The store missed changes while the gateway was down.
-        if (live && gatewayDown) void refreshChatHistory();
+        if (live && gatewayDown) router.refresh();
         gatewayDown = !live;
         setStatus(live ? "live" : "connecting");
       });
@@ -85,7 +86,7 @@ export const ChatStream = () => {
       window.removeEventListener("offline", goOffline);
       disconnect();
     };
-  }, []);
+  }, [router]);
 
   return (
     <>

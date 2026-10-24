@@ -1,11 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
+import { useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { refreshChatHistory } from "@/actions/chat";
 
 import { ChatStream } from "./ChatStream";
 
-vi.mock(import("@/actions/chat"), () => ({ refreshChatHistory: vi.fn() }));
+vi.mock(import("next/navigation"), () => ({ useRouter: vi.fn() }));
+const refresh = vi.fn();
 
 function createMockEventSource() {
   const instances: MockEventSource[] = [];
@@ -55,6 +55,7 @@ describe("ChatStream", () => {
   };
 
   beforeEach(() => {
+    vi.mocked(useRouter, { partial: true }).mockReturnValue({ refresh });
     vi.useFakeTimers();
     mockEventSource = createMockEventSource();
     vi.stubGlobal("EventSource", mockEventSource.MockEventSource);
@@ -116,7 +117,7 @@ describe("ChatStream", () => {
       expect(instances).toHaveLength(initialCount + 1);
 
       act(() => instance().onopen());
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("goes offline and closes the stream when the network drops", () => {
@@ -147,19 +148,19 @@ describe("ChatStream", () => {
   });
 
   describe("connection", () => {
-    it("calls refreshChatHistory when SSE message is received", () => {
+    it("refreshes the history when an SSE message is received", () => {
       renderStream();
 
       act(() => instance().onmessage());
 
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("refreshes the history when it reconnects, not when it first opens", () => {
       renderStream();
 
       act(() => instance().onopen());
-      expect(refreshChatHistory).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
 
       act(() => instance().onerror());
       act(() => {
@@ -167,7 +168,7 @@ describe("ChatStream", () => {
       });
       act(() => instance().onopen());
 
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("refreshes the history when its first attempt failed", () => {
@@ -179,7 +180,7 @@ describe("ChatStream", () => {
       });
       act(() => instance().onopen());
 
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("refreshes the history when the gateway behind the stream recovers", () => {
@@ -187,12 +188,12 @@ describe("ChatStream", () => {
       act(() => instance().onopen());
 
       act(() => instance().sendStatus("live"));
-      expect(refreshChatHistory).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
 
       act(() => instance().sendStatus("connecting"));
       act(() => instance().sendStatus("live"));
 
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("refreshes once when it reconnects after the gateway went down", () => {
@@ -207,7 +208,7 @@ describe("ChatStream", () => {
       act(() => instance().onopen());
       act(() => instance().sendStatus("live"));
 
-      expect(refreshChatHistory).toHaveBeenCalledOnce();
+      expect(refresh).toHaveBeenCalledOnce();
     });
 
     it("closes EventSource on unmount", () => {
