@@ -177,7 +177,13 @@ export class ChannelStore {
   }
 
   apply(event: GatewayEvent): void {
-    if (event.t === "TYPING_START") return;
+    if (
+      event.t === "TYPING_START" ||
+      event.t === "GUILD_CREATE" ||
+      event.t === "PRESENCE_UPDATE"
+    ) {
+      return;
+    }
     this.#changed = true;
     // Events may be gone, so the window is fetched again, and a seed already in flight may predate the gap.
     if (event.t === "READY" || event.t === "MISSED") {

@@ -4,6 +4,7 @@ import { log } from "@/lib/log";
 import { message, reaction } from "@/mocks/discord";
 import { mockEnv } from "@/mocks/env";
 
+import type { GatewayEvent } from "./gateway";
 import type { ChannelEvent, DiscordMessage } from "./schemas";
 import { ChannelStore, type Reactor, type StoreSource, WINDOW } from "./store";
 
@@ -187,13 +188,17 @@ describe("ChannelStore", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 
-  it("should leave typing to the typing tracker", async () => {
+  it.each<GatewayEvent>([
+    { t: "TYPING_START", d: { channel_id: CHANNEL, user_id: "user-1" } },
+    { t: "GUILD_CREATE", d: { id: "guild", members: [], presences: [] } },
+    {
+      t: "PRESENCE_UPDATE",
+      d: { guild_id: "guild", user: { id: "user-1" }, status: "online" },
+    },
+  ])("should leave $t to its own tracker", async (event) => {
     const { store, source } = createStore();
 
-    store.apply({
-      t: "TYPING_START",
-      d: { channel_id: CHANNEL, user_id: "user-1" },
-    });
+    store.apply(event);
     await vi.advanceTimersByTimeAsync(0);
 
     expect(source.fetchMessages).not.toHaveBeenCalled();
