@@ -7,6 +7,7 @@ import {
   type Period,
   userGetRecentTracks,
   userGetScrobbles,
+  userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   type UserGetTopAlbumsResponse,
@@ -14,6 +15,7 @@ import {
   type UserGetTopArtistsResponse,
   userGetTopTracks,
   type UserGetTopTracksResponse,
+  type WeeklyArtist,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
@@ -165,6 +167,43 @@ export async function getScrobbles(
     cacheLife("seconds");
     log.error({ err, action: "getScrobbles" }, "Error fetching scrobbles");
     return { status: "error", error: "Failed to fetch scrobbles" };
+  }
+}
+
+export interface YearTopArtist {
+  label: string;
+  // Undefined for a year without scrobbles.
+  artist: WeeklyArtist | undefined;
+}
+
+export type GetTopArtistByYearResult =
+  | { status: "ok"; years: YearTopArtist[] }
+  | { status: "error"; error: string };
+
+export async function getTopArtistByYear(): Promise<GetTopArtistByYearResult> {
+  "use cache";
+
+  try {
+    const years = await Promise.all(
+      yearBuckets(config.lastfmSince, new Date()).map(
+        async ({ label, from, to }) => ({
+          label,
+          artist: await userGetTopArtistInRange(config.lastfmUsername, {
+            from,
+            to,
+          }),
+        }),
+      ),
+    );
+    cacheLife("hours");
+    return { status: "ok", years };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error(
+      { err, action: "getTopArtistByYear" },
+      "Error fetching top artist by year",
+    );
+    return { status: "error", error: "Failed to fetch top artist by year" };
   }
 }
 
