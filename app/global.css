@@ -1522,6 +1522,16 @@ ul {
       &[data-status="connecting"]::before {
         animation: pulse 1.6s ease-in-out infinite;
       }
+
+      &:has(+ .presence) {
+        margin-right: 0;
+      }
+    }
+
+    > .presence {
+      margin-right: var(--status-push);
+      padding: var(--control-padding);
+      color: var(--muted);
     }
 
     > .control {

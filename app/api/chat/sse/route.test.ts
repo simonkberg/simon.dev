@@ -11,6 +11,8 @@ import {
 
 import { subscribeToChannel } from "@/lib/discord/api";
 import { subscribeToStatus } from "@/lib/discord/gateway";
+import { joinPresence } from "@/lib/presence";
+import { encrypt, type Username } from "@/lib/session";
 
 import { GET } from "./route";
 
@@ -25,6 +27,8 @@ vi.mock(import("@/lib/discord/gateway"), () => ({
   subscribeToStatus: vi.fn(),
 }));
 
+vi.mock(import("@/lib/presence"), () => ({ joinPresence: vi.fn() }));
+
 const decoder = new TextDecoder();
 
 async function readText(reader: ReadableStreamDefaultReader<Uint8Array>) {
@@ -35,13 +39,14 @@ describe("GET /api/chat/sse", () => {
   let controller: AbortController;
   let mockUnsubscribe: Mock;
   let mockUnsubscribeStatus: Mock;
+  let mockLeavePresence: Mock;
 
-  function open() {
-    return GET(
-      new NextRequest("http://localhost/api/chat/sse", {
-        signal: controller.signal,
-      }),
-    );
+  function open(session?: string) {
+    const request = new NextRequest("http://localhost/api/chat/sse", {
+      signal: controller.signal,
+    });
+    if (session) request.cookies.set("session", session);
+    return GET(request);
   }
 
   async function openReader() {
@@ -54,6 +59,8 @@ describe("GET /api/chat/sse", () => {
     controller = new AbortController();
     mockUnsubscribe = vi.fn();
     mockUnsubscribeStatus = vi.fn();
+    mockLeavePresence = vi.fn();
+    vi.mocked(joinPresence).mockReturnValue(mockLeavePresence);
     vi.mocked(subscribeToChannel).mockResolvedValue(mockUnsubscribe);
     vi.mocked(subscribeToStatus).mockReturnValue(mockUnsubscribeStatus);
   });
@@ -102,6 +109,22 @@ describe("GET /api/chat/sse", () => {
     expect(await readText(reader)).toBe("event: status\ndata: live\n\n");
   });
 
+  it("should count the session's visitor and send who is here", async () => {
+    const response = await open(
+      await encrypt({ username: "alice" as Username }),
+    );
+    const reader = response.body!.getReader();
+    const [username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+    await reader.read();
+
+    onPresence(["alice", "bob"]);
+
+    expect(username).toBe("alice");
+    expect(await readText(reader)).toBe(
+      'event: presence\ndata: ["alice","bob"]\n\n',
+    );
+  });
+
   it("should send periodic pings every 30 seconds", async () => {
     const reader = await openReader();
     await reader.read();
@@ -141,21 +164,25 @@ describe("GET /api/chat/sse", () => {
 
     expect(mockUnsubscribe).not.toHaveBeenCalled();
     expect(mockUnsubscribeStatus).not.toHaveBeenCalled();
+    expect(mockLeavePresence).not.toHaveBeenCalled();
 
     controller.abort();
 
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
     expect(mockUnsubscribeStatus).toHaveBeenCalledOnce();
+    expect(mockLeavePresence).toHaveBeenCalledOnce();
   });
 
   it("should not write after abort", async () => {
     const reader = await openReader();
     const onMessage = vi.mocked(subscribeToChannel).mock.calls[0]![0];
     const onStatus = vi.mocked(subscribeToStatus).mock.calls[0]![0];
+    const onPresence = vi.mocked(joinPresence).mock.calls[0]![1];
 
     controller.abort();
     onMessage();
     onStatus(false);
+    onPresence([]);
     await vi.advanceTimersByTimeAsync(30_000);
 
     // Only the ping written on connect, before the abort, reaches the client.

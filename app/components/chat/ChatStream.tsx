@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 
 import { refreshChatHistory } from "@/actions/chat";
+import { TooltipText } from "@/components/Tooltip";
 
 type Status = "connecting" | "live" | "offline";
 
 const MAX_BACKOFF = 30_000;
 
-/** Keeps the chat history live over SSE and shows the connection's state. */
+/** Keeps the chat history live over SSE and shows the connection's state and who is here. */
 export const ChatStream = () => {
   const [status, setStatus] = useState<Status>("connecting");
+  const [here, setHere] = useState<readonly string[]>([]);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -39,6 +41,9 @@ export const ChatStream = () => {
         gatewayDown = false;
       };
       eventSource.onmessage = () => void refreshChatHistory();
+      eventSource.addEventListener("presence", (event) => {
+        setHere(JSON.parse(event.data) as string[]);
+      });
       eventSource.addEventListener("status", (event) => {
         const live = event.data === "live";
         // The store missed changes while the gateway was down.
@@ -83,8 +88,17 @@ export const ChatStream = () => {
   }, []);
 
   return (
-    <span className="status" role="status" data-status={status}>
-      {status}
-    </span>
+    <>
+      <span className="status" role="status" data-status={status}>
+        {status}
+      </span>
+      {status === "live" && here.length > 0 && (
+        <span className="presence">
+          <TooltipText tooltip={here.join(", ")}>
+            {here.length} here
+          </TooltipText>
+        </span>
+      )}
+    </>
   );
 };
