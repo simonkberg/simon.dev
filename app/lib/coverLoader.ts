@@ -13,5 +13,5 @@ const sizes = [
 
 export default function coverLoader({ src, width }: ImageLoaderProps) {
   const [, path] = sizes.find(([size]) => size >= width) ?? sizes.at(-1)!;
-  return src.replace("/300x300/", `/${path}/`);
+  return src.replace(/\/i\/u\/[^/]+\//, `/i/u/${path}/`);
 }

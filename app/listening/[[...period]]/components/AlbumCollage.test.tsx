@@ -26,6 +26,14 @@ const albums: TopAlbum[] = [
     playcount: 30,
     rank: 2,
     url: "https://www.last.fm/music/Bedhead/Beheaded",
+    cover,
+  },
+  {
+    name: "Stuff Like That There",
+    artist: "Yo La Tengo",
+    playcount: 26,
+    rank: 3,
+    url: "https://www.last.fm/music/Yo+La+Tengo/Stuff+Like+That+There",
     cover: undefined,
   },
 ];
@@ -54,7 +62,7 @@ describe("AlbumCollage", () => {
     await renderCollage(albums);
 
     const link = screen.getByRole("link", {
-      name: "Beheaded by Bedhead on Last.fm",
+      name: "Stuff Like That There by Yo La Tengo on Last.fm",
     });
     expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
   });
@@ -72,6 +80,7 @@ describe("AlbumCollage", () => {
     ).toEqual([
       ["1", "Knock Knock", "Smog", "31"],
       ["2", "Beheaded", "Bedhead", "30"],
+      ["3", "Stuff Like That There", "Yo La Tengo", "26"],
     ]);
   });
 

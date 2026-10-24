@@ -14,4 +14,13 @@ describe("coverLoader", () => {
       `https://lastfm.freetls.fastly.net/i/u/${path}/abc.jpg`,
     );
   });
+
+  it("replaces whichever size the cover URL names", () => {
+    expect(
+      coverLoader({
+        src: "https://lastfm.freetls.fastly.net/i/u/174s/abc.jpg",
+        width: 600,
+      }),
+    ).toBe("https://lastfm.freetls.fastly.net/i/u/600x600/abc.jpg");
+  });
 });

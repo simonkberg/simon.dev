@@ -608,7 +608,7 @@
   --stems-hover: var(--muted);
   --cover-filter: url(#cover-dither);
   --cover-overlay: linear-gradient(
-    light-dark(transparent, oklch(0 0 0 / 0.15))
+    light-dark(transparent, oklch(0 0 0 / 0.15)) 0 100%
   );
   --cover-frame: 1px solid var(--ink);
   --track-padding: 0 0 0 2ch;
