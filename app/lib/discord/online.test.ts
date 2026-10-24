@@ -7,7 +7,7 @@ import { mockEnv } from "@/mocks/env";
 
 import { memberName } from "./api";
 import { type EventSubscriber, subscribe } from "./gateway";
-import { subscribeToOnline } from "./online";
+import { subscribeToOnline, watchOnline } from "./online";
 import type { GuildCreate } from "./schemas";
 
 vi.mock(import("./gateway"), () => ({
@@ -102,6 +102,18 @@ describe("subscribeToOnline", () => {
       { err: new Error("boom") },
       "Failed to name an online member",
     );
+  });
+
+  it("tells a later listener who was online when watching started", () => {
+    watchOnline();
+    const dispatch: EventSubscriber = vi.mocked(subscribe).mock.calls[0]![0];
+    dispatch(guild([{ user: { id: "simon" }, status: "online" }]));
+
+    const listener = vi.fn();
+    subscribeToOnline(listener);
+
+    expect(listener).toHaveBeenCalledWith(["simon"]);
+    expect(subscribe).toHaveBeenCalledOnce();
   });
 
   it("stops telling a listener that left", () => {

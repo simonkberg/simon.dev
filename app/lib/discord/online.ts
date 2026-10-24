@@ -95,6 +95,11 @@ const online = () =>
     return state;
   });
 
+/** Starts following who is online. Discord says so only as a session starts, so start it before the gateway connects. */
+export function watchOnline(): void {
+  online();
+}
+
 /** Tells `listener` who is online in Discord now and on every change, by chat name. */
 export function subscribeToOnline(listener: Listener): () => void {
   const state = online();

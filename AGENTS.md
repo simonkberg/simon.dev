@@ -162,7 +162,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   drops rows unseen for 45s and reads back everyone (`app/lib/presence.ts`). The server only
   notices a closed stream when a write fails, so the stream pings every 5s. Discord members
   who are `online` or `dnd` join the names, tracked per replica from the gateway like typing
-  (`app/lib/discord/online.ts`), and the tooltip names simon-bot without counting it.
+  (`app/lib/discord/online.ts`, started at boot: Discord lists who is online only as a session
+  starts), and the tooltip names simon-bot without counting it.
 - **Typing:** Discord's `TYPING_START` reaches every replica, so each tracks typists itself
   (`app/lib/discord/typing.ts`), by chat name since the bot posts for every visitor, until
   Discord's 10s run out or they post. simon-bot sends Discord's typing while it composes; the
