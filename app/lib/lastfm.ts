@@ -248,24 +248,38 @@ export async function userGetScrobbleCount(
   });
 }
 
+const weeklyArtistSchema = z.object({
+  name: z.string(),
+  playcount: z.string().transform(Number),
+});
+
 const userGetTopArtistInRangeResponseSchema = z
   .object({
     weeklyartistchart: z.object({
-      artist: z.array(
-        z.object({ name: z.string(), playcount: z.string().transform(Number) }),
-      ),
+      // Unverified, but Last.fm's XML-shaped JSON may send a lone artist bare or none at all.
+      artist: z
+        .union([
+          z.array(weeklyArtistSchema),
+          weeklyArtistSchema.transform((artist) => [artist]),
+        ])
+        .default([]),
     }),
   })
   .transform((data) => data.weeklyartistchart.artist[0]);
 
-// The weekly chart takes any range, not only the weeks Last.fm lists, and ranks by plays.
+// The weekly chart takes any range, not only the weeks Last.fm lists, ranked by plays.
 export async function userGetTopArtistInRange(
   user: string,
   params: { from: Date; to: Date },
-): Promise<{ name: string; playcount: number } | undefined> {
+): Promise<z.infer<typeof weeklyArtistSchema> | undefined> {
   return call(
     "user.getweeklyartistchart",
     userGetTopArtistInRangeResponseSchema,
-    { user, from: toUnixTime(params.from), to: toUnixTime(params.to) - 1 },
+    {
+      user,
+      from: toUnixTime(params.from),
+      // `to` is inclusive, as with the scrobble count.
+      to: toUnixTime(params.to) - 1,
+    },
   );
 }

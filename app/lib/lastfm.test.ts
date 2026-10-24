@@ -7,6 +7,7 @@ import {
   userGetRecentTracks,
   userGetScrobbleCount,
   userGetTopAlbums,
+  userGetTopArtistInRange,
   userGetTopArtists,
   userGetTopTracks,
 } from "./lastfm";
@@ -294,5 +295,46 @@ describe("userGetScrobbleCount", () => {
       to: "1609545599",
     });
     expect(count).toBe(1234);
+  });
+});
+
+describe("userGetTopArtistInRange", () => {
+  const range = {
+    from: new Date("2021-01-01T00:00:00Z"),
+    to: new Date("2021-01-02T00:00:00Z"),
+  };
+  const artist = (name: string, playcount: string) => ({
+    name,
+    playcount,
+    "@attr": { rank: "1" },
+  });
+
+  it("should take the most played artist in the range", async () => {
+    const params = lastfmReturns({
+      weeklyartistchart: { artist: [artist("Smog", "23"), artist("Low", "4")] },
+    });
+
+    const top = await userGetTopArtistInRange("testuser", range);
+
+    expect(params()).toMatchObject({
+      method: "user.getweeklyartistchart",
+      user: "testuser",
+      from: "1609459200",
+      to: "1609545599",
+    });
+    expect(top).toEqual({ name: "Smog", playcount: 23 });
+  });
+
+  it.each([
+    [
+      "a lone artist",
+      { artist: artist("Smog", "1") },
+      { name: "Smog", playcount: 1 },
+    ],
+    ["no artists", {}, undefined],
+  ])("should read %s", async (_, weeklyartistchart, expected) => {
+    lastfmReturns({ weeklyartistchart });
+
+    expect(await userGetTopArtistInRange("testuser", range)).toEqual(expected);
   });
 });

@@ -1,5 +1,5 @@
 import { Globals } from "@react-spring/web";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -7,15 +7,24 @@ import type { ScrobbleCount } from "@/actions/lastfm";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
+const smog = (playcount: number) => ({ name: "Smog", playcount });
+
 const scrobbles: ScrobbleCount[] = [
-  { label: "Oct 20", count: 100, current: false },
-  { label: "Oct 21", count: 3000, current: false },
-  { label: "Oct 22", count: 200, current: false },
-  { label: "Oct 23", count: 10, current: true },
+  { label: "Oct 20", count: 100, topArtist: smog(5), current: false },
+  { label: "Oct 21", count: 3000, topArtist: smog(7), current: false },
+  {
+    label: "Oct 22",
+    count: 200,
+    topArtist: { name: "Low", playcount: 3 },
+    current: false,
+  },
+  { label: "Oct 23", count: 0, topArtist: undefined, current: true },
 ];
 
 const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
   act(async () => render(<ScrobbleChart scrobbles={Promise.resolve(items)} />));
+
+const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
 
 const ticks = () =>
   [...document.querySelectorAll(".tick")].map((tick) => tick.textContent);
@@ -24,13 +33,11 @@ describe("ScrobbleChart", () => {
   it("names each bucket's count, the current one so far", async () => {
     await renderChart(scrobbles);
 
-    expect(
-      screen.getAllByRole("listitem").map((item) => item.textContent),
-    ).toEqual([
+    expect(stems().map((item) => item.textContent)).toEqual([
       "Oct 20: 100Oct 20",
       "Oct 21: 3,0003,000Oct 21",
       "Oct 22: 200Oct 22",
-      "Oct 23: 10 so farOct 23",
+      "Oct 23: 0 so farOct 23",
     ]);
   });
 
@@ -40,8 +47,40 @@ describe("ScrobbleChart", () => {
     expect(document.querySelector(".average")).toHaveTextContent("1,100 avg");
   });
 
+  it("shelves neighbouring buckets with the same top artist on one spine", async () => {
+    await renderChart(scrobbles);
+
+    const shelf = screen.getByRole("list", { name: "Top artists" });
+    expect(
+      within(shelf)
+        .getAllByRole("listitem")
+        .map((item) => item.querySelector(".visually-hidden")?.textContent),
+    ).toEqual([
+      "Oct 20–Oct 21: Smog, 12 plays",
+      "Oct 22: Low, 3 plays",
+      "Oct 23: no scrobbles",
+    ]);
+  });
+
+  it("lights a spine's stems while it is hovered", async () => {
+    await renderChart(scrobbles);
+    const spine = screen.getByText(
+      "Oct 20–Oct 21: Smog, 12 plays",
+    ).parentElement;
+    const active = () =>
+      stems().map((item) => item.hasAttribute("data-active"));
+
+    fireEvent.pointerEnter(spine!);
+    expect(active()).toEqual([true, true, false, false]);
+
+    fireEvent.pointerLeave(spine!);
+    expect(active()).toEqual([false, false, false, false]);
+  });
+
   it("scales a lone empty bucket with no average to show", async () => {
-    await renderChart([{ label: "2026", count: 0, current: true }]);
+    await renderChart([
+      { label: "2026", count: 0, topArtist: undefined, current: true },
+    ]);
 
     const figure = document.querySelector<HTMLElement>(".stems");
     expect(figure?.style.getPropertyValue("--max")).toBe("1");
@@ -53,6 +92,7 @@ describe("ScrobbleChart", () => {
       Array.from({ length: 13 }, (_, index) => ({
         label: `W${index}`,
         count: index,
+        topArtist: undefined,
         current: false,
       })),
     );
@@ -68,9 +108,9 @@ describe("ScrobbleChart", () => {
 
     await renderChart(scrobbles);
 
-    const grow = screen
-      .getAllByRole("listitem")
-      .map((item) => Number(item.style.getPropertyValue("--grow")));
+    const grow = stems().map((item) =>
+      Number(item.style.getPropertyValue("--grow")),
+    );
     expect(Math.max(...grow)).toBeLessThan(1);
   });
 

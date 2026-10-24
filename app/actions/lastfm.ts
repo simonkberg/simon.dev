@@ -123,14 +123,11 @@ export async function getTopAlbums(
   }
 }
 
-const periodBuckets = (period: Period, now: Date) =>
-  period === "overall"
-    ? yearBuckets(config.lastfmSince, now)
-    : scrobbleBuckets(period, now);
-
 export interface ScrobbleCount {
   label: string;
   count: number;
+  // Undefined when the bucket has no scrobbles.
+  topArtist: { name: string; playcount: number } | undefined;
   // Still under way, so its count is partial.
   current: boolean;
 }
@@ -146,12 +143,18 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
+    const buckets =
+      period === "overall"
+        ? yearBuckets(config.lastfmSince, now)
+        : scrobbleBuckets(period, now);
     const scrobbles = await Promise.all(
-      periodBuckets(period, now).map(async ({ label, from, to }) => ({
-        label,
-        count: await userGetScrobbleCount(config.lastfmUsername, { from, to }),
-        current: to > now,
-      })),
+      buckets.map(async ({ label, from, to }) => {
+        const [count, topArtist] = await Promise.all([
+          userGetScrobbleCount(config.lastfmUsername, { from, to }),
+          userGetTopArtistInRange(config.lastfmUsername, { from, to }),
+        ]);
+        return { label, count, topArtist, current: to > now };
+      }),
     );
     cacheLife("hours");
     return { status: "ok", scrobbles };
@@ -159,40 +162,5 @@ export async function getScrobbles(
     cacheLife("seconds");
     log.error({ err, action: "getScrobbles" }, "Error fetching scrobbles");
     return { status: "error", error: "Failed to fetch scrobbles" };
-  }
-}
-
-export interface Era {
-  label: string;
-  // Undefined for a bucket without scrobbles.
-  artist: { name: string; playcount: number } | undefined;
-  current: boolean;
-}
-
-export type GetErasResult =
-  | { status: "ok"; eras: Era[] }
-  | { status: "error"; error: string };
-
-export async function getEras(period: Period): Promise<GetErasResult> {
-  "use cache";
-
-  try {
-    const now = new Date();
-    const eras = await Promise.all(
-      periodBuckets(period, now).map(async ({ label, from, to }) => ({
-        label,
-        artist: await userGetTopArtistInRange(config.lastfmUsername, {
-          from,
-          to,
-        }),
-        current: to > now,
-      })),
-    );
-    cacheLife("hours");
-    return { status: "ok", eras };
-  } catch (err) {
-    cacheLife("seconds");
-    log.error({ err, action: "getEras" }, "Error fetching eras");
-    return { status: "error", error: "Failed to fetch eras" };
   }
 }

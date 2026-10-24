@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   userGetRecentTracks,
   userGetScrobbleCount,
+  userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   type UserGetTopAlbumsResponse,
@@ -26,6 +27,7 @@ import {
 vi.mock(import("@/lib/lastfm"), () => ({
   userGetRecentTracks: vi.fn(),
   userGetScrobbleCount: vi.fn(),
+  userGetTopArtistInRange: vi.fn(),
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
@@ -205,25 +207,30 @@ describe("getTopAlbums", () => {
 });
 
 describe("getScrobbles", () => {
+  const topArtist = { name: "Smog", playcount: 23 };
+
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
     vi.mocked(userGetScrobbleCount).mockResolvedValue(42);
+    vi.mocked(userGetTopArtistInRange).mockResolvedValue(topArtist);
   });
 
-  it("should count each bucket", async () => {
+  it("should count each bucket and find its top artist", async () => {
     const result = await getScrobbles("7day");
 
     expect(userGetScrobbleCount).toHaveBeenCalledTimes(7);
-    expect(userGetScrobbleCount).toHaveBeenLastCalledWith("magijo", {
+    const range = {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
-    });
+    };
+    expect(userGetScrobbleCount).toHaveBeenLastCalledWith("magijo", range);
+    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", range);
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
     expect(result).toEqual({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "Oct 23", count: 42, current: true },
+        { label: "Oct 23", count: 42, topArtist, current: true },
       ]),
     });
   });
@@ -235,8 +242,8 @@ describe("getScrobbles", () => {
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "2007", count: 42, current: false },
-        { label: "2026", count: 42, current: true },
+        { label: "2007", count: 42, topArtist, current: false },
+        { label: "2026", count: 42, topArtist, current: true },
       ]),
     });
   });

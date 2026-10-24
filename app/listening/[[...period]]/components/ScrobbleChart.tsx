@@ -23,7 +23,19 @@ const labelTick = (fromEnd: number, step: number) => {
   return undefined;
 };
 
-const Stems = ({ items }: { items: readonly ScrobbleCount[] }) => {
+interface Run {
+  first: number;
+  last: number;
+}
+
+const Stems = ({
+  items,
+  active,
+}: {
+  items: readonly ScrobbleCount[];
+  // The run of buckets whose spine is hovered.
+  active: Run | undefined;
+}) => {
   const animate = useMotion();
   const [from] = useState(animate ? 0 : 1);
   const [springs] = useSprings(items.length, (index) => ({
@@ -71,6 +83,10 @@ const Stems = ({ items }: { items: readonly ScrobbleCount[] }) => {
                 } as CSSProperties
               }
               data-current={current || undefined}
+              data-active={
+                (active && index >= active.first && index <= active.last) ||
+                undefined
+              }
               data-tick={tick}
             >
               {/* A chart is pointed at on purpose, unlike text read past. */}
@@ -105,6 +121,78 @@ const Stems = ({ items }: { items: readonly ScrobbleCount[] }) => {
   );
 };
 
+// Neighbouring buckets with the same top artist share one spine.
+const runs = (items: readonly ScrobbleCount[]): Run[] =>
+  items.reduce<Run[]>((runs, { topArtist }, index) => {
+    const run = runs.at(-1);
+    if (run && items[run.last]?.topArtist?.name === topArtist?.name) {
+      run.last = index;
+    } else {
+      runs.push({ first: index, last: index });
+    }
+    return runs;
+  }, []);
+
+const Shelf = ({
+  items,
+  onActive,
+}: {
+  items: readonly ScrobbleCount[];
+  onActive: (run: Run | undefined) => void;
+}) => (
+  <div className="shelf">
+    <ol aria-label="Top artists">
+      {runs(items).map((run) => {
+        const span = items.slice(run.first, run.last + 1);
+        const first = span[0];
+        const last = span.at(-1);
+        const name = first?.topArtist?.name;
+        const plays = span.reduce(
+          (sum, { topArtist }) => sum + (topArtist?.playcount ?? 0),
+          0,
+        );
+        const range =
+          first === last ? first?.label : `${first?.label}–${last?.label}`;
+        const text = name
+          ? `${range}: ${name}, ${formatNumber(plays)} plays${last?.current ? " so far" : ""}`
+          : `${range}: no scrobbles`;
+        return (
+          <li
+            key={run.first}
+            style={{ "--span": span.length } as CSSProperties}
+            data-current={last?.current || undefined}
+          >
+            <TooltipText tooltip={text} delay={0}>
+              <span
+                className="spine"
+                onPointerEnter={() => onActive(run)}
+                onPointerLeave={() => onActive(undefined)}
+              >
+                <span aria-hidden="true">{name}</span>
+                <span className="visually-hidden">{text}</span>
+              </span>
+            </TooltipText>
+          </li>
+        );
+      })}
+    </ol>
+    <span className="shelf-label" aria-hidden="true">
+      top artist
+    </span>
+  </div>
+);
+
+const Chart = ({ items }: { items: readonly ScrobbleCount[] }) => {
+  const [active, setActive] = useState<Run>();
+
+  return (
+    <>
+      <Stems items={items} active={active} />
+      <Shelf items={items} onActive={setActive} />
+    </>
+  );
+};
+
 export const ScrobbleChart = ({ scrobbles }: ScrobbleChartProps) => {
   const items = use(scrobbles);
 
@@ -112,7 +200,7 @@ export const ScrobbleChart = ({ scrobbles }: ScrobbleChartProps) => {
     return <p>Scrobbles are temporarily unavailable :(</p>;
   }
 
-  return <Stems items={items} />;
+  return <Chart items={items} />;
 };
 
 export const ScrobbleChartSkeleton = () => (
@@ -120,5 +208,8 @@ export const ScrobbleChartSkeleton = () => (
     <figure className="stems" aria-hidden="true">
       <ol />
     </figure>
+    <div className="shelf" aria-hidden="true">
+      <ol />
+    </div>
   </SkeletonStatus>
 );

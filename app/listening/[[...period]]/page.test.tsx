@@ -2,7 +2,6 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  type GetErasResult,
   getScrobbles,
   type GetScrobblesResult,
   getTopAlbums,
@@ -23,9 +22,6 @@ vi.mock(import("next/navigation"), () => ({
 }));
 
 vi.mock(import("@/actions/lastfm"), () => ({
-  getEras: vi.fn(() =>
-    Promise.resolve<GetErasResult>({ status: "ok", eras: [] }),
-  ),
   getScrobbles: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({ status: "ok", scrobbles: [] }),
   ),
@@ -110,7 +106,14 @@ describe("ListeningPage", () => {
   it("should render the scrobbles per bucket of the period", async () => {
     vi.mocked(getScrobbles).mockResolvedValue({
       status: "ok",
-      scrobbles: [{ label: "2026", count: 42, current: true }],
+      scrobbles: [
+        {
+          label: "2026",
+          count: 42,
+          topArtist: { name: "Smog", playcount: 7 },
+          current: true,
+        },
+      ],
     });
 
     await renderPage();
@@ -120,6 +123,7 @@ describe("ListeningPage", () => {
       screen.getByRole("heading", { name: "Scrobbles (per year)" }),
     ).toBeInTheDocument();
     expect(screen.getByText("2026: 42 so far")).toBeInTheDocument();
+    expect(screen.getByText("2026: Smog, 7 plays so far")).toBeInTheDocument();
   });
 
   it("should render table sections with headings", async () => {
