@@ -62,6 +62,14 @@ describe("AlbumCollage", () => {
     expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
   });
 
+  it("pads a short list with empty tiles to fill the grid", async () => {
+    await renderCollage(albums);
+
+    const [covers] = screen.getAllByRole("list");
+    expect(within(covers!).getAllByRole("listitem")).toHaveLength(10);
+    expect(within(covers!).getAllByRole("link")).toHaveLength(3);
+  });
+
   it("lists each album's rank, name, artist and plays", async () => {
     await renderCollage(albums);
 

@@ -64,6 +64,9 @@ const Dither = () => (
   </svg>
 );
 
+// The #1 tile spans three rows beside a 3×3 grid, so short lists are padded to keep it filled.
+const tiles = 10;
+
 // The filtered copy fades out over the plain cover, since `url()` filters and blend modes can't transition.
 const CoverImage = ({ src, sizes }: { src: string; sizes: string }) => {
   const image = <Image src={src} sizes={sizes} alt="" fill />;
@@ -102,6 +105,11 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
                 {album.name} by {album.artist} on Last.fm
               </span>
             </ExternalLink>
+          </li>
+        ))}
+        {Array.from({ length: tiles - items.length }, (_, index) => (
+          <li key={`empty-${index}`}>
+            <span className="cover" />
           </li>
         ))}
       </ol>
