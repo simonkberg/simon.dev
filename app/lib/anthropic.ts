@@ -349,9 +349,7 @@ async function executeTool(
         const { username, ...params } = topItemsInputSchema.parse(input);
         const albums = await userGetTopAlbums(username, params);
         // The cover URL is for the site's collage; the model has no use for it.
-        return JSON.stringify(albums, (key, value: unknown) =>
-          key === "cover" ? undefined : value,
-        );
+        return JSON.stringify(albums.map(({ cover, ...album }) => album));
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);
