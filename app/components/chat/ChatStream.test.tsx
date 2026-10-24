@@ -24,6 +24,12 @@ function createMockEventSource() {
     sendStatus(data: string) {
       this.dispatchEvent(new MessageEvent("status", { data }));
     }
+
+    sendPresence(here: string[]) {
+      this.dispatchEvent(
+        new MessageEvent("presence", { data: JSON.stringify(here) }),
+      );
+    }
   }
 
   return {
@@ -125,6 +131,19 @@ describe("ChatStream", () => {
 
       expect(status()).toHaveTextContent("offline");
       expect(open.close).toHaveBeenCalled();
+    });
+  });
+
+  describe("presence", () => {
+    it("shows how many are here while live", () => {
+      renderStream();
+      act(() => instance().onopen());
+
+      act(() => instance().sendPresence(["alice", "bob"]));
+      expect(screen.getByText("2 here")).toBeInTheDocument();
+
+      act(() => instance().sendStatus("connecting"));
+      expect(screen.queryByText("2 here")).not.toBeInTheDocument();
     });
   });
 

@@ -164,7 +164,7 @@
   --topbar-size: inherit;
   --control-padding: 0;
   --status-dot: none;
-  --status-push: 0;
+  --controls-push: 0;
   --status-weight: normal;
   --control-hover-color: var(--accent);
   --control-hover-bg: transparent;
@@ -481,7 +481,7 @@
   --topbar-justify: flex-end;
   --control-maximize: "expand ⤢";
   --status-dot: inline-block;
-  --status-push: auto;
+  --controls-push: auto;
 
   --fade: 1rem;
   --history-padding: 0.75rem;
@@ -601,7 +601,7 @@
   --topbar-bg: var(--ink);
   --topbar-color: var(--ground);
   --control-maximize: "+";
-  --status-push: auto;
+  --controls-push: auto;
   --status-weight: bold;
   --control-hover-color: var(--ink);
   --control-hover-bg: var(--ground);
@@ -1538,7 +1538,6 @@ ul {
     font-size: var(--topbar-size);
 
     > .status {
-      margin-right: var(--status-push);
       padding: var(--control-padding);
       font-weight: var(--status-weight);
 
@@ -1562,7 +1561,13 @@ ul {
       }
     }
 
+    > .presence {
+      padding: var(--control-padding);
+      color: var(--muted);
+    }
+
     > .control {
+      margin-left: var(--controls-push);
       padding: var(--control-padding);
 
       &.maximize::before {

@@ -34,6 +34,11 @@ export const MIGRATIONS: readonly string[] = [
   // A note that was only U+0085 is now empty, which contentSchema never writes.
   `DELETE FROM memories WHERE content = ''`,
   `ALTER TABLE memories ADD COLUMN updated_at TEXT`,
+  `CREATE TABLE IF NOT EXISTS presence (
+    stream TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    seen_at INTEGER NOT NULL
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

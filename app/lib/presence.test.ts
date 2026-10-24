@@ -1,0 +1,190 @@
+// @vitest-environment node
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { log } from "@/lib/log";
+import type { Username } from "@/lib/session";
+import { batch, query } from "@/lib/turso";
+import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+
+import { MIGRATIONS } from "./migrations";
+import { joinPresence } from "./presence";
+
+vi.mock(import("@/lib/turso"), async () =>
+  (await import("@/mocks/sqlite")).mockTurso(),
+);
+
+const alice = "alice" as Username;
+const bob = "bob" as Username;
+
+const sqlite = sqliteBeforeEach(query, MIGRATIONS);
+
+// Stands in for a stream on the other replica.
+async function seenElsewhere(username: string, at = Date.now()) {
+  await sqlite()(
+    "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
+    [`elsewhere-${username}`, username, at],
+  );
+}
+
+// One name per stored stream.
+async function stored() {
+  const { rows } = await sqlite()(
+    "SELECT username FROM presence ORDER BY username",
+  );
+  return rows.map((row) => row["username"]);
+}
+
+// Holds the next batch back until the returned function is called.
+function holdNextBatch() {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  const run = vi.mocked(batch).getMockImplementation()!;
+  vi.mocked(batch).mockImplementationOnce(async (statements) => {
+    await promise;
+    return run(statements);
+  });
+  return resolve;
+}
+
+const settle = () => vi.advanceTimersByTimeAsync(0);
+const heartbeat = () => vi.advanceTimersByTimeAsync(15_000);
+
+describe("joinPresence", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it("stores the stream and tells it who is here, the other replica's included", async () => {
+    await seenElsewhere(bob);
+    const listener = vi.fn();
+
+    joinPresence(alice, listener);
+    expect(listener).toHaveBeenLastCalledWith([]);
+    await settle();
+
+    expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
+    expect(await stored()).toEqual(["alice", "bob"]);
+  });
+
+  it("tells every stream when someone joins, and only on a change", async () => {
+    const first = vi.fn();
+    joinPresence(alice, first);
+    await settle();
+
+    joinPresence(bob, vi.fn());
+    await settle();
+    await heartbeat();
+
+    expect(first.mock.calls).toEqual([[[]], [["alice"]], [["alice", "bob"]]]);
+  });
+
+  it("tells a stream without a name who is here without writing anything", async () => {
+    joinPresence(alice, vi.fn());
+    await settle();
+    const listener = vi.fn();
+
+    joinPresence(undefined, listener);
+    await settle();
+
+    expect(listener).toHaveBeenCalledExactlyOnceWith(["alice"]);
+    expect(batch).toHaveBeenCalledOnce();
+  });
+
+  it("keeps its own streams and drops one whose heartbeats stopped", async () => {
+    await seenElsewhere(bob);
+    const listener = vi.fn();
+    joinPresence(alice, listener);
+    await settle();
+
+    await heartbeat();
+    await heartbeat();
+    expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
+    await heartbeat();
+
+    expect(listener).toHaveBeenLastCalledWith(["alice"]);
+    expect(await stored()).toEqual(["alice"]);
+  });
+
+  it("keeps a visitor while any of their tabs is open", async () => {
+    const listener = vi.fn();
+    joinPresence(undefined, listener);
+    const leaveFirst = joinPresence(alice, vi.fn());
+    const leaveSecond = joinPresence(alice, vi.fn());
+    await settle();
+
+    leaveFirst();
+    await settle();
+    expect(listener).toHaveBeenLastCalledWith(["alice"]);
+    leaveSecond();
+    await settle();
+
+    expect(listener).toHaveBeenLastCalledWith([]);
+    expect(await stored()).toEqual([]);
+  });
+
+  it("stops heartbeating once the last stream's leave is stored", async () => {
+    joinPresence(alice, vi.fn())();
+    joinPresence(undefined, vi.fn())();
+    await settle();
+    expect(batch).toHaveBeenCalledTimes(2);
+
+    await heartbeat();
+
+    expect(batch).toHaveBeenCalledTimes(2);
+    expect(await stored()).toEqual([]);
+  });
+
+  it("runs a heartbeat asked for during one right after it", async () => {
+    const resolve = holdNextBatch();
+    const listener = vi.fn();
+    joinPresence(alice, listener);
+    await settle();
+
+    joinPresence(bob, vi.fn());
+    await settle();
+    resolve();
+    await settle();
+
+    expect(batch).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
+  });
+
+  it("takes out a stream that leaves during a heartbeat in the one after", async () => {
+    await seenElsewhere(bob);
+    const resolve = holdNextBatch();
+    const leave = joinPresence(alice, vi.fn());
+    await settle();
+    leave();
+
+    const listener = vi.fn();
+    joinPresence(undefined, listener);
+    resolve();
+    await settle();
+
+    expect(listener).toHaveBeenLastCalledWith(["bob"]);
+    expect(await stored()).toEqual(["bob"]);
+  });
+
+  it("keeps who it last saw while heartbeats fail, and stores its streams again after", async () => {
+    await seenElsewhere(bob);
+    const listener = vi.fn();
+    joinPresence(alice, listener);
+    await settle();
+
+    vi.mocked(query).mockImplementation(failQuery(sqlite(), "SELECT"));
+    await heartbeat();
+    await heartbeat();
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: new Error("boom") },
+      "Presence heartbeat failed",
+    );
+    expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
+
+    // Expired by the other replica meanwhile.
+    await sqlite()("DELETE FROM presence");
+    vi.mocked(query).mockImplementation(sqlite());
+    await heartbeat();
+
+    expect(await stored()).toEqual(["alice"]);
+  });
+});
