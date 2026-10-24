@@ -130,16 +130,24 @@ describe("handleMessage", () => {
     expect(sendTyping).toHaveBeenCalledTimes(3);
   });
 
-  it("should post only once its typing has landed, so it doesn't type after replying", async () => {
+  it("should post only once every typing call has landed, so it never types after replying", async () => {
+    vi.useFakeTimers();
     const { promise: typed, resolve: land } = Promise.withResolvers<void>();
     vi.mocked(sendTyping).mockReturnValueOnce(typed);
-    replyWith("hello there!");
+    const { promise: answered, resolve: answer } =
+      Promise.withResolvers<void>();
+    vi.mocked(createAnthropicMessage).mockImplementation(async function* () {
+      await answered;
+      yield "hello there!";
+    });
 
     const handled = handleMessage(
       message("msg-1", { content: "User1: hey simon-bot!" }),
     );
-    await vi.waitFor(() => expect(createAnthropicMessage).toHaveBeenCalled());
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(sendTyping).toHaveBeenCalledTimes(2);
+    answer();
+    await vi.advanceTimersByTimeAsync(0);
     expect(postChannelMessage).not.toHaveBeenCalled();
     land();
     await handled;

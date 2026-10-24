@@ -32,9 +32,11 @@ const TYPING_INTERVAL_MS = 8_000;
 function keepTyping() {
   let sent = Promise.resolve();
   const type = () => {
-    sent = sendTyping().catch((err: unknown) => {
+    const sending = sendTyping().catch((err: unknown) => {
       log.warn({ err }, "Failed to show the bot typing");
     });
+    // A call held by a rate limit can outlast the next one.
+    sent = Promise.all([sent, sending]).then(() => {});
   };
   const start = () => setInterval(type, TYPING_INTERVAL_MS);
   type();
