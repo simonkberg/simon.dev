@@ -310,6 +310,19 @@ describe("userGetTopAlbums", () => {
 
     expect(first?.cover).toBeUndefined();
   });
+
+  it("should leave out a malformed cover without failing the list", async () => {
+    lastfmReturns({
+      topalbums: { album: [album("Test", 1, 250, [{ size: "extralarge" }])] },
+    });
+
+    const [first] = await userGetTopAlbums("testuser", {
+      period: "3month",
+      limit: 10,
+    });
+
+    expect(first).toMatchObject({ name: "Test", cover: undefined });
+  });
 });
 
 describe("userGetScrobbleCount", () => {

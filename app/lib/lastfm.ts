@@ -208,7 +208,8 @@ const userGetTopAlbumsResponseSchema = z
             playcount: z.string().transform(Number),
             url: z.templateLiteral(["https://", z.string()]),
             artist: z.object({ name: z.string() }),
-            image: coverSchema.optional(),
+            // A cover is decoration: a malformed one leaves the tile empty, not the list unavailable.
+            image: coverSchema.catch(undefined),
             "@attr": z.object({ rank: z.string().transform(Number) }),
           })
           .transform((data) => ({
