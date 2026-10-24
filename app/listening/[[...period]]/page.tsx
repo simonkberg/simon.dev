@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Suspense, use } from "react";
 
 import {
-  getOnThisDay,
   getScrobbles,
   getTopAlbums,
   getTopArtists,
@@ -20,9 +19,8 @@ import {
   periods,
 } from "@/lib/lastfm";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
+import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
-import { OnThisDay, OnThisDaySkeleton } from "./components/OnThisDay";
-import { PeriodSelector } from "./components/PeriodSelector";
 import {
   ScrobbleChart,
   ScrobbleChartSkeleton,
@@ -82,9 +80,6 @@ export default function ListeningPage({ params }: ListeningPageProps) {
   const scrobbles = getScrobbles(period).then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );
-  const onThisDay = getOnThisDay().then((result) =>
-    result.status === "ok" ? result.days : undefined,
-  );
   const topTracks = getTopTracks(period).then((result) =>
     result.status === "ok" ? result.tracks : undefined,
   );
@@ -116,13 +111,6 @@ export default function ListeningPage({ params }: ListeningPageProps) {
         <Suspense fallback={<ScrobbleChartSkeleton />}>
           {/* Keyed so a new period mounts fresh stems that grow in. */}
           <ScrobbleChart key={period} scrobbles={scrobbles} />
-        </Suspense>
-      </section>
-
-      <section>
-        <Heading level={2}>On This Day</Heading>
-        <Suspense fallback={<OnThisDaySkeleton />}>
-          <OnThisDay days={onThisDay} />
         </Suspense>
       </section>
 

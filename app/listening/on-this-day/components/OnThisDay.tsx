@@ -2,7 +2,7 @@ import { type CSSProperties, use } from "react";
 
 import type { DayInYear, OnThisDay as OnThisDayData } from "@/actions/lastfm";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
-import { formatNumber } from "@/lib/formatNumber";
+import { formatPlays } from "@/lib/formatNumber";
 
 export interface OnThisDayProps {
   // Undefined when the days failed to load.
@@ -24,9 +24,6 @@ const toStops = (years: readonly DayInYear[]): Stop[] => {
   }
   return stops;
 };
-
-const plays = (count: number) =>
-  `${formatNumber(count)} ${count === 1 ? "play" : "plays"}`;
 
 export const OnThisDay = ({ days }: OnThisDayProps) => {
   const data = use(days);
@@ -54,7 +51,9 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
                 </>
               )}
             </span>
-            <span className="timeline-plays">{plays(stop.year.count)}</span>
+            <span className="timeline-plays">
+              {formatPlays(stop.year.count)}
+            </span>
           </li>
         ) : (
           <li key={stop.to} data-silent>
