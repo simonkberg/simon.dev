@@ -113,22 +113,28 @@ describe("GET /api/chat/sse", () => {
     expect(await readText(reader)).toBe("event: status\ndata: live\n\n");
   });
 
-  it("should count the session's visitor and send who is here", async () => {
-    mockCookieJar(
-      `session=${await encrypt({ username: "alice" as Username })}`,
-    );
-    const response = await open();
-    const reader = response.body!.getReader();
-    const [, username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
-    await reader.read();
+  it.each([
+    { here: ["alice", "bob", "carol"], sent: ["you", "alice", "carol"] },
+    { here: ["alice"], sent: ["alice"] },
+  ])(
+    "should count the session's visitor and send who is here, as you",
+    async ({ here, sent }) => {
+      mockCookieJar(
+        `session=${await encrypt({ username: "bob" as Username })}`,
+      );
+      const response = await open();
+      const reader = response.body!.getReader();
+      const [, username, onPresence] = vi.mocked(joinPresence).mock.calls[0]!;
+      await reader.read();
 
-    onPresence(["alice", "bob"]);
+      onPresence(here);
 
-    expect(username).toBe("alice");
-    expect(await readText(reader)).toBe(
-      'event: presence\ndata: ["alice","bob"]\n\n',
-    );
-  });
+      expect(username).toBe("bob");
+      expect(await readText(reader)).toBe(
+        `event: presence\ndata: ${JSON.stringify(sent)}\n\n`,
+      );
+    },
+  );
 
   it("should send periodic pings every 5 seconds", async () => {
     const reader = await openReader();

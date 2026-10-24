@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
   let aborted = false;
   const session = await findSession();
+  const username = session?.username;
+  // Generated names are adjective-animal, so none of them is "you".
+  const you = (here: readonly string[]) =>
+    username && here.includes(username)
+      ? ["you", ...here.filter((name) => name !== username)]
+      : here;
   const send = (text: string) => {
     if (aborted) return;
     void writer.write(encoder.encode(text)).catch(ignoreWriteErrors);
@@ -47,10 +53,8 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  const leavePresence = joinPresence(
-    crypto.randomUUID(),
-    session?.username,
-    (here) => send(`event: presence\ndata: ${JSON.stringify(here)}\n\n`),
+  const leavePresence = joinPresence(crypto.randomUUID(), username, (here) =>
+    send(`event: presence\ndata: ${JSON.stringify(you(here))}\n\n`),
   );
 
   const pingInterval = setInterval(() => send(PING_MESSAGE), PING_INTERVAL_MS);
