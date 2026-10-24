@@ -27,6 +27,9 @@ describe("Header", () => {
     expect(
       within(pages()).getByRole("link", { name: "listening" }),
     ).toHaveAttribute("href", "/listening");
+    expect(
+      within(pages()).getByRole("link", { name: "simon-bot" }),
+    ).toHaveAttribute("href", "/simon-bot");
   });
 
   it("marks home as the current page without a section", () => {

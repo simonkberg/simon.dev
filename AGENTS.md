@@ -223,7 +223,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads
   with `recall`. Notes are one line. `edit` and `forget` are compare-and-swap on the note's text. Memory
-  failures degrade to a reply without memory, never to no reply.
+  failures degrade to a reply without memory, never to no reply. `/simon-bot` shows the
+  `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
   `app/lib/reflection.ts` runs after every mention, even one the bot chose not to answer,
