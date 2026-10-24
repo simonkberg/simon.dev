@@ -226,6 +226,6 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
   } catch (err) {
     cacheLife("seconds");
     log.error({ err, action: "getOnThisDay" }, "Error fetching on this day");
-    return { status: "error", error: String(err).slice(0, 2000) };
+    return { status: "error", error: "Failed to fetch on this day" };
   }
 }

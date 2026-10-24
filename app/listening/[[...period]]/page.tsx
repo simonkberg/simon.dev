@@ -83,7 +83,7 @@ export default function ListeningPage({ params }: ListeningPageProps) {
     result.status === "ok" ? result.scrobbles : undefined,
   );
   const onThisDay = getOnThisDay().then((result) =>
-    result.status === "ok" ? result.days : { date: result.error, years: [] },
+    result.status === "ok" ? result.days : undefined,
   );
   const topTracks = getTopTracks(period).then((result) =>
     result.status === "ok" ? result.tracks : undefined,
