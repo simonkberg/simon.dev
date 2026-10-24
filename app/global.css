@@ -2047,14 +2047,27 @@ ul {
 }
 
 .chat-typing {
-  flex: 0 0 auto;
-  min-height: 1lh;
+  position: absolute;
+  z-index: 2;
+  /* The history's inline padding, so it lines up with the messages. */
+  bottom: 4px;
+  left: 4px;
+  max-width: calc(100% - 8px);
   margin: 0;
+  padding: 0 1ch;
+  border: 1px solid var(--rule);
+  border-radius: var(--pill-radius);
+  background: var(--surface);
   font-size: var(--tip-size);
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  /* Kept in the DOM while empty, so screen readers hear the first typist. */
+  &:empty {
+    display: none;
+  }
 
   > .face {
     margin-right: 1ch;

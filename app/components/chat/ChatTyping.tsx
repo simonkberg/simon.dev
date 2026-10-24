@@ -4,7 +4,7 @@ import { useBuddyFace } from "./CaretBuddy";
 import { nameList } from "./ChatReactions";
 import { useTyping } from "./typing";
 
-/** Who is typing, each with their own buddy; the line stays when nobody is, so the chat doesn't jump. */
+/** Who is typing, each with their own buddy, floating over the history's foot so it takes no room. */
 export const ChatTyping = () => {
   const typing = useTyping();
   return (

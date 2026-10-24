@@ -13,6 +13,7 @@ import type { Message } from "@/lib/discord/api";
 
 import { arrowFocus } from "./arrowFocus";
 import { ChatMessage } from "./ChatMessage";
+import { ChatTyping } from "./ChatTyping";
 
 const messageIds = (messages: Message[]): string[] =>
   messages.flatMap((message) => [message.id, ...messageIds(message.replies)]);
@@ -136,6 +137,7 @@ export const ChatHistory = ({
           />
         </ul>
       </div>
+      <ChatTyping />
     </div>
   );
 };

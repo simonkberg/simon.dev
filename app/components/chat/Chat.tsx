@@ -14,7 +14,6 @@ import { ChatInput } from "./ChatInput";
 import { ChatReactionsContext } from "./ChatReactions";
 import { ChatTip, useChatTipDismissed } from "./ChatTip";
 import { ChatToast } from "./ChatToast";
-import { ChatTyping } from "./ChatTyping";
 
 const findMessageById = (messages: Message[], id: string): Message | null => {
   for (const message of messages) {
@@ -154,7 +153,6 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
         replyToId={replyToId}
         setReplyToId={setReplyToId}
       />
-      <ChatTyping />
       {replyToMessage && (
         <div className="chat-replying-to" role="status" aria-live="polite">
           <Subtitle>Replying to</Subtitle>
