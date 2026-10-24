@@ -726,11 +726,13 @@ button {
   border: 0;
   background: none;
   color: var(--ink);
-  /* It sits inside the text it describes, so reset every inherited text style it could pick up. */
-  font:
-    normal var(--meta-size) / var(--leading) var(--font-iosevka),
-    monospace;
-  font-variant-numeric: normal;
+  /* It sits inside the text it describes, so don't inherit that text's style. Longhands, since
+     manual's --meta-size is inherit, which the font shorthand can't take. */
+  font-style: normal;
+  font-variant: normal;
+  font-weight: normal;
+  font-size: var(--meta-size);
+  line-height: var(--leading);
   letter-spacing: normal;
   word-spacing: normal;
   text-align: start;
@@ -1018,16 +1020,17 @@ ul {
   --stems-height: 8.5rem;
   --stems-row: 1rem;
   --stems-head: 1.75rem;
+  --stems-columns: minmax(0, 1fr) var(--stems-gutter);
   --stems-zero: calc(var(--stems-row) * 1.5);
   position: relative;
+  display: grid;
+  grid-template-columns: var(--stems-columns);
   /* Inline start is the section indent. */
   margin-block: 0;
   margin-inline-end: 0;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   container-type: inline-size;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--stems-gutter);
 
   &::before {
     content: "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────";
@@ -1179,7 +1182,7 @@ ul {
       var(--stems-zero) + var(--average) / var(--max) * var(--stems-height)
     );
     display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--stems-gutter);
+    grid-template-columns: var(--stems-columns);
     align-items: center;
     translate: 0 50%;
     color: var(--muted);
@@ -1219,7 +1222,6 @@ ul {
   }
 }
 
-/* One row per top artist of a year, with a bar under each run of its years. */
 .lanes {
   margin-block: 0.75rem 0;
   line-height: 1;

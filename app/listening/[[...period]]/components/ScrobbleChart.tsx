@@ -35,7 +35,6 @@ const Stems = ({
   active,
 }: {
   items: readonly ScrobbleCount[];
-  // The runs of buckets whose lane is hovered.
   active: readonly Run[];
 }) => {
   const animate = useMotion();
@@ -132,7 +131,6 @@ interface Lane {
   last: number;
 }
 
-// One lane per top artist, in order of first appearance, with a run per stretch of its years.
 const lanes = (
   items: readonly ScrobbleCount[],
   years: readonly YearTopArtist[],
@@ -166,17 +164,17 @@ const lanes = (
 
 const Lanes = ({
   items,
-  years,
+  rows,
   onActive,
 }: {
   items: readonly ScrobbleCount[];
-  years: readonly YearTopArtist[];
+  rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
 }) => (
   <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
     {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
     <ol aria-label="Top artist by year" onPointerLeave={() => onActive([])}>
-      {lanes(items, years).map(({ name, runs, plays, first, last }) => {
+      {rows.map(({ name, runs, plays, first, last }) => {
         const end = first > items.length / 2;
         const span = runs
           .map((run) => {
@@ -218,37 +216,28 @@ const Lanes = ({
   </div>
 );
 
-const Chart = ({
-  items,
-  years,
-}: {
-  items: readonly ScrobbleCount[];
-  years: readonly YearTopArtist[] | undefined;
-}) => {
-  const [active, setActive] = useState<readonly Run[]>([]);
-
-  return (
-    <>
-      <Stems items={items} active={active} />
-      {years?.some(({ artist }) => artist) && (
-        <Lanes items={items} years={years} onActive={setActive} />
-      )}
-    </>
-  );
-};
-
 export const ScrobbleChart = ({
   scrobbles,
   topArtistByYear,
 }: ScrobbleChartProps) => {
   const items = use(scrobbles);
   const years = topArtistByYear && use(topArtistByYear);
+  const [active, setActive] = useState<readonly Run[]>([]);
 
   if (items === undefined) {
     return <p>Scrobbles are temporarily unavailable :(</p>;
   }
 
-  return <Chart items={items} years={years} />;
+  const rows = years ? lanes(items, years) : [];
+
+  return (
+    <>
+      <Stems items={items} active={active} />
+      {rows.length > 0 && (
+        <Lanes items={items} rows={rows} onActive={setActive} />
+      )}
+    </>
+  );
 };
 
 export const ScrobbleChartSkeleton = () => (

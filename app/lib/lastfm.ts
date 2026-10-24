@@ -263,10 +263,12 @@ const userGetTopArtistInRangeResponseSchema = z
   .object({
     weeklyartistchart: z.object({
       // In case an empty range leaves the list out rather than sending [].
-      artist: z.array(weeklyArtistSchema).default([]),
+      artist: z.array(z.unknown()).default([]),
     }),
   })
-  .transform((data) => data.weeklyartistchart.artist[0]);
+  // A year's chart lists thousands of artists, so only the top one is parsed.
+  .transform((data) => data.weeklyartistchart.artist[0])
+  .pipe(weeklyArtistSchema.optional());
 
 // The weekly chart takes any range, not only the weeks Last.fm lists, ranked by plays.
 export async function userGetTopArtistInRange(
