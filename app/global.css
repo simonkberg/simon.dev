@@ -995,11 +995,9 @@ ul {
 
 /* Charts */
 
-/* The lanes' bars line up under the stems, so both share the columns. */
+/* The lanes' bars line up under the stems, so both keep its gutter for the average. */
 :is(.stems, .lanes) {
-  --stems-columns: minmax(0, 1fr) 7ch;
-  display: grid;
-  grid-template-columns: var(--stems-columns);
+  --stems-gutter: 7ch;
 
   > ol {
     margin: 0;
@@ -1020,6 +1018,8 @@ ul {
   line-height: 1;
   font-variant-numeric: tabular-nums;
   container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--stems-gutter);
 
   &::before {
     content: "────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────";
@@ -1171,7 +1171,7 @@ ul {
       var(--stems-zero) + var(--average) / var(--max) * var(--stems-height)
     );
     display: grid;
-    grid-template-columns: var(--stems-columns);
+    grid-template-columns: minmax(0, 1fr) var(--stems-gutter);
     align-items: center;
     translate: 0 50%;
     color: var(--muted);
@@ -1216,16 +1216,17 @@ ul {
   margin-block: 0.75rem 0;
   line-height: 1;
 
-  /* On the list, not the grid, so its 7ch column matches the stems'. */
   > ol {
     display: grid;
     gap: 0.55rem;
-    font-size: var(--meta-size);
   }
 
+  /* The track runs on through the gutter, like the stems' axis. */
   li {
     display: grid;
-    grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+    grid-template-columns:
+      repeat(var(--count), minmax(0, 1fr))
+      var(--stems-gutter);
     row-gap: 0.25rem;
 
     /* The lane's track, dotted under the years it didn't top. */
@@ -1243,8 +1244,10 @@ ul {
     }
   }
 
+  /* Sized here, not on the list, so the gutter's ch matches the stems'. */
   .lane-label {
     grid-row: 1;
+    font-size: var(--meta-size);
     white-space: nowrap;
 
     /* A late artist's name ends at its bar, so it never runs off the chart. */
