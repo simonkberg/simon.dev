@@ -348,18 +348,12 @@ export async function getUserPlays(
   user: string,
   params: { artist: string; track?: string; album?: string },
 ) {
-  const common = { username: user, artist: params.artist, autocorrect: 1 };
+  const query = { username: user, autocorrect: 1, ...params };
   if (params.track !== undefined) {
-    return call("track.getinfo", trackGetInfoResponseSchema, {
-      ...common,
-      track: params.track,
-    });
+    return call("track.getinfo", trackGetInfoResponseSchema, query);
   }
   if (params.album !== undefined) {
-    return call("album.getinfo", albumGetInfoResponseSchema, {
-      ...common,
-      album: params.album,
-    });
+    return call("album.getinfo", albumGetInfoResponseSchema, query);
   }
-  return call("artist.getinfo", artistGetInfoResponseSchema, common);
+  return call("artist.getinfo", artistGetInfoResponseSchema, query);
 }
