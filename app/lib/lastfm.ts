@@ -234,6 +234,12 @@ const userGetScrobbleCountResponseSchema = z
 
 const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
 
+const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
+  from: toUnixTime(from),
+  // `to` is inclusive, and the next range starts on this second.
+  to: toUnixTime(to) - 1,
+});
+
 // Only the response's total is read, so one track per page is enough.
 export async function userGetScrobbleCount(
   user: string,
@@ -242,9 +248,7 @@ export async function userGetScrobbleCount(
   return call("user.getrecenttracks", userGetScrobbleCountResponseSchema, {
     user,
     limit: 1,
-    from: toUnixTime(params.from),
-    // `to` is inclusive, and the next range starts on this second.
-    to: toUnixTime(params.to) - 1,
+    ...rangeParams(params),
   });
 }
 
@@ -253,17 +257,11 @@ const weeklyArtistSchema = z.object({
   playcount: z.string().transform(Number),
 });
 
+export type WeeklyArtist = z.infer<typeof weeklyArtistSchema>;
+
 const userGetTopArtistInRangeResponseSchema = z
   .object({
-    weeklyartistchart: z.object({
-      // Unverified, but Last.fm's XML-shaped JSON may send a lone artist bare or none at all.
-      artist: z
-        .union([
-          z.array(weeklyArtistSchema),
-          weeklyArtistSchema.transform((artist) => [artist]),
-        ])
-        .default([]),
-    }),
+    weeklyartistchart: z.object({ artist: z.array(weeklyArtistSchema) }),
   })
   .transform((data) => data.weeklyartistchart.artist[0]);
 
@@ -271,15 +269,10 @@ const userGetTopArtistInRangeResponseSchema = z
 export async function userGetTopArtistInRange(
   user: string,
   params: { from: Date; to: Date },
-): Promise<z.infer<typeof weeklyArtistSchema> | undefined> {
+) {
   return call(
     "user.getweeklyartistchart",
     userGetTopArtistInRangeResponseSchema,
-    {
-      user,
-      from: toUnixTime(params.from),
-      // `to` is inclusive, as with the scrobble count.
-      to: toUnixTime(params.to) - 1,
-    },
+    { user, ...rangeParams(params) },
   );
 }

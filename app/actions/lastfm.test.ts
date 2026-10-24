@@ -264,6 +264,7 @@ describe("getScrobbles", () => {
       { err: mockError, label: "Oct 17" },
       "Error fetching top artist",
     );
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
   });
 
   it("should return error status when a count fails", async () => {

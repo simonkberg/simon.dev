@@ -324,17 +324,4 @@ describe("userGetTopArtistInRange", () => {
     });
     expect(top).toEqual({ name: "Smog", playcount: 23 });
   });
-
-  it.each([
-    [
-      "a lone artist",
-      { artist: artist("Smog", "1") },
-      { name: "Smog", playcount: 1 },
-    ],
-    ["no artists", {}, undefined],
-  ])("should read %s", async (_, weeklyartistchart, expected) => {
-    lastfmReturns({ weeklyartistchart });
-
-    expect(await userGetTopArtistInRange("testuser", range)).toEqual(expected);
-  });
 });

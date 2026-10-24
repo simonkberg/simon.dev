@@ -15,6 +15,7 @@ import {
   type UserGetTopArtistsResponse,
   userGetTopTracks,
   type UserGetTopTracksResponse,
+  type WeeklyArtist,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { scrobbleBuckets, yearBuckets } from "@/lib/scrobbleBuckets";
@@ -127,7 +128,7 @@ export interface ScrobbleCount {
   label: string;
   count: number;
   // Undefined when the bucket has no scrobbles or the artist failed to load.
-  topArtist: { name: string; playcount: number } | undefined;
+  topArtist: WeeklyArtist | undefined;
   // Still under way, so its count is partial.
   current: boolean;
 }
@@ -147,6 +148,7 @@ export async function getScrobbles(
       period === "overall"
         ? yearBuckets(config.lastfmSince, now)
         : scrobbleBuckets(period, now);
+    let artistFailed = false;
     const scrobbles = await Promise.all(
       buckets.map(async ({ label, from, to }) => {
         const [count, topArtist] = await Promise.all([
@@ -155,6 +157,7 @@ export async function getScrobbles(
           userGetTopArtistInRange(config.lastfmUsername, { from, to }).catch(
             (err: unknown) => {
               log.warn({ err, label }, "Error fetching top artist");
+              artistFailed = true;
               return undefined;
             },
           ),
@@ -162,7 +165,12 @@ export async function getScrobbles(
         return { label, count, topArtist, current: to > now };
       }),
     );
-    cacheLife("hours");
+    if (artistFailed) {
+      // A missing spine shouldn't stay missing for hours.
+      cacheLife("minutes");
+    } else {
+      cacheLife("hours");
+    }
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");

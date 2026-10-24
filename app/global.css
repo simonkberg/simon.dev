@@ -1006,15 +1006,28 @@ ul {
 
 /* Charts */
 
+/* The shelf's spines line up under the stems, so both share the columns. */
+:is(.stems, .shelf) {
+  --stems-columns: minmax(0, 1fr) 7ch;
+  display: grid;
+  grid-template-columns: var(--stems-columns);
+
+  > ol {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
 .stems {
   --stems-height: 8.5rem;
   --stems-row: 1rem;
   --stems-head: 1.75rem;
-  --stems-columns: minmax(0, 1fr) 7ch;
   --stems-zero: calc(var(--stems-row) * 1.5);
   position: relative;
-  display: grid;
-  grid-template-columns: var(--stems-columns);
   /* Inline start is the section indent. */
   margin-block: 0;
   margin-inline-end: 0;
@@ -1035,15 +1048,9 @@ ul {
   > ol {
     position: relative;
     z-index: 1;
-    display: grid;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-flow: column;
     height: calc(
       var(--stems-head) + var(--stems-height) + var(--stems-row) * 2
     );
-    margin: 0;
-    padding: 0;
-    list-style: none;
   }
 
   li {
@@ -1217,31 +1224,18 @@ ul {
 
 /* One spine per run of buckets with the same top artist, under their stems. */
 .shelf {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 7ch;
   margin-block: 0.75rem 0;
   line-height: 1;
 
   > ol {
-    display: grid;
-    grid-auto-columns: minmax(0, 1fr);
-    grid-auto-flow: column;
     height: 9.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
   }
 
   li {
-    --spine-style: solid;
     grid-column: span var(--span);
     min-width: 0;
     padding-inline: 1px;
     container-type: inline-size;
-
-    &[data-current] {
-      --spine-style: dashed;
-    }
 
     /* TooltipText's span. */
     > span {
@@ -1255,10 +1249,14 @@ ul {
     justify-content: center;
     height: 100%;
     overflow: hidden;
-    border: var(--spine-width) var(--spine-style) var(--spine-color);
-    border-inline-start: var(--spine-edge-width) var(--spine-style)
-      var(--spine-edge-color);
+    border: var(--spine-width) solid var(--spine-color);
+    border-inline-start: var(--spine-edge-width) solid var(--spine-edge-color);
     background: var(--spine-bg);
+
+    /* Like the current stem, still filling up. */
+    li[data-current] & {
+      border-style: dashed;
+    }
 
     &:hover {
       background: var(--spine-hover-bg);

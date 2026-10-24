@@ -85,7 +85,7 @@ describe("ScrobbleChart", () => {
     fireEvent.pointerEnter(spine!);
     expect(active()).toEqual([true, true, false, false]);
 
-    fireEvent.pointerLeave(spine!);
+    fireEvent.pointerLeave(screen.getByRole("list", { name: "Top artists" }));
     expect(active()).toEqual([false, false, false, false]);
   });
 

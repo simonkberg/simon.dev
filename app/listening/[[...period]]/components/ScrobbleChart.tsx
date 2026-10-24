@@ -127,15 +127,15 @@ const shelfKey = ({ topArtist, count }: ScrobbleCount) =>
 
 // Neighbouring buckets with the same top artist share one spine.
 const runs = (items: readonly ScrobbleCount[]): Run[] =>
-  items.reduce<Run[]>((runs, item, index) => {
-    const run = runs.at(-1);
+  items.reduce<Run[]>((shelf, item, index) => {
+    const run = shelf.at(-1);
     const previous = run && items[run.last];
     if (previous && shelfKey(previous) === shelfKey(item)) {
       run.last = index;
     } else {
-      runs.push({ first: index, last: index });
+      shelf.push({ first: index, last: index });
     }
-    return runs;
+    return shelf;
   }, []);
 
 const Shelf = ({
@@ -146,7 +146,8 @@ const Shelf = ({
   onActive: (run: Run | undefined) => void;
 }) => (
   <div className="shelf">
-    <ol aria-label="Top artists">
+    {/* Cleared on leaving the shelf, not each spine, so gliding across re-renders once. */}
+    <ol aria-label="Top artists" onPointerLeave={() => onActive(undefined)}>
       {runs(items).map((run) => {
         const span = items.slice(run.first, run.last + 1);
         const first = span[0];
@@ -168,11 +169,7 @@ const Shelf = ({
             data-current={last?.current || undefined}
           >
             <TooltipText tooltip={text} delay={0}>
-              <span
-                className="spine"
-                onPointerEnter={() => onActive(run)}
-                onPointerLeave={() => onActive(undefined)}
-              >
+              <span className="spine" onPointerEnter={() => onActive(run)}>
                 <span aria-hidden="true">{name}</span>
                 <span className="visually-hidden">{text}</span>
               </span>
