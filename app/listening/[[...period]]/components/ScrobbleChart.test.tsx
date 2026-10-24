@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import type { ScrobbleCount, YearTopArtist } from "@/actions/lastfm";
+import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
@@ -19,7 +19,7 @@ const renderChart = (items: readonly ScrobbleCount[] | undefined) =>
 
 const smog = (playcount: number) => ({ name: "Smog", playcount });
 
-const years: YearTopArtist[] = [
+const years: BucketTopArtist[] = [
   { label: "2016", artist: smog(5) },
   { label: "2017", artist: smog(7) },
   { label: "2018", artist: { name: "Low", playcount: 3 } },
@@ -28,7 +28,9 @@ const years: YearTopArtist[] = [
   { label: "2021", artist: { name: "Bill Callahan", playcount: 4 } },
 ];
 
-const renderLanes = (topArtistByYear: readonly YearTopArtist[] | undefined) =>
+const renderLanes = (
+  topArtistByBucket: readonly BucketTopArtist[] | undefined,
+) =>
   act(async () =>
     render(
       <ScrobbleChart
@@ -39,13 +41,13 @@ const renderLanes = (topArtistByYear: readonly YearTopArtist[] | undefined) =>
             current: index === years.length - 1,
           })),
         )}
-        topArtistByYear={Promise.resolve(topArtistByYear)}
+        topArtistByBucket={Promise.resolve(topArtistByBucket)}
       />,
     ),
   );
 
 const lanes = () =>
-  within(screen.getByRole("list", { name: "Top artist by year" })).getAllByRole(
+  within(screen.getByRole("list", { name: "Top artists" })).getAllByRole(
     "listitem",
   );
 
@@ -106,23 +108,24 @@ describe("ScrobbleChart", () => {
     fireEvent.pointerEnter(lanes()[0]!);
     expect(active()).toEqual([true, true, false, false, true, false]);
 
-    fireEvent.pointerLeave(
-      screen.getByRole("list", { name: "Top artist by year" }),
-    );
+    fireEvent.pointerLeave(screen.getByRole("list", { name: "Top artists" }));
     expect(active()).toEqual([false, false, false, false, false, false]);
   });
 
   it.each([
     ["failed to load", undefined],
     ["have none", years.map(({ label }) => ({ label, artist: undefined }))],
-  ])("leaves the lanes out when the artists %s", async (_, topArtistByYear) => {
-    await renderLanes(topArtistByYear);
+  ])(
+    "leaves the lanes out when the artists %s",
+    async (_, topArtistByBucket) => {
+      await renderLanes(topArtistByBucket);
 
-    expect(stems()).toHaveLength(years.length);
-    expect(
-      screen.queryByRole("list", { name: "Top artist by year" }),
-    ).not.toBeInTheDocument();
-  });
+      expect(stems()).toHaveLength(years.length);
+      expect(
+        screen.queryByRole("list", { name: "Top artists" }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("scales a lone empty bucket with no average to show", async () => {
     await renderChart([{ label: "2026", count: 0, current: true }]);
