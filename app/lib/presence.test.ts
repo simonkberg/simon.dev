@@ -110,12 +110,15 @@ describe("joinPresence", () => {
     expect(await storedStreams()).toEqual([]);
   });
 
-  it("stops heartbeating when the last stream leaves", async () => {
+  it("stops heartbeating once the last stream's leave is stored", async () => {
     joinPresence("a1", alice, vi.fn())();
     joinPresence("anon", undefined, vi.fn())();
+    await settle();
+    expect(batch).toHaveBeenCalledTimes(2);
+
     await heartbeat();
 
-    expect(batch).not.toHaveBeenCalled();
+    expect(batch).toHaveBeenCalledTimes(2);
     expect(await storedStreams()).toEqual([]);
   });
 
@@ -134,7 +137,7 @@ describe("joinPresence", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
   });
 
-  it("starts afresh when everyone left during a heartbeat", async () => {
+  it("takes out a stream that leaves during a heartbeat in the one after", async () => {
     await seenElsewhere(bob);
     const resolve = holdNextBatch();
     const leave = joinPresence("a1", alice, vi.fn());
@@ -143,12 +146,11 @@ describe("joinPresence", () => {
 
     const listener = vi.fn();
     joinPresence("anon", undefined, listener);
-    await settle();
     resolve();
     await settle();
 
-    expect(batch).toHaveBeenCalledTimes(2);
-    expect(listener.mock.calls).toEqual([[[]], [["bob"]]]);
+    expect(listener).toHaveBeenLastCalledWith(["bob"]);
+    expect(await storedStreams()).toEqual(["elsewhere-bob"]);
   });
 
   it("keeps who it last saw when a heartbeat fails", async () => {
@@ -167,16 +169,19 @@ describe("joinPresence", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
   });
 
-  it("logs a stream it couldn't store", async () => {
-    vi.mocked(query).mockImplementation(failQuery(sqlite(), "INSERT"));
-
-    joinPresence("a1", alice, vi.fn());
-    await settle();
-
-    expect(log.warn).toHaveBeenCalledWith(
-      { err: new Error("boom") },
-      "Presence write failed",
+  it("stores a stream on the next heartbeat when its join failed", async () => {
+    vi.mocked(query).mockImplementation(
+      failQuery(sqlite(), "INSERT", { once: true }),
     );
+    const listener = vi.fn();
+    joinPresence("a1", alice, listener);
+    await settle();
+    expect(await storedStreams()).toEqual([]);
+
+    await heartbeat();
+
+    expect(listener).toHaveBeenLastCalledWith(["alice"]);
+    expect(await storedStreams()).toEqual(["a1"]);
   });
 });
 
@@ -203,5 +208,16 @@ describe("leavePresence", () => {
     await leavePresence("elsewhere-alice", bob);
 
     expect(await storedStreams()).toEqual(["elsewhere-alice"]);
+  });
+
+  it("logs a stream it couldn't take out", async () => {
+    vi.mocked(query).mockImplementation(failQuery(sqlite(), "DELETE"));
+
+    await leavePresence("elsewhere-alice", alice);
+
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: new Error("boom") },
+      "Failed to take a stream out of presence",
+    );
   });
 });
