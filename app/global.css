@@ -130,8 +130,6 @@
   --cover-overlay: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
-  --cover-rank-bg: var(--ink);
-  --cover-rank-color: var(--ground);
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -345,8 +343,6 @@
   );
   --cover-frame: 1px solid var(--rule);
   --cover-frame-hover: 1px solid var(--accent);
-  --cover-rank-bg: var(--accent);
-  --cover-rank-color: var(--on-accent);
 
   --track-padding: 0 0 0 2.5ch;
   --track-marker: "›";
@@ -490,8 +486,6 @@
   );
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-blend: multiply;
-  --cover-rank-bg: var(--accent);
-  --cover-rank-color: var(--on-accent);
   --lane-weight: 2px;
   --timeline-origin: "◇";
   --timeline-bar: "─";
@@ -2454,8 +2448,8 @@ tbody tr:hover {
   padding: 0 1ch;
   font-size: 0.875rem;
   line-height: 1.5;
-  color: var(--cover-rank-color);
-  background: var(--cover-rank-bg);
+  color: var(--on-accent);
+  background: var(--accent);
 }
 
 .collage-legend {

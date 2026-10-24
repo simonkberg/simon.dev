@@ -184,6 +184,9 @@ export async function userGetTopArtists(
   });
 }
 
+// The listening page shows this many, as a #1 tile beside a 3×3 grid.
+export const TOP_ALBUMS = 10;
+
 // Last.fm serves this grey star for albums without art.
 const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
 

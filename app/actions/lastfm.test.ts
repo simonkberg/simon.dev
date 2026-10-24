@@ -34,6 +34,7 @@ vi.mock(import("@/lib/lastfm"), () => ({
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
+  TOP_ALBUMS: 10 as const,
 }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));

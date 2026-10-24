@@ -5,6 +5,7 @@ import type { TopAlbum } from "@/actions/lastfm";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
+import { TOP_ALBUMS } from "@/lib/lastfm";
 
 export interface AlbumCollageProps {
   // Undefined when the list failed to load.
@@ -64,9 +65,6 @@ const Dither = () => (
   </svg>
 );
 
-// The #1 tile spans three rows beside a 3×3 grid, so short lists are padded to keep it filled.
-const tiles = 10;
-
 // The filtered copy fades out over the plain cover, since `url()` filters and blend modes can't transition.
 const CoverImage = ({ src, sizes }: { src: string; sizes: string }) => {
   const image = <Image src={src} sizes={sizes} alt="" fill />;
@@ -107,7 +105,8 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
             </ExternalLink>
           </li>
         ))}
-        {Array.from({ length: tiles - items.length }, (_, index) => (
+        {/* Short lists are padded so the #1 tile never sits beside gaps. */}
+        {Array.from({ length: TOP_ALBUMS - items.length }, (_, index) => (
           <li key={`empty-${index}`} aria-hidden="true">
             <span className="cover" />
           </li>

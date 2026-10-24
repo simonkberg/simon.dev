@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import coverLoader from "./coverLoader";
 
-const src = "https://lastfm.freetls.fastly.net/i/u/300x300/abc.jpg";
+const src = "https://lastfm.freetls.fastly.net/i/u/174s/abc.jpg";
 
 describe("coverLoader", () => {
   it.each([
@@ -13,14 +13,5 @@ describe("coverLoader", () => {
     expect(coverLoader({ src, width })).toBe(
       `https://lastfm.freetls.fastly.net/i/u/${path}/abc.jpg`,
     );
-  });
-
-  it("replaces whichever size the cover URL names", () => {
-    expect(
-      coverLoader({
-        src: "https://lastfm.freetls.fastly.net/i/u/174s/abc.jpg",
-        width: 600,
-      }),
-    ).toBe("https://lastfm.freetls.fastly.net/i/u/600x600/abc.jpg");
   });
 });
