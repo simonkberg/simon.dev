@@ -2489,6 +2489,7 @@ tbody tr:hover {
     position: absolute;
     inset: 0;
     background: var(--cover-dither) 0 0 / 4px 4px;
+    image-rendering: pixelated;
     mix-blend-mode: plus-lighter;
     opacity: var(--cover-grain);
     transition: opacity 0.3s ease-in;
