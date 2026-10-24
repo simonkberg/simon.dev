@@ -108,7 +108,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
           </li>
         ))}
         {Array.from({ length: tiles - items.length }, (_, index) => (
-          <li key={`empty-${index}`}>
+          <li key={`empty-${index}`} aria-hidden="true">
             <span className="cover" />
           </li>
         ))}
