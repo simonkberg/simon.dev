@@ -15,6 +15,7 @@ import { subscribeToOnline } from "@/lib/discord/online";
 import { subscribeToTyping } from "@/lib/discord/typing";
 import { joinPresence } from "@/lib/presence";
 import { encrypt, type Username } from "@/lib/session";
+import { subscribeToSiteTyping } from "@/lib/siteTyping";
 import { mockCookieJar } from "@/mocks/headers";
 
 import { GET } from "./route";
@@ -34,6 +35,8 @@ vi.mock(import("@/lib/discord/typing"), () => ({ subscribeToTyping: vi.fn() }));
 
 vi.mock(import("@/lib/discord/online"), () => ({ subscribeToOnline: vi.fn() }));
 
+vi.mock(import("@/lib/siteTyping"), () => ({ subscribeToSiteTyping: vi.fn() }));
+
 vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
 
 vi.mock(import("@/lib/presence"), () => ({ joinPresence: vi.fn() }));
@@ -51,6 +54,7 @@ describe("GET /api/chat/sse", () => {
   let mockLeavePresence: Mock;
   let mockUnsubscribeTyping: Mock;
   let mockUnsubscribeOnline: Mock;
+  let mockUnsubscribeSiteTyping: Mock;
 
   function open() {
     return GET(
@@ -76,6 +80,8 @@ describe("GET /api/chat/sse", () => {
     vi.mocked(subscribeToTyping).mockReturnValue(mockUnsubscribeTyping);
     mockUnsubscribeOnline = vi.fn();
     vi.mocked(subscribeToOnline).mockReturnValue(mockUnsubscribeOnline);
+    mockUnsubscribeSiteTyping = vi.fn();
+    vi.mocked(subscribeToSiteTyping).mockReturnValue(mockUnsubscribeSiteTyping);
     vi.mocked(joinPresence).mockReturnValue(mockLeavePresence);
     vi.mocked(subscribeToChannel).mockResolvedValue(mockUnsubscribe);
     vi.mocked(subscribeToStatus).mockReturnValue(mockUnsubscribeStatus);
@@ -154,15 +160,19 @@ describe("GET /api/chat/sse", () => {
     },
   );
 
-  it("should send who is typing in Discord", async () => {
+  it("should send who is typing in Discord, then the site's visitors but this one, each once", async () => {
+    mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
     const reader = await openReader();
     const onTyping = vi.mocked(subscribeToTyping).mock.calls[0]![0];
+    const onSiteTyping = vi.mocked(subscribeToSiteTyping).mock.calls[0]![0];
     await reader.read();
 
+    onSiteTyping(["alice", "bob", "simon"]);
+    await reader.read();
     onTyping(["simon", "simon-bot"]);
 
     expect(await readText(reader)).toBe(
-      `event: typing\ndata: ["simon","simon-bot"]\n\n`,
+      `event: typing\ndata: ["simon","simon-bot","alice"]\n\n`,
     );
   });
 
@@ -208,6 +218,7 @@ describe("GET /api/chat/sse", () => {
     expect(mockLeavePresence).not.toHaveBeenCalled();
     expect(mockUnsubscribeTyping).not.toHaveBeenCalled();
     expect(mockUnsubscribeOnline).not.toHaveBeenCalled();
+    expect(mockUnsubscribeSiteTyping).not.toHaveBeenCalled();
 
     controller.abort();
 
@@ -216,6 +227,7 @@ describe("GET /api/chat/sse", () => {
     expect(mockLeavePresence).toHaveBeenCalledOnce();
     expect(mockUnsubscribeTyping).toHaveBeenCalledOnce();
     expect(mockUnsubscribeOnline).toHaveBeenCalledOnce();
+    expect(mockUnsubscribeSiteTyping).toHaveBeenCalledOnce();
   });
 
   it("should not write after abort", async () => {

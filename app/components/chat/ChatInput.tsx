@@ -32,6 +32,27 @@ function useEscape(active: boolean, onEscape: () => void) {
   }, [active, onEscape]);
 }
 
+// The server keeps a typist twice this long, so one late ping doesn't drop them.
+const TYPING_PING_MS = 2_000;
+
+// Tells the others while the visitor types a message, never what; their post ends it.
+function useTypingSignal() {
+  const sentAt = useRef(0);
+  return (text: string) => {
+    if (!messageText(text)?.trim()) {
+      // Posting ends the typing on the server, so the next message pings at once.
+      sentAt.current = 0;
+      return;
+    }
+    if (Date.now() - sentAt.current < TYPING_PING_MS) return;
+    sentAt.current = Date.now();
+    // A lost ping only ends the indicator early.
+    fetch("/api/chat/typing", { method: "POST", keepalive: true }).catch(
+      () => {},
+    );
+  };
+}
+
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
   setReplyToId: (id: string | null) => void;
@@ -48,6 +69,11 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
+  const signalTyping = useTypingSignal();
+  const changeInput = (value: string) => {
+    setInputValue(value);
+    signalTyping(value);
+  };
   const [output, setOutput] = useState<{
     command: string;
     lines: readonly string[];
@@ -97,7 +123,7 @@ export const ChatInput = ({
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
-          setInputValue("");
+          changeInput("");
         });
       }
 
@@ -146,7 +172,7 @@ export const ChatInput = ({
             className="input"
             ref={inputRef}
             value={inputValue}
-            onValueChange={setInputValue}
+            onValueChange={changeInput}
             autoComplete="off"
           />
           <CaretBuddy
