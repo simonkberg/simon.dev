@@ -2422,6 +2422,9 @@ tbody tr:hover {
 }
 
 .cover {
+  /* Out mirrors in, so the threshold is only high once the colour is gone. */
+  --cover-ease: ease-in;
+  --cover-threshold-ease: cubic-bezier(0.9, 0, 1, 0.1);
   position: relative;
   display: block;
   aspect-ratio: 1;
@@ -2437,7 +2440,7 @@ tbody tr:hover {
     height: 100%;
     object-fit: cover;
     filter: var(--cover-filter);
-    transition: filter 0.3s ease-in;
+    transition: filter 0.2s var(--cover-ease);
   }
 
   &:has(img)::after {
@@ -2446,7 +2449,7 @@ tbody tr:hover {
     inset: 0;
     background: var(--cover-overlay);
     mix-blend-mode: var(--cover-blend);
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s ease;
   }
 
   /* A tap leaves :hover stuck on touch, and the link opens in a new tab. */
@@ -2456,6 +2459,8 @@ tbody tr:hover {
       outline: var(--cover-frame-hover);
       --cover-filter: none;
       --cover-threshold: none;
+      --cover-ease: ease-out;
+      --cover-threshold-ease: cubic-bezier(0, 0.9, 0.1, 1);
 
       &::after,
       .cover-art::after {
@@ -2470,6 +2475,8 @@ tbody tr:hover {
     outline: var(--focus);
     --cover-filter: none;
     --cover-threshold: none;
+    --cover-ease: ease-out;
+    --cover-threshold-ease: cubic-bezier(0, 0.9, 0.1, 1);
 
     &::after,
     .cover-art::after {
@@ -2484,7 +2491,7 @@ tbody tr:hover {
   inset: 0;
   isolation: isolate;
   filter: var(--cover-threshold);
-  transition: filter 0.3s cubic-bezier(0, 0.9, 0.1, 1);
+  transition: filter 0.2s var(--cover-threshold-ease);
 
   &::after {
     content: "";
@@ -2493,7 +2500,7 @@ tbody tr:hover {
     background: var(--cover-grain);
     image-rendering: pixelated;
     mix-blend-mode: plus-lighter;
-    transition: opacity 0.3s ease-in;
+    transition: opacity 0.2s var(--cover-ease);
   }
 }
 
