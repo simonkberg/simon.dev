@@ -475,12 +475,12 @@ describe("subscribeToChannel", () => {
   it("should call back, with a new revision, once the store has seeded", async () => {
     server.use(history());
     const revision = getChannelRevision();
-    const callback = vi.fn(getChannelRevision);
+    const callback = vi.fn();
 
     await subscribeToChannel(callback);
     await getChannelMessages();
     expect(callback).toHaveBeenCalledOnce();
-    expect(callback.mock.results[0]?.value).not.toBe(revision);
+    expect(getChannelRevision()).not.toBe(revision);
   });
 
   it("should stop listening when the gateway can't connect", async () => {

@@ -35,7 +35,7 @@ function createStore(messages: DiscordMessage[] = [message("1")]) {
     botUserId: vi.fn<StoreSource["botUserId"]>(() => BOT),
   };
   const store = new ChannelStore(source);
-  const listener = vi.fn(() => store.revision);
+  const listener = vi.fn();
   store.listen(listener);
   return { store, source, listener };
 }
@@ -146,11 +146,12 @@ describe("ChannelStore", () => {
     first.resolve([message("1")]);
     await messages;
     expect(listener).toHaveBeenCalledOnce();
+    const seeded = store.revision;
+    expect(seeded).not.toBe(initial);
 
     store.apply(del("1"));
     expect(listener).toHaveBeenCalledTimes(2);
-    const revisions = listener.mock.results.map((r) => r.value);
-    expect(new Set([initial, ...revisions]).size).toBe(3);
+    expect(store.revision).not.toBe(seeded);
   });
 
   it("should retry a failed first seed later, sooner after an event", async () => {

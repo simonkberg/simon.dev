@@ -155,8 +155,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Chat stream:** `ChatStream` (in the chat's title bar) owns the SSE connection and shows
   its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
   the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
-  Each change makes tabs `router.refresh()`; `getChatHistory` is cached per store revision, so
-  the tabs refreshing for one change share one build on each replica.
+  Each change makes tabs `router.refresh()`, served from history cached per store revision.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
   adds those rows to Discord's counts minus the bot's; the page marks the visitor's own as
