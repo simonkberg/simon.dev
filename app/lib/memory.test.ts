@@ -28,7 +28,7 @@ vi.mock(import("@/lib/turso"), async () =>
 
 sqliteBeforeEach(query, MIGRATIONS);
 
-const CREATED_AT = new Date("2025-01-01T00:00:00.000Z");
+const CREATED_AT = "2025-01-01T00:00:00.000Z";
 
 async function seed(
   id: number,
@@ -38,7 +38,7 @@ async function seed(
 ) {
   await query(
     "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
-    [id, category, content, createdAt.toISOString()],
+    [id, category, content, createdAt],
   );
 }
 
@@ -86,7 +86,7 @@ describe("remember", () => {
         id: expect.any(Number),
         category: "self",
         content: "i like trains",
-        createdAt: CREATED_AT,
+        createdAt: new Date(CREATED_AT),
       },
     });
     expect(await recall({})).toEqual(
@@ -168,7 +168,7 @@ describe("recall", () => {
         i,
         "jokes",
         `joke ${i}`,
-        new Date(`2025-01-${String(i).padStart(2, "0")}T00:00:00.000Z`),
+        `2025-01-${String(i).padStart(2, "0")}T00:00:00.000Z`,
       );
     }
 
@@ -208,9 +208,9 @@ describe("recall", () => {
 
 describe("edit", () => {
   it("should rewrite a note only when its text still matches", async () => {
-    const editedAt = new Date("2025-02-01T00:00:00.000Z");
+    const editedAt = "2025-02-01T00:00:00.000Z";
     await seed(4, "self", "i like cats");
-    vi.useFakeTimers({ now: editedAt, toFake: ["Date"] });
+    vi.useFakeTimers({ now: new Date(editedAt), toFake: ["Date"] });
 
     await expect(
       edit({ id: 4, oldContent: " i like cats ", newContent: "i like trains" }),
@@ -220,8 +220,8 @@ describe("edit", () => {
         id: 4,
         category: "self",
         content: "i like trains",
-        createdAt: CREATED_AT,
-        updatedAt: editedAt,
+        createdAt: new Date(CREATED_AT),
+        updatedAt: new Date(editedAt),
       },
     });
   });
@@ -403,7 +403,7 @@ describe("describeMiss", () => {
     id: 3,
     category: "self",
     content: "i like dogs",
-    createdAt: CREATED_AT,
+    createdAt: new Date(CREATED_AT),
     updatedAt: undefined,
   };
 
@@ -553,7 +553,7 @@ describe("buildMemoryContext", () => {
 
 describe("readPublicNotes", () => {
   it("should group the bot's own notes in order and leave the rest out", async () => {
-    await seed(1, "self", "second", new Date("2025-01-02T00:00:00.000Z"));
+    await seed(1, "self", "second", "2025-01-02T00:00:00.000Z");
     await seed(2, "self", "first");
     await seed(3, "interests", "trains");
     await seed(4, "context", "the site runs on railway");
@@ -573,14 +573,9 @@ describe("readPersonNotes", () => {
       4,
       "people/brave-otter",
       "lives in oslo",
-      new Date("2026-10-02T00:00:00Z"),
+      "2026-10-02T00:00:00Z",
     );
-    await seed(
-      5,
-      "people/brave-otter",
-      "likes jazz",
-      new Date("2026-10-01T00:00:00Z"),
-    );
+    await seed(5, "people/brave-otter", "likes jazz", "2026-10-01T00:00:00Z");
     await seed(6, "people/calm-yak", "likes cats");
 
     const notes = await readPersonNotes("brave-otter");

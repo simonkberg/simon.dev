@@ -518,7 +518,7 @@ export type ChatMessage = {
   content: string;
   id?: string;
   reactions?: Reaction[];
-  time?: string;
+  time?: Date;
   replyTo?: string;
 };
 
@@ -568,7 +568,7 @@ function formatMessage({
   const attributes: string[] = [];
   if (id !== undefined) attributes.push(`id="${escapeXml(id)}"`);
   attributes.push(`author="${escapeXml(username)}"`);
-  if (time !== undefined) attributes.push(`time="${time}"`);
+  if (time !== undefined) attributes.push(`time="${clockTime(time)}"`);
   if (replyTo !== undefined)
     attributes.push(`reply_to="${escapeXml(replyTo)}"`);
   if (reactions.length > 0) {
@@ -599,7 +599,7 @@ function formatHistory(messages: ChannelMessage[]): string {
         username: user.name,
         content,
         reactions,
-        time: clockTime(timestamp),
+        time: timestamp,
         replyTo,
       }),
     )
