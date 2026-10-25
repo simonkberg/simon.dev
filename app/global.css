@@ -330,11 +330,9 @@
   --heading-max: calc(100% - 3ch);
   --heading-padding: 0 1ch;
   --heading-translate: 0 -50%;
-  /* Solid down to the border for a crisp cut, then fading out at the bottom and
-     sides over the history that bleeds under it. */
-  --heading-bg:
-    linear-gradient(var(--ground) 50%, transparent 50%),
-    radial-gradient(farthest-side, var(--ground) 70%, transparent);
+  /* Solid down to the border, then gone within a few pixels, so the history
+     bleeding under it meets no box edge. */
+  --heading-bg: linear-gradient(var(--ground) 50%, transparent 55%);
   --heading-size: 0.75rem;
   --heading-case: uppercase;
   --heading-tracking: 0.12em;
