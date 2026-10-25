@@ -333,6 +333,7 @@
   --nav-link-padding: 0 calc(1ch + var(--segment-point));
   --nav-prefix: counter(page) ":";
   --nav-current-bg: var(--wash);
+  --nav-current-marker: "*";
   --nav-hover-color: var(--ink);
 
   --content-display: grid;
