@@ -160,6 +160,30 @@ describe("GET /api/chat/sse", () => {
     },
   );
 
+  it("should send who is here once both lists are known, and again only when it changes", async () => {
+    vi.mocked(subscribeToOnline).mockImplementation((listener) => {
+      listener(["simon"]);
+      return mockUnsubscribeOnline;
+    });
+    vi.mocked(joinPresence).mockImplementation((_, listener) => {
+      listener(["alice"]);
+      return mockLeavePresence;
+    });
+    const reader = await openReader();
+    const onPresence = vi.mocked(joinPresence).mock.calls[0]![1];
+
+    expect(await readText(reader)).toBe(
+      `event: presence\ndata: ["alice","simon"]\n\n`,
+    );
+    await reader.read();
+    onPresence(["alice"]);
+    onPresence(["alice", "carol"]);
+
+    expect(await readText(reader)).toBe(
+      `event: presence\ndata: ["alice","carol","simon"]\n\n`,
+    );
+  });
+
   it("should send who is typing in Discord, then the site's visitors but this one, each once", async () => {
     mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
     const reader = await openReader();

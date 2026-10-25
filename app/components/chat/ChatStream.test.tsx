@@ -157,6 +157,20 @@ describe("ChatStream", () => {
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();
     });
+
+    it("forgets who was here when the stream drops", () => {
+      renderStream();
+      act(() => instance().onopen());
+      act(() => instance().sendPresence(["alice"]));
+
+      act(() => instance().onerror());
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      act(() => instance().onopen());
+
+      expect(screen.queryByText("1 here")).not.toBeInTheDocument();
+    });
   });
 
   describe("typing", () => {
@@ -212,17 +226,14 @@ describe("ChatStream", () => {
       expect(refresh).toHaveBeenCalledOnce();
     });
 
-    it("refreshes the history when the gateway behind the stream recovers", () => {
+    it("leaves the refresh after a gateway recovery to the store's notify", () => {
       renderStream();
       act(() => instance().onopen());
-
-      act(() => instance().sendStatus("live"));
-      expect(refresh).not.toHaveBeenCalled();
 
       act(() => instance().sendStatus("connecting"));
       act(() => instance().sendStatus("live"));
 
-      expect(refresh).toHaveBeenCalledOnce();
+      expect(refresh).not.toHaveBeenCalled();
     });
 
     it("refreshes once when it reconnects after the gateway went down", () => {

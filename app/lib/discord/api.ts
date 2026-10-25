@@ -385,18 +385,32 @@ export function getChannelRevision(): number {
   return getStore().revision;
 }
 
+// A replay or a reseed notifies once per event; each tab refreshes once for the lot.
+// Timed from the first, so a steady stream of changes still refreshes.
+const NOTIFY_BATCH_MS = 150;
+
 /** Calls back once the history may have changed; rejects if the gateway can't connect. */
 export async function subscribeToChannel(
   callback: () => void,
 ): Promise<() => void> {
-  const unlisten = getStore().listen(callback);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const unlisten = getStore().listen(() => {
+    timer ??= setTimeout(() => {
+      timer = undefined;
+      callback();
+    }, NOTIFY_BATCH_MS);
+  });
+  const unsubscribe = () => {
+    clearTimeout(timer);
+    unlisten();
+  };
   try {
     await connect();
   } catch (err) {
-    unlisten();
+    unsubscribe();
     throw err;
   }
-  return unlisten;
+  return unsubscribe;
 }
 
 async function withDiscordReactors(

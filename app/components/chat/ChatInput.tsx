@@ -35,21 +35,32 @@ function useEscape(active: boolean, onEscape: () => void) {
 // The server keeps a typist twice this long, so one late ping doesn't drop them.
 const TYPING_PING_MS = 2_000;
 
-// Tells the others while the visitor types a message, never what; their post ends it.
+// Tells the others while the visitor types a message, never what; their post or clearing it ends it.
 function useTypingSignal() {
   const sentAt = useRef(0);
-  return (text: string) => {
-    if (!messageText(text)?.trim()) {
-      // Posting ends the typing on the server, so the next message pings at once.
-      sentAt.current = 0;
-      return;
-    }
-    if (Date.now() - sentAt.current < TYPING_PING_MS) return;
-    sentAt.current = Date.now();
-    // A lost ping only ends the indicator early.
-    fetch("/api/chat/typing", { method: "POST", keepalive: true }).catch(
-      () => {},
+  // One at a time, so a stop can't land before the ping it ends.
+  const sending = useRef<Promise<unknown>>(Promise.resolve());
+  const send = (method: "POST" | "DELETE") => {
+    // A lost ping only ends the indicator early, and a lost stop lets it run out.
+    sending.current = sending.current.then(() =>
+      fetch("/api/chat/typing", { method, keepalive: true }).catch(() => {}),
     );
+  };
+  return {
+    typed(text: string) {
+      if (!messageText(text)?.trim()) {
+        if (sentAt.current !== 0) send("DELETE");
+        sentAt.current = 0;
+        return;
+      }
+      if (Date.now() - sentAt.current < TYPING_PING_MS) return;
+      sentAt.current = Date.now();
+      send("POST");
+    },
+    // Posting ends the typing on the server, so the next message pings at once.
+    posted() {
+      sentAt.current = 0;
+    },
   };
 }
 
@@ -69,10 +80,10 @@ export const ChatInput = ({
   });
   const [pending, startTransition] = useTransition();
   const [inputValue, setInputValue] = useState("");
-  const signalTyping = useTypingSignal();
+  const typing = useTypingSignal();
   const changeInput = (value: string) => {
     setInputValue(value);
-    signalTyping(value);
+    typing.typed(value);
   };
   const [output, setOutput] = useState<{
     command: string;
@@ -123,7 +134,8 @@ export const ChatInput = ({
         startTransition(() => {
           requestFormReset(form);
           setReplyToId(null);
-          changeInput("");
+          typing.posted();
+          setInputValue("");
         });
       }
 

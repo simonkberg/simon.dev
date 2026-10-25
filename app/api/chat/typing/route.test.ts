@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { encrypt, type Username } from "@/lib/session";
-import { setTyping } from "@/lib/siteTyping";
+import { setTyping, stopTyping } from "@/lib/siteTyping";
 import { mockCookieJar } from "@/mocks/headers";
 import { loadDenyList } from "@/mocks/ipDenyList";
 
-import { POST } from "./route";
+import { DELETE, POST } from "./route";
 
 vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
 vi.mock(import("@/lib/identifiers"), async (importOriginal) => ({
@@ -18,6 +18,7 @@ vi.mock(import("@/lib/identifiers"), async (importOriginal) => ({
 }));
 vi.mock(import("@/lib/siteTyping"), () => ({
   setTyping: vi.fn(() => Promise.resolve()),
+  stopTyping: vi.fn(() => Promise.resolve()),
 }));
 
 describe("POST /api/chat/typing", () => {
@@ -58,5 +59,25 @@ describe("POST /api/chat/typing", () => {
       { err: new Error("boom") },
       "Failed to store typing",
     );
+  });
+});
+
+describe("DELETE /api/chat/typing", () => {
+  beforeEach(async () => {
+    mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
+  });
+
+  it("ends the session's visitor's typing", async () => {
+    const response = await DELETE();
+
+    expect(response.status).toBe(204);
+    expect(stopTyping).toHaveBeenCalledExactlyOnceWith("bob");
+  });
+
+  it("turns away a visitor without a session", async () => {
+    mockCookieJar();
+
+    expect((await DELETE()).status).toBe(401);
+    expect(stopTyping).not.toHaveBeenCalled();
   });
 });

@@ -18,17 +18,18 @@ const NOBODY: readonly string[] = [];
 export const ChatStream = () => {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("connecting");
-  const [here, setHere] = useState<readonly string[]>([]);
+  const [here, setHere] = useState(NOBODY);
   const [typing, setTyping] = useState(NOBODY);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectAttempts = 0;
     let connected = false;
-    let gatewayDown = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
+      // The next stream sends who is here only if anyone is.
+      setHere(NOBODY);
       setTyping(NOBODY);
       eventSource?.close();
       eventSource = null;
@@ -46,7 +47,6 @@ export const ChatStream = () => {
         reconnectAttempts = 0;
         setStatus("live");
         if (reconnecting) router.refresh();
-        gatewayDown = false;
       };
       eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
@@ -56,11 +56,8 @@ export const ChatStream = () => {
         setTyping(JSON.parse(event.data) as string[]);
       });
       eventSource.addEventListener("status", (event) => {
-        const live = event.data === "live";
-        // The store missed changes while the gateway was down.
-        if (live && gatewayDown) router.refresh();
-        gatewayDown = !live;
-        setStatus(live ? "live" : "connecting");
+        // No refresh on recovery: the store notifies once it has caught up.
+        setStatus(event.data === "live" ? "live" : "connecting");
       });
       eventSource.onerror = () => {
         disconnect();

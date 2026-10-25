@@ -155,7 +155,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Chat stream:** `ChatStream` (in the chat's title bar) owns the SSE connection and shows
   its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
   the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
-  Each change makes tabs `router.refresh()`, served from history cached per store revision.
+  Each change, batched with any in the next 150ms, makes tabs `router.refresh()`, served from history cached per store revision.
 - **Presence:** an open chat stream counts its visitor as here: one Turso `presence` row per
   stream. A replica's heartbeat is the only writer of its streams' rows: it runs on every open
   and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
@@ -170,7 +170,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   bot types for nothing else, so a bot typist is simon-bot.
   Site visitors' typing can't come from Discord, since the bot posts for them: the input pings
   `/api/chat/typing` every 2s while a message is typed, never with its text, and each ping keeps
-  a Turso `typing` row 4s, or until they post (`app/lib/siteTyping.ts`). With no pub/sub, a
+  a Turso `typing` row 4s, or until they post or clear it (`app/lib/siteTyping.ts`). With no pub/sub, a
   replica with open streams reads the table each second.
 - **Reactions:** one Turso row per visitor in `reactions`; the bot mirrors them on Discord
   with its own reaction while any remain, so Discord shows site reactions as one. History
