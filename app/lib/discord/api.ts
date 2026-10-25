@@ -386,17 +386,28 @@ export function getChannelRevision(): number {
 }
 
 /** Calls back once the history may have changed; rejects if the gateway can't connect. */
+// A replay or a reseed notifies once per event; each tab refreshes once for the lot.
+const NOTIFY_DEBOUNCE_MS = 150;
+
 export async function subscribeToChannel(
   callback: () => void,
 ): Promise<() => void> {
-  const unlisten = getStore().listen(callback);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const unlisten = getStore().listen(() => {
+    clearTimeout(timer);
+    timer = setTimeout(callback, NOTIFY_DEBOUNCE_MS);
+  });
+  const unsubscribe = () => {
+    clearTimeout(timer);
+    unlisten();
+  };
   try {
     await connect();
   } catch (err) {
-    unlisten();
+    unsubscribe();
     throw err;
   }
-  return unlisten;
+  return unsubscribe;
 }
 
 async function withDiscordReactors(

@@ -25,7 +25,6 @@ export const ChatStream = () => {
     let eventSource: EventSource | null = null;
     let reconnectAttempts = 0;
     let connected = false;
-    let gatewayDown = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
@@ -46,7 +45,6 @@ export const ChatStream = () => {
         reconnectAttempts = 0;
         setStatus("live");
         if (reconnecting) router.refresh();
-        gatewayDown = false;
       };
       eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
@@ -56,11 +54,8 @@ export const ChatStream = () => {
         setTyping(JSON.parse(event.data) as string[]);
       });
       eventSource.addEventListener("status", (event) => {
-        const live = event.data === "live";
-        // The store missed changes while the gateway was down.
-        if (live && gatewayDown) router.refresh();
-        gatewayDown = !live;
-        setStatus(live ? "live" : "connecting");
+        // No refresh on recovery: the store notifies once it has caught up.
+        setStatus(event.data === "live" ? "live" : "connecting");
       });
       eventSource.onerror = () => {
         disconnect();

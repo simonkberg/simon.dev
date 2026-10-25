@@ -212,17 +212,14 @@ describe("ChatStream", () => {
       expect(refresh).toHaveBeenCalledOnce();
     });
 
-    it("refreshes the history when the gateway behind the stream recovers", () => {
+    it("leaves the refresh after a gateway recovery to the store's notify", () => {
       renderStream();
       act(() => instance().onopen());
-
-      act(() => instance().sendStatus("live"));
-      expect(refresh).not.toHaveBeenCalled();
 
       act(() => instance().sendStatus("connecting"));
       act(() => instance().sendStatus("live"));
 
-      expect(refresh).toHaveBeenCalledOnce();
+      expect(refresh).not.toHaveBeenCalled();
     });
 
     it("refreshes once when it reconnects after the gateway went down", () => {

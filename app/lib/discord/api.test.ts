@@ -473,6 +473,10 @@ describe("getChannelMessages", () => {
 });
 
 describe("subscribeToChannel", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  });
+
   it("should call back, with a new revision, once the store has seeded", async () => {
     server.use(history());
     const revision = getChannelRevision();
@@ -480,8 +484,40 @@ describe("subscribeToChannel", () => {
 
     await subscribeToChannel(callback);
     await getChannelMessages();
+    await vi.advanceTimersByTimeAsync(150);
     expect(callback).toHaveBeenCalledOnce();
     expect(getChannelRevision()).not.toBe(revision);
+  });
+
+  it("should call back once for a burst of changes", async () => {
+    server.use(history());
+    const callback = vi.fn();
+    await subscribeToChannel(callback);
+    await getChannelMessages();
+
+    const apply = vi.mocked(subscribe).mock.calls[0]![0];
+
+    apply({ t: "MESSAGE_CREATE", d: message("burst-1") });
+    await vi.advanceTimersByTimeAsync(150);
+    callback.mockClear();
+    apply({ t: "MESSAGE_CREATE", d: message("burst-2") });
+    await vi.advanceTimersByTimeAsync(100);
+    apply({ t: "MESSAGE_CREATE", d: message("burst-3") });
+    await vi.advanceTimersByTimeAsync(149);
+    expect(callback).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it("should not call back after unsubscribing", async () => {
+    server.use(history());
+    const callback = vi.fn();
+    const unsubscribe = await subscribeToChannel(callback);
+    await getChannelMessages();
+
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(150);
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("should stop listening when the gateway can't connect", async () => {

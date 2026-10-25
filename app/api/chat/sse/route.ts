@@ -56,13 +56,17 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  // The site's visitors, then who is online in Discord.
+  // The site's visitors, then who is online in Discord, sent once both are known and then on change.
   let here: readonly string[] = [];
   let online: readonly string[] = [];
-  const sendPresence = () =>
-    send(
-      `event: presence\ndata: ${JSON.stringify([...you(here), ...online])}\n\n`,
-    );
+  let sentPresence: string | undefined;
+  const sendPresence = () => {
+    if (sentPresence === undefined) return;
+    const presence = JSON.stringify([...you(here), ...online]);
+    if (presence === sentPresence) return;
+    sentPresence = presence;
+    send(`event: presence\ndata: ${presence}\n\n`);
+  };
   const leavePresence = joinPresence(username, (names) => {
     here = names;
     sendPresence();
@@ -71,6 +75,9 @@ export async function GET(request: NextRequest) {
     online = names;
     sendPresence();
   });
+  // The client starts with nobody, so that needs no event.
+  sentPresence = "[]";
+  sendPresence();
 
   // Who types in Discord, then the site's visitors, leaving out this one: their buddy is in the input.
   let discordTyping: readonly string[] = [];
