@@ -1029,7 +1029,7 @@ section:has(> .terminal) {
 }
 
 /* Zero specificity: element rules (a table's width, the stats' columns) win. */
-:where(section > :not(.heading), .content > menu, .footer > *) {
+:where(section > :not(.heading), .footer > *) {
   max-width: var(--measure);
 }
 
