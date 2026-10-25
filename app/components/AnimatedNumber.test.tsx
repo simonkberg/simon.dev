@@ -33,11 +33,11 @@ describe("AnimatedNumber", () => {
   });
 
   it.each([
-    { follow: false, restarts: [[0]] },
-    { follow: true, restarts: [] },
+    { follow: false, restarts: [[0]], committed: "100" },
+    { follow: true, restarts: [], committed: "200" },
   ])(
     "counts on from the number shown when its value changes (follow: $follow)",
-    ({ follow, restarts }) => {
+    ({ follow, restarts, committed }) => {
       vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
       const style = document.createElement("style");
       document.head.append(style);
@@ -59,12 +59,12 @@ describe("AnimatedNumber", () => {
 
       style.textContent = ".animated-number { --grow: 0.5 }";
       rerender(<AnimatedNumber value={200} follow={follow} />);
-      expect(count).toHaveTextContent("100");
+      expect(count).toHaveTextContent(committed);
       act(() => {
         vi.advanceTimersToNextFrame();
       });
 
-      // Only a count growing on its own restarts; one that follows its row grows with it.
+      // Only a count growing on its own restarts and holds its number; one that follows its row grows with it.
       expect(restart.mock.calls).toEqual(restarts);
       expect(count).toHaveTextContent("150");
     },
