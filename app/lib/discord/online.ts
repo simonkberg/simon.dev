@@ -17,16 +17,18 @@ type Online = {
 
 // GUILD_MEMBER_ADD needs yet another privileged intent, so a member who joined since is asked for, once.
 function learnName(state: Online, id: string, publish: () => void): void {
-  state.names.set(id, undefined);
+  // A new session replaces the map, so a late answer lands in the one that asked.
+  const { names } = state;
+  names.set(id, undefined);
   memberName(id)
     .then((name) => {
-      state.names.set(id, name);
+      names.set(id, name);
       if (name && state.online.has(id)) publish();
     })
     .catch((err: unknown) => {
       log.warn({ err }, "Failed to name an online member");
       // So their next update asks again.
-      if (state.names.get(id) === undefined) state.names.delete(id);
+      names.delete(id);
     });
 }
 
