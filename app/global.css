@@ -1468,7 +1468,10 @@ ul {
     white-space: nowrap;
   }
 
+  /* Grows at the lanes' pace from its stop's start, while later stops keep coming. */
   .timeline-plays {
+    --grow-duration: initial;
+    --grow-easing: initial;
     --timeline-bars: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
       var(--timeline-bar);
     grid-area: 1 / 2;
@@ -1756,6 +1759,7 @@ ul {
 .lane-label,
 .lane-run,
 .timeline > li,
+.timeline-plays,
 .animated-number:not([data-follow]) {
   /* easeOutCubic; filled both ways so a count whose value changes can restart it. */
   animation: grow var(--grow-duration, 600ms)
