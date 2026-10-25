@@ -52,7 +52,12 @@ export const AnimatedNumber = ({
       if (last && last.to !== value) {
         Object.assign(count, { from: last.shown, to: value });
         if (!follow)
-          for (const grow of span.getAnimations()) grow.currentTime = 0;
+          for (const animation of span.getAnimations())
+            if (
+              "animationName" in animation &&
+              animation.animationName === "grow"
+            )
+              animation.currentTime = 0;
       }
       spans.set(span, count);
       counting.set(span, (grow) => {
@@ -71,7 +76,7 @@ export const AnimatedNumber = ({
         schedule();
       };
     }}
-    className="count"
+    className="animated-number"
     data-follow={follow || undefined}
   >
     {format(value)}

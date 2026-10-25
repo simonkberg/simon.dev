@@ -1757,7 +1757,7 @@ ul {
 .lane-label,
 .lane-run,
 .timeline > li,
-.count:not([data-follow]) {
+.animated-number:not([data-follow]) {
   /* easeOutCubic */
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
@@ -1765,7 +1765,7 @@ ul {
 }
 
 /* Until it hydrates and counts along, a count waits for its --grow to finish. */
-.count:not([data-counting]) {
+.animated-number:not([data-counting]) {
   opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
 }
 

@@ -190,7 +190,7 @@ describe("ScrobbleChart", () => {
 
     expect(order(".stems li", "--index")).toEqual([0, 1, 2, 3]);
     expect(order(".average", "--index")).toEqual([2]);
-    expect(document.querySelector(".peak .count")).toHaveAttribute(
+    expect(document.querySelector(".peak .animated-number")).toHaveAttribute(
       "data-follow",
     );
   });

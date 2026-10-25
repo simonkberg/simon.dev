@@ -7,7 +7,7 @@ import { AnimatedNumber } from "./AnimatedNumber";
 describe("AnimatedNumber", () => {
   it("renders the value in server markup", () => {
     expect(renderToString(<AnimatedNumber value={1234.5} decimals={2} />)).toBe(
-      '<span class="count">1,234.50</span>',
+      '<span class="animated-number">1,234.50</span>',
     );
   });
 
@@ -15,7 +15,7 @@ describe("AnimatedNumber", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
     // happy-dom doesn't inherit custom properties, so this sets the count's own.
     const style = document.createElement("style");
-    style.textContent = ".count { --grow: 0.5 }";
+    style.textContent = ".animated-number { --grow: 0.5 }";
     document.head.append(style);
     render(<AnimatedNumber value={100} follow />);
     act(() => {
@@ -25,7 +25,7 @@ describe("AnimatedNumber", () => {
     expect(count).toHaveAttribute("data-counting");
 
     act(() => {
-      style.textContent = ".count { --grow: 1 }";
+      style.textContent = ".animated-number { --grow: 1 }";
       vi.advanceTimersToNextFrame();
     });
 
@@ -49,15 +49,15 @@ describe("AnimatedNumber", () => {
       });
       const count = screen.getByText("100");
       const restart = vi.fn();
+      const animation = (properties: object) =>
+        Object.defineProperty(properties, "currentTime", { set: restart });
       vi.spyOn(count, "getAnimations").mockReturnValue([
-        {
-          set currentTime(time: number) {
-            restart(time);
-          },
-        } as Animation,
+        animation({ animationName: "grow" }) as CSSAnimation,
+        // A transition on the same element stays put.
+        animation({}) as Animation,
       ]);
 
-      style.textContent = ".count { --grow: 0.5 }";
+      style.textContent = ".animated-number { --grow: 0.5 }";
       rerender(<AnimatedNumber value={200} follow={follow} />);
       act(() => {
         vi.advanceTimersToNextFrame();
