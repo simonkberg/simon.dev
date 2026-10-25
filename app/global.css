@@ -1801,9 +1801,17 @@ ul {
     both;
 }
 
-/* Until it hydrates and counts along, a count waits for its --grow to finish. */
-.animated-number:not([data-counting]) {
-  opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
+/* With JS, a count and the chart it follows wait at 0 until it hydrates; without, it shows its number. */
+@media (scripting: enabled) {
+  .stems:has(.animated-number:not([data-counting])) > ol > li,
+  .stems:has(.animated-number:not([data-counting])) > .average,
+  .animated-number:not([data-counting]) {
+    animation-play-state: paused;
+  }
+
+  .animated-number:not([data-counting]) {
+    opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
+  }
 }
 
 /* Registered so it animates, snapped to whole characters where it is read. */
