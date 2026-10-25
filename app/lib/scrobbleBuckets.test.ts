@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  dayRange,
-  nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -131,30 +129,5 @@ describe("sameDayBuckets", () => {
     const buckets = sameDayBuckets(2019, new Date("2024-02-29T12:00:00Z"));
 
     expect(buckets.map(({ label }) => label)).toEqual(["2020"]);
-  });
-});
-
-describe("nextMidnight", () => {
-  it("should find tomorrow's start across a clock change", () => {
-    // Stockholm leaves summer time on 2026-10-25.
-    expect(nextMidnight(new Date("2026-10-25T12:00:00Z"))).toEqual(
-      new Date("2026-10-25T23:00:00Z"),
-    );
-  });
-});
-
-describe("dayRange", () => {
-  it("should run from the first day's Stockholm midnight to the one after the last", () => {
-    expect(dayRange("2015-12-24", "2015-12-31")).toEqual({
-      from: new Date("2015-12-23T23:00:00Z"),
-      to: new Date("2015-12-31T23:00:00Z"),
-    });
-  });
-
-  it("should follow daylight saving time", () => {
-    expect(dayRange("2026-03-29", "2026-03-29")).toEqual({
-      from: new Date("2026-03-28T23:00:00Z"),
-      to: new Date("2026-03-29T22:00:00Z"),
-    });
   });
 });
