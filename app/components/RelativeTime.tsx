@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
 
@@ -25,8 +25,15 @@ export interface RelativeTimeProps {
   style?: "long" | "short" | "narrow";
 }
 
+const subscribe = () => () => {};
+
 export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
   const [now, setNow] = useState(Date.now);
+  const hydrating = useSyncExternalStore(
+    subscribe,
+    () => false,
+    () => true,
+  );
   const relativeTime = now - date.getTime();
   const elapsed = Math.abs(relativeTime);
   const sign = Math.sign(-relativeTime);
@@ -66,7 +73,14 @@ export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
 
   return (
     <TooltipText tooltip={dateTimeFormat.format(date)}>
-      <time dateTime={date.toISOString()}>{string}</time>
+      {/* The server's clock wrote the hydrated text: keep it, then remount with ours. */}
+      <time
+        key={String(hydrating)}
+        dateTime={date.toISOString()}
+        suppressHydrationWarning
+      >
+        {string}
+      </time>
     </TooltipText>
   );
 };

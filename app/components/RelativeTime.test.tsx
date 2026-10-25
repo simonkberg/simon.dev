@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { tap } from "@/mocks/popover";
@@ -110,6 +111,26 @@ describe("RelativeTime", () => {
     });
 
     expect(screen.getByText(/5m ago/)).toBeInTheDocument();
+  });
+
+  it("hydrates over the server's text and then shows its own", async () => {
+    const date = new Date(now - 5 * MINUTE);
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<RelativeTime date={date} />);
+    document.body.append(container);
+    vi.setSystemTime(now + MINUTE);
+    const onRecoverableError = vi.fn();
+
+    await act(async () => {
+      render(<RelativeTime date={date} />, {
+        container,
+        hydrate: true,
+        onRecoverableError,
+      });
+    });
+
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(container).toHaveTextContent("6 minutes ago");
   });
 
   it("does not update display for times older than a day", async () => {
