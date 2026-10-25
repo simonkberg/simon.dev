@@ -333,9 +333,9 @@ inline-text kind, used for emoji in messages and timestamps: hover (after `delay
 Charts, lanes and the timeline grow in with CSS, so they play from the first paint, not only
 after a client navigation: each animates a registered `--grow` from 0 to 1 (`@keyframes grow`
 in `app/global.css`) after its `--grow-delay`. `AnimatedNumber` counts along by reading its
-computed `--grow` each frame. With JS, a count waits hidden at 0 until it hydrates, and so
-does the scrobble chart its peak and average follow; without JS or with reduced motion it shows
-its number. Long staggers divide a fixed budget by the inline `--count`, so many stops or
+computed `--grow` each frame. With JS, a count shows its `data-from` 0 in a `::before` until it
+hydrates, and the chart or timeline it follows waits with it; without JS or with reduced motion
+it shows its number. Long staggers divide a fixed budget by the inline `--count`, so many stops or
 columns animate faster rather than longer.
 
 ### Server-Only Code
