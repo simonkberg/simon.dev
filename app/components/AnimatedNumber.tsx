@@ -51,6 +51,8 @@ export const AnimatedNumber = ({
       // A new value counts on from the one shown, growing again unless it follows its row.
       if (last && last.to !== value) {
         Object.assign(count, { from: last.shown, to: value });
+        // React just wrote the new value; show the old one until the next frame counts on.
+        span.textContent = format(last.shown);
         if (!follow)
           for (const animation of span.getAnimations())
             if (

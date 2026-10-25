@@ -59,6 +59,7 @@ describe("AnimatedNumber", () => {
 
       style.textContent = ".animated-number { --grow: 0.5 }";
       rerender(<AnimatedNumber value={200} follow={follow} />);
+      expect(count).toHaveTextContent("100");
       act(() => {
         vi.advanceTimersToNextFrame();
       });
