@@ -1394,6 +1394,7 @@ ul {
       line-height: 0.6;
       text-align: center;
       white-space: pre;
+      clip-path: inset(0 0 calc((1 - var(--rail, 1)) * 100%) 0);
     }
 
     &::after {
@@ -1404,6 +1405,11 @@ ul {
       width: 2ch;
       color: var(--accent);
       text-align: center;
+      scale: var(--fill, 1);
+    }
+
+    > span {
+      opacity: var(--fill, 1);
     }
 
     &:last-child::before {
@@ -1453,7 +1459,7 @@ ul {
       content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
         var(--timeline-bars);
       display: inline-block;
-      width: max(1ch, var(--value, 0) / var(--max, 1) * 16ch);
+      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--fill, 1) * 16ch);
       margin-inline-end: 1ch;
       overflow: hidden;
       color: var(--timeline-bar-color);

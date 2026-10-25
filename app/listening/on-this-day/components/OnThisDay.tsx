@@ -1,4 +1,7 @@
-import { type CSSProperties, use } from "react";
+"use client";
+
+import { animated, easings, useSpring } from "@react-spring/web";
+import { type CSSProperties, use, useState } from "react";
 
 import type {
   DayInYear,
@@ -6,6 +9,7 @@ import type {
   PlayedYear,
 } from "@/actions/lastfm";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
+import { useMotion } from "@/components/useMotion";
 import { formatPlays } from "@/lib/formatNumber";
 
 export interface OnThisDayProps {
@@ -29,8 +33,38 @@ const toStops = (years: readonly DayInYear[]): Stop[] => {
   return stops;
 };
 
+// The rail draws down one stop per step; each stop fills in over the next few.
+const stepMs = 90;
+const fillSteps = 4;
+
+const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
+
+// Draws in from the origin on the client; the server markup already shows the end state.
+const useReveal = (stops: number) => {
+  const animate = useMotion();
+  const end = stops + fillSteps;
+  const [from] = useState(animate ? 0 : end);
+  const { progress } = useSpring({
+    from: { progress: from },
+    to: { progress: end },
+    config: { duration: (end - from) * stepMs, easing: easings.linear },
+  });
+  const fill = (step: number) =>
+    progress.to((p) => 1 - (1 - clamp((p - step) / fillSteps)) ** 2);
+  return {
+    fill,
+    style: (step: number) =>
+      ({
+        "--rail": progress.to((p) => clamp(p - step)),
+        "--fill": fill(step),
+      }) as CSSProperties,
+  };
+};
+
 export const OnThisDay = ({ days }: OnThisDayProps) => {
   const data = use(days);
+  const stops = data ? toStops(data.years) : [];
+  const reveal = useReveal(stops.length);
 
   if (data === undefined) {
     return <p>This day in past years is temporarily unavailable :(</p>;
@@ -40,30 +74,40 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
 
   return (
     <ol className="timeline" style={{ "--max": max } as CSSProperties}>
-      <li className="timeline-origin">{data.date}</li>
-      {toStops(data.years).map((stop) =>
-        stop.kind === "played" ? (
-          <li
+      <animated.li className="timeline-origin" style={reveal.style(0)}>
+        {data.date}
+      </animated.li>
+      {stops.map((stop, index) => {
+        const step = index + 1;
+        return stop.kind === "played" ? (
+          <animated.li
             key={stop.year.year}
-            style={{ "--value": stop.year.count } as CSSProperties}
+            style={
+              {
+                ...reveal.style(step),
+                "--value": stop.year.count,
+              } as CSSProperties
+            }
           >
             <span className="timeline-year">{stop.year.year}</span>
             <span className="timeline-top">
               {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
             </span>
-            <span className="timeline-plays">
-              {formatPlays(stop.year.count)}
-            </span>
-          </li>
+            <animated.span className="timeline-plays">
+              {reveal
+                .fill(step)
+                .to((f) => formatPlays(Math.round(stop.year.count * f)))}
+            </animated.span>
+          </animated.li>
         ) : (
-          <li key={stop.to} data-silent>
+          <animated.li key={stop.to} style={reveal.style(step)} data-silent>
             <span className="timeline-year">
               {stop.from === stop.to ? stop.to : `${stop.from}–${stop.to}`}
             </span>
             <span className="timeline-top">nothing played</span>
-          </li>
-        ),
-      )}
+          </animated.li>
+        );
+      })}
     </ol>
   );
 };
