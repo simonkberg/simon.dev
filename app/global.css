@@ -337,7 +337,6 @@
   --heading-size: 0.75rem;
   --heading-case: uppercase;
   --heading-tracking: 0.12em;
-  --heading-sub-case: lowercase;
   --heading-number: counter(pane, decimal-leading-zero) " ";
   --heading-wrap: nowrap;
 
