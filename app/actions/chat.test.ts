@@ -16,11 +16,11 @@ import {
   postChannelMessage,
 } from "@/lib/discord/api";
 import { identifiers } from "@/lib/identifiers";
+import { isDeniedRequest } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { MIGRATIONS } from "@/lib/migrations";
 import { getSession, type Username } from "@/lib/session";
 import { query } from "@/lib/turso";
-import { loadDenyList } from "@/mocks/ipDenyList";
 import { createMessage } from "@/mocks/messages";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
@@ -40,6 +40,9 @@ vi.mock(import("@/lib/session"), () => ({
   getSession: vi.fn(() =>
     Promise.resolve({ username: "test-user" as Username }),
   ),
+}));
+vi.mock(import("@/lib/ipDenyList"), () => ({
+  isDeniedRequest: vi.fn(() => false),
 }));
 vi.mock(import("@/lib/chatTip"), () => ({ setChatTipDismissed: vi.fn() }));
 vi.mock(import("@/lib/discord/api"));
@@ -69,9 +72,8 @@ async function postUpToTheLimit() {
 
 sqliteBeforeEach(query, MIGRATIONS);
 
-beforeEach(async () => {
+beforeEach(() => {
   vi.useFakeTimers({ now: 1_000_000, toFake: ["Date"] });
-  await loadDenyList("6.6.6.6");
 });
 
 describe("getChatHistory", () => {
@@ -165,12 +167,13 @@ describe("postChatMessage", () => {
   });
 
   it("turns away an IP on the deny list before rate limiting it", async () => {
-    nextFromIp("6.6.6.6");
+    vi.mocked(isDeniedRequest).mockReturnValueOnce(true);
 
     expect(await post()).toEqual({
       status: "error",
       error: "Posting from your network is blocked.",
     });
+    expect(isDeniedRequest).toHaveBeenCalledWith("0.0.0.0", "postChatMessage");
     expect(postChannelMessage).not.toHaveBeenCalled();
     expect((await query("SELECT * FROM rate_limits")).rows).toEqual([]);
   });
@@ -289,12 +292,16 @@ describe("reactToChatMessage", () => {
   });
 
   it("turns away an IP on the deny list", async () => {
-    nextFromIp("6.6.6.6");
+    vi.mocked(isDeniedRequest).mockReturnValueOnce(true);
 
     expect(await reactToChatMessage("123", "👍")).toEqual({
       status: "error",
       error: "Reacting from your network is blocked.",
     });
+    expect(isDeniedRequest).toHaveBeenCalledWith(
+      "0.0.0.0",
+      "reactToChatMessage",
+    );
   });
 
   it("rejects the 31st reaction in a minute", async () => {

@@ -2,11 +2,12 @@ import { act, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { TopAlbum } from "@/actions/lastfm";
-import { coverCdn, topAlbum } from "@/mocks/lastfm";
+import { config } from "@/config";
+import { topAlbum } from "@/mocks/lastfm";
 
 import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
 
-const cover = `${coverCdn}/abc.jpg`;
+const cover = `${config.lastfmCoverCdn}abc.jpg`;
 
 const albums = [
   topAlbum("Knock Knock", "Smog", 1, cover),

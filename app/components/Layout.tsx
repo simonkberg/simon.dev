@@ -5,12 +5,12 @@ import type { PropsWithChildren } from "react";
 import { iosevka } from "@/assets/fonts";
 import { config } from "@/config";
 import {
-  colorSchemes,
-  grounds,
   preferencesScript,
   themePreference,
   variantPreference,
 } from "@/lib/preferences";
+
+import { ThemeColorTags } from "./ThemeColorTags";
 
 export const Layout = ({ children }: PropsWithChildren) => {
   return (
@@ -24,14 +24,7 @@ export const Layout = ({ children }: PropsWithChildren) => {
     >
       <head>
         {/* Not viewport.themeColor: Next re-renders those on navigation, undoing the script. */}
-        {colorSchemes.map((scheme) => (
-          <meta
-            key={scheme}
-            name="theme-color"
-            media={`(prefers-color-scheme: ${scheme})`}
-            content={grounds[variantPreference.fallback][scheme]}
-          />
-        ))}
+        <ThemeColorTags />
         <script dangerouslySetInnerHTML={{ __html: preferencesScript }} />
       </head>
       <GoogleTagManager gtmId={config.gtmId} />

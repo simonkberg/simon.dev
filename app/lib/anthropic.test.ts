@@ -20,12 +20,20 @@ import {
   userGetTopTracks,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import {
+  buildMemoryContext,
+  describeMiss,
+  edit,
+  forget,
+  type Memory,
+  recall,
+  remember,
+} from "@/lib/memory";
 import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
-import { coverCdn, topAlbum } from "@/mocks/lastfm";
-import { CREATED_AT, fillCategory, seed, stored } from "@/mocks/memory";
+import { topAlbum } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
@@ -51,6 +59,17 @@ vi.mock(import("@/lib/turso"), async () =>
 vi.mock(import("@/lib/reactions"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, addReaction: vi.fn() };
+});
+vi.mock(import("@/lib/memory"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    buildMemoryContext: vi.fn(async () => "<memory></memory>"),
+    remember: vi.fn(),
+    recall: vi.fn(async () => []),
+    edit: vi.fn(),
+    forget: vi.fn(),
+  };
 });
 vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -209,9 +228,7 @@ describe("createMessage", () => {
   });
 
   it("should send the whole conversation and build memory for its users only", async () => {
-    await seed(1, "people/alice", "likes cats");
-    await seed(2, "people/bob", "likes dogs");
-    await seed(3, "people/simon-bot", "that's me");
+    vi.mocked(buildMemoryContext).mockResolvedValue("<memory>notes</memory>");
     respond(() => reply([text("I'm good!")]));
     const chat: [ChatMessage, ...ChatMessage[]] = [
       { role: "user", username: "Alice", content: "Hello" },
@@ -224,14 +241,12 @@ describe("createMessage", () => {
     expect(requests[0]?.messages).toEqual([
       { role: "user", content: formatConversation(chat) },
     ]);
-    const memory = requests[0]?.system[1]?.text;
-    expect(memory).toContain("## people/alice\n- #1 likes cats");
-    expect(memory).toContain("## people/bob\n- #2 likes dogs");
-    expect(memory).toContain("people/simon-bot (1)");
+    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+    expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
 
-  it("should omit the memory block when memory can't be read", async () => {
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
+  it("should omit the memory block when there is none", async () => {
+    vi.mocked(buildMemoryContext).mockResolvedValue("");
     respond(() => reply([text("ok")]));
 
     expect(await ask()).toEqual(["ok"]);
@@ -239,151 +254,88 @@ describe("createMessage", () => {
   });
 
   describe("memory tools", () => {
-    it("should save notes with remember", async () => {
-      const result = await runTool("remember", {
-        category: "self",
-        content: "i like trains",
-      });
-
-      const memory = JSON.parse(result);
-      expect(memory).toEqual({
-        id: expect.any(Number),
-        category: "self",
-        content: "i like trains",
-        createdAt: expect.any(String),
-      });
-      expect(await stored(memory.id)).toEqual({
-        category: "self",
-        content: "i like trains",
-      });
-    });
-
-    it("should read notes with recall", async () => {
-      await seed(1, "jokes", "knock knock");
-      await seed(2, "self", "i like trains");
-
-      const result = await runTool("recall", { category: "jokes" });
-
-      expect(JSON.parse(result)).toEqual([
-        {
-          id: 1,
-          category: "jokes",
-          content: "knock knock",
-          createdAt: CREATED_AT,
-        },
-      ]);
-    });
-
-    it("should rewrite notes with edit", async () => {
-      await seed(3, "self", "i like cats");
-
-      const result = await runTool("edit", {
-        id: 3,
-        old_content: "i like cats",
-        new_content: "i like trains",
-      });
-
-      expect(JSON.parse(result)).toEqual({
-        id: 3,
-        category: "self",
-        content: "i like trains",
-        createdAt: CREATED_AT,
-        updatedAt: expect.any(String),
-      });
-    });
-
-    it("should move a note when edit gets a category", async () => {
-      await seed(3, "style", "this chat gets spam");
-
-      const result = await runTool("edit", {
-        id: 3,
-        old_content: "this chat gets spam",
-        new_content: "this chat gets spam",
-        category: "context",
-      });
-
-      expect(JSON.parse(result)).toMatchObject({ id: 3, category: "context" });
-      expect(await stored(3)).toEqual({
-        category: "context",
-        content: "this chat gets spam",
-      });
-    });
-
-    it("should delete notes with forget", async () => {
-      await seed(3, "self", "i like cats");
-
-      const result = await runTool("forget", { id: 3, content: "i like cats" });
-
-      expect(JSON.parse(result)).toEqual({ forgotten: true });
-      expect(await stored(3)).toBeUndefined();
-    });
-
-    const full = (category: string) => ({
-      error: `Category "${category}" is full (25 memories). Forget something first.`,
-    });
-    const changed = {
-      error:
-        "Note #3 has changed since you read it - work from its current text",
-      current: {
-        id: 3,
-        category: "self",
-        content: "i like dogs",
-        createdAt: CREATED_AT,
-      },
+    const note: Memory = {
+      id: 3,
+      category: "self",
+      content: "i like trains",
+      createdAt: NOW,
+      updatedAt: undefined,
     };
 
     it.each([
       {
-        case: "remember into a full category",
-        setup: () => fillCategory("self"),
         tool: "remember",
-        input: { category: "self", content: "one more" },
-        expected: full("self"),
+        input: { category: "self", content: "i like trains" },
+        run: remember,
+        called: { category: "self", content: "i like trains" },
+        result: { status: "ok", memory: note },
+        expected: note,
       },
       {
-        case: "edit moving into a full category",
-        setup: async () => {
-          await seed(3, "style", "this chat gets spam");
-          await fillCategory("context");
-        },
+        tool: "recall",
+        input: { category: "self" },
+        run: recall,
+        called: { category: "self", limit: 20 },
+        result: [note],
+        expected: [note],
+      },
+      {
         tool: "edit",
         input: {
           id: 3,
-          old_content: "this chat gets spam",
-          new_content: "this chat gets spam",
-          category: "context",
+          old_content: "i like cats",
+          new_content: "i like trains",
+          category: "self",
         },
-        expected: full("context"),
-      },
-      {
-        case: "edit of a changed note",
-        setup: () => seed(3, "self", "i like dogs"),
-        tool: "edit",
-        input: { id: 3, old_content: "i like cats", new_content: "x" },
-        expected: changed,
-      },
-      {
-        case: "forget of a changed note",
-        setup: () => seed(3, "self", "i like dogs"),
-        tool: "forget",
-        input: { id: 3, content: "i like cats" },
-        expected: changed,
-      },
-      {
-        case: "forget of a note already gone",
-        setup: async () => {},
-        tool: "forget",
-        input: { id: 3, content: "i like cats" },
-        expected: {
-          error: "There is no note #3 - it may have been forgotten already",
+        run: edit,
+        called: {
+          id: 3,
+          oldContent: "i like cats",
+          newContent: "i like trains",
+          category: "self",
         },
+        result: { status: "ok", memory: note },
+        expected: note,
       },
-    ])(
-      "should hand the miss back for $case",
-      async ({ setup, tool, input, expected }) => {
-        await setup();
+      {
+        tool: "forget",
+        input: { id: 3, content: "i like trains" },
+        run: forget,
+        called: { id: 3, content: "i like trains" },
+        result: { status: "ok" },
+        expected: { forgotten: true },
+      },
+    ] as const)(
+      "should run $tool on memory",
+      async ({ tool, input, run, called, result, expected }) => {
+        vi.mocked(run).mockResolvedValue(result as never);
 
         expect(JSON.parse(await runTool(tool, input))).toEqual(expected);
+        expect(run).toHaveBeenCalledWith(called);
+      },
+    );
+
+    it.each([
+      {
+        tool: "remember",
+        input: { category: "self", content: "x" },
+        run: remember,
+      },
+      {
+        tool: "edit",
+        input: { id: 3, old_content: "i like cats", new_content: "x" },
+        run: edit,
+      },
+      { tool: "forget", input: { id: 3, content: "i like cats" }, run: forget },
+    ] as const)(
+      "should hand a $tool miss back to the model",
+      async ({ tool, input, run }) => {
+        const miss = { status: "stale", current: note } as const;
+        vi.mocked(run).mockResolvedValue(miss);
+
+        expect(JSON.parse(await runTool(tool, input))).toEqual(
+          describeMiss(miss),
+        );
       },
     );
   });
@@ -432,7 +384,7 @@ describe("createMessage", () => {
     { case: "retry-after seconds", retryAfter: "8", sleep: 8000 },
     {
       case: "a retry-after date",
-      retryAfter: new Date(Date.parse(CREATED_AT) + 2000).toUTCString(),
+      retryAfter: new Date(Date.parse(NOW) + 2000).toUTCString(),
       sleep: 2000,
     },
     { case: "no retry-after", retryAfter: undefined, sleep: 500 },
@@ -444,7 +396,7 @@ describe("createMessage", () => {
       sleep: 500,
     },
   ])("should wait for $case", async ({ retryAfter, sleep: expected }) => {
-    vi.useFakeTimers({ now: new Date(CREATED_AT), toFake: ["Date"] });
+    vi.useFakeTimers({ now: new Date(NOW), toFake: ["Date"] });
     failOnce(
       () =>
         new HttpResponse(null, {
@@ -1020,7 +972,7 @@ describe("createMessage", () => {
         "Knock Knock",
         "Smog",
         1,
-        `${coverCdn}/a.jpg`,
+        `${config.lastfmCoverCdn}a.jpg`,
       );
       vi.mocked(userGetTopAlbums).mockResolvedValue([{ ...album, cover }]);
 

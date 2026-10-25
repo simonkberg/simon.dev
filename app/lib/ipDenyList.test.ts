@@ -2,10 +2,14 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
-import { loadDenyList } from "@/mocks/ipDenyList";
 import { server } from "@/mocks/node";
 
-import { IP_DENY_LIST_URL, isDeniedIp, refreshIpDenyList } from "./ipDenyList";
+import {
+  IP_DENY_LIST_URL,
+  isDeniedIp,
+  isDeniedRequest,
+  refreshIpDenyList,
+} from "./ipDenyList";
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -19,6 +23,11 @@ function serveList(body: string, status = 200) {
     }),
   );
   return () => requests;
+}
+
+async function loadDenyList(...ips: string[]) {
+  serveList(`${ips.join("\n")}\n`);
+  await refreshIpDenyList();
 }
 
 describe("ipDenyList", () => {
@@ -120,5 +129,25 @@ describe("ipDenyList", () => {
     serveList("", 503);
     await expectRetryAfter(24 * HOUR);
     await expectRetryAfter(MINUTE);
+  });
+});
+
+describe("isDeniedRequest", () => {
+  beforeEach(() => loadDenyList("6.6.6.6"));
+
+  it("should deny a listed IP and log it", () => {
+    expect(isDeniedRequest("6.6.6.6", "typing")).toBe(true);
+    expect(log.info).toHaveBeenCalledWith(
+      { ip: "6.6.6.6", action: "typing" },
+      "Denied a listed IP",
+    );
+  });
+
+  it.each(["1.1.1.1", undefined])("should let %s through", (ip) => {
+    expect(isDeniedRequest(ip, "typing")).toBe(false);
+    expect(log.info).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "Denied a listed IP",
+    );
   });
 });

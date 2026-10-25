@@ -1,7 +1,5 @@
 import type { TopAlbum } from "@/actions/lastfm";
 
-export const coverCdn = "https://lastfm-img.freetls.fastly.net/i/u";
-
 export const topAlbum = (
   name: string,
   artist: string,
