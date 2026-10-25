@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  clockTime,
   dayRange,
   nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
+  today,
   yearBuckets,
 } from "./scrobbleBuckets";
 
@@ -139,6 +141,20 @@ describe("nextMidnight", () => {
     // Stockholm leaves summer time on 2026-10-25.
     expect(nextMidnight(new Date("2026-10-25T12:00:00Z"))).toEqual(
       new Date("2026-10-25T23:00:00Z"),
+    );
+  });
+});
+
+describe("today", () => {
+  it("should name Stockholm's day once UTC is still on the one before", () => {
+    expect(today(new Date("2026-10-25T23:30:00Z"))).toBe("Monday 2026-10-26");
+  });
+});
+
+describe("clockTime", () => {
+  it("should read Stockholm's wall clock", () => {
+    expect(clockTime(new Date("2026-07-01T22:30:00Z"))).toBe(
+      "2026-07-02 00:30",
     );
   });
 });

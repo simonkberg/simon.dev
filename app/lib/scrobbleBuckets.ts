@@ -47,6 +47,8 @@ export const dayLabel = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+const weekday = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "long" });
+
 const labels = {
   day: dayLabel,
   week: dayLabel,
@@ -129,6 +131,14 @@ export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
   const count = today.getUTCFullYear() - since + 1;
   return buckets("year", count, today);
 }
+
+/** Stockholm's wall clock, like "2026-10-25 00:30". */
+export const clockTime = (instant: Date) =>
+  localDate(instant).toISOString().slice(0, 16).replace("T", " ");
+
+/** Today in Stockholm, like "Sunday 2026-10-25". */
+export const today = (now: Date) =>
+  `${weekday.format(now)} ${clockTime(now).slice(0, 10)}`;
 
 /** The start of tomorrow in Stockholm. */
 export const nextMidnight = (now: Date) => start("day", localDate(now), -1);

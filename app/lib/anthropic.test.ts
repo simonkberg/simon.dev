@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { config } from "@/config";
-import { getChannelMessages, searchChannelMessages } from "@/lib/discord/api";
+import {
+  getChannelMessages,
+  type Message,
+  searchChannelMessages,
+} from "@/lib/discord/api";
 import {
   getUserPlays,
   userGetChartInRange,
@@ -69,6 +73,8 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
 const EPHEMERAL = { type: "ephemeral" };
+// Sunday, 01:00 in Stockholm.
+const NOW = "2026-10-25T00:00:00Z";
 
 type RequestBody = {
   tool_choice?: unknown;
@@ -87,6 +93,7 @@ let headers: Headers[];
 sqliteBeforeEach(query, MIGRATIONS);
 
 beforeEach(() => {
+  vi.useFakeTimers({ now: new Date(NOW), toFake: ["Date"] });
   requests = [];
   headers = [];
   vi.mocked(getStats).mockResolvedValue([]);
@@ -98,7 +105,7 @@ beforeEach(() => {
 });
 
 function conversation(author: string, text: string): string {
-  return `<conversation>\n<message author="${author}">${text}</message>\n</conversation>`;
+  return `<conversation today="Sunday 2026-10-25">\n<message author="${author}">${text}</message>\n</conversation>`;
 }
 
 function reply(content: unknown[], stop_reason = "end_turn") {
@@ -849,7 +856,6 @@ describe("createMessage", () => {
     }
 
     it.each([
-      wiring("get_chat_history", { limit: 5 }, getChannelMessages, 5),
       wiring(
         "get_wakatime_stats",
         { period: "last_30_days", limit: 10 },
@@ -905,17 +911,6 @@ describe("createMessage", () => {
         },
       ),
       wiring(
-        "get_scrobbles_in_range",
-        { from: "2015-12-31", to: "2015-12-31" },
-        userGetScrobbles,
-        config.lastfmUsername,
-        {
-          from: new Date("2015-12-30T23:00:00Z"),
-          to: new Date("2015-12-31T23:00:00Z"),
-          limit: 10,
-        },
-      ),
-      wiring(
         "search_messages",
         searchInput,
         searchChannelMessages,
@@ -931,6 +926,94 @@ describe("createMessage", () => {
         expect(mock).toHaveBeenCalledWith(...calledWith);
       },
     );
+
+    it("should give chat history in time order with site reactions", async () => {
+      const message = (
+        id: string,
+        timestamp: string,
+        replies: Message[] = [],
+      ): Message => ({
+        id,
+        user: { name: "otter", color: "hsl(1 2% 3%)" as const },
+        content: `hi ${id}`,
+        edited: false,
+        timestamp: new Date(timestamp),
+        reactions: [],
+        replies,
+      });
+      vi.mocked(getChannelMessages).mockResolvedValue([
+        message("1", "2026-10-24T20:00:00Z", [
+          message("3", "2026-10-24T23:30:00Z"),
+        ]),
+        message("2", "2026-10-24T21:00:00Z"),
+      ]);
+      await query(
+        "INSERT INTO reactions (message_id, emoji, username) VALUES ('3', '👍', 'simon-bot')",
+      );
+
+      expect(await runTool("get_chat_history", { limit: 5 })).toBe(
+        [
+          '<message id="1" author="otter" time="2026-10-24 22:00">hi 1</message>',
+          '<message id="2" author="otter" time="2026-10-24 23:00">hi 2</message>',
+          '<message id="3" author="otter" time="2026-10-25 01:30" reply_to="1" reactions="👍 1 (you)">hi 3</message>',
+        ].join("\n"),
+      );
+      expect(getChannelMessages).toHaveBeenCalledWith(5);
+    });
+
+    it("should give scrobbles in range as Stockholm times", async () => {
+      vi.mocked(userGetScrobbles).mockResolvedValue({
+        total: 1,
+        tracks: [
+          {
+            name: "Idioteque",
+            artist: "Radiohead",
+            album: "Kid A",
+            playedAt: new Date("2015-12-30T23:30:00Z"),
+            nowPlaying: false,
+            loved: false,
+          },
+        ],
+      });
+
+      expect(
+        JSON.parse(
+          await runTool("get_scrobbles_in_range", {
+            from: "2015-12-31",
+            to: "2015-12-31",
+          }),
+        ),
+      ).toEqual({
+        total: 1,
+        tracks: [
+          {
+            name: "Idioteque",
+            artist: "Radiohead",
+            album: "Kid A",
+            playedAt: "2015-12-31 00:30",
+          },
+        ],
+      });
+      expect(userGetScrobbles).toHaveBeenCalledWith(config.lastfmUsername, {
+        from: new Date("2015-12-30T23:00:00Z"),
+        to: new Date("2015-12-31T23:00:00Z"),
+        limit: 10,
+      });
+    });
+
+    it("should describe tool inputs as the model writes them", async () => {
+      respond(() => reply([]));
+      await ask();
+
+      const tools = requests[0]?.tools as unknown as Array<{
+        name: string;
+        input_schema: { required?: string[]; $schema?: string };
+      }>;
+      const range = tools.find(({ name }) => name === "get_top_in_range");
+      expect(range?.input_schema.required).toEqual(["from", "to", "kind"]);
+      expect(range?.input_schema).not.toHaveProperty("$schema");
+      expect(JSON.stringify(range)).not.toContain("pattern");
+    });
 
     it("should leave album covers out of the top albums result", async () => {
       const { cover, ...album } = topAlbum(
@@ -1050,7 +1133,7 @@ describe("formatConversation", () => {
       ]),
     ).toBe(
       [
-        "<conversation>",
+        '<conversation today="Sunday 2026-10-25">',
         '<message id="1" author="simon" reactions="👍 2, 🔥 2 (you)">nice one</message>',
         '<message author="simon-bot">thanks</message>',
         "</conversation>",

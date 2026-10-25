@@ -9,6 +9,7 @@ import { z } from "zod";
 import { config } from "@/config";
 import {
   getChannelMessages,
+  type Message as ChannelMessage,
   type Reaction,
   searchChannelMessages,
 } from "@/lib/discord/api";
@@ -36,8 +37,13 @@ import {
   recall,
   remember,
 } from "@/lib/memory";
-import { addReaction, EmojiSchema, MessageIdSchema } from "@/lib/reactions";
-import { dayRange } from "@/lib/scrobbleBuckets";
+import {
+  addReaction,
+  EmojiSchema,
+  MessageIdSchema,
+  withSiteReactions,
+} from "@/lib/reactions";
+import { clockTime, dayRange, today } from "@/lib/scrobbleBuckets";
 import type { Username } from "@/lib/session";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -68,7 +74,8 @@ const SYSTEM_PROMPT = md`
   rewrite whenever you feel like it, and they take precedence over the starting
   point below.
 
-  The conversation arrives as <message> elements, oldest first, and the last one
+  The conversation arrives as <message> elements, oldest first, and its today
+  attribute is the date in Stockholm, the time the date tools use. The last message
   is what you're answering. author is who wrote it, with "simon-bot" being you -
   use their name when it feels natural - and reactions counts each emoji on it,
   with "(you)" marking yours. Reply with just your message text. ${SIMON_RULE}
@@ -268,66 +275,77 @@ const forgetInputSchema = z.object({
   content: currentTextSchema,
 });
 
+// The model writes a tool's input, so defaulted fields are optional, and `format` already says what a date is.
+function toolSchema(schema: z.ZodType) {
+  const { $schema, ...jsonSchema } = z.toJSONSchema(schema, {
+    io: "input",
+    override: ({ jsonSchema }) => {
+      if (jsonSchema.format === "date") delete jsonSchema.pattern;
+    },
+  });
+  return jsonSchema;
+}
+
 const LOOKUP_TOOLS = [
   {
     name: "get_chat_history",
     description:
-      "Get recent messages from the chat. Use this to understand context from the conversation.",
-    input_schema: z.toJSONSchema(chatHistoryInputSchema),
+      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements like the conversation's, oldest first, each with its Stockholm time and, for a reply, the id it replies to.",
+    input_schema: toolSchema(chatHistoryInputSchema),
   },
   {
     name: "get_wakatime_stats",
     description:
       "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
-    input_schema: z.toJSONSchema(wakatimeInputSchema),
+    input_schema: toolSchema(wakatimeInputSchema),
   },
   {
     name: "get_recent_tracks",
     description:
       "Get recently played tracks from Last.fm. Defaults to Simon's account. Includes now-playing status.",
-    input_schema: z.toJSONSchema(recentTracksInputSchema),
+    input_schema: toolSchema(recentTracksInputSchema),
   },
   {
     name: "get_top_tracks",
     description:
       "Get most played tracks from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: z.toJSONSchema(topItemsInputSchema),
+    input_schema: toolSchema(topItemsInputSchema),
   },
   {
     name: "get_top_artists",
     description:
       "Get most played artists from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: z.toJSONSchema(topItemsInputSchema),
+    input_schema: toolSchema(topItemsInputSchema),
   },
   {
     name: "get_top_albums",
     description:
       "Get most played albums from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: z.toJSONSchema(topItemsInputSchema),
+    input_schema: toolSchema(topItemsInputSchema),
   },
   {
     name: "get_play_count",
     description:
       "Count all-time plays of an artist, or of one of their tracks or albums, on Last.fm. Defaults to Simon's account. Misspelled names are corrected, and the result spells them as Last.fm does. plays is missing when Last.fm has no count, as for an unknown username.",
-    input_schema: z.toJSONSchema(playCountInputSchema),
+    input_schema: toolSchema(playCountInputSchema),
   },
   {
     name: "get_top_in_range",
     description:
       "Get the most played artists, tracks or albums on Last.fm between two dates, like a given year or month. Defaults to Simon's account.",
-    input_schema: z.toJSONSchema(topInRangeInputSchema),
+    input_schema: toolSchema(topInRangeInputSchema),
   },
   {
     name: "get_scrobbles_in_range",
     description:
       "Get the total scrobbles on Last.fm between two dates and the tracks played, newest first. Defaults to Simon's account.",
-    input_schema: z.toJSONSchema(scrobblesInRangeInputSchema),
+    input_schema: toolSchema(scrobblesInRangeInputSchema),
   },
   {
     name: "search_messages",
     description:
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
-    input_schema: z.toJSONSchema(searchMessagesInputSchema),
+    input_schema: toolSchema(searchMessagesInputSchema),
   },
 ];
 
@@ -335,7 +353,7 @@ const REACT_TOOL = {
   name: "react",
   description:
     "React to a chat message with an emoji, shown with your name on the site and on Discord. Reacting twice with the same emoji changes nothing.",
-  input_schema: z.toJSONSchema(reactInputSchema),
+  input_schema: toolSchema(reactInputSchema),
 };
 
 export const MEMORY_TOOLS = [
@@ -343,25 +361,25 @@ export const MEMORY_TOOLS = [
     name: "remember",
     description:
       "Save a note to your memory. Notes in self, style, interests and context are always shown to you; people/<username> notes appear when that person is in the conversation; other categories are yours to invent and read back with recall.",
-    input_schema: z.toJSONSchema(rememberInputSchema),
+    input_schema: toolSchema(rememberInputSchema),
   },
   {
     name: "recall",
     description:
       "Read notes from your memory, newest first. Filter by category and/or text.",
-    input_schema: z.toJSONSchema(recallInputSchema),
+    input_schema: toolSchema(recallInputSchema),
   },
   {
     name: "edit",
     description:
       "Rewrite a note in your memory. Pass the text it has right now: if the note changed since you read it, nothing is written and you get its current text back to edit from.",
-    input_schema: z.toJSONSchema(editInputSchema),
+    input_schema: toolSchema(editInputSchema),
   },
   {
     name: "forget",
     description:
       "Delete a note from your memory. Pass the text it has right now, so you only ever delete what you have just seen.",
-    input_schema: z.toJSONSchema(forgetInputSchema),
+    input_schema: toolSchema(forgetInputSchema),
   },
 ];
 
@@ -376,7 +394,9 @@ async function executeTool(
     switch (name) {
       case "get_chat_history": {
         const { limit } = chatHistoryInputSchema.parse(input);
-        return JSON.stringify(await getChannelMessages(limit));
+        return formatHistory(
+          await withSiteReactions(await getChannelMessages(limit)),
+        );
       }
       case "get_wakatime_stats": {
         const { period, limit } = wakatimeInputSchema.parse(input);
@@ -417,12 +437,18 @@ async function executeTool(
       case "get_scrobbles_in_range": {
         const { username, from, to, ...params } =
           scrobblesInRangeInputSchema.parse(input);
-        return JSON.stringify(
-          await userGetScrobbles(username, {
-            ...dayRange(from, to),
-            ...params,
-          }),
-        );
+        const { total, tracks } = await userGetScrobbles(username, {
+          ...dayRange(from, to),
+          ...params,
+        });
+        // Not requested as extended, so loved is always false; times match the Stockholm days asked for.
+        const played = tracks.map(({ name, artist, album, playedAt }) => ({
+          name,
+          artist,
+          album,
+          playedAt: playedAt && clockTime(playedAt),
+        }));
+        return JSON.stringify({ total, tracks: played });
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);
@@ -488,6 +514,8 @@ export type ChatMessage = {
   content: string;
   id?: string;
   reactions?: Reaction[];
+  time?: string;
+  replyTo?: string;
 };
 
 export type Message = {
@@ -525,10 +553,20 @@ function escapeXml(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function formatMessage({ id, username, content, reactions = [] }: ChatMessage) {
+function formatMessage({
+  id,
+  username,
+  content,
+  reactions = [],
+  time,
+  replyTo,
+}: Omit<ChatMessage, "role">) {
   const attributes: string[] = [];
   if (id !== undefined) attributes.push(`id="${escapeXml(id)}"`);
   attributes.push(`author="${escapeXml(username)}"`);
+  if (time !== undefined) attributes.push(`time="${time}"`);
+  if (replyTo !== undefined)
+    attributes.push(`reply_to="${escapeXml(replyTo)}"`);
   if (reactions.length > 0) {
     const counts = reactions.map(formatReaction).join(", ");
     attributes.push(`reactions="${escapeXml(counts)}"`);
@@ -537,7 +575,31 @@ function formatMessage({ id, username, content, reactions = [] }: ChatMessage) {
 }
 
 export function formatConversation(chatMessages: ChatMessage[]): string {
-  return `<conversation>\n${chatMessages.map(formatMessage).join("\n")}\n</conversation>`;
+  return `<conversation today="${today(new Date())}">\n${chatMessages.map(formatMessage).join("\n")}\n</conversation>`;
+}
+
+function formatHistory(messages: ChannelMessage[]): string {
+  const flatten = (
+    list: ChannelMessage[],
+    replyTo?: string,
+  ): { message: ChannelMessage; replyTo?: string }[] =>
+    list.flatMap((message) => [
+      { message, replyTo },
+      ...flatten(message.replies, message.id),
+    ]);
+  return flatten(messages)
+    .toSorted((a, b) => +a.message.timestamp - +b.message.timestamp)
+    .map(({ message: { id, user, content, reactions, timestamp }, replyTo }) =>
+      formatMessage({
+        id,
+        username: user.name,
+        content,
+        reactions,
+        time: clockTime(timestamp),
+        replyTo,
+      }),
+    )
+    .join("\n");
 }
 
 export function participantsOf(chatMessages: ChatMessage[]): string[] {
