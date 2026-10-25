@@ -189,6 +189,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   Emojibase's keywords, which Discord matches too (whole, after every shortcode). It is
   fetched when the input takes focus, a shortcode is typed or a message emoji or reaction is
   first hovered, which shows its shortcode, so the full set never ships with the page;
+  `next.config.ts` lets browsers keep it a day, since a static route only gets `s-maxage`;
   `app/components/chat/shortcodes.ts` holds the one cached request.
   Sending turns known `:shortcodes:` into emoji (`emojify`, called from `postChannelMessage`), as
   Discord clients do: the one place they convert, so the input never rewrites what is typed.
