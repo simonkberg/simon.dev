@@ -1761,12 +1761,12 @@ ul {
   /* easeOutCubic */
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
-    backwards;
+    var(--grow-fill, backwards);
 }
 
 /* Kept in effect once it ends, so a changed value can restart it. */
 .animated-number:not([data-follow]) {
-  animation-fill-mode: both;
+  --grow-fill: both;
 }
 
 /* Until it hydrates and counts along, a count waits for its --grow to finish. */
