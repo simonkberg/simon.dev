@@ -18,6 +18,9 @@ describe("AnimatedNumber", () => {
     style.textContent = ".count { --grow: 0.5 }";
     document.head.append(style);
     render(<AnimatedNumber value={100} follow />);
+    act(() => {
+      vi.advanceTimersToNextFrame();
+    });
     const count = screen.getByText("50");
     expect(count).toHaveAttribute("data-counting");
 
@@ -30,7 +33,11 @@ describe("AnimatedNumber", () => {
   });
 
   it("shows the value once --grow isn't animating", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
     render(<AnimatedNumber value={50} decimals={2} />);
+    act(() => {
+      vi.advanceTimersToNextFrame();
+    });
 
     expect(screen.getByText("50.00")).toHaveAttribute("data-counting");
   });

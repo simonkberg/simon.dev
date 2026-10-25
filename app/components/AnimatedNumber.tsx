@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 import { formatNumber } from "@/lib/formatNumber";
 
 export interface AnimatedNumberProps {
@@ -12,37 +10,53 @@ export interface AnimatedNumberProps {
   format?: (shown: number) => string;
 }
 
+const counting = new Map<HTMLElement, (grow: number) => void>();
+let frame = 0;
+
+function schedule() {
+  cancelAnimationFrame(frame);
+  frame = counting.size > 0 ? requestAnimationFrame(tick) : 0;
+}
+
+// Reads every count's --grow before writing any, so the writes never force another style recalc.
+function tick() {
+  const grows = [...counting].map(
+    ([span, count]) =>
+      [
+        count,
+        Number.parseFloat(getComputedStyle(span).getPropertyValue("--grow")),
+      ] as const,
+  );
+  for (const [count, grow] of grows) count(grow);
+  schedule();
+}
+
 /** Counts up as its CSS `--grow` animates from 0 to 1; the server markup already shows the value. */
 export const AnimatedNumber = ({
   value,
   decimals = 0,
   follow,
   format = (shown) => formatNumber(shown, decimals),
-}: AnimatedNumberProps) => {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const span = ref.current;
-    const text = span?.firstChild;
-    if (!span || !text) return;
-    span.dataset["counting"] = "";
-    let frame = 0;
-    const count = () => {
-      // Read from the style, so a count that hydrates mid-animation joins it in step.
-      const grow = Number.parseFloat(
-        getComputedStyle(span).getPropertyValue("--grow"),
-      );
-      const growing = grow < 1;
-      text.nodeValue = format(growing ? value * grow : value);
-      if (growing) frame = requestAnimationFrame(count);
-    };
-    count();
-    return () => cancelAnimationFrame(frame);
-  }, [value, format]);
-
-  return (
-    <span ref={ref} className="count" data-follow={follow || undefined}>
-      {format(value)}
-    </span>
-  );
-};
+}: AnimatedNumberProps) => (
+  <span
+    // Reads --grow rather than timing itself, so a count hydrating mid-animation joins in step.
+    ref={(span: HTMLSpanElement) => {
+      counting.set(span, (grow) => {
+        const growing = grow < 1;
+        // A lone text child is React's text content, so this is what it would write.
+        span.textContent = format(growing ? value * grow : value);
+        span.dataset["counting"] = "";
+        if (!growing) counting.delete(span);
+      });
+      schedule();
+      return () => {
+        counting.delete(span);
+        schedule();
+      };
+    }}
+    className="count"
+    data-follow={follow || undefined}
+  >
+    {format(value)}
+  </span>
+);

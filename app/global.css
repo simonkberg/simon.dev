@@ -1320,13 +1320,13 @@ ul {
     }
   }
 
-  /* Sized here, not on the list, so the gutter's ch matches the stems'. */
   /* Each bar sweeps out after the stem above its start. */
   .lane-label,
   .lane-run {
     --grow-delay: calc(150ms + var(--column) * 30ms);
   }
 
+  /* Sized here, not on the list, so the gutter's ch matches the stems'. */
   .lane-label {
     grid-row: 1;
     opacity: var(--grow);
