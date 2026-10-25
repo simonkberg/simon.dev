@@ -47,7 +47,7 @@ const useReveal = (stops: number) => {
   const { progress } = useSpring({
     from: { progress: from },
     to: { progress: end },
-    config: { duration: (end - from) * stepMs, easing: easings.linear },
+    config: { duration: end * stepMs, easing: easings.linear },
   });
   const fill = (step: number) =>
     progress.to((p) => 1 - (1 - clamp((p - step) / fillSteps)) ** 2);
@@ -93,11 +93,16 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             <span className="timeline-top">
               {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
             </span>
-            <animated.span className="timeline-plays">
-              {reveal
-                .fill(step)
-                .to((f) => formatPlays(Math.round(stop.year.count * f)))}
-            </animated.span>
+            <span className="timeline-plays">
+              <animated.span aria-hidden="true">
+                {reveal
+                  .fill(step)
+                  .to((f) => formatPlays(Math.round(stop.year.count * f)))}
+              </animated.span>
+              <span className="visually-hidden">
+                {formatPlays(stop.year.count)}
+              </span>
+            </span>
           </animated.li>
         ) : (
           <animated.li key={stop.to} style={reveal.style(step)} data-silent>

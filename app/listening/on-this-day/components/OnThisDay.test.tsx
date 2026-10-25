@@ -1,5 +1,6 @@
 import { Globals } from "@react-spring/web";
 import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { OnThisDay as OnThisDayData } from "@/actions/lastfm";
@@ -27,9 +28,9 @@ describe("OnThisDay", () => {
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(
       [
         "Oct 24",
-        "2025Glue – Bicep12 plays",
+        "2025Glue – Bicep12 plays12 plays",
         "2023–2024nothing played",
-        "2022Glue – Bicep1 play",
+        "2022Glue – Bicep1 play1 play",
         "2021nothing played",
       ],
     );
@@ -51,7 +52,20 @@ describe("OnThisDay", () => {
     ].map((li) => Number(li.style.getPropertyValue("--rail")));
     expect(Math.max(...rails)).toBeLessThan(1);
     expect(rails.at(-1)).toBe(0);
-    expect(screen.getByText("0 plays")).toBeInTheDocument();
+    expect(screen.getByText("0 plays")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("12 plays")).toHaveClass("visually-hidden");
+  });
+
+  it("renders the whole timeline in server markup", () => {
+    const value = { date: "Oct 24", years: [{ year: "2025", count: 12, top }] };
+    // A resolved promise still suspends on the server, so pass a settled one.
+    const days = Object.assign(Promise.resolve(value), {
+      status: "fulfilled",
+      value,
+    });
+    const html = renderToString(<OnThisDay days={days} />);
+
+    expect(html).toContain("--rail:1;--fill:1");
   });
 
   it("renders a notice when the days failed to load", async () => {
