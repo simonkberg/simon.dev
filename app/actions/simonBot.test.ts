@@ -26,7 +26,7 @@ describe("getBotNotes", () => {
     const notes = { self: [], style: [], interests: [] };
     vi.mocked(readPublicNotes).mockResolvedValue(notes);
 
-    await expect(getBotNotes()).resolves.toEqual({ status: "ok", notes });
+    await expect(getBotNotes()).resolves.toEqual({ status: "ok", data: notes });
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
   });
 

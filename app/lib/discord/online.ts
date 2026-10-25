@@ -25,6 +25,8 @@ function learnName(state: Online, id: string, publish: () => void): void {
     })
     .catch((err: unknown) => {
       log.warn({ err }, "Failed to name an online member");
+      // So their next update asks again.
+      if (state.names.get(id) === undefined) state.names.delete(id);
     });
 }
 

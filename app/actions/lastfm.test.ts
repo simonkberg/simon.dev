@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   userGetRecentTracks,
   userGetScrobbles,
-  userGetTopArtistInRange,
+  userGetChartInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   userGetTopArtists,
@@ -31,7 +31,7 @@ vi.mock(import("@/lib/lastfm"), () => ({
   bulk: (request) => request(),
   userGetRecentTracks: vi.fn(),
   userGetScrobbles: vi.fn(),
-  userGetTopArtistInRange: vi.fn(),
+  userGetChartInRange: vi.fn(),
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
@@ -312,14 +312,15 @@ describe("getTopArtistByBucket", () => {
 
   it("should find each bucket's top artist", async () => {
     const artist = { name: "Smog", playcount: 23 };
-    vi.mocked(userGetTopArtistInRange).mockResolvedValue(artist);
+    vi.mocked(userGetChartInRange).mockResolvedValue([artist]);
 
     const result = await getTopArtistByBucket("7day");
 
-    expect(userGetTopArtistInRange).toHaveBeenCalledTimes(7);
-    expect(userGetTopArtistInRange).toHaveBeenLastCalledWith("magijo", {
+    expect(userGetChartInRange).toHaveBeenCalledTimes(7);
+    expect(userGetChartInRange).toHaveBeenLastCalledWith("magijo", "artist", {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
+      limit: 1,
     });
     expect(cacheLife).toHaveBeenLastCalledWith({
       stale: 300,
@@ -337,7 +338,7 @@ describe("getTopArtistByBucket", () => {
 
   it("should return error status when an artist fails", async () => {
     const mockError = new Error("API error");
-    vi.mocked(userGetTopArtistInRange).mockRejectedValue(mockError);
+    vi.mocked(userGetChartInRange).mockRejectedValue(mockError);
 
     const result = await getTopArtistByBucket("7day");
 

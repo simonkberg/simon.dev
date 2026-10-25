@@ -6,6 +6,7 @@ import { resetGlobals } from "@/lib/global";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { message, reaction } from "@/mocks/discord";
+import { gatewayDispatcher } from "@/mocks/gateway";
 import { server } from "@/mocks/node";
 
 import {
@@ -497,7 +498,7 @@ describe("subscribeToChannel", () => {
 
     await vi.advanceTimersByTimeAsync(150);
     callback.mockClear();
-    const apply = vi.mocked(subscribe).mock.calls[0]![0];
+    const apply = gatewayDispatcher();
 
     apply({ t: "MESSAGE_CREATE", d: message("burst-1") });
     await vi.advanceTimersByTimeAsync(100);
@@ -515,7 +516,7 @@ describe("subscribeToChannel", () => {
     await getChannelMessages();
     await vi.advanceTimersByTimeAsync(150);
     callback.mockClear();
-    const apply = vi.mocked(subscribe).mock.calls[0]![0];
+    const apply = gatewayDispatcher();
 
     for (let i = 0; i < 4; i++) {
       apply({ t: "MESSAGE_CREATE", d: message(`steady-${i}`) });

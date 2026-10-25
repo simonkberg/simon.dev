@@ -1,22 +1,37 @@
 "use client";
 
-import type { PropsWithChildren, Ref, ToggleEvent } from "react";
+import type { ReactNode, Ref, ToggleEvent } from "react";
 
-/** The popover listbox of what the chat input suggests. */
-export const ChatSuggestions = ({
+export interface SuggestionProps {
+  id: string;
+  type: "button";
+  role: "option";
+  "aria-selected": boolean;
+  tabIndex: -1;
+}
+
+/** The popover listbox of what the chat input suggests, one option per match. */
+export const ChatSuggestions = <T,>({
   ref,
   id,
   label,
   className,
+  matches,
+  active,
+  option,
   onDismiss,
   children,
-}: PropsWithChildren<{
+}: {
   ref: Ref<HTMLDivElement>;
   id: string;
   label: string;
   className: string;
+  matches: readonly T[];
+  active: number | null;
+  option: (match: T, props: SuggestionProps) => ReactNode;
   onDismiss: () => void;
-}>) => (
+  children?: ReactNode;
+}) => (
   <div
     ref={ref}
     id={id}
@@ -31,6 +46,15 @@ export const ChatSuggestions = ({
       if (event.newState === "closed") onDismiss();
     }}
   >
+    {matches.map((match, index) =>
+      option(match, {
+        id: `${id}-${index}`,
+        type: "button",
+        role: "option",
+        "aria-selected": index === active,
+        tabIndex: -1,
+      }),
+    )}
     {children}
   </div>
 );

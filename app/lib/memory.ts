@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { log } from "@/lib/log";
-import { batch, query, type Value } from "@/lib/turso";
+import { batch, query, type Row, type Value } from "@/lib/turso";
 
 export const CORE_CATEGORIES = {
   self: "who you are",
@@ -230,13 +230,21 @@ export async function forget(input: {
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
+const notesIn = (categories: readonly string[]) => ({
+  sql: `SELECT ${COLUMNS} FROM memories
+     WHERE category IN (${categories.map(() => "?").join(", ")})
+     ORDER BY created_at, id`,
+  args: [...categories],
+});
+
+const byCategory = (rows: Row[]) =>
+  Map.groupBy(rows.map(toMemory), (note) => note.category);
+
 export async function readPersonNotes(username: string): Promise<Memory[]> {
   const category = peopleCategory(username);
   if (category === undefined) return [];
-  const { rows } = await query(
-    `SELECT ${COLUMNS} FROM memories WHERE category = ? ORDER BY created_at, id`,
-    [category],
-  );
+  const { sql, args } = notesIn([category]);
+  const { rows } = await query(sql, args);
   return rows.map(toMemory);
 }
 
@@ -268,28 +276,15 @@ export async function buildMemoryContext(
     const shown = [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
 
     const [{ rows: memoryRows }, { rows: countRows }] = await batch([
-      {
-        sql: `SELECT ${COLUMNS} FROM memories
-         WHERE category IN (${shown.map(() => "?").join(", ")})
-         ORDER BY created_at, id`,
-        args: shown,
-      },
+      notesIn(shown),
       {
         sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
       },
     ]);
 
-    const byCategory = new Map<string, Memory[]>();
-    for (const row of memoryRows) {
-      const memory = toMemory(row);
-      byCategory.set(memory.category, [
-        ...(byCategory.get(memory.category) ?? []),
-        memory,
-      ]);
-    }
-
+    const notes = byCategory(memoryRows);
     const sections = shown.map((category) =>
-      renderCategory(category, byCategory.get(category) ?? []),
+      renderCategory(category, notes.get(category) ?? []),
     );
 
     const others = countRows
@@ -320,14 +315,9 @@ export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
 export async function readPublicNotes(): Promise<
   Record<PublicCategory, Memory[]>
 > {
-  const { rows } = await query(
-    `SELECT ${COLUMNS} FROM memories
-     WHERE category IN (${PUBLIC_CATEGORIES.map(() => "?").join(", ")})
-     ORDER BY created_at, id`,
-    [...PUBLIC_CATEGORIES],
-  );
-  const notes = Object.groupBy(rows.map(toMemory), (note) => note.category);
+  const { sql, args } = notesIn(PUBLIC_CATEGORIES);
+  const notes = byCategory((await query(sql, args)).rows);
   return Object.fromEntries(
-    PUBLIC_CATEGORIES.map((category) => [category, notes[category] ?? []]),
+    PUBLIC_CATEGORIES.map((category) => [category, notes.get(category) ?? []]),
   ) as Record<PublicCategory, Memory[]>;
 }
