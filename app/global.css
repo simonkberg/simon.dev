@@ -50,15 +50,11 @@
   --title-suffix: none;
   --title-link-display: inline;
   --title-link-padding: 0;
-  --title-link-bg: transparent;
-  --title-link-color: inherit;
   --title-link-hover-color: var(--link-hover-color);
-  --title-link-hover-bg: var(--link-hover-bg);
   --nav-gap: 1ch;
   --nav-link-padding: 0;
   --nav-prefix: none;
   --nav-current-color: var(--ink);
-  --nav-current-bg: transparent;
   --nav-current-weight: normal;
   --nav-current-marker: none;
   --nav-hover-color: var(--link-hover-color);
@@ -897,8 +893,6 @@ button {
     > .link {
       display: var(--title-link-display);
       padding: var(--title-link-padding);
-      background: var(--title-link-bg);
-      color: var(--title-link-color);
       text-decoration: none;
       white-space: nowrap;
 
@@ -913,7 +907,7 @@ button {
       }
 
       &:hover {
-        background: var(--title-link-hover-bg);
+        background: var(--link-hover-bg);
         color: var(--title-link-hover-color);
       }
     }
@@ -939,7 +933,6 @@ button {
       }
 
       &[aria-current] {
-        background: var(--nav-current-bg);
         color: var(--nav-current-color);
         font-weight: var(--nav-current-weight);
 
