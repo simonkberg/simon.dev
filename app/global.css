@@ -1752,7 +1752,7 @@ ul {
 }
 
 /* A count follows the --grow it inherits, or grows on its own. */
-.stems li,
+.stems > ol > li,
 .stems > .average,
 .lane-label,
 .lane-run,
@@ -1762,6 +1762,11 @@ ul {
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
     backwards;
+}
+
+/* Kept in effect once it ends, so a changed value can restart it. */
+.animated-number:not([data-follow]) {
+  animation-fill-mode: both;
 }
 
 /* Until it hydrates and counts along, a count waits for its --grow to finish. */
