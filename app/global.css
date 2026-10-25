@@ -1388,8 +1388,8 @@ ul {
   > li {
     --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
       var(--stems-glyph);
-    /* A stop fills in over four steps, and the next one starts a step later: a second in all, at most. */
-    --step: min(90ms, 1s / (var(--count) + 3));
+    /* A stop fills in over four steps, and the next one starts a step later: 600ms in all, at most. */
+    --step: min(60ms, 600ms / (var(--count) + 3));
     --grow-delay: calc(var(--index) * var(--step));
     --grow-duration: calc(var(--step) * 4);
     /* easeOutQuad */
