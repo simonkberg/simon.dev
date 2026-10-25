@@ -2,15 +2,16 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, synchronize, closed]
 
-# A push supersedes the review of the commit before it.
+# A push supersedes the review of the commit before it; a merge or close ends it.
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   claude-review:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,17 +30,22 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@925afb53776cf1a2b738c6bdbed37b4d4000ef13 # v1.0.262
+        # Keeps the skill's subagents in the foreground, so the run can't end before they report.
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
           use_sticky_comment: true
           allowed_bots: renovate[bot],claude[bot]
-          # The skill reviews in subagents; without the second line the run can end
-          # before they report, leaving the comment on its checklist.
           prompt: |
             /code-review medium --comment ${{ github.event.pull_request.number }}
 
-            Run the review in the foreground and wait for every review and verification agent to finish. Do not end your turn until all findings are posted and the comment carries the final summary.
+            Repo notes for this review:
+            - As the last step before posting, read this PR's review threads and replies. Drop any finding already raised on this PR, whether fixed, answered or resolved, unless this push changed that code. If you reverse an earlier suggestion, say so.
+            - Post only findings you verified in the code or with a check. Leave out anything you would call unverified.
+            - Settled: trade-offs the PR body lists; AGENTS.md's conventions, including its testing rules; no old-browser support; the Dockerfile's build-arg secrets and cache mount; hardening simon-bot (it's for fun, and the Discord server has only Simon). Don't guess how Discord behaves.
+            - Keep the summary short: the result, one line per inline finding, and only what can't be anchored to a line.
           # --allowedTools is what starts the inline comment MCP server.
           claude_args: >-
             --permission-mode auto
