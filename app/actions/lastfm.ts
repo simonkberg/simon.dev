@@ -187,7 +187,10 @@ async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
     return { ok: true, value };
   } catch (err) {
     cacheLife("seconds");
-    return { ok: false, error: String(err) };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }
 
