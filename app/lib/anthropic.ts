@@ -460,7 +460,10 @@ async function executeTool(
           return JSON.stringify({ error: "No message to react to" });
         }
         await addReaction(messageId, emoji, BOT_USERNAME);
-        return JSON.stringify({ reacted: emoji });
+        return JSON.stringify({
+          reacted: emoji,
+          note: "Any text you write now is posted to the chat, so talk to them as you would there, never report what you did. If the reaction says it all, end with no text.",
+        });
       }
       case "remember": {
         const result = await remember(rememberInputSchema.parse(input));

@@ -1121,7 +1121,10 @@ describe("react tool", () => {
   }
 
   it("reacts to the message it is answering", async () => {
-    expect(await runReact({ emoji: "😂" })).toEqual({ reacted: "😂" });
+    expect(await runReact({ emoji: "😂" })).toEqual({
+      reacted: "😂",
+      note: expect.stringContaining("end with no text"),
+    });
     expect(addReaction).toHaveBeenCalledWith("42", "😂", "simon-bot");
   });
 
