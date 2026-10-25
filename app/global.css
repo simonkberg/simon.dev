@@ -29,6 +29,7 @@
   --link-hover-line: currentColor;
   --link-hover-decoration: underline;
   --focus: 1px solid var(--accent);
+  --focus-offset: 2px;
 
   --page-max: none;
   --page-padding: 0;
@@ -96,6 +97,8 @@
   --heading-active-color: var(--section-active);
   --heading-active-sub: var(--muted);
   --heading-link-hover: var(--link-hover-color);
+  --heading-focus: var(--focus);
+  --heading-focus-offset: var(--focus-offset);
   --heading-size: 1rem;
   --heading-case: none;
   --heading-tracking: normal;
@@ -349,6 +352,9 @@
   --heading-active-color: var(--on-accent);
   --heading-active-sub: var(--on-accent);
   --heading-link-hover: var(--on-accent);
+  /* Inside the box, where the heading's clip and overflow can't cut it off. */
+  --heading-focus: 1px solid var(--on-accent);
+  --heading-focus-offset: 0;
   --heading-size: 0.875rem;
   --heading-case: lowercase;
   --heading-sub-case: lowercase;
@@ -867,7 +873,7 @@ button {
 
 :focus-visible {
   outline: var(--focus);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .page {
@@ -1031,6 +1037,8 @@ section:has(> .heading) {
       color: var(--heading-active-color);
 
       --link-hover-color: var(--heading-link-hover);
+      --focus: var(--heading-focus);
+      --focus-offset: var(--heading-focus-offset);
 
       > .subtitle {
         color: var(--heading-active-sub);
@@ -1081,10 +1089,6 @@ section:has(> .terminal) {
   transition:
     color 0.15s,
     background-color 0.15s;
-
-  &:has(:focus-visible) {
-    clip-path: none;
-  }
 
   > .subtitle {
     display: var(--heading-sub-display);
