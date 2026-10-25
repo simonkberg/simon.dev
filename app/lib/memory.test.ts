@@ -86,7 +86,7 @@ describe("remember", () => {
         id: expect.any(Number),
         category: "self",
         content: "i like trains",
-        createdAt: CREATED_AT,
+        createdAt: new Date(CREATED_AT),
       },
     });
     expect(await recall({})).toEqual(
@@ -179,7 +179,7 @@ describe("recall", () => {
       id: 21,
       category: "jokes",
       content: "joke 21",
-      createdAt: "2025-01-21T00:00:00.000Z",
+      createdAt: new Date("2025-01-21T00:00:00.000Z"),
     });
     expect(memories.at(-1)?.id).toBe(2);
   });
@@ -220,8 +220,8 @@ describe("edit", () => {
         id: 4,
         category: "self",
         content: "i like trains",
-        createdAt: CREATED_AT,
-        updatedAt: editedAt,
+        createdAt: new Date(CREATED_AT),
+        updatedAt: new Date(editedAt),
       },
     });
   });
@@ -403,7 +403,7 @@ describe("describeMiss", () => {
     id: 3,
     category: "self",
     content: "i like dogs",
-    createdAt: CREATED_AT,
+    createdAt: new Date(CREATED_AT),
     updatedAt: undefined,
   };
 

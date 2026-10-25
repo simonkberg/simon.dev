@@ -53,7 +53,7 @@ describe("getNotesOnMe", () => {
         id: 1,
         category: "people/brave-otter",
         content: "likes jazz",
-        createdAt: "2026-10-01T00:00:00Z",
+        createdAt: new Date("2026-10-01T00:00:00Z"),
         updatedAt: undefined,
       },
     ]);

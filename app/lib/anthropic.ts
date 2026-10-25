@@ -75,7 +75,7 @@ const SYSTEM_PROMPT = md`
   point below.
 
   The conversation arrives as <message> elements, oldest first, and its today
-  attribute is the date in Stockholm, the time the date tools use. The last message
+  attribute is the date in Stockholm, the time every tool uses. The last message
   is what you're answering. author is who wrote it, with "simon-bot" being you -
   use their name when it feels natural - and reactions counts each emoji on it,
   with "(you)" marking yours. Reply with just your message text. ${SIMON_RULE}
@@ -383,6 +383,16 @@ export const MEMORY_TOOLS = [
 
 export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, ...MEMORY_TOOLS];
 
+// Every time reaches the model as Stockholm's wall clock, as in the conversation; an invalid one stays null.
+function toolResult(value: unknown): string {
+  return JSON.stringify(value, function (key, json) {
+    const raw: unknown = this[key];
+    return raw instanceof Date && !Number.isNaN(raw.getTime())
+      ? clockTime(raw)
+      : json;
+  });
+}
+
 async function executeTool(
   name: string,
   input: Record<string, unknown>,
@@ -398,34 +408,34 @@ async function executeTool(
       }
       case "get_wakatime_stats": {
         const { period, limit } = wakatimeInputSchema.parse(input);
-        return JSON.stringify(await getStats(period, limit));
+        return toolResult(await getStats(period, limit));
       }
       case "get_recent_tracks": {
         const { username, ...params } = recentTracksInputSchema.parse(input);
-        return JSON.stringify(await userGetRecentTracks(username, params));
+        return toolResult(await userGetRecentTracks(username, params));
       }
       case "get_top_tracks": {
         const { username, ...params } = topItemsInputSchema.parse(input);
-        return JSON.stringify(await userGetTopTracks(username, params));
+        return toolResult(await userGetTopTracks(username, params));
       }
       case "get_top_artists": {
         const { username, ...params } = topItemsInputSchema.parse(input);
-        return JSON.stringify(await userGetTopArtists(username, params));
+        return toolResult(await userGetTopArtists(username, params));
       }
       case "get_top_albums": {
         const { username, ...params } = topItemsInputSchema.parse(input);
         const albums = await userGetTopAlbums(username, params);
         // The cover URL is for the site's collage; the model has no use for it.
-        return JSON.stringify(albums.map(({ cover, ...album }) => album));
+        return toolResult(albums.map(({ cover, ...album }) => album));
       }
       case "get_play_count": {
         const { username, ...params } = playCountInputSchema.parse(input);
-        return JSON.stringify(await getUserPlays(username, params));
+        return toolResult(await getUserPlays(username, params));
       }
       case "get_top_in_range": {
         const { username, kind, from, to, ...params } =
           topInRangeInputSchema.parse(input);
-        return JSON.stringify(
+        return toolResult(
           await userGetChartInRange(username, kind, {
             ...dayRange(from, to),
             ...params,
@@ -439,40 +449,40 @@ async function executeTool(
           ...dayRange(from, to),
           ...params,
         });
-        // Not requested as extended, so loved is always false; times match the Stockholm days asked for.
+        // Not requested as extended, so loved is always false.
         const played = tracks.map(({ name, artist, album, playedAt }) => ({
           name,
           artist,
           album,
-          playedAt: playedAt && clockTime(playedAt),
+          playedAt,
         }));
-        return JSON.stringify({ total, tracks: played });
+        return toolResult({ total, tracks: played });
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);
-        return JSON.stringify(await searchChannelMessages(params));
+        return toolResult(await searchChannelMessages(params));
       }
       case "react": {
         const { emoji: rawEmoji, message_id } = reactInputSchema.parse(input);
         const emoji = EmojiSchema.parse(rawEmoji);
         const messageId = message_id ?? replyingTo;
         if (messageId === undefined) {
-          return JSON.stringify({ error: "No message to react to" });
+          return toolResult({ error: "No message to react to" });
         }
         await addReaction(messageId, emoji, BOT_USERNAME);
-        return JSON.stringify({
+        return toolResult({
           reacted: emoji,
           note: "Any text you write now is posted to the chat, so talk to them as you would there, never report what you did. If the reaction says it all, end with no text.",
         });
       }
       case "remember": {
         const result = await remember(rememberInputSchema.parse(input));
-        return JSON.stringify(
+        return toolResult(
           result.status === "ok" ? result.memory : describeMiss(result),
         );
       }
       case "recall": {
-        return JSON.stringify(await recall(recallInputSchema.parse(input)));
+        return toolResult(await recall(recallInputSchema.parse(input)));
       }
       case "edit": {
         const { id, old_content, new_content, category } =
@@ -483,22 +493,22 @@ async function executeTool(
           newContent: new_content,
           category,
         });
-        return JSON.stringify(
+        return toolResult(
           result.status === "ok" ? result.memory : describeMiss(result),
         );
       }
       case "forget": {
         const { id, content } = forgetInputSchema.parse(input);
         const result = await forget({ id, content });
-        return JSON.stringify(
+        return toolResult(
           result.status === "ok" ? { forgotten: true } : describeMiss(result),
         );
       }
       default:
-        return JSON.stringify({ error: `Unknown tool: ${name}` });
+        return toolResult({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {
-    return JSON.stringify({
+    return toolResult({
       error:
         err instanceof z.ZodError
           ? z.prettifyError(err)
@@ -515,7 +525,7 @@ export type ChatMessage = {
   content: string;
   id?: string;
   reactions?: Reaction[];
-  time?: string;
+  time?: Date;
   replyTo?: string;
 };
 
@@ -565,7 +575,7 @@ function formatMessage({
   const attributes: string[] = [];
   if (id !== undefined) attributes.push(`id="${escapeXml(id)}"`);
   attributes.push(`author="${escapeXml(username)}"`);
-  if (time !== undefined) attributes.push(`time="${time}"`);
+  if (time !== undefined) attributes.push(`time="${clockTime(time)}"`);
   if (replyTo !== undefined)
     attributes.push(`reply_to="${escapeXml(replyTo)}"`);
   if (reactions.length > 0) {
@@ -596,7 +606,7 @@ function formatHistory(messages: ChannelMessage[]): string {
         username: user.name,
         content,
         reactions,
-        time: clockTime(timestamp),
+        time: timestamp,
         replyTo,
       }),
     )

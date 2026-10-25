@@ -242,7 +242,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The reply chain reaches it as one user turn of escaped `<message>` elements, its own
   included, so ids, authors and reactions sit outside the text people can type.
   `get_chat_history` returns the same elements, and the conversation carries today's Stockholm
-  date, kept out of the system prompt so its cache holds. Tool schemas use `io: "input"`, so
+  date, kept out of the system prompt so its cache holds. Tools give every `Date` in that time
+  (`toolResult`), so keep times as `Date`s until then. Tool schemas use `io: "input"`, so
   defaulted fields aren't listed as required.
   A reply's last round rules out tools, so it ends in text rather than running out of rounds.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw

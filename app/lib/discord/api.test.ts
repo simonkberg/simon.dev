@@ -1225,20 +1225,20 @@ describe("searchChannelMessages", () => {
             id: "hit-1",
             username: "Bob",
             content: "hello everyone",
-            timestamp: "2025-01-01T00:01:00.000000+00:00",
+            timestamp: new Date("2025-01-01T00:01:00Z"),
           },
           context: [
             {
               id: "ctx-1",
               username: "Alice",
               content: "before the match",
-              timestamp: "2025-01-01T00:00:00.000000+00:00",
+              timestamp: new Date("2025-01-01T00:00:00Z"),
             },
             {
               id: "ctx-2",
               username: "Charlie",
               content: "after the match",
-              timestamp: "2025-01-01T00:02:00.000000+00:00",
+              timestamp: new Date("2025-01-01T00:02:00Z"),
             },
           ],
         },

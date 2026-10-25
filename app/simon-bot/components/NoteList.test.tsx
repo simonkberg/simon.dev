@@ -9,7 +9,7 @@ const note = (overrides: Partial<Memory> = {}): Memory => ({
   id: 1,
   category: "self",
   content: "dry and unbothered",
-  createdAt: "2025-01-01T00:00:00.000Z",
+  createdAt: new Date("2025-01-01T00:00:00.000Z"),
   updatedAt: undefined,
   ...overrides,
 });
@@ -30,7 +30,9 @@ describe("NoteList", () => {
   });
 
   it("dates a rewritten note from its last rewrite", async () => {
-    await renderNotes([note({ updatedAt: "2025-02-01T00:00:00.000Z" })]);
+    await renderNotes([
+      note({ updatedAt: new Date("2025-02-01T00:00:00.000Z") }),
+    ]);
 
     const item = screen.getByRole("listitem");
     expect(item).toHaveTextContent(/\(rewritten .+\)$/);

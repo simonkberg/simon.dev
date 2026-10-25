@@ -258,9 +258,10 @@ describe("createMessage", () => {
       id: 3,
       category: "self",
       content: "i like trains",
-      createdAt: NOW,
+      createdAt: new Date(NOW),
       updatedAt: undefined,
     };
+    const shown = { ...note, createdAt: "2026-10-25 02:00" };
 
     it.each([
       {
@@ -270,7 +271,7 @@ describe("createMessage", () => {
         called: { category: "self", content: "i like trains" },
         stub: () =>
           vi.mocked(remember).mockResolvedValue({ status: "ok", memory: note }),
-        expected: note,
+        expected: shown,
       },
       {
         tool: "recall",
@@ -278,7 +279,7 @@ describe("createMessage", () => {
         run: recall,
         called: { category: "self", limit: 20 },
         stub: () => vi.mocked(recall).mockResolvedValue([note]),
-        expected: [note],
+        expected: [shown],
       },
       {
         tool: "edit",
@@ -297,7 +298,7 @@ describe("createMessage", () => {
         },
         stub: () =>
           vi.mocked(edit).mockResolvedValue({ status: "ok", memory: note }),
-        expected: note,
+        expected: shown,
       },
       {
         tool: "forget",
@@ -335,9 +336,10 @@ describe("createMessage", () => {
         const miss = { status: "stale", current: note } as const;
         vi.mocked(run).mockResolvedValue(miss);
 
-        expect(JSON.parse(await runTool(tool, input))).toEqual(
-          describeMiss(miss),
-        );
+        expect(JSON.parse(await runTool(tool, input))).toEqual({
+          ...describeMiss(miss),
+          current: shown,
+        });
       },
     );
   });
@@ -913,6 +915,23 @@ describe("createMessage", () => {
         ].join("\n"),
       );
       expect(getChannelMessages).toHaveBeenCalledWith(5);
+    });
+
+    it("should give an invalid time as null rather than fail the tool", async () => {
+      vi.mocked(userGetRecentTracks).mockResolvedValue([
+        {
+          name: "Idioteque",
+          artist: "Radiohead",
+          album: "Kid A",
+          playedAt: new Date(Number.NaN),
+          nowPlaying: false,
+          loved: false,
+        },
+      ]);
+
+      expect(JSON.parse(await runTool("get_recent_tracks", {}))).toMatchObject([
+        { name: "Idioteque", playedAt: null },
+      ]);
     });
 
     it("should give scrobbles in range as Stockholm times", async () => {

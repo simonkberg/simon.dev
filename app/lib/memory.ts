@@ -49,16 +49,16 @@ const memoryRowSchema = z.object({
   id: z.number(),
   category: z.string(),
   content: z.string(),
-  created_at: z.string(),
-  updated_at: z.string().nullable(),
+  created_at: z.string().pipe(z.coerce.date()),
+  updated_at: z.string().pipe(z.coerce.date()).nullable(),
 });
 
 export type Memory = {
   id: number;
   category: string;
   content: string;
-  createdAt: string;
-  updatedAt: string | undefined;
+  createdAt: Date;
+  updatedAt: Date | undefined;
 };
 
 function toMemory(row: unknown): Memory {
