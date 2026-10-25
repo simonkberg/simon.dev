@@ -5,6 +5,7 @@ import { coverCdn } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 
 import {
+  bulk,
   getUserPlays,
   userGetChartInRange,
   userGetRecentTracks,
@@ -344,6 +345,35 @@ describe("userGetTopAlbums", () => {
     });
 
     expect(first?.cover).toBeUndefined();
+  });
+});
+
+describe("bulk", () => {
+  it("should keep at most four in flight, even for a call arriving as one finishes", async () => {
+    let inFlight = 0;
+    let most = 0;
+    const releases: (() => void)[] = [];
+    const request = () => {
+      most = Math.max(most, ++inFlight);
+      return new Promise<void>((resolve) =>
+        releases.push(() => {
+          inFlight--;
+          resolve();
+        }),
+      );
+    };
+    const calls = Array.from({ length: 5 }, () => bulk(request));
+
+    releases.shift()?.();
+    // Runs after the finished call frees its slot, before the queued call resumes.
+    queueMicrotask(() => calls.push(bulk(request)));
+    while (calls.length < 6 || releases.length > 0) {
+      await new Promise((resolve) => setTimeout(resolve));
+      releases.shift()?.();
+    }
+    await Promise.all(calls);
+
+    expect(most).toBe(4);
   });
 });
 

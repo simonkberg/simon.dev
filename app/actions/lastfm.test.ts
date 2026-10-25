@@ -28,6 +28,7 @@ import {
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
+  bulk: (request) => request(),
   userGetRecentTracks: vi.fn(),
   userGetScrobbles: vi.fn(),
   userGetTopArtistInRange: vi.fn(),
@@ -223,13 +224,36 @@ describe("getScrobbles", () => {
       to: new Date("2026-10-23T22:00:00Z"),
       limit: 1,
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+    expect(vi.mocked(cacheLife).mock.calls).toEqual([
+      ...Array.from({ length: 6 }, () => ["days"]),
+      [{ stale: 300, revalidate: 3600, expire: 3600 + 86_400 }],
+    ]);
     expect(result).toEqual({
       status: "ok",
       scrobbles: expect.arrayContaining([
         { label: "Oct 23", count: 42, current: true },
       ]),
     });
+  });
+
+  it("should regenerate when the current bucket ends", async () => {
+    vi.setSystemTime(new Date("2026-10-23T21:30:00Z"));
+
+    await getScrobbles("7day");
+
+    expect(cacheLife).toHaveBeenLastCalledWith({
+      stale: 300,
+      revalidate: 1800,
+      expire: 1800 + 86_400,
+    });
+  });
+
+  it("should refetch a bucket that ended within the hour", async () => {
+    vi.setSystemTime(new Date("2026-10-23T22:30:00Z"));
+
+    await getScrobbles("7day");
+
+    expect(cacheLife).toHaveBeenCalledTimes(5 + 1);
   });
 
   it("should count all time per year since the first scrobbles", async () => {
@@ -255,12 +279,29 @@ describe("getScrobbles", () => {
       status: "error",
       error: "Failed to fetch scrobbles",
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(cacheLife).toHaveBeenLastCalledWith("seconds");
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getScrobbles" },
       "Error fetching scrobbles",
     );
   });
+
+  it.each([new Error("API error"), "API error"])(
+    "should log an ended bucket's failure with its message, from %o",
+    async (reason) => {
+      vi.mocked(userGetScrobbles).mockRejectedValueOnce(reason);
+
+      await getScrobbles("7day");
+
+      expect(log.error).toHaveBeenCalledWith(
+        {
+          err: expect.objectContaining({ message: "API error" }),
+          action: "getScrobbles",
+        },
+        "Error fetching scrobbles",
+      );
+    },
+  );
 });
 
 describe("getTopArtistByBucket", () => {
@@ -280,7 +321,11 @@ describe("getTopArtistByBucket", () => {
       from: new Date("2026-10-22T22:00:00Z"),
       to: new Date("2026-10-23T22:00:00Z"),
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+    expect(cacheLife).toHaveBeenLastCalledWith({
+      stale: 300,
+      revalidate: 3600,
+      expire: 3600 + 86_400,
+    });
     expect(result).toMatchObject({
       status: "ok",
       buckets: expect.arrayContaining([
@@ -300,7 +345,7 @@ describe("getTopArtistByBucket", () => {
       status: "error",
       error: "Failed to fetch top artist by bucket",
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(cacheLife).toHaveBeenLastCalledWith("seconds");
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getTopArtistByBucket", period: "7day" },
       "Error fetching top artist by bucket",
@@ -345,7 +390,12 @@ describe("getOnThisDay", () => {
       to: new Date("2025-10-23T22:00:00Z"),
       limit: 200,
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+    // Until Stockholm's midnight.
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
+      stale: 300,
+      revalidate: 45_900,
+      expire: 45_900 + 86_400,
+    });
     expect(result).toMatchObject({
       status: "ok",
       days: {

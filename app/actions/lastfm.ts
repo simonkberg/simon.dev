@@ -4,6 +4,7 @@ import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
 import {
+  bulk,
   type ChartItem,
   type Period,
   TOP_ALBUMS,
@@ -21,6 +22,7 @@ import {
 import { log } from "@/lib/log";
 import {
   dayLabel,
+  nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -146,6 +148,74 @@ const periodBuckets = (period: Period, now: Date) =>
     ? yearBuckets(config.lastfmSince, now)
     : scrobbleBuckets(period, now);
 
+// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
+function cacheUntil(end: number, now: Date, maxSeconds = Infinity) {
+  const revalidate = Math.min(
+    maxSeconds,
+    Math.ceil((end - now.getTime()) / 1000),
+  );
+  cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
+}
+
+const chartEnd = (buckets: readonly { to: Date }[]) =>
+  Math.max(...buckets.map(({ to }) => to.getTime()));
+
+const countIn = async (from: Date, to: Date) =>
+  (
+    await bulk(() =>
+      // Only the total is read, so one track per page is enough.
+      userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 }),
+    )
+  ).total;
+
+const topArtistIn = (from: Date, to: Date) =>
+  bulk(() => userGetTopArtistInRange(config.lastfmUsername, { from, to }));
+
+type Settled<T> =
+  | { status: "ok"; data: T }
+  | { status: "error"; error: string };
+
+// An error thrown in a nested cache fails the prerender, so it's returned for the chart to throw.
+async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
+  try {
+    const data = await request();
+    // An ended bar only changes by a late scrobble.
+    cacheLife("days");
+    return { status: "ok", data };
+  } catch (err) {
+    cacheLife("seconds");
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+async function endedCount(from: Date, to: Date) {
+  "use cache";
+  return settle(() => countIn(from, to));
+}
+
+async function endedTopArtist(from: Date, to: Date) {
+  "use cache";
+  return settle(() => topArtistIn(from, to));
+}
+
+// A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
+const SETTLE_MS = 60 * 60 * 1000;
+
+async function inBucket<T>(
+  { from, to }: { from: Date; to: Date },
+  now: Date,
+  fresh: (from: Date, to: Date) => Promise<T>,
+  ended: (from: Date, to: Date) => Promise<Settled<T>>,
+): Promise<T> {
+  if (to.getTime() + SETTLE_MS > now.getTime()) return fresh(from, to);
+  const settled = await ended(from, to);
+  if (settled.status === "error") throw new Error(settled.error);
+  return settled.data;
+}
+
 export async function getScrobbles(
   period: Period,
 ): Promise<GetScrobblesResult> {
@@ -153,17 +223,15 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
+    const buckets = periodBuckets(period, now);
     const scrobbles = await Promise.all(
-      periodBuckets(period, now).map(async ({ label, from, to }) => ({
-        label,
-        // Only the total is read, so one track per page is enough.
-        count: (
-          await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })
-        ).total,
-        current: to > now,
+      buckets.map(async (bucket) => ({
+        label: bucket.label,
+        count: await inBucket(bucket, now, countIn, endedCount),
+        current: bucket.to > now,
       })),
     );
-    cacheLife("hours");
+    cacheUntil(chartEnd(buckets), now, 3600);
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");
@@ -188,17 +256,16 @@ export async function getTopArtistByBucket(
   "use cache";
 
   try {
-    const buckets = await Promise.all(
-      periodBuckets(period, new Date()).map(async ({ label, from, to }) => ({
-        label,
-        artist: await userGetTopArtistInRange(config.lastfmUsername, {
-          from,
-          to,
-        }),
+    const now = new Date();
+    const buckets = periodBuckets(period, now);
+    const artists = await Promise.all(
+      buckets.map(async (bucket) => ({
+        label: bucket.label,
+        artist: await inBucket(bucket, now, topArtistIn, endedTopArtist),
       })),
     );
-    cacheLife("hours");
-    return { status: "ok", buckets };
+    cacheUntil(chartEnd(buckets), now, 3600);
+    return { status: "ok", buckets: artists };
   } catch (err) {
     cacheLife("seconds");
     log.error(
@@ -259,15 +326,15 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
       sameDayBuckets(config.lastfmSince, now).map(
         async ({ label, from, to }) => {
           // Last.fm's largest page; a busier day picks its top from the latest 200.
-          const { total, tracks } = await userGetScrobbles(
-            config.lastfmUsername,
-            { from, to, limit: 200 },
+          const { total, tracks } = await bulk(() =>
+            userGetScrobbles(config.lastfmUsername, { from, to, limit: 200 }),
           );
           return { year: label, count: total, top: topOfDay(tracks) };
         },
       ),
     );
-    cacheLife("hours");
+    // Every year shown has ended, so only the date changing can change them.
+    cacheUntil(nextMidnight(now).getTime(), now);
     return { status: "ok", days: { date: dayLabel.format(now), years } };
   } catch (err) {
     cacheLife("seconds");

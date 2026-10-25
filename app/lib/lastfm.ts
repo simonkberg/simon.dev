@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { config } from "@/config";
 import { env } from "@/lib/env";
+import { getGlobal } from "@/lib/global";
 
 export const periods = [
   "7day",
@@ -31,6 +32,27 @@ export function isValidPeriod(value: unknown): value is Period {
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
 const errorSchema = z.object({ error: z.number(), message: z.string() });
+
+// A cold chart asks for every bar at once, and Last.fm asks for at most a few calls a second.
+const MAX_IN_FLIGHT = 4;
+
+/** Runs a call that fans out with others, at most a few at once, so single calls never queue behind them. */
+export async function bulk<T>(request: () => Promise<T>): Promise<T> {
+  const slots = getGlobal("lastfm-slots", () => ({
+    inFlight: 0,
+    waiting: [] as (() => void)[],
+  }));
+  if (slots.inFlight < MAX_IN_FLIGHT) slots.inFlight++;
+  // A finished call hands its slot straight over, so a newcomer can't take it first.
+  else await new Promise<void>((resolve) => slots.waiting.push(resolve));
+  try {
+    return await request();
+  } finally {
+    const next = slots.waiting.shift();
+    if (next) next();
+    else slots.inFlight--;
+  }
+}
 
 async function call<T extends z.ZodType>(
   method: string,

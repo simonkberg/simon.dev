@@ -130,6 +130,9 @@ export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
   return buckets("year", count, today);
 }
 
+/** The start of tomorrow in Stockholm. */
+export const nextMidnight = (now: Date) => start("day", localDate(now), -1);
+
 /** Today's Stockholm date in each year from `since` to the last, newest first. */
 export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
   const today = localDate(now);
