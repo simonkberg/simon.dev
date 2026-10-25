@@ -1323,10 +1323,10 @@ ul {
     }
   }
 
-  /* Each bar sweeps out after the stem above its start. */
+  /* Each bar sweeps out after the stem above its start, the last within 600ms however many columns. */
   .lane-label,
   .lane-run {
-    --grow-delay: calc(150ms + var(--column) * 30ms);
+    --grow-delay: calc(150ms + var(--column) * min(30ms, 450ms / var(--count)));
   }
 
   /* Sized here, not on the list, so the gutter's ch matches the stems'. */
@@ -1388,8 +1388,8 @@ ul {
   > li {
     --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
       var(--stems-glyph);
-    /* A stop fills in over four steps, and the next one starts a step later. */
-    --step: 90ms;
+    /* A stop fills in over four steps, and the next one starts a step later: a second in all, at most. */
+    --step: min(90ms, 1s / (var(--count) + 3));
     --grow-delay: calc(var(--index) * var(--step));
     --grow-duration: calc(var(--step) * 4);
     /* easeOutQuad */

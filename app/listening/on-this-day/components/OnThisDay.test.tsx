@@ -51,6 +51,12 @@ describe("OnThisDay", () => {
         li.style.getPropertyValue("--index"),
       ),
     ).toEqual(["0", "1", "2"]);
+    // Sizes the steps so the whole timeline fits its budget.
+    expect(
+      document
+        .querySelector<HTMLElement>(".timeline")
+        ?.style.getPropertyValue("--count"),
+    ).toBe("3");
   });
 
   it("renders a notice when the days failed to load", async () => {

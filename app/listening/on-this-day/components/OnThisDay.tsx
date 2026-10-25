@@ -43,7 +43,10 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
   const stops = toStops(data.years);
 
   return (
-    <ol className="timeline" style={{ "--max": max } as CSSProperties}>
+    <ol
+      className="timeline"
+      style={{ "--max": max, "--count": stops.length + 1 } as CSSProperties}
+    >
       <li className="timeline-origin" style={{ "--index": 0 } as CSSProperties}>
         {data.date}
       </li>
