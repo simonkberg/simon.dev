@@ -13,5 +13,6 @@ export function formatNumber(value: number, decimals = 0): string {
   return format.format(value);
 }
 
-export const formatPlays = (count: number): string =>
-  `${formatNumber(count)} ${count === 1 ? "play" : "plays"}`;
+// `shown` counts up to `count` without the unit flipping on the way.
+export const formatPlays = (count: number, shown = count): string =>
+  `${formatNumber(shown)} ${count === 1 ? "play" : "plays"}`;

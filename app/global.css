@@ -1376,6 +1376,9 @@ ul {
   > li {
     --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
       var(--stems-glyph);
+    /* The rail lands in the first of a stop's steps, as the next stop starts. */
+    --rail: min(1, var(--grow, 1) * var(--steps, 1));
+    --fill: calc(var(--grow, 1) * (2 - var(--grow, 1)));
     position: relative;
     display: grid;
     grid-template-columns: 5ch minmax(0, 1fr);
@@ -1394,6 +1397,7 @@ ul {
       line-height: 0.6;
       text-align: center;
       white-space: pre;
+      clip-path: inset(0 0 calc((1 - var(--rail)) * 100%) 0);
     }
 
     &::after {
@@ -1404,6 +1408,11 @@ ul {
       width: 2ch;
       color: var(--accent);
       text-align: center;
+      scale: var(--fill);
+    }
+
+    > span {
+      opacity: var(--fill);
     }
 
     &:last-child::before {
@@ -1453,7 +1462,7 @@ ul {
       content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
         var(--timeline-bars);
       display: inline-block;
-      width: max(1ch, var(--value, 0) / var(--max, 1) * 16ch);
+      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--fill) * 16ch);
       margin-inline-end: 1ch;
       overflow: hidden;
       color: var(--timeline-bar-color);

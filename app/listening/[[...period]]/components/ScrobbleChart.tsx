@@ -1,12 +1,12 @@
 "use client";
 
-import { animated, type SpringValue, useSprings } from "@react-spring/web";
+import { animated } from "@react-spring/web";
 import { type CSSProperties, use, useState } from "react";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
-import { useMotion } from "@/components/useMotion";
+import { countUp, useGrow } from "@/components/useGrow";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
 
 export interface ScrobbleChartProps {
@@ -29,22 +29,6 @@ interface Run {
   first: number;
   last: number;
 }
-
-// Grows in from nothing on the client; the server markup already shows the end state.
-const useGrow = (count: number, delay: (index: number) => number) => {
-  const animate = useMotion();
-  const [from] = useState(animate ? 0 : 1);
-  const [springs] = useSprings(count, (index) => ({
-    from: { grow: from },
-    to: { grow: 1 },
-    delay: delay(index),
-    config: { clamp: true },
-  }));
-  return springs;
-};
-
-const countUp = (value: number, grow: SpringValue<number> | undefined) =>
-  grow?.to((g) => formatNumber(Math.round(value * g)));
 
 const Stems = ({
   items,

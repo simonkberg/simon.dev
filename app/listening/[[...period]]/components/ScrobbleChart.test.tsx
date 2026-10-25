@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
+import { settled } from "@/mocks/promise";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
@@ -191,9 +192,6 @@ describe("ScrobbleChart", () => {
   });
 
   it("renders full stems in server markup", () => {
-    // A resolved promise still suspends on the server, so render the settled tree.
-    const settled = <T,>(value: T) =>
-      Object.assign(Promise.resolve(value), { status: "fulfilled", value });
     const html = renderToString(
       <ScrobbleChart
         scrobbles={settled(scrobbles)}
