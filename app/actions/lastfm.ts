@@ -157,6 +157,11 @@ function cacheUntil(end: number, now: Date, maxSeconds: number) {
   cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
 }
 
+// A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
+const SETTLE_MS = 60 * 60 * 1000;
+const hasSettled = (to: Date, now: Date) =>
+  to.getTime() + SETTLE_MS <= now.getTime();
+
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
@@ -211,11 +216,10 @@ export async function getScrobbles(
     const buckets = periodBuckets(period, now);
     const scrobbles = await Promise.all(
       buckets.map(async ({ label, from, to }) => {
-        const current = to > now;
-        const count = current
-          ? await countIn(from, to)
-          : unwrap(await endedCount(from.getTime(), to.getTime()));
-        return { label, count, current };
+        const count = hasSettled(to, now)
+          ? unwrap(await endedCount(from.getTime(), to.getTime()))
+          : await countIn(from, to);
+        return { label, count, current: to > now };
       }),
     );
     cacheUntil(chartEnd(buckets), now, 3600);
@@ -248,10 +252,9 @@ export async function getTopArtistByBucket(
     const artists = await Promise.all(
       buckets.map(async ({ label, from, to }) => ({
         label,
-        artist:
-          to > now
-            ? await topArtistIn(from, to)
-            : unwrap(await endedTopArtist(from.getTime(), to.getTime())),
+        artist: hasSettled(to, now)
+          ? unwrap(await endedTopArtist(from.getTime(), to.getTime()))
+          : await topArtistIn(from, to),
       })),
     );
     cacheUntil(chartEnd(buckets), now, 3600);

@@ -248,6 +248,14 @@ describe("getScrobbles", () => {
     });
   });
 
+  it("should refetch a bucket that ended within the hour", async () => {
+    vi.setSystemTime(new Date("2026-10-23T22:30:00Z"));
+
+    await getScrobbles("7day");
+
+    expect(cacheLife).toHaveBeenCalledTimes(5 + 1);
+  });
+
   it("should count all time per year since the first scrobbles", async () => {
     const result = await getScrobbles("overall");
 
