@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -78,9 +72,10 @@ describe("ChatHistory", () => {
       expect(item("Message 2")).toHaveAttribute("data-motion", "enter");
     });
 
-    it("keeps the last reply to a message where it was until it slides out", () => {
+    it("keeps the last reply to a message where it was until it slides out", async () => {
+      const slide = Promise.withResolvers<Animation>();
       vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        {} as Animation,
+        { finished: slide.promise } as Animation,
       ]);
       const { update } = renderHistory([
         message("1", "Parent", [
@@ -94,12 +89,9 @@ describe("ChatHistory", () => {
       expect(leaving).toHaveAttribute("data-motion", "leave");
       expect(leaving?.nextElementSibling).toBe(item("Message 3"));
 
-      // An animation inside it bubbling up isn't its own.
-      fireEvent.animationEnd(screen.getByText("Message 2"));
-      expect(leaving).toBeInTheDocument();
-
-      fireEvent.animationEnd(leaving!);
-      expect(screen.queryByText("Message 2")).not.toBeInTheDocument();
+      // A cancelled slide settles too.
+      await act(async () => slide.reject(new DOMException("", "AbortError")));
+      expect(leaving).not.toBeInTheDocument();
     });
 
     it("removes a message at once without an animation to wait for", () => {
@@ -114,7 +106,7 @@ describe("ChatHistory", () => {
 
     it("slides a message back in when it returns while leaving", () => {
       vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        {} as Animation,
+        { finished: new Promise(() => {}) } as Animation,
       ]);
       const { update } = renderHistory([message("1", "Message 1")]);
 

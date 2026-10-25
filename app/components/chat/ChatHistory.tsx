@@ -98,18 +98,19 @@ const ChatHistoryMessages = ({
       <li
         key={message.id}
         data-motion={motion}
-        // Reduced motion leaves nothing to wait for.
         ref={
           leaving
             ? (li: HTMLLIElement | null) => {
-                if (li?.getAnimations().length === 0) remove(message.id);
-              }
-            : undefined
-        }
-        onAnimationEnd={
-          leaving
-            ? (event) => {
-                if (event.target === event.currentTarget) remove(message.id);
+                if (!li) return;
+                const done = () => remove(message.id);
+                const animations = li.getAnimations();
+                // Reduced motion leaves nothing to wait for.
+                if (animations.length === 0) done();
+                // Settles once the slide ends or is cancelled.
+                else
+                  void Promise.allSettled(
+                    animations.map(({ finished }) => finished),
+                  ).then(done);
               }
             : undefined
         }

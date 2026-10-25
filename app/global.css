@@ -2007,7 +2007,6 @@ ul {
   li[data-motion] {
     animation-duration: 500ms;
     animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
-    animation-fill-mode: both;
   }
 
   li[data-motion="appear"] {
@@ -2020,6 +2019,8 @@ ul {
 
   li[data-motion="leave"] {
     animation-name: chat-leave;
+    animation-fill-mode: forwards;
+    pointer-events: none;
   }
 
   ul ul {
