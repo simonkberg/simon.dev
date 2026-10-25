@@ -35,6 +35,8 @@
 
   --header-position: static;
   --header-bg: transparent;
+  --header-rule: none;
+  --header-gap: 0 2ch;
   --header-size: 1rem;
   --header-leading: inherit;
   --header-justify: normal;
@@ -206,6 +208,13 @@
   --code-border: none;
   --code-radius: 0;
   --pill-radius: 0;
+  --segment-point: 0em;
+  --segment-pad: calc(1ch + var(--segment-point));
+  --segment-tip:
+    calc(100% - var(--segment-point)) 0, 100% 50%,
+    calc(100% - var(--segment-point)) 100%, 0 100%;
+  --segment: none;
+  --segment-notched: none;
   --code-size: inherit;
   --meta-size: inherit;
   --spoiler-revealed-bg: var(--wash);
@@ -236,7 +245,6 @@
   --menu-margin: 0;
   --menu-padding: 0;
   --menu-item-padding: 0;
-  --menu-item-bg: transparent;
   --menu-link-color: inherit;
   --menu-link-line: underline;
   --menu-link-hover: var(--link-hover-color);
@@ -269,28 +277,34 @@
   color-scheme: dark;
 }
 
-/* Panes: a multiplexer session. Status line with a window per page, sections
-   as panes titled in their border; the pane in use takes the highlight. */
+/* Panes: a multiplexer session. Status line of powerline segments with a
+   window per page, sections as panes titled in their border; the pane in use
+   takes the highlight. */
 
 :root[data-variant="panes"] {
-  --ground: light-dark(oklch(0.965 0.004 255), oklch(0.19 0.012 255));
-  --wash: light-dark(oklch(0.915 0.008 255), oklch(0.235 0.014 255));
-  --ink: light-dark(oklch(0.25 0.015 255), oklch(0.87 0.012 255));
-  --muted: light-dark(oklch(0.5 0.02 255), oklch(0.63 0.02 255));
-  --rule: light-dark(oklch(0.8 0.01 255), oklch(0.36 0.015 255));
-  --accent: light-dark(oklch(0.58 0.23 338), oklch(0.76 0.17 338));
-  --on-accent: light-dark(oklch(0.99 0.01 338), oklch(0.22 0.03 338));
+  --ground: light-dark(oklch(0.99 0.002 255), oklch(0.145 0.008 260));
+  --wash: light-dark(oklch(0.93 0.008 255), oklch(0.23 0.012 260));
+  --ink: light-dark(oklch(0.2 0.015 260), oklch(0.94 0.006 260));
+  --muted: light-dark(oklch(0.5 0.016 260), oklch(0.68 0.014 260));
+  --rule: light-dark(oklch(0.88 0.006 260), oklch(0.3 0.01 260));
+  --accent: light-dark(oklch(0.57 0.24 345), oklch(0.78 0.17 345));
+  --on-accent: light-dark(oklch(0.99 0.01 345), oklch(0.22 0.03 345));
   --heat: light-dark(
-    color-mix(in oklch, oklch(0.58 0.23 338) 14%, transparent),
-    color-mix(in oklch, oklch(0.76 0.17 338) 16%, transparent)
+    color-mix(in oklch, oklch(0.57 0.24 345) 10%, transparent),
+    color-mix(in oklch, oklch(0.78 0.17 345) 12%, transparent)
   );
+  --segment-point: 0.6em;
+  --segment: polygon(0 0, var(--segment-tip));
+  --segment-notched: polygon(0 0, var(--segment-tip), var(--segment-point) 50%);
 
   --link-line: var(--muted);
   --link-hover-color: var(--accent);
 
   --header-position: sticky;
   --header-padding: env(safe-area-inset-top) 0 0;
-  --header-bg: var(--wash);
+  --header-bg: var(--ground);
+  --header-rule: 1px solid var(--rule);
+  --header-gap: 0;
   --header-size: 0.875rem;
   --header-leading: 1.75;
   --header-max: 66rem;
@@ -298,14 +312,15 @@
     max(1rem, env(safe-area-inset-right));
   --title-case: lowercase;
   --title-link-display: block;
-  --title-link-padding: 0 1ch;
+  --title-link-padding: 0 var(--segment-pad) 0 1ch;
   --title-link-bg: var(--accent);
   --title-link-color: var(--on-accent);
   --title-link-hover-color: var(--on-accent);
   --title-link-hover-bg: var(--accent);
-  --nav-link-padding: 0 1ch;
+  --nav-gap: 0;
+  --nav-link-padding: 0 var(--segment-pad);
   --nav-prefix: counter(page) ":";
-  --nav-current-bg: var(--rule);
+  --nav-current-bg: var(--wash);
   --nav-current-marker: "*";
   --nav-hover-color: var(--ink);
 
@@ -381,7 +396,6 @@
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
   --input-padding: 0.4rem 2ch 0.5rem;
-  --input-rule: 1px dashed var(--rule);
   --prompt: "$";
   --buddy-size: 0.8rem;
   --buddy-leading: 1.875;
@@ -395,7 +409,6 @@
 
   --menu-gap: 0.25rem 1ch;
   --menu-item-padding: 0 1ch;
-  --menu-item-bg: var(--wash);
   --menu-link-color: var(--muted);
   --menu-link-line: none;
   --menu-link-hover: var(--ink);
@@ -403,7 +416,7 @@
   --menu-current-bg: var(--accent);
   --menu-current-fg: var(--on-accent);
 
-  --th-rule: 1px dashed var(--rule);
+  --th-rule: 1px solid var(--rule);
   --th-padding: 1px;
   --td-padding: 0.1rem 1px;
   --first-row-pad: 0.35rem;
@@ -864,6 +877,7 @@ button {
   top: 0;
   z-index: 3;
   padding: var(--header-padding);
+  border-bottom: var(--header-rule);
   background: var(--header-bg);
   font-size: var(--header-size);
   line-height: var(--header-leading);
@@ -873,7 +887,7 @@ button {
     flex-wrap: wrap;
     align-items: var(--header-align);
     justify-content: var(--header-justify);
-    gap: 0 2ch;
+    gap: var(--header-gap);
     max-width: var(--header-max);
     margin: 0 auto;
     padding-inline: var(--header-inline);
@@ -891,6 +905,7 @@ button {
       padding: var(--title-link-padding);
       background: var(--title-link-bg);
       color: var(--title-link-color);
+      clip-path: var(--segment);
       text-decoration: none;
       white-space: nowrap;
 
@@ -933,6 +948,7 @@ button {
       &[aria-current] {
         background: var(--nav-current-bg);
         color: var(--nav-current-color);
+        clip-path: var(--segment-notched);
         font-weight: var(--nav-current-weight);
 
         &::after {
@@ -941,6 +957,11 @@ button {
         }
       }
     }
+  }
+
+  /* A clip-path would cut the focus outline off. */
+  :is(.title > .link, .nav > a):focus-visible {
+    clip-path: none;
   }
 
   .host {
@@ -2433,7 +2454,6 @@ menu {
 
   > li {
     padding: var(--menu-item-padding);
-    background: var(--menu-item-bg);
   }
 
   a {
