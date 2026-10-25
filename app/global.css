@@ -185,8 +185,6 @@
   --topbar-color: var(--muted);
   --topbar-rule: none;
   --topbar-size: inherit;
-  --topbar-case: none;
-  --topbar-tracking: normal;
   --control-padding: 0;
   --status-dot: none;
   --controls-push: 0;
@@ -314,6 +312,7 @@
   --nav-link-padding: 0 1ch;
   --nav-prefix: "[" counter(page) "] ";
   --nav-current-color: var(--accent);
+  --nav-current-marker: "*";
   --nav-hover-color: var(--ink);
 
   --content-display: grid;
@@ -374,9 +373,7 @@
   --topbar-translate: 0 -50%;
   --topbar-padding: 0 0.5ch;
   --topbar-bg: var(--ground);
-  --topbar-size: 0.75rem;
-  --topbar-case: uppercase;
-  --topbar-tracking: 0.08em;
+  --topbar-size: 0.875rem;
   --control-padding: 0 0.5ch;
   --control-maximize: "z";
   --status-dot: inline-block;
@@ -1902,8 +1899,6 @@ ul {
     background: var(--topbar-bg);
     color: var(--topbar-color);
     font-size: var(--topbar-size);
-    text-transform: var(--topbar-case);
-    letter-spacing: var(--topbar-tracking);
 
     > .status {
       padding: var(--control-padding);
