@@ -383,11 +383,13 @@ export const MEMORY_TOOLS = [
 
 export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, ...MEMORY_TOOLS];
 
-// Every time reaches the model as Stockholm's wall clock, as in the conversation.
+// Every time reaches the model as Stockholm's wall clock, as in the conversation; an invalid one stays null.
 function toolResult(value: unknown): string {
   return JSON.stringify(value, function (key, json) {
     const raw: unknown = this[key];
-    return raw instanceof Date ? clockTime(raw) : json;
+    return raw instanceof Date && !Number.isNaN(raw.getTime())
+      ? clockTime(raw)
+      : json;
   });
 }
 
@@ -448,7 +450,12 @@ async function executeTool(
           ...params,
         });
         // Not requested as extended, so loved is always false.
-        const played = tracks.map(({ nowPlaying, loved, ...track }) => track);
+        const played = tracks.map(({ name, artist, album, playedAt }) => ({
+          name,
+          artist,
+          album,
+          playedAt,
+        }));
         return toolResult({ total, tracks: played });
       }
       case "search_messages": {

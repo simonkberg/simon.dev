@@ -917,6 +917,23 @@ describe("createMessage", () => {
       expect(getChannelMessages).toHaveBeenCalledWith(5);
     });
 
+    it("should give an invalid time as null rather than fail the tool", async () => {
+      vi.mocked(userGetRecentTracks).mockResolvedValue([
+        {
+          name: "Idioteque",
+          artist: "Radiohead",
+          album: "Kid A",
+          playedAt: new Date(Number.NaN),
+          nowPlaying: false,
+          loved: false,
+        },
+      ]);
+
+      expect(JSON.parse(await runTool("get_recent_tracks", {}))).toMatchObject([
+        { name: "Idioteque", playedAt: null },
+      ]);
+    });
+
     it("should give scrobbles in range as Stockholm times", async () => {
       vi.mocked(userGetScrobbles).mockResolvedValue({
         total: 1,
