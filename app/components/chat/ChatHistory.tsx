@@ -1,6 +1,5 @@
 "use client";
 
-import { animated, useTransition } from "@react-spring/web";
 import {
   type Dispatch,
   type FocusEvent,
@@ -44,47 +43,94 @@ interface ChatHistoryMessagesProps {
   nested?: boolean;
 }
 
+interface Shown {
+  message: Message;
+  motion?: "appear" | "enter" | "leave";
+}
+
+// Keeps each removed message where it was, sliding out, until its animation ends.
+function follow(shown: readonly Shown[], messages: readonly Message[]) {
+  const motions = new Map(
+    shown.map(({ message, motion }) => [message.id, motion]),
+  );
+  const next = messages.map((message): Shown => {
+    const motion = motions.has(message.id) ? motions.get(message.id) : "enter";
+    return { message, motion: motion === "leave" ? "enter" : motion };
+  });
+  const ids = new Set(messages.map(({ id }) => id));
+  for (const [index, { message }] of shown.entries()) {
+    if (ids.has(message.id)) continue;
+    const before = shown[index - 1]?.message.id;
+    const at = next.findIndex((entry) => entry.message.id === before) + 1;
+    next.splice(at, 0, { message, motion: "leave" });
+  }
+  return next;
+}
+
 const ChatHistoryMessages = ({
   messages,
   nested = false,
   replyToId,
   setReplyToId,
 }: ChatHistoryMessagesProps) => {
-  const transitions = useTransition(messages, {
-    keys: (message) => message.id,
-    initial: { opacity: nested ? 1 : 0, x: 0 },
-    from: { opacity: 0, x: -100 },
-    enter: { opacity: 1, x: 0 },
-    leave: { opacity: 0, x: 100 },
-  });
+  const [shown, setShown] = useState(() =>
+    messages.map((message): Shown => ({
+      message,
+      motion: nested ? undefined : "appear",
+    })),
+  );
+  const [followed, setFollowed] = useState(messages);
+  if (messages !== followed) {
+    setFollowed(messages);
+    setShown(follow(shown, messages));
+  }
 
-  return (
-    <>
-      {transitions((style, item) => (
-        <animated.li
-          style={{
-            opacity: style.opacity,
-            transform: style.x.to((x) => `translateX(${x}%)`),
-          }}
-        >
-          <ChatMessage
-            {...item}
+  const remove = (id: string) =>
+    setShown((current) =>
+      current.filter(
+        ({ message, motion }) => message.id !== id || motion !== "leave",
+      ),
+    );
+
+  return shown.map(({ message, motion }) => {
+    const leaving = motion === "leave";
+    return (
+      <li
+        key={message.id}
+        data-motion={motion}
+        // Reduced motion leaves nothing to wait for.
+        ref={
+          leaving
+            ? (li: HTMLLIElement | null) => {
+                if (li?.getAnimations().length === 0) remove(message.id);
+              }
+            : undefined
+        }
+        onAnimationEnd={
+          leaving
+            ? (event) => {
+                if (event.target === event.currentTarget) remove(message.id);
+              }
+            : undefined
+        }
+      >
+        <ChatMessage
+          {...message}
+          replyToId={replyToId}
+          setReplyToId={setReplyToId}
+        />
+        {/* Always mounted, so a first reply slides in and a last one slides out. */}
+        <ul>
+          <ChatHistoryMessages
+            messages={message.replies}
             replyToId={replyToId}
             setReplyToId={setReplyToId}
+            nested
           />
-          {/* Always mounted, so a first reply slides in and a last one slides out. */}
-          <ul>
-            <ChatHistoryMessages
-              messages={item.replies}
-              replyToId={replyToId}
-              setReplyToId={setReplyToId}
-              nested
-            />
-          </ul>
-        </animated.li>
-      ))}
-    </>
-  );
+        </ul>
+      </li>
+    );
+  });
 };
 
 export interface ChatHistoryProps {

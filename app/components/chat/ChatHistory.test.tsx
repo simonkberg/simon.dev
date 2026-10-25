@@ -1,7 +1,12 @@
-import { Globals } from "@react-spring/web";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Message } from "@/lib/discord/api";
 import { createMessage } from "@/mocks/messages";
@@ -56,8 +61,13 @@ describe("ChatHistory", () => {
   });
 
   describe("animations", () => {
-    beforeEach(() => {
-      Globals.assign({ skipAnimation: false });
+    const item = (text: string) => screen.getByText(text).closest("li");
+
+    it("fades in top-level messages on mount, not their replies", () => {
+      renderHistory([message("1", "Parent", [message("2", "Nested")])]);
+
+      expect(item("Parent")).toHaveAttribute("data-motion", "appear");
+      expect(item("Nested")).not.toHaveAttribute("data-motion");
     });
 
     it("slides in the first reply to a message", () => {
@@ -65,20 +75,53 @@ describe("ChatHistory", () => {
 
       update([message("1", "Parent", [message("2", "Message 2")])]);
 
-      expect(screen.getByText("Message 2").closest("li")).toHaveStyle({
-        opacity: "0",
-        transform: "translateX(-100%)",
-      });
+      expect(item("Message 2")).toHaveAttribute("data-motion", "enter");
     });
 
-    it("keeps the last reply to a message while it slides out", () => {
+    it("keeps the last reply to a message where it was until it slides out", () => {
+      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
+        {} as Animation,
+      ]);
+      const { update } = renderHistory([
+        message("1", "Parent", [
+          message("2", "Message 2"),
+          message("3", "Message 3"),
+        ]),
+      ]);
+
+      update([message("1", "Parent", [message("3", "Message 3")])]);
+      const leaving = item("Message 2");
+      expect(leaving).toHaveAttribute("data-motion", "leave");
+      expect(leaving?.nextElementSibling).toBe(item("Message 3"));
+
+      // An animation inside it bubbling up isn't its own.
+      fireEvent.animationEnd(screen.getByText("Message 2"));
+      expect(leaving).toBeInTheDocument();
+
+      fireEvent.animationEnd(leaving!);
+      expect(screen.queryByText("Message 2")).not.toBeInTheDocument();
+    });
+
+    it("removes a message at once without an animation to wait for", () => {
       const { update } = renderHistory([
         message("1", "Parent", [message("2", "Message 2")]),
       ]);
 
       update([message("1", "Parent")]);
 
-      expect(screen.getByText("Message 2")).toBeInTheDocument();
+      expect(screen.queryByText("Message 2")).not.toBeInTheDocument();
+    });
+
+    it("slides a message back in when it returns while leaving", () => {
+      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
+        {} as Animation,
+      ]);
+      const { update } = renderHistory([message("1", "Message 1")]);
+
+      update([]);
+      update([message("1", "Message 1")]);
+
+      expect(item("Message 1")).toHaveAttribute("data-motion", "enter");
     });
   });
 

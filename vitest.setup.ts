@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom/vitest";
-import { Globals } from "@react-spring/web";
 import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
@@ -36,7 +35,6 @@ beforeAll(() => {
 
 beforeEach(() => {
   resetGlobals();
-  Globals.assign({ skipAnimation: true });
   // Tests assert on log calls through vi.mocked(log.<level>); none should print.
   for (const level of [
     "fatal",
