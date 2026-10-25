@@ -2020,7 +2020,6 @@ ul {
   li[data-motion="leave"] {
     animation-name: chat-leave;
     animation-fill-mode: forwards;
-    pointer-events: none;
   }
 
   ul ul {

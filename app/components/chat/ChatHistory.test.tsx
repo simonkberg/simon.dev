@@ -94,6 +94,28 @@ describe("ChatHistory", () => {
       expect(leaving).not.toBeInTheDocument();
     });
 
+    it("keeps messages that leave one after another in order", () => {
+      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
+        { finished: new Promise(() => {}) } as Animation,
+      ]);
+      const { update } = renderHistory([
+        message("1", "Message 1"),
+        message("2", "Message 2"),
+        message("3", "Message 3"),
+      ]);
+
+      update([message("1", "Message 1"), message("3", "Message 3")]);
+      update([message("3", "Message 3")]);
+
+      expect(
+        screen
+          .getAllByRole("listitem", { hidden: true })
+          .map((li) => li.dataset["motion"]),
+      ).toEqual(["leave", "leave", "appear"]);
+      expect(item("Message 1")?.nextElementSibling).toBe(item("Message 2"));
+      expect(item("Message 2")).toHaveAttribute("inert");
+    });
+
     it("removes a message at once without an animation to wait for", () => {
       const { update } = renderHistory([
         message("1", "Parent", [message("2", "Message 2")]),

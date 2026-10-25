@@ -98,6 +98,7 @@ const ChatHistoryMessages = ({
       <li
         key={message.id}
         data-motion={motion}
+        inert={leaving}
         ref={
           leaving
             ? (li: HTMLLIElement | null) => {
