@@ -1,12 +1,11 @@
 "use client";
 
-import { animated } from "@react-spring/web";
 import { type CSSProperties, use, useState } from "react";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
-import { countUp, useGrow } from "@/components/useGrow";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
 
 export interface ScrobbleChartProps {
@@ -37,10 +36,6 @@ const Stems = ({
   items: readonly ScrobbleCount[];
   active: readonly Run[];
 }) => {
-  const springs = useGrow(items.length, (index) => index * 15);
-  // Rises with the middle stem.
-  const averageGrow = springs[Math.floor(items.length / 2)];
-
   const counts = items.map(({ count }) => count);
   // All-zero counts would make the stems' `--value / --max` a 0/0.
   const max = Math.max(0, ...counts) || 1;
@@ -71,14 +66,9 @@ const Stems = ({
           const text = `${label}: ${formatNumber(count)}${current ? " so far" : ""}`;
           const tick = labelTick(items.length - 1 - index, step);
           return (
-            <animated.li
+            <li
               key={label}
-              style={
-                {
-                  "--value": count,
-                  "--grow": springs[index]?.grow,
-                } as CSSProperties
-              }
+              style={{ "--value": count, "--index": index } as CSSProperties}
               data-current={current || undefined}
               data-active={
                 active.some(
@@ -94,30 +84,30 @@ const Stems = ({
                 </span>
               </TooltipText>
               {index === peak && (
-                <animated.span className="peak" aria-hidden="true">
-                  {countUp(count, springs[index]?.grow)}
-                </animated.span>
+                <span className="peak" aria-hidden="true">
+                  <AnimatedNumber value={count} follow />
+                </span>
               )}
               {tick && (
                 <span className="tick" aria-hidden="true">
                   {label}
                 </span>
               )}
-            </animated.li>
+            </li>
           );
         })}
       </ol>
       {average !== undefined && (
-        <animated.span
+        <span
           className="average"
-          style={{ "--grow": averageGrow?.grow } as CSSProperties}
+          style={{ "--index": Math.floor(items.length / 2) } as CSSProperties}
           aria-hidden="true"
         >
           <span>
-            <animated.span>{countUp(average, averageGrow?.grow)}</animated.span>
+            <AnimatedNumber value={average} follow />
             <span className="average-label"> avg</span>
           </span>
-        </animated.span>
+        </span>
       )}
     </figure>
   );
@@ -171,9 +161,6 @@ const Lanes = ({
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
 }) => {
-  // One per column, so each bar starts sweeping out after the stem above its start.
-  const springs = useGrow(items.length, (index) => 150 + index * 30);
-
   return (
     <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
       {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
@@ -191,13 +178,13 @@ const Lanes = ({
           const text = `${name}: ${formatPlays(plays)} in ${span}`;
           return (
             <li key={name} onPointerEnter={() => onActive(runs)}>
-              <animated.div
+              <div
                 className="lane-label"
                 style={
                   {
                     gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
                     // Fades in under the bar's end it's aligned to.
-                    "--grow": springs[end ? last : first]?.grow,
+                    "--column": end ? last : first,
                   } as CSSProperties
                 }
                 data-end={end || undefined}
@@ -206,15 +193,15 @@ const Lanes = ({
                   {name}
                 </span>
                 <span className="visually-hidden">{text}</span>
-              </animated.div>
+              </div>
               {runs.map((run) => (
-                <animated.span
+                <span
                   key={run.first}
                   className="lane-run"
                   style={
                     {
                       gridColumn: `${run.first + 1} / ${run.last + 2}`,
-                      "--grow": springs[run.first]?.grow,
+                      "--column": run.first,
                     } as CSSProperties
                   }
                   data-current={run.current || undefined}

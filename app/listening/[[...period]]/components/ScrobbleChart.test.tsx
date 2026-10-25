@@ -1,10 +1,7 @@
-import { Globals } from "@react-spring/web";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
-import { settled } from "@/mocks/promise";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 
@@ -61,9 +58,9 @@ const lanes = () =>
 
 const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
 
-const grow = (selector: string) =>
+const order = (selector: string, property: string) =>
   [...document.querySelectorAll<HTMLElement>(selector)].map((element) =>
-    Number(element.style.getPropertyValue("--grow")),
+    Number(element.style.getPropertyValue(property)),
   );
 
 const ticks = () =>
@@ -163,43 +160,21 @@ describe("ScrobbleChart", () => {
     );
   });
 
-  it("grows the stems in when mounted on the client", async () => {
-    Globals.assign({ skipAnimation: false });
-
+  it("staggers the stems, with the average rising alongside the middle one", async () => {
     await renderChart(scrobbles);
 
-    expect(Math.max(...grow(".stems li"))).toBeLessThan(1);
+    expect(order(".stems li", "--index")).toEqual([0, 1, 2, 3]);
+    expect(order(".average", "--index")).toEqual([2]);
+    expect(document.querySelector(".peak .count")).toHaveAttribute(
+      "data-follow",
+    );
   });
 
-  it("counts the peak and average up from zero when mounted on the client", async () => {
-    Globals.assign({ skipAnimation: false });
-
-    await renderChart(scrobbles);
-
-    expect(document.querySelector(".peak")).toHaveTextContent("0");
-    expect(document.querySelector(".average")).toHaveTextContent("0 avg");
-  });
-
-  it("sweeps the lane bars in when mounted on the client", async () => {
-    Globals.assign({ skipAnimation: false });
-
+  it("sweeps each lane bar in from its first column, its label from the end it sits at", async () => {
     await renderLanes(buckets);
 
-    const runs = grow(".lane-run");
-    expect(runs).toHaveLength(4);
-    expect(Math.max(...runs)).toBeLessThan(1);
-    expect(Math.max(...grow(".lane-label"))).toBeLessThan(1);
-  });
-
-  it("renders full stems in server markup", () => {
-    const html = renderToString(
-      <ScrobbleChart
-        scrobbles={settled(scrobbles)}
-        topArtistByBucket={settled(undefined)}
-      />,
-    );
-
-    expect(html).toContain("--grow:1");
+    expect(order(".lane-run", "--column")).toEqual([0, 4, 2, 5]);
+    expect(order(".lane-label", "--column")).toEqual([0, 2, 5]);
   });
 
   it("says so when the counts failed to load", async () => {

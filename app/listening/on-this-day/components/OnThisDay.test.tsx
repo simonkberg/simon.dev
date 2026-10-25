@@ -1,10 +1,7 @@
-import { Globals } from "@react-spring/web";
 import { act, render, screen } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { OnThisDay as OnThisDayData } from "@/actions/lastfm";
-import { settled } from "@/mocks/promise";
 
 import { OnThisDay, OnThisDaySkeleton } from "./OnThisDay";
 
@@ -36,13 +33,11 @@ describe("OnThisDay", () => {
       ],
     );
     const [shown, read] = screen.getAllByText("12 plays");
-    expect(shown).toHaveAttribute("aria-hidden", "true");
+    expect(shown?.parentElement).toHaveAttribute("aria-hidden", "true");
     expect(read).toHaveClass("visually-hidden");
   });
 
-  it("draws the timeline in from the origin when mounted on the client", async () => {
-    Globals.assign({ skipAnimation: false });
-
+  it("draws the timeline in from the origin, a stop at a time", async () => {
     await renderDays({
       date: "Oct 24",
       years: [
@@ -51,25 +46,11 @@ describe("OnThisDay", () => {
       ],
     });
 
-    const grows = [
-      ...document.querySelectorAll<HTMLElement>(".timeline li"),
-    ].map((li) => Number(li.style.getPropertyValue("--grow")));
-    expect(Math.max(...grows)).toBeLessThan(1);
-    expect(grows.at(-1)).toBe(0);
-    expect(screen.getByText("0 plays")).toBeInTheDocument();
-  });
-
-  it("renders the whole timeline in server markup", () => {
-    const html = renderToString(
-      <OnThisDay
-        days={settled({
-          date: "Oct 24",
-          years: [{ year: "2025", count: 12, top }],
-        })}
-      />,
-    );
-
-    expect(html).toContain("--grow:1");
+    expect(
+      [...document.querySelectorAll<HTMLElement>(".timeline li")].map((li) =>
+        li.style.getPropertyValue("--index"),
+      ),
+    ).toEqual(["0", "1", "2"]);
   });
 
   it("renders a notice when the days failed to load", async () => {

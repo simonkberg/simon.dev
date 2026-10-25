@@ -1116,8 +1116,9 @@ ul {
   }
 
   li {
+    --grow-delay: calc(var(--index) * 15ms);
     --stems-top: calc(
-      var(--value) / var(--max) * var(--grow, 1) * var(--stems-height)
+      var(--value) / var(--max) * var(--grow) * var(--stems-height)
     );
     position: relative;
     min-width: 0;
@@ -1237,11 +1238,13 @@ ul {
     translate: -0.5ch 0;
   }
 
+  /* Rises with the middle stem. */
   > .average {
+    --grow-delay: calc(var(--index) * 15ms);
     position: absolute;
     inset-inline: 0;
     bottom: calc(
-      var(--stems-zero) + var(--average) / var(--max) * var(--grow, 1) *
+      var(--stems-zero) + var(--average) / var(--max) * var(--grow) *
         var(--stems-height)
     );
     display: grid;
@@ -1318,9 +1321,15 @@ ul {
   }
 
   /* Sized here, not on the list, so the gutter's ch matches the stems'. */
+  /* Each bar sweeps out after the stem above its start. */
+  .lane-label,
+  .lane-run {
+    --grow-delay: calc(150ms + var(--column) * 30ms);
+  }
+
   .lane-label {
     grid-row: 1;
-    opacity: var(--grow, 1);
+    opacity: var(--grow);
     font-size: var(--meta-size);
     white-space: nowrap;
 
@@ -1336,7 +1345,7 @@ ul {
     margin-inline: 2px;
     background: var(--accent);
     /* Clipped rather than scaled, so the current run's dashes keep their spacing. */
-    clip-path: inset(0 calc((1 - var(--grow, 1)) * 100%) 0 0);
+    clip-path: inset(0 calc((1 - var(--grow)) * 100%) 0 0);
 
     /* Like the current stem, still filling up. */
     &[data-current] {
@@ -1376,9 +1385,12 @@ ul {
   > li {
     --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
       var(--stems-glyph);
-    /* The rail lands in the first of a stop's steps, as the next stop starts. */
-    --rail: min(1, var(--grow, 1) * var(--steps, 1));
-    --fill: calc(var(--grow, 1) * (2 - var(--grow, 1)));
+    /* A stop fills in over four steps, and the next one starts a step later. */
+    --step: 90ms;
+    --grow-delay: calc(var(--index) * var(--step));
+    --grow-duration: calc(var(--step) * 4);
+    /* easeOutQuad */
+    --grow-easing: cubic-bezier(0.5, 1, 0.89, 1);
     position: relative;
     display: grid;
     grid-template-columns: 5ch minmax(0, 1fr);
@@ -1398,6 +1410,8 @@ ul {
       text-align: center;
       white-space: pre;
       clip-path: inset(0 0 calc((1 - var(--rail)) * 100%) 0);
+      /* Lands in the stop's first step, as the next stop starts. */
+      animation: rail var(--step) linear var(--grow-delay) backwards;
     }
 
     &::after {
@@ -1408,11 +1422,11 @@ ul {
       width: 2ch;
       color: var(--accent);
       text-align: center;
-      scale: var(--fill);
+      scale: var(--grow);
     }
 
     > span {
-      opacity: var(--fill);
+      opacity: var(--grow);
     }
 
     &:last-child::before {
@@ -1462,7 +1476,7 @@ ul {
       content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
         var(--timeline-bars);
       display: inline-block;
-      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--fill) * 16ch);
+      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--grow) * 16ch);
       margin-inline-end: 1ch;
       overflow: hidden;
       color: var(--timeline-bar-color);
@@ -1710,6 +1724,49 @@ ul {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Registered so they animate from the first paint, before hydration. */
+@property --grow {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --rail {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@keyframes grow {
+  from {
+    --grow: 0;
+  }
+}
+
+@keyframes rail {
+  from {
+    --rail: 0;
+  }
+}
+
+/* A count follows the --grow it inherits, or grows on its own. */
+.stems li,
+.stems > .average,
+.lane-label,
+.lane-run,
+.timeline > li,
+.count:not([data-follow]) {
+  /* easeOutCubic */
+  animation: grow var(--grow-duration, 600ms)
+    var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
+    backwards;
+}
+
+/* Until it hydrates and counts along, a count waits for its --grow to finish. */
+.count:not([data-counting]) {
+  opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
 }
 
 /* Registered so it animates, snapped to whole characters where it is read. */
