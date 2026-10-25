@@ -217,7 +217,6 @@
 
   --input-bleed: 0;
   --history-bleed: 0;
-  --label-halo: none;
   --input-rule: 1px solid var(--rule);
   --prompt-weight: normal;
   --buddy-size: inherit;
@@ -331,7 +330,8 @@
   --heading-max: calc(100% - 3ch);
   --heading-padding: 0 1ch;
   --heading-translate: 0 -50%;
-  --heading-bg: var(--ground);
+  /* Solid down to the border, then fading over the history that bleeds under it. */
+  --heading-bg: linear-gradient(var(--ground) 55%, transparent);
   --heading-size: 0.75rem;
   --heading-case: uppercase;
   --heading-tracking: 0.12em;
@@ -369,7 +369,7 @@
   --topbar-position: absolute;
   --topbar-translate: 0 -50%;
   --topbar-padding: 0 0.5ch;
-  --topbar-bg: var(--ground);
+  --topbar-bg: var(--heading-bg);
   --topbar-size: 0.875rem;
   --control-padding: 0 0.5ch;
   --control-maximize: "z";
@@ -388,7 +388,6 @@
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
   --history-bleed: -1rem -2ch 0 0;
-  --label-halo: 0 0 0.75rem 0.25rem var(--ground);
   --input-padding: 0.4rem 2ch 0.5rem;
   --prompt: "$";
   --buddy-size: 0.8rem;
@@ -1053,7 +1052,6 @@ section:has(> .terminal) {
   transition: color 0.15s;
   /* Above a chat history bleeding into its section's padding, fade included. */
   z-index: 2;
-  box-shadow: var(--label-halo);
 
   &::before {
     content: var(--heading-number);
@@ -1895,7 +1893,6 @@ ul {
     right: 1.5ch;
     z-index: 2;
     translate: var(--topbar-translate);
-    box-shadow: var(--label-halo);
     display: flex;
     align-items: center;
     justify-content: var(--topbar-justify);
