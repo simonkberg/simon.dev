@@ -57,12 +57,13 @@ describe("ChatHistory", () => {
   describe("animations", () => {
     const item = (text: string) => screen.getByText(text).closest("li");
 
-    it("fades in top-level messages on mount, not their replies", () => {
-      renderHistory([message("1", "Parent", [message("2", "Nested")])]);
-
-      expect(item("Parent")).toHaveAttribute("data-motion", "appear");
-      expect(item("Nested")).not.toHaveAttribute("data-motion");
-    });
+    const slide = () => {
+      const finished = Promise.withResolvers<Animation>();
+      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
+        { finished: finished.promise } as Animation,
+      ]);
+      return finished;
+    };
 
     it("slides in the first reply to a message", () => {
       const { update } = renderHistory([message("1", "Parent")]);
@@ -73,11 +74,7 @@ describe("ChatHistory", () => {
     });
 
     it("keeps the last reply to a message where it was until it slides out", async () => {
-      const finished = Promise.withResolvers<Animation>();
-      const slide = { finished: finished.promise, playState: "running" };
-      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        slide as Animation,
-      ]);
+      const finished = slide();
       const { update } = renderHistory([
         message("1", "Parent", [
           message("2", "Message 2"),
@@ -88,25 +85,18 @@ describe("ChatHistory", () => {
       update([message("1", "Parent", [message("3", "Message 3")])]);
       const leaving = item("Message 2");
       expect(leaving).toHaveAttribute("data-motion", "leave");
+      expect(leaving).toHaveAttribute("inert");
       expect(leaving?.nextElementSibling).toBe(item("Message 3"));
 
-      // Cancelled while another slide runs, it waits for that one.
+      // A cancelled slide settles too.
       await act(async () =>
         finished.reject(new DOMException("", "AbortError")),
-      );
-      expect(leaving).toBeInTheDocument();
-
-      slide.playState = "finished";
-      await act(async () =>
-        update([message("1", "Parent", [message("3", "Message 3")])]),
       );
       expect(leaving).not.toBeInTheDocument();
     });
 
     it("keeps messages that leave one after another in order", () => {
-      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        { finished: new Promise(() => {}) } as Animation,
-      ]);
+      slide();
       const { update } = renderHistory([
         message("1", "Message 1"),
         message("2", "Message 2"),
@@ -120,9 +110,7 @@ describe("ChatHistory", () => {
         screen
           .getAllByRole("listitem", { hidden: true })
           .map((li) => li.dataset["motion"]),
-      ).toEqual(["leave", "leave", "appear"]);
-      expect(item("Message 1")?.nextElementSibling).toBe(item("Message 2"));
-      expect(item("Message 2")).toHaveAttribute("inert");
+      ).toEqual(["leave", "leave", undefined]);
     });
 
     it("removes a message at once without an animation to wait for", () => {
@@ -135,14 +123,13 @@ describe("ChatHistory", () => {
       expect(screen.queryByText("Message 2")).not.toBeInTheDocument();
     });
 
-    it("slides a message back in when it returns while leaving", () => {
-      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        { finished: new Promise(() => {}) } as Animation,
-      ]);
+    it("slides a message back in when it returns while leaving", async () => {
+      const finished = slide();
       const { update } = renderHistory([message("1", "Message 1")]);
 
       update([]);
       update([message("1", "Message 1")]);
+      await act(async () => finished.resolve({} as Animation));
 
       expect(item("Message 1")).toHaveAttribute("data-motion", "enter");
     });

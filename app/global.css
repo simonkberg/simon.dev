@@ -1996,21 +1996,20 @@ ul {
       padding-block: var(--history-padding);
       /* Room for a focused message's outline, which the scroller would clip. */
       padding-inline: 4px;
+      animation-name: chat-appear;
+
+      /* Longhands, since the minifier turns a nameless animation shorthand into none. */
+      &,
+      li[data-motion] {
+        animation-duration: 500ms;
+        /* easeOutCubic */
+        animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+      }
 
       > li + li {
         margin-top: var(--message-gap);
       }
     }
-  }
-
-  /* easeOutCubic */
-  li[data-motion] {
-    animation-duration: 500ms;
-    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
-  }
-
-  li[data-motion="appear"] {
-    animation-name: chat-appear;
   }
 
   li[data-motion="enter"] {

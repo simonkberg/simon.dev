@@ -40,22 +40,24 @@ interface ChatHistoryMessagesProps {
   messages: Message[];
   replyToId: string | null;
   setReplyToId: Dispatch<SetStateAction<string | null>>;
-  nested?: boolean;
 }
 
 interface Shown {
   message: Message;
-  motion?: "appear" | "enter" | "leave";
+  motion?: "enter" | "leave";
 }
 
-// Keeps each removed message where it was, sliding out, until its animation ends.
+// Keeps each removed message where it was, to slide out.
 function follow(shown: readonly Shown[], messages: readonly Message[]) {
   const motions = new Map(
     shown.map(({ message, motion }) => [message.id, motion]),
   );
   const next = messages.map((message): Shown => {
-    const motion = motions.has(message.id) ? motions.get(message.id) : "enter";
-    return { message, motion: motion === "leave" ? "enter" : motion };
+    const motion = motions.get(message.id);
+    return {
+      message,
+      motion: !motions.has(message.id) || motion === "leave" ? "enter" : motion,
+    };
   });
   const ids = new Set(messages.map(({ id }) => id));
   for (const [index, { message }] of shown.entries()) {
@@ -67,17 +69,30 @@ function follow(shown: readonly Shown[], messages: readonly Message[]) {
   return next;
 }
 
+// Calls done once li's slide ends or is cancelled, unless cleaned up first.
+function whenSlidOut(li: HTMLLIElement, done: () => void) {
+  let cleaned = false;
+  const animations = li.getAnimations();
+  // Reduced motion leaves nothing to wait for.
+  if (animations.length === 0) done();
+  else
+    void Promise.allSettled(animations.map(({ finished }) => finished)).then(
+      () => {
+        if (!cleaned) done();
+      },
+    );
+  return () => {
+    cleaned = true;
+  };
+}
+
 const ChatHistoryMessages = ({
   messages,
-  nested = false,
   replyToId,
   setReplyToId,
 }: ChatHistoryMessagesProps) => {
   const [shown, setShown] = useState(() =>
-    messages.map((message): Shown => ({
-      message,
-      motion: nested ? undefined : "appear",
-    })),
+    messages.map((message): Shown => ({ message })),
   );
   const [followed, setFollowed] = useState(messages);
   if (messages !== followed) {
@@ -86,11 +101,7 @@ const ChatHistoryMessages = ({
   }
 
   const remove = (id: string) =>
-    setShown((current) =>
-      current.filter(
-        ({ message, motion }) => message.id !== id || motion !== "leave",
-      ),
-    );
+    setShown((current) => current.filter(({ message }) => message.id !== id));
 
   return shown.map(({ message, motion }) => {
     const leaving = motion === "leave";
@@ -101,25 +112,7 @@ const ChatHistoryMessages = ({
         inert={leaving}
         ref={
           leaving
-            ? (li: HTMLLIElement | null) => {
-                if (!li) return;
-                const animations = li.getAnimations();
-                // Reduced motion leaves nothing to wait for.
-                if (animations.length === 0) remove(message.id);
-                // Settles once the slide ends or is cancelled.
-                else
-                  void Promise.allSettled(
-                    animations.map(({ finished }) => finished),
-                  ).then(() => {
-                    // A slide started since, as when it left again, waits for itself.
-                    if (
-                      !li
-                        .getAnimations()
-                        .some(({ playState }) => playState === "running")
-                    )
-                      remove(message.id);
-                  });
-              }
+            ? (li: HTMLLIElement) => whenSlidOut(li, () => remove(message.id))
             : undefined
         }
       >
@@ -134,7 +127,6 @@ const ChatHistoryMessages = ({
             messages={message.replies}
             replyToId={replyToId}
             setReplyToId={setReplyToId}
-            nested
           />
         </ul>
       </li>
