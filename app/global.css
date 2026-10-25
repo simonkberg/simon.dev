@@ -217,7 +217,7 @@
 
   --input-bleed: 0;
   --history-bleed: 0;
-  --history-fade-inset: 0;
+  --label-halo: none;
   --input-rule: 1px solid var(--rule);
   --prompt-weight: normal;
   --buddy-size: inherit;
@@ -375,7 +375,7 @@
   --control-maximize: "z";
   --status-dot: inline-block;
 
-  --history-padding: 1.5rem 0.75rem;
+  --history-padding: 1.25rem 0.75rem;
   --reply-glyph: "";
   --reply-glyph-left: -1.5ch;
   --reply-glyph-top: 0.5lh;
@@ -388,7 +388,7 @@
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
   --history-bleed: -1rem -2ch 0 0;
-  --history-fade-inset: 0.75rem;
+  --label-halo: 0 0 0.75rem 0.25rem var(--ground);
   --input-padding: 0.4rem 2ch 0.5rem;
   --prompt: "$";
   --buddy-size: 0.8rem;
@@ -1053,6 +1053,7 @@ section:has(> .terminal) {
   transition: color 0.15s;
   /* Above a chat history bleeding into its section's padding, fade included. */
   z-index: 2;
+  box-shadow: var(--label-halo);
 
   &::before {
     content: var(--heading-number);
@@ -1884,7 +1885,6 @@ ul {
 
     /* A bleed into the section's padding would run under the bar. */
     .chat-history {
-      --history-fade-inset: 0;
       margin-top: 0;
     }
   }
@@ -1895,6 +1895,7 @@ ul {
     right: 1.5ch;
     z-index: 2;
     translate: var(--topbar-translate);
+    box-shadow: var(--label-halo);
     display: flex;
     align-items: center;
     justify-content: var(--topbar-justify);
@@ -1996,14 +1997,9 @@ ul {
     pointer-events: none;
   }
 
-  /* Solid under labels that hang into the history, so they leave no edge. */
   &::before {
     top: 0;
-    height: calc(var(--history-fade-inset) + var(--fade));
-    background: linear-gradient(
-      var(--surface) var(--history-fade-inset),
-      transparent
-    );
+    background: linear-gradient(var(--surface), transparent);
   }
 
   &::after {
@@ -2094,7 +2090,7 @@ ul {
   position: relative;
   text-wrap: pretty;
   /* Keeps a message focused by arrow keys clear of the history's edge fades. */
-  scroll-margin-block: calc(var(--history-fade-inset) + var(--fade)) var(--fade);
+  scroll-margin-block: var(--fade);
   border-radius: var(--code-radius);
 
   &:focus-visible {
