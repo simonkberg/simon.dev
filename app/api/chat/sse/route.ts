@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     send(`event: status\ndata: ${ready ? "live" : "connecting"}\n\n`),
   );
 
-  // The site's visitors, then who is online in Discord, sent once both are known and then on change.
+  // The site's visitors, then who is online in Discord: both call back at once, so the first send has both.
   let here: readonly string[] = [];
   let online: readonly string[] = [];
   let sentPresence: string | undefined;
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     online = names;
     sendPresence();
   });
-  // The client starts with nobody, so that needs no event.
+  // Each stream starts the client with nobody, so that needs no event.
   sentPresence = "[]";
   sendPresence();
 

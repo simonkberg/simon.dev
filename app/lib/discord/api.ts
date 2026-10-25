@@ -385,10 +385,10 @@ export function getChannelRevision(): number {
   return getStore().revision;
 }
 
-/** Calls back once the history may have changed; rejects if the gateway can't connect. */
 // A replay or a reseed notifies once per event; each tab refreshes once for the lot.
 const NOTIFY_DEBOUNCE_MS = 150;
 
+/** Calls back once the history may have changed; rejects if the gateway can't connect. */
 export async function subscribeToChannel(
   callback: () => void,
 ): Promise<() => void> {

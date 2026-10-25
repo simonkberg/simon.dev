@@ -157,6 +157,20 @@ describe("ChatStream", () => {
       act(() => instance().sendStatus("connecting"));
       expect(screen.queryByText("2 here")).not.toBeInTheDocument();
     });
+
+    it("forgets who was here when the stream drops", () => {
+      renderStream();
+      act(() => instance().onopen());
+      act(() => instance().sendPresence(["alice"]));
+
+      act(() => instance().onerror());
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      act(() => instance().onopen());
+
+      expect(screen.queryByText("1 here")).not.toBeInTheDocument();
+    });
   });
 
   describe("typing", () => {

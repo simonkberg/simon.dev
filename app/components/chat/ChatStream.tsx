@@ -18,7 +18,7 @@ const NOBODY: readonly string[] = [];
 export const ChatStream = () => {
   const router = useRouter();
   const [status, setStatus] = useState<Status>("connecting");
-  const [here, setHere] = useState<readonly string[]>([]);
+  const [here, setHere] = useState(NOBODY);
   const [typing, setTyping] = useState(NOBODY);
 
   useEffect(() => {
@@ -28,6 +28,8 @@ export const ChatStream = () => {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
+      // The next stream sends who is here only if anyone is.
+      setHere(NOBODY);
       setTyping(NOBODY);
       eventSource?.close();
       eventSource = null;
