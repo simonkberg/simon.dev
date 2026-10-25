@@ -1,7 +1,7 @@
 "use client";
 
-import { animated, easings, useSpring } from "@react-spring/web";
-import { type CSSProperties, use, useState } from "react";
+import { animated, easings } from "@react-spring/web";
+import { type CSSProperties, use } from "react";
 
 import type {
   DayInYear,
@@ -9,7 +9,7 @@ import type {
   PlayedYear,
 } from "@/actions/lastfm";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
-import { useMotion } from "@/components/useMotion";
+import { countUp, useGrow } from "@/components/useGrow";
 import { formatPlays } from "@/lib/formatNumber";
 
 export interface OnThisDayProps {
@@ -33,38 +33,24 @@ const toStops = (years: readonly DayInYear[]): Stop[] => {
   return stops;
 };
 
-// The rail draws down one stop per step; each stop fills in over the next few.
+// Each stop arrives as the rail above it lands, then fills in over a few more steps.
 const stepMs = 90;
-const fillSteps = 4;
-
-const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
-
-// Draws in from the origin on the client; the server markup already shows the end state.
-const useReveal = (stops: number) => {
-  const animate = useMotion();
-  const end = stops + fillSteps;
-  const [from] = useState(animate ? 0 : end);
-  const { progress } = useSpring({
-    from: { progress: from },
-    to: { progress: end },
-    config: { duration: end * stepMs, easing: easings.linear },
-  });
-  const fill = (step: number) =>
-    progress.to((p) => 1 - (1 - clamp((p - step) / fillSteps)) ** 2);
-  return {
-    fill,
-    style: (step: number) =>
-      ({
-        "--rail": progress.to((p) => clamp(p - step)),
-        "--fill": fill(step),
-      }) as CSSProperties,
-  };
-};
+const delay = (index: number) => index * stepMs;
 
 export const OnThisDay = ({ days }: OnThisDayProps) => {
   const data = use(days);
   const stops = data ? toStops(data.years) : [];
-  const reveal = useReveal(stops.length);
+  // The origin is stop 0.
+  const rails = useGrow(stops.length + 1, delay, { duration: stepMs });
+  const fills = useGrow(stops.length + 1, delay, {
+    duration: stepMs * 4,
+    easing: easings.easeOutQuad,
+  });
+  const style = (step: number) =>
+    ({
+      "--rail": rails[step]?.grow,
+      "--grow": fills[step]?.grow,
+    }) as CSSProperties;
 
   if (data === undefined) {
     return <p>This day in past years is temporarily unavailable :(</p>;
@@ -74,7 +60,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
 
   return (
     <ol className="timeline" style={{ "--max": max } as CSSProperties}>
-      <animated.li className="timeline-origin" style={reveal.style(0)}>
+      <animated.li className="timeline-origin" style={style(0)}>
         {data.date}
       </animated.li>
       {stops.map((stop, index) => {
@@ -83,10 +69,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
           <animated.li
             key={stop.year.year}
             style={
-              {
-                ...reveal.style(step),
-                "--value": stop.year.count,
-              } as CSSProperties
+              { ...style(step), "--value": stop.year.count } as CSSProperties
             }
           >
             <span className="timeline-year">{stop.year.year}</span>
@@ -95,9 +78,9 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             </span>
             <span className="timeline-plays">
               <animated.span aria-hidden="true">
-                {reveal
-                  .fill(step)
-                  .to((f) => formatPlays(Math.round(stop.year.count * f)))}
+                {countUp(stop.year.count, fills[step]?.grow, (shown) =>
+                  formatPlays(stop.year.count, shown),
+                )}
               </animated.span>
               <span className="visually-hidden">
                 {formatPlays(stop.year.count)}
@@ -105,7 +88,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             </span>
           </animated.li>
         ) : (
-          <animated.li key={stop.to} style={reveal.style(step)} data-silent>
+          <animated.li key={stop.to} style={style(step)} data-silent>
             <span className="timeline-year">
               {stop.from === stop.to ? stop.to : `${stop.from}–${stop.to}`}
             </span>

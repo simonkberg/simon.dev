@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { OnThisDay as OnThisDayData } from "@/actions/lastfm";
+import { settled } from "@/mocks/promise";
 
 import { OnThisDay, OnThisDaySkeleton } from "./OnThisDay";
 
@@ -34,6 +35,9 @@ describe("OnThisDay", () => {
         "2021nothing played",
       ],
     );
+    const [shown, read] = screen.getAllByText("12 plays");
+    expect(shown).toHaveAttribute("aria-hidden", "true");
+    expect(read).toHaveClass("visually-hidden");
   });
 
   it("draws the timeline in from the origin when mounted on the client", async () => {
@@ -52,20 +56,20 @@ describe("OnThisDay", () => {
     ].map((li) => Number(li.style.getPropertyValue("--rail")));
     expect(Math.max(...rails)).toBeLessThan(1);
     expect(rails.at(-1)).toBe(0);
-    expect(screen.getByText("0 plays")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByText("12 plays")).toHaveClass("visually-hidden");
+    expect(screen.getByText("0 plays")).toBeInTheDocument();
   });
 
   it("renders the whole timeline in server markup", () => {
-    const value = { date: "Oct 24", years: [{ year: "2025", count: 12, top }] };
-    // A resolved promise still suspends on the server, so pass a settled one.
-    const days = Object.assign(Promise.resolve(value), {
-      status: "fulfilled",
-      value,
-    });
-    const html = renderToString(<OnThisDay days={days} />);
+    const html = renderToString(
+      <OnThisDay
+        days={settled({
+          date: "Oct 24",
+          years: [{ year: "2025", count: 12, top }],
+        })}
+      />,
+    );
 
-    expect(html).toContain("--rail:1;--fill:1");
+    expect(html).toContain("--rail:1;--grow:1");
   });
 
   it("renders a notice when the days failed to load", async () => {

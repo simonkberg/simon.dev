@@ -18,4 +18,8 @@ describe("formatPlays", () => {
   ])("formats %d as %s", (count, text) => {
     expect(formatPlays(count)).toBe(text);
   });
+
+  it("keeps the count's unit while showing a smaller number", () => {
+    expect(formatPlays(12, 1)).toBe("1 plays");
+  });
 });
