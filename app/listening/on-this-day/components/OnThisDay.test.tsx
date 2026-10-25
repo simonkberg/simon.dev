@@ -51,12 +51,32 @@ describe("OnThisDay", () => {
         li.style.getPropertyValue("--index"),
       ),
     ).toEqual(["0", "1", "2"]);
-    // Sizes the steps so the whole timeline fits its budget.
-    expect(
+  });
+
+  it("sizes the steps to the stops, so the timeline fits its budget", async () => {
+    const days = (years: OnThisDayData["years"]) => (
+      <OnThisDay days={Promise.resolve({ date: "Oct 24", years })} />
+    );
+    const count = () =>
       document
         .querySelector<HTMLElement>(".timeline")
-        ?.style.getPropertyValue("--count"),
-    ).toBe("3");
+        ?.style.getPropertyValue("--count");
+    const { rerender } = await act(async () =>
+      render(days([{ year: "2025", count: 12, top }])),
+    );
+    expect(count()).toBe("2");
+
+    // Same peak, one more stop.
+    await act(async () =>
+      rerender(
+        days([
+          { year: "2025", count: 12, top },
+          { year: "2024", count: 1, top },
+        ]),
+      ),
+    );
+
+    expect(count()).toBe("3");
   });
 
   it("renders a notice when the days failed to load", async () => {
