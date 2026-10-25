@@ -608,6 +608,10 @@
   --indent: 7ch;
   --measure: 72ch;
   --page-max: calc(var(--measure) + var(--indent) + 4ch);
+  --bare-section-padding: 0 0 0 var(--indent);
+  --section-padding: var(--bare-section-padding);
+  --menu-padding: 0 0 0 var(--indent);
+  --footer-padding: 0 0 0 var(--indent);
   --page-padding: 0 max(1rem, env(safe-area-inset-right)) 2lh
     max(1rem, env(safe-area-inset-left));
   --header-padding: max(1.5rem, env(safe-area-inset-top)) 0 1lh;
@@ -620,7 +624,7 @@
   --nav-current-weight: bold;
   --host-margin: 0;
 
-  --heading-margin: 1.5lh 0 0.5lh;
+  --heading-margin: 1.5lh 0 0.5lh calc(var(--indent) * -1);
   --heading-case: uppercase;
   --heading-tracking: 0.02em;
 
@@ -760,7 +764,6 @@ body {
   color: var(--on-accent);
 }
 
-/* Block margins only, so the Manual indent below keeps its inline margin. */
 p {
   margin-block: 0 var(--p-gap);
   max-width: var(--p-max);
@@ -1027,7 +1030,6 @@ section:has(> .terminal) {
 
 /* Zero specificity: element rules (a table's width, the stats' columns) win. */
 :where(section > :not(.heading), .content > menu, .footer > *) {
-  margin-left: var(--indent);
   max-width: var(--measure);
 }
 
@@ -1101,9 +1103,7 @@ ul {
   position: relative;
   display: grid;
   grid-template-columns: var(--stems-columns);
-  /* Inline start is the section indent. */
-  margin-block: 0;
-  margin-inline-end: 0;
+  margin: 0;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   container-type: inline-size;
