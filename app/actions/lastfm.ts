@@ -21,6 +21,7 @@ import {
 import { log } from "@/lib/log";
 import {
   dayLabel,
+  nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -146,6 +147,52 @@ const periodBuckets = (period: Period, now: Date) =>
     ? yearBuckets(config.lastfmSince, now)
     : scrobbleBuckets(period, now);
 
+// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
+function cacheUntil(end: Date, now: Date, maxSeconds: number) {
+  const revalidate = Math.min(
+    maxSeconds,
+    Math.max(1, Math.ceil((end.getTime() - now.getTime()) / 1000)),
+  );
+  cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
+}
+
+const countIn = async (from: Date, to: Date) =>
+  // Only the total is read, so one track per page is enough.
+  (await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })).total;
+
+const topArtistIn = (from: Date, to: Date) =>
+  userGetTopArtistInRange(config.lastfmUsername, { from, to });
+
+type Settled<T> = { ok: true; value: T } | { ok: false; error: string };
+
+// An error thrown in a nested cache fails the prerender, so it's returned for the chart to throw.
+async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
+  try {
+    const value = await request();
+    // An ended bar only changes by a late scrobble.
+    cacheLife("days");
+    return { ok: true, value };
+  } catch (err) {
+    cacheLife("seconds");
+    return { ok: false, error: String(err) };
+  }
+}
+
+function unwrap<T>(settled: Settled<T>): T {
+  if (!settled.ok) throw new Error(settled.error);
+  return settled.value;
+}
+
+async function endedCount(from: number, to: number) {
+  "use cache";
+  return settle(() => countIn(new Date(from), new Date(to)));
+}
+
+async function endedTopArtist(from: number, to: number) {
+  "use cache";
+  return settle(() => topArtistIn(new Date(from), new Date(to)));
+}
+
 export async function getScrobbles(
   period: Period,
 ): Promise<GetScrobblesResult> {
@@ -153,17 +200,17 @@ export async function getScrobbles(
 
   try {
     const now = new Date();
+    const buckets = periodBuckets(period, now);
     const scrobbles = await Promise.all(
-      periodBuckets(period, now).map(async ({ label, from, to }) => ({
-        label,
-        // Only the total is read, so one track per page is enough.
-        count: (
-          await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })
-        ).total,
-        current: to > now,
-      })),
+      buckets.map(async ({ label, from, to }) => {
+        const current = to > now;
+        const count = current
+          ? await countIn(from, to)
+          : unwrap(await endedCount(from.getTime(), to.getTime()));
+        return { label, count, current };
+      }),
     );
-    cacheLife("hours");
+    cacheUntil(buckets.at(-1)?.to ?? now, now, 3600);
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");
@@ -188,17 +235,19 @@ export async function getTopArtistByBucket(
   "use cache";
 
   try {
-    const buckets = await Promise.all(
-      periodBuckets(period, new Date()).map(async ({ label, from, to }) => ({
+    const now = new Date();
+    const buckets = periodBuckets(period, now);
+    const artists = await Promise.all(
+      buckets.map(async ({ label, from, to }) => ({
         label,
-        artist: await userGetTopArtistInRange(config.lastfmUsername, {
-          from,
-          to,
-        }),
+        artist:
+          to > now
+            ? await topArtistIn(from, to)
+            : unwrap(await endedTopArtist(from.getTime(), to.getTime())),
       })),
     );
-    cacheLife("hours");
-    return { status: "ok", buckets };
+    cacheUntil(buckets.at(-1)?.to ?? now, now, 3600);
+    return { status: "ok", buckets: artists };
   } catch (err) {
     cacheLife("seconds");
     log.error(
@@ -267,7 +316,8 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
         },
       ),
     );
-    cacheLife("hours");
+    // Every year shown has ended, so only the date changing can change them.
+    cacheUntil(nextMidnight(now), now, Infinity);
     return { status: "ok", days: { date: dayLabel.format(now), years } };
   } catch (err) {
     cacheLife("seconds");

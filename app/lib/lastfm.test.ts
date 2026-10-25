@@ -347,6 +347,35 @@ describe("userGetTopAlbums", () => {
   });
 });
 
+describe("Last.fm calls", () => {
+  it("should keep at most four in flight", async () => {
+    let inFlight = 0;
+    let most = 0;
+    server.use(
+      http.get(LASTFM_BASE_URL, async () => {
+        most = Math.max(most, ++inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+        return HttpResponse.json({
+          recenttracks: { track: [], "@attr": { total: "0" } },
+        });
+      }),
+    );
+    const range = {
+      from: new Date("2021-01-01T00:00:00Z"),
+      to: new Date("2021-01-02T00:00:00Z"),
+      limit: 1,
+    };
+
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => userGetScrobbles("testuser", range)),
+    );
+
+    expect(results).toHaveLength(10);
+    expect(most).toBe(4);
+  });
+});
+
 describe("userGetScrobbles", () => {
   it("should read the range's total and played tracks", async () => {
     const params = lastfmReturns({

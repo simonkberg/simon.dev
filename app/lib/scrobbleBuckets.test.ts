@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   dayRange,
+  nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -130,6 +131,15 @@ describe("sameDayBuckets", () => {
     const buckets = sameDayBuckets(2019, new Date("2024-02-29T12:00:00Z"));
 
     expect(buckets.map(({ label }) => label)).toEqual(["2020"]);
+  });
+});
+
+describe("nextMidnight", () => {
+  it("should find tomorrow's start across a clock change", () => {
+    // Stockholm leaves summer time on 2026-10-25.
+    expect(nextMidnight(new Date("2026-10-25T12:00:00Z"))).toEqual(
+      new Date("2026-10-25T23:00:00Z"),
+    );
   });
 });
 
