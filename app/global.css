@@ -2005,7 +2005,9 @@ ul {
 
   /* easeOutCubic */
   li[data-motion] {
-    animation: 500ms cubic-bezier(0.33, 1, 0.68, 1) both;
+    animation-duration: 500ms;
+    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+    animation-fill-mode: both;
   }
 
   li[data-motion="appear"] {
