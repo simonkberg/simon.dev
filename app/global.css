@@ -407,12 +407,12 @@
   --toast-size: 0.875rem;
   --toast-error-bg: oklch(0.62 0.18 27);
 
-  --menu-gap: 0.25rem 0;
-  --menu-item-padding: 0 var(--segment-pad);
+  --menu-gap: 0.25rem 1ch;
+  --menu-item-padding: 0 1ch;
   --menu-link-color: var(--muted);
   --menu-link-line: none;
   --menu-link-hover: var(--ink);
-  --menu-current-padding: 0 var(--segment-pad);
+  --menu-current-padding: 0 1ch;
   --menu-current-bg: var(--accent);
   --menu-current-fg: var(--on-accent);
 
@@ -2431,7 +2431,6 @@ menu {
     padding: var(--menu-current-padding);
     background: var(--menu-current-bg);
     color: var(--menu-current-fg);
-    clip-path: var(--segment-notched);
     text-decoration: var(--menu-current-line);
     text-underline-offset: 0.35em;
   }
