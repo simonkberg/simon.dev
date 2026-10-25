@@ -211,7 +211,7 @@
   --code-border: none;
   --code-radius: 0;
   --pill-radius: 0;
-  --segment-point: 0;
+  --segment-point: 0em;
   --segment: none;
   --segment-notched: none;
   --code-size: inherit;
@@ -356,11 +356,7 @@
   --heading-bg: var(--wash);
   --heading-active-bg: var(--accent);
   --heading-active-color: var(--on-accent);
-  --heading-active-sub: color-mix(
-    in oklch,
-    var(--on-accent) 70%,
-    var(--accent)
-  );
+  --heading-active-sub: var(--on-accent);
   --heading-link-hover: var(--on-accent);
   --heading-size: 0.875rem;
   --heading-case: lowercase;
