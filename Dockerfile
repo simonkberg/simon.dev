@@ -30,6 +30,9 @@ ARG RAILWAY_ENVIRONMENT_ID
 ARG RAILWAY_ENVIRONMENT_NAME
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# A tab still running an older deploy's JS then reloads instead of crashing on navigation.
+ARG RAILWAY_GIT_COMMIT_SHA
+ENV NEXT_DEPLOYMENT_ID=${RAILWAY_GIT_COMMIT_SHA}
 
 # Use cache mount for Next.js build cache, then copy it out of the
 # mount so it's available in the layer for the runner stage. The
