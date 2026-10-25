@@ -29,7 +29,6 @@
   --link-hover-line: currentColor;
   --link-hover-decoration: underline;
   --focus: 1px solid var(--accent);
-  --focus-offset: 2px;
 
   --page-max: none;
   --page-padding: 0;
@@ -37,6 +36,7 @@
   --header-position: static;
   --header-bg: transparent;
   --header-rule: none;
+  --header-gap: 0 2ch;
   --header-size: 1rem;
   --header-leading: inherit;
   --header-justify: normal;
@@ -93,12 +93,6 @@
   --heading-padding: 0;
   --heading-translate: none;
   --heading-bg: transparent;
-  --heading-active-bg: var(--heading-bg);
-  --heading-active-color: var(--section-active);
-  --heading-active-sub: var(--muted);
-  --heading-link-hover: var(--link-hover-color);
-  --heading-focus: var(--focus);
-  --heading-focus-offset: var(--focus-offset);
   --heading-size: 1rem;
   --heading-case: none;
   --heading-tracking: normal;
@@ -283,9 +277,9 @@
   color-scheme: dark;
 }
 
-/* Panes: a multiplexer session. Status line with a window per page, sections
-   as panes titled in their border, titles and windows as powerline segments;
-   the pane in use fills its title with the accent. */
+/* Panes: a multiplexer session. Status line of powerline segments with a
+   window per page, sections as panes titled in their border; the pane in use
+   takes the highlight. */
 
 :root[data-variant="panes"] {
   --ground: light-dark(oklch(0.99 0.002 255), oklch(0.145 0.008 260));
@@ -310,6 +304,7 @@
   --header-padding: env(safe-area-inset-top) 0 0;
   --header-bg: var(--ground);
   --header-rule: 1px solid var(--rule);
+  --header-gap: 0;
   --header-size: 0.875rem;
   --header-leading: 1.75;
   --header-max: 66rem;
@@ -344,17 +339,10 @@
   --section-active: var(--accent);
 
   --heading-position: absolute;
-  --heading-max: calc(100% - 5ch);
-  --heading-padding: 0 var(--segment-pad) 0 1ch;
+  --heading-max: calc(100% - 3ch);
+  --heading-padding: 0 1ch;
   --heading-translate: 0 -50%;
-  --heading-bg: var(--wash);
-  --heading-active-bg: var(--accent);
-  --heading-active-color: var(--on-accent);
-  --heading-active-sub: var(--on-accent);
-  --heading-link-hover: var(--on-accent);
-  /* Inside the box, where the heading's clip and overflow can't cut it off. */
-  --heading-focus: 1px solid var(--on-accent);
-  --heading-focus-offset: 0;
+  --heading-bg: var(--ground);
   --heading-size: 0.875rem;
   --heading-case: lowercase;
   --heading-sub-case: lowercase;
@@ -873,7 +861,7 @@ button {
 
 :focus-visible {
   outline: var(--focus);
-  outline-offset: var(--focus-offset);
+  outline-offset: 2px;
 }
 
 .page {
@@ -899,7 +887,7 @@ button {
     flex-wrap: wrap;
     align-items: var(--header-align);
     justify-content: var(--header-justify);
-    gap: 0 2ch;
+    gap: var(--header-gap);
     max-width: var(--header-max);
     margin: 0 auto;
     padding-inline: var(--header-inline);
@@ -1033,16 +1021,7 @@ section:has(> .heading) {
     border-color: var(--section-active);
 
     > .heading {
-      background: var(--heading-active-bg);
-      color: var(--heading-active-color);
-
-      --link-hover-color: var(--heading-link-hover);
-      --focus: var(--heading-focus);
-      --focus-offset: var(--heading-focus-offset);
-
-      > .subtitle {
-        color: var(--heading-active-sub);
-      }
+      color: var(--section-active);
     }
   }
 }
@@ -1077,7 +1056,6 @@ section:has(> .terminal) {
   padding: var(--heading-padding);
   translate: var(--heading-translate);
   background: var(--heading-bg);
-  clip-path: var(--segment);
   font-size: var(--heading-size);
   font-weight: bold;
   text-transform: var(--heading-case);
@@ -1086,9 +1064,7 @@ section:has(> .terminal) {
   white-space: var(--heading-wrap);
   overflow: hidden;
   text-overflow: ellipsis;
-  transition:
-    color 0.15s,
-    background-color 0.15s;
+  transition: color 0.15s;
 
   > .subtitle {
     display: var(--heading-sub-display);
