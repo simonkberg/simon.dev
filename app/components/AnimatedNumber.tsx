@@ -11,6 +11,11 @@ export interface AnimatedNumberProps {
 }
 
 const counting = new Map<HTMLElement, (grow: number) => void>();
+// What each count last showed and counts between, kept across re-renders.
+const spans = new WeakMap<
+  HTMLElement,
+  { from: number; to: number; shown: number }
+>();
 let frame = 0;
 
 function schedule() {
@@ -41,10 +46,22 @@ export const AnimatedNumber = ({
   <span
     // Reads --grow rather than timing itself, so a count hydrating mid-animation joins in step.
     ref={(span: HTMLSpanElement) => {
+      const last = spans.get(span);
+      const count = { from: 0, to: value, shown: value, ...last };
+      // A new value counts on from the one shown, growing again unless it follows its row.
+      if (last && last.to !== value) {
+        Object.assign(count, { from: last.shown, to: value });
+        if (!follow)
+          for (const grow of span.getAnimations()) grow.currentTime = 0;
+      }
+      spans.set(span, count);
       counting.set(span, (grow) => {
         const growing = grow < 1;
+        count.shown = growing
+          ? count.from + (value - count.from) * grow
+          : value;
         // A lone text child is React's text content, so this is what it would write.
-        span.textContent = format(growing ? value * grow : value);
+        span.textContent = format(count.shown);
         span.dataset["counting"] = "";
         if (!growing) counting.delete(span);
       });

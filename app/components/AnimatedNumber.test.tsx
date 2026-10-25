@@ -32,6 +32,43 @@ describe("AnimatedNumber", () => {
     expect(count).toHaveTextContent("100");
   });
 
+  it.each([
+    { follow: false, restarts: [[0]] },
+    { follow: true, restarts: [] },
+  ])(
+    "counts on from the number shown when its value changes (follow: $follow)",
+    ({ follow, restarts }) => {
+      vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
+      const style = document.createElement("style");
+      document.head.append(style);
+      const { rerender } = render(
+        <AnimatedNumber value={100} follow={follow} />,
+      );
+      act(() => {
+        vi.advanceTimersToNextFrame();
+      });
+      const count = screen.getByText("100");
+      const restart = vi.fn();
+      vi.spyOn(count, "getAnimations").mockReturnValue([
+        {
+          set currentTime(time: number) {
+            restart(time);
+          },
+        } as Animation,
+      ]);
+
+      style.textContent = ".count { --grow: 0.5 }";
+      rerender(<AnimatedNumber value={200} follow={follow} />);
+      act(() => {
+        vi.advanceTimersToNextFrame();
+      });
+
+      // Only a count growing on its own restarts; one that follows its row grows with it.
+      expect(restart.mock.calls).toEqual(restarts);
+      expect(count).toHaveTextContent("150");
+    },
+  );
+
   it("shows the value once --grow isn't animating", () => {
     vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
     render(<AnimatedNumber value={50} decimals={2} />);
