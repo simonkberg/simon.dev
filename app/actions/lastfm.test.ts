@@ -28,6 +28,7 @@ import {
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
+  bulk: (request) => request(),
   userGetRecentTracks: vi.fn(),
   userGetScrobbles: vi.fn(),
   userGetTopArtistInRange: vi.fn(),

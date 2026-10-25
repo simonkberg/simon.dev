@@ -36,7 +36,8 @@ const errorSchema = z.object({ error: z.number(), message: z.string() });
 // A cold chart asks for every bar at once, and Last.fm asks for at most a few calls a second.
 const MAX_IN_FLIGHT = 4;
 
-async function limited<T>(request: () => Promise<T>): Promise<T> {
+/** Runs a call that fans out with others, at most a few at once, so single calls never queue behind them. */
+export async function bulk<T>(request: () => Promise<T>): Promise<T> {
   const slots = getGlobal("lastfm-slots", () => ({
     inFlight: 0,
     waiting: [] as (() => void)[],
@@ -57,14 +58,6 @@ async function call<T extends z.ZodType>(
   method: string,
   schema: T,
   params: Record<string, unknown> = {},
-): Promise<z.infer<T>> {
-  return limited(() => request(method, schema, params));
-}
-
-async function request<T extends z.ZodType>(
-  method: string,
-  schema: T,
-  params: Record<string, unknown>,
 ): Promise<z.infer<T>> {
   const url = new URL(BASE_URL);
   url.searchParams.set("method", method);

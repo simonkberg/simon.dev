@@ -4,6 +4,7 @@ import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
 import {
+  bulk,
   type ChartItem,
   type Period,
   TOP_ALBUMS,
@@ -160,11 +161,15 @@ const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
 const countIn = async (from: Date, to: Date) =>
-  // Only the total is read, so one track per page is enough.
-  (await userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 })).total;
+  (
+    await bulk(() =>
+      // Only the total is read, so one track per page is enough.
+      userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 }),
+    )
+  ).total;
 
 const topArtistIn = (from: Date, to: Date) =>
-  userGetTopArtistInRange(config.lastfmUsername, { from, to });
+  bulk(() => userGetTopArtistInRange(config.lastfmUsername, { from, to }));
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -311,9 +316,8 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
       sameDayBuckets(config.lastfmSince, now).map(
         async ({ label, from, to }) => {
           // Last.fm's largest page; a busier day picks its top from the latest 200.
-          const { total, tracks } = await userGetScrobbles(
-            config.lastfmUsername,
-            { from, to, limit: 200 },
+          const { total, tracks } = await bulk(() =>
+            userGetScrobbles(config.lastfmUsername, { from, to, limit: 200 }),
           );
           return { year: label, count: total, top: topOfDay(tracks) };
         },
