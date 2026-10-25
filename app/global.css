@@ -212,6 +212,10 @@
   --code-radius: 0;
   --pill-radius: 0;
   --segment-point: 0em;
+  --segment-pad: calc(1ch + var(--segment-point));
+  --segment-tip:
+    calc(100% - var(--segment-point)) 0, 100% 50%,
+    calc(100% - var(--segment-point)) 100%, 0 100%;
   --segment: none;
   --segment-notched: none;
   --code-size: inherit;
@@ -244,7 +248,6 @@
   --menu-margin: 0;
   --menu-padding: 0;
   --menu-item-padding: 0;
-  --menu-item-bg: transparent;
   --menu-link-color: inherit;
   --menu-link-line: underline;
   --menu-link-hover: var(--link-hover-color);
@@ -294,21 +297,8 @@
     color-mix(in oklch, oklch(0.78 0.17 345) 12%, transparent)
   );
   --segment-point: 0.6em;
-  --segment: polygon(
-    0 0,
-    calc(100% - var(--segment-point)) 0,
-    100% 50%,
-    calc(100% - var(--segment-point)) 100%,
-    0 100%
-  );
-  --segment-notched: polygon(
-    0 0,
-    calc(100% - var(--segment-point)) 0,
-    100% 50%,
-    calc(100% - var(--segment-point)) 100%,
-    0 100%,
-    var(--segment-point) 50%
-  );
+  --segment: polygon(0 0, var(--segment-tip));
+  --segment-notched: polygon(0 0, var(--segment-tip), var(--segment-point) 50%);
 
   --link-line: var(--muted);
   --link-hover-color: var(--accent);
@@ -324,13 +314,13 @@
     max(1rem, env(safe-area-inset-right));
   --title-case: lowercase;
   --title-link-display: block;
-  --title-link-padding: 0 calc(1ch + var(--segment-point)) 0 1ch;
+  --title-link-padding: 0 var(--segment-pad) 0 1ch;
   --title-link-bg: var(--accent);
   --title-link-color: var(--on-accent);
   --title-link-hover-color: var(--on-accent);
   --title-link-hover-bg: var(--accent);
   --nav-gap: 0;
-  --nav-link-padding: 0 calc(1ch + var(--segment-point));
+  --nav-link-padding: 0 var(--segment-pad);
   --nav-prefix: counter(page) ":";
   --nav-current-bg: var(--wash);
   --nav-current-marker: "*";
@@ -352,7 +342,7 @@
 
   --heading-position: absolute;
   --heading-max: calc(100% - 5ch);
-  --heading-padding: 0 calc(1ch + var(--segment-point)) 0 1ch;
+  --heading-padding: 0 var(--segment-pad) 0 1ch;
   --heading-translate: 0 -50%;
   --heading-bg: var(--wash);
   --heading-active-bg: var(--accent);
@@ -424,11 +414,11 @@
   --toast-error-bg: oklch(0.62 0.18 27);
 
   --menu-gap: 0.25rem 0;
-  --menu-item-padding: 0 calc(1ch + var(--segment-point));
+  --menu-item-padding: 0 var(--segment-pad);
   --menu-link-color: var(--muted);
   --menu-link-line: none;
   --menu-link-hover: var(--ink);
-  --menu-current-padding: 0 calc(1ch + var(--segment-point));
+  --menu-current-padding: 0 var(--segment-pad);
   --menu-current-bg: var(--accent);
   --menu-current-fg: var(--on-accent);
 
@@ -925,11 +915,6 @@ button {
       text-decoration: none;
       white-space: nowrap;
 
-      /* A clip-path would cut the focus outline off. */
-      &:focus-visible {
-        clip-path: none;
-      }
-
       &::before {
         content: var(--title-prefix);
         color: var(--muted);
@@ -972,16 +957,17 @@ button {
         clip-path: var(--segment-notched);
         font-weight: var(--nav-current-weight);
 
-        &:focus-visible {
-          clip-path: none;
-        }
-
         &::after {
           content: var(--nav-current-marker);
           color: var(--accent);
         }
       }
     }
+  }
+
+  /* A clip-path would cut the focus outline off. */
+  :is(.title > .link, .nav > a):focus-visible {
+    clip-path: none;
   }
 
   .host {
@@ -1044,6 +1030,8 @@ section:has(> .heading) {
       background: var(--heading-active-bg);
       color: var(--heading-active-color);
 
+      --link-hover-color: var(--heading-link-hover);
+
       > .subtitle {
         color: var(--heading-active-sub);
       }
@@ -1096,10 +1084,6 @@ section:has(> .terminal) {
 
   &:has(:focus-visible) {
     clip-path: none;
-  }
-
-  a:hover {
-    color: var(--heading-link-hover);
   }
 
   > .subtitle {
@@ -2452,7 +2436,6 @@ menu {
 
   > li {
     padding: var(--menu-item-padding);
-    background: var(--menu-item-bg);
   }
 
   a {
