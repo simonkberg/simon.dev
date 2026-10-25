@@ -60,6 +60,11 @@ const lanes = () =>
 
 const stems = () => [...document.querySelectorAll<HTMLElement>(".stems li")];
 
+const grow = (selector: string) =>
+  [...document.querySelectorAll<HTMLElement>(selector)].map((element) =>
+    Number(element.style.getPropertyValue("--grow")),
+  );
+
 const ticks = () =>
   [...document.querySelectorAll(".tick")].map((tick) => tick.textContent);
 
@@ -162,10 +167,27 @@ describe("ScrobbleChart", () => {
 
     await renderChart(scrobbles);
 
-    const grow = stems().map((item) =>
-      Number(item.style.getPropertyValue("--grow")),
-    );
-    expect(Math.max(...grow)).toBeLessThan(1);
+    expect(Math.max(...grow(".stems li"))).toBeLessThan(1);
+  });
+
+  it("counts the peak and average up from zero when mounted on the client", async () => {
+    Globals.assign({ skipAnimation: false });
+
+    await renderChart(scrobbles);
+
+    expect(document.querySelector(".peak")).toHaveTextContent("0");
+    expect(document.querySelector(".average")).toHaveTextContent("0 avg");
+  });
+
+  it("sweeps the lane bars in when mounted on the client", async () => {
+    Globals.assign({ skipAnimation: false });
+
+    await renderLanes(buckets);
+
+    const runs = grow(".lane-run");
+    expect(runs).toHaveLength(4);
+    expect(Math.max(...runs)).toBeLessThan(1);
+    expect(Math.max(...grow(".lane-label"))).toBeLessThan(1);
   });
 
   it("renders full stems in server markup", () => {
