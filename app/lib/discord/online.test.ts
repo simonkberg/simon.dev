@@ -88,6 +88,29 @@ describe("subscribeToOnline", () => {
     expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
   });
 
+  it("keeps a name a new session brought while its lookup failed", async () => {
+    const { promise, reject } = Promise.withResolvers<string | undefined>();
+    vi.mocked(memberName).mockReturnValueOnce(promise);
+    const { listener, dispatch } = listen();
+    dispatch(presence("newcomer-id", "online"));
+
+    const newcomer = { user: { id: "newcomer-id", username: "newcomer" } };
+    dispatch({
+      t: "GUILD_CREATE",
+      d: {
+        id: GUILD,
+        members: [newcomer],
+        presences: [{ user: { id: "newcomer-id" }, status: "online" }],
+      },
+    });
+    reject(new Error("boom"));
+    await vi.advanceTimersByTimeAsync(0);
+    dispatch(presence("newcomer-id", "dnd"));
+
+    expect(memberName).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
+  });
+
   it("doesn't tell of a name that arrives after its member left", async () => {
     const { listener, dispatch } = listen();
 
