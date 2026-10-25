@@ -1812,8 +1812,8 @@ ul {
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
   .stems:has(.animated-number:not([data-counting])) > ol > li,
   .stems:has(.animated-number:not([data-counting])) > .average,
-  .timeline:has(.animated-number:not([data-counting]))
-    :is(> li, .timeline-plays),
+  .timeline:has(.animated-number:not([data-counting])) > li,
+  .timeline:has(.animated-number:not([data-counting])) .timeline-plays,
   .animated-number:not([data-counting]) {
     animation-play-state: paused;
   }
