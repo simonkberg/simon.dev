@@ -462,7 +462,7 @@ async function executeTool(
         await addReaction(messageId, emoji, BOT_USERNAME);
         return JSON.stringify({
           reacted: emoji,
-          note: "Any text you write now is posted to the chat as your reply, so never describe the reaction. If it is your whole answer, end with no text.",
+          note: "Any text you write now is posted to the chat, so talk to them as you would there, never report what you did. If the reaction says it all, end with no text.",
         });
       }
       case "remember": {
