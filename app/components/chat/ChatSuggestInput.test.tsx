@@ -1,16 +1,21 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useRef, useState } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { postChatMessage } from "@/actions/chat";
 import { type EmojiShortcodes, REACTION_EMOJI } from "@/lib/emoji";
 import { setPreference, variantPreference } from "@/lib/preferences";
-import { renderChatInput } from "@/mocks/chatInput";
 import { server } from "@/mocks/node";
 import { sendToggle } from "@/mocks/popover";
-import { resetPreferences } from "@/mocks/preferences";
 
-vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
+import { ChatSuggestInput } from "./ChatSuggestInput";
+import { reloadShortcodes } from "./shortcodes";
+
+vi.mock(import("./shortcodes"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, reloadShortcodes: vi.fn(actual.reloadShortcodes) };
+});
 
 const EMOJI: EmojiShortcodes[] = [
   ["🧑‍🚒", ["firefighter"], []],
@@ -28,16 +33,38 @@ const options = () =>
 
 const chosen = () => screen.queryByRole("option", { selected: true });
 
+// A form that sends and clears its text, as the chat input's does.
+function renderSuggestInput() {
+  const sent = vi.fn<(text: string) => void>();
+  const user = userEvent.setup({ delay: null });
+  function Form() {
+    const ref = useRef<HTMLInputElement>(null);
+    const [value, setValue] = useState("");
+    return (
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          sent(value);
+          setValue("");
+        }}
+      >
+        <ChatSuggestInput ref={ref} value={value} onValueChange={setValue} />
+        <button type="button">Next</button>
+      </form>
+    );
+  }
+  render(<Form />);
+  const input = screen.getByRole<HTMLInputElement>("combobox");
+  return { user, input, sent };
+}
+
 describe("ChatSuggestInput", () => {
   beforeEach(() => {
     server.use(http.get("*/api/emoji", () => HttpResponse.json(EMOJI)));
-    vi.mocked(postChatMessage).mockResolvedValue({ status: "ok" });
   });
 
-  afterEach(resetPreferences);
-
   it("offers the reactions on a bare colon, with none chosen", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "hi :");
 
@@ -53,7 +80,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("filters by shortcode, and Enter inserts the first instead of sending", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input, sent } = renderSuggestInput();
 
     await user.type(input, "hi :fire");
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
@@ -65,12 +92,12 @@ describe("ChatSuggestInput", () => {
     expect(input).toHaveValue("hi 🔥 ");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(input).toHaveAttribute("aria-expanded", "false");
-    expect(postChatMessage).not.toHaveBeenCalled();
+    expect(sent).not.toHaveBeenCalled();
   });
 
   it("suggests and inserts emoji in the picked skin tone", async () => {
     localStorage.setItem("skin-tone", "2");
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     await screen.findByRole("listbox");
@@ -81,7 +108,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("moves the choice with the arrow keys and picks it with Tab", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     await screen.findByRole("listbox");
@@ -94,7 +121,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("replaces only the shortcode at the caret", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":sk later");
     await user.keyboard("{ArrowLeft>6/}");
@@ -105,43 +132,48 @@ describe("ChatSuggestInput", () => {
   });
 
   it("sends a short emoticon like :S unless an emoji is chosen", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input, sent } = renderSuggestInput();
 
     await user.type(input, ":S");
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
     expect(chosen()).toBeNull();
     await user.keyboard("{Enter}");
 
-    expect(postChatMessage).toHaveBeenCalled();
-    await waitFor(() => expect(input).toHaveValue(""));
+    expect(sent).toHaveBeenCalledWith(":S");
+    expect(input).toHaveValue("");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("forgets a dismissal once the message is sent", async () => {
-    const { promise, resolve } = Promise.withResolvers<{ status: "ok" }>();
-    vi.mocked(postChatMessage).mockReturnValue(promise);
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "hi :S");
     await screen.findByRole("listbox");
     await user.keyboard("{Escape}{Enter}");
-    resolve({ status: "ok" });
-    await waitFor(() => expect(input).toHaveValue(""));
+    expect(input).toHaveValue("");
     await user.paste("hi :S");
 
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
   });
 
   it("loads the emoji when a shortcode is typed into an input focused before hydration", async () => {
-    const { input } = renderChatInput();
+    const { input } = renderSuggestInput();
 
     fireEvent.change(input, { target: { value: ":fire" } });
 
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
   });
 
+  it("reloads the emoji on focus, so a failed load retries", async () => {
+    const { user, input } = renderSuggestInput();
+
+    await user.click(input);
+
+    expect(reloadShortcodes).toHaveBeenCalledOnce();
+  });
+
   it("chooses the first with an up or down arrow when none is", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":s");
     await screen.findByRole("listbox");
@@ -150,15 +182,14 @@ describe("ChatSuggestInput", () => {
     expect(input).toHaveValue("💀 ");
   });
 
-  it("closes on Escape without clearing the reply, until the shortcode changes", async () => {
-    const { user, input, setReplyToId } = renderChatInput("message-id");
+  it("closes on Escape, until the shortcode changes", async () => {
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":sk");
     await screen.findByRole("listbox");
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(setReplyToId).not.toHaveBeenCalled();
 
     await user.click(input);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
@@ -168,7 +199,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("keeps the choice within the list at its ends, leaving Home and End to the caret", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     await screen.findByRole("listbox");
@@ -180,7 +211,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("leaves keys to an input method mid-composition", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     await screen.findByRole("listbox");
@@ -191,7 +222,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("closes when the browser dismisses it, as on a click outside", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     const picker = await screen.findByRole("listbox");
@@ -203,7 +234,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("closes when focus moves on", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":S");
     await screen.findByRole("listbox");
@@ -214,7 +245,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("stays open when a tap takes focus without a new target", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":fire");
     await screen.findByRole("listbox");
@@ -224,7 +255,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("inserts a clicked emoji and keeps focus in the input", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "so :s");
     await user.click(await screen.findByRole("option", { name: "skull" }));
@@ -234,7 +265,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("closes when a shortcode is selected rather than typed up to", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "hi :fire");
     await screen.findByRole("listbox");
@@ -245,7 +276,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("ignores a pick once the caret has left the shortcode", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "hi :fire");
     const option = await screen.findByRole("option", { name: "fire" });
@@ -256,7 +287,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("names the chosen emoji under the list", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
     const name = () => document.querySelector(".emoji-picker > .name");
 
     await user.type(input, ":f");
@@ -270,7 +301,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("shows each emoji's shortcode as its tooltip", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, ":skel");
 
@@ -284,7 +315,7 @@ describe("ChatSuggestInput", () => {
 
   it("offers commands after a leading slash, then their options", async () => {
     setPreference(variantPreference, "manual");
-    const { user, input } = renderChatInput();
+    const { user, input, sent } = renderSuggestInput();
 
     await user.type(input, "/");
     expect(screen.getByRole("listbox", { name: "Commands" })).toBeVisible();
@@ -297,11 +328,11 @@ describe("ChatSuggestInput", () => {
 
     expect(input).toHaveValue("/style ledger ");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(postChatMessage).not.toHaveBeenCalled();
+    expect(sent).not.toHaveBeenCalled();
   });
 
   it("chooses the first option of a command picked further down", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "/");
     await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
@@ -311,7 +342,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("chooses nothing for a command typed in full, so Enter runs it", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "/help");
 
@@ -320,7 +351,7 @@ describe("ChatSuggestInput", () => {
   });
 
   it("suggests emoji after a command that takes no options", async () => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, "/help :fire");
 
@@ -336,7 +367,7 @@ describe("ChatSuggestInput", () => {
     "//",
     "/style ledger x",
   ])("stays closed for %s", async (text) => {
-    const { user, input } = renderChatInput();
+    const { user, input } = renderSuggestInput();
 
     await user.type(input, text);
 

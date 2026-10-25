@@ -4,11 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
-import { CREATED_AT, fillCategory, seed, stored } from "@/mocks/memory";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
+  describeMiss,
   edit,
   forget,
   forgetPerson,
@@ -27,6 +27,34 @@ vi.mock(import("@/lib/turso"), async () =>
 );
 
 sqliteBeforeEach(query, MIGRATIONS);
+
+const CREATED_AT = "2025-01-01T00:00:00.000Z";
+
+async function seed(
+  id: number,
+  category: string,
+  content: string,
+  createdAt = CREATED_AT,
+) {
+  await query(
+    "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
+    [id, category, content, createdAt],
+  );
+}
+
+async function fillCategory(category: string, count = MAX_PER_CATEGORY) {
+  for (let i = 0; i < count; i++) {
+    await seed(100 + i, category, `note ${i}`);
+  }
+}
+
+async function stored(id: number) {
+  const { rows } = await query(
+    "SELECT category, content FROM memories WHERE id = ?",
+    [id],
+  );
+  return rows[0];
+}
 
 describe("peopleCategory", () => {
   it("should slugify usernames under the people prefix", () => {
@@ -367,6 +395,41 @@ describe("forget", () => {
       status: "missing",
       id: 4,
     });
+  });
+});
+
+describe("describeMiss", () => {
+  const current = {
+    id: 3,
+    category: "self",
+    content: "i like dogs",
+    createdAt: CREATED_AT,
+    updatedAt: undefined,
+  };
+
+  it.each([
+    {
+      miss: { status: "missing", id: 3 },
+      expected: {
+        error: "There is no note #3 - it may have been forgotten already",
+      },
+    },
+    {
+      miss: { status: "full", category: "self" },
+      expected: {
+        error: `Category "self" is full (${MAX_PER_CATEGORY} memories). Forget something first.`,
+      },
+    },
+    {
+      miss: { status: "stale", current },
+      expected: {
+        error:
+          "Note #3 has changed since you read it - work from its current text",
+        current,
+      },
+    },
+  ] as const)("should explain a $miss.status note", ({ miss, expected }) => {
+    expect(describeMiss(miss)).toEqual(expected);
   });
 });
 

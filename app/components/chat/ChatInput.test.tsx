@@ -1,24 +1,40 @@
-import { screen, waitFor } from "@testing-library/react";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  onTestFinished,
-  vi,
-} from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { postChatMessage, type PostChatMessageResult } from "@/actions/chat";
 import { forgetMe, type ForgetMeResult } from "@/actions/simonBot";
-import { renderChatInput } from "@/mocks/chatInput";
-import { resetPreferences } from "@/mocks/preferences";
+
+import { ChatInput } from "./ChatInput";
 
 vi.mock(import("@/actions/chat"), () => ({ postChatMessage: vi.fn() }));
 vi.mock(import("@/actions/simonBot"), () => ({
   forgetMe: vi.fn(),
   getNotesOnMe: vi.fn(),
 }));
+
+function renderChatInput(replyToId: string | null = null) {
+  const setReplyToId = vi.fn();
+  const user = userEvent.setup({ delay: null });
+  const element = (replyToId: string | null) => (
+    <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
+      <button type="button">Next</button>
+    </ChatInput>
+  );
+  const view = render(element(replyToId));
+  const input = screen.getByRole<HTMLInputElement>("combobox");
+
+  return {
+    user,
+    input,
+    setReplyToId,
+    replyTo: (replyToId: string | null) => view.rerender(element(replyToId)),
+    send: async (text: string) => {
+      await user.type(input, text);
+      await user.keyboard("{Enter}");
+    },
+  };
+}
 
 const sentForm = () => vi.mocked(postChatMessage).mock.calls[0]?.[0];
 
@@ -174,6 +190,17 @@ describe("ChatInput", () => {
       expect(setReplyToId).not.toHaveBeenCalled();
     });
 
+    it("leaves the reply when Escape closes the suggestions", async () => {
+      const { user, input, setReplyToId } = renderChatInput("message-id");
+
+      await user.type(input, ":");
+      await screen.findByRole("listbox");
+      await user.keyboard("{Escape}");
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(setReplyToId).not.toHaveBeenCalled();
+    });
+
     it("does not call setReplyToId on Escape when not replying", async () => {
       const { user, setReplyToId } = renderChatInput();
 
@@ -270,8 +297,6 @@ describe("CaretBuddy integration", () => {
   });
 
   describe("commands", () => {
-    afterEach(resetPreferences);
-
     it("prints a command's output without posting, until Escape", async () => {
       const { user, input, send } = renderChatInput();
 

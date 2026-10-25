@@ -2,9 +2,10 @@ import { http, HttpResponse } from "msw";
 import { getImageProps } from "next/image";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { config } from "@/config";
 import { userGetTopAlbums } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { coverCdn, topAlbum } from "@/mocks/lastfm";
+import { topAlbum } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 
 import { coverUrls, warmCovers } from "./covers";
@@ -22,8 +23,8 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
 const origin = "http://localhost:3000";
 
 const albums = [
-  topAlbum("first", "Artist", 1, `${coverCdn}/first.jpg`),
-  topAlbum("second", "Artist", 2, `${coverCdn}/second.jpg`),
+  topAlbum("first", "Artist", 1, `${config.lastfmCoverCdn}first.jpg`),
+  topAlbum("second", "Artist", 2, `${config.lastfmCoverCdn}second.jpg`),
   topAlbum("third", "Artist", 3),
 ];
 
@@ -48,8 +49,8 @@ describe("warmCovers", () => {
     expect(userGetTopAlbums).toHaveBeenCalledTimes(6);
     expect(requests.map(({ url }) => url.replace(origin, "")).sort()).toEqual(
       [
-        ...coverUrls(`${coverCdn}/first.jpg`, 0),
-        ...coverUrls(`${coverCdn}/second.jpg`, 1),
+        ...coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0),
+        ...coverUrls(`${config.lastfmCoverCdn}second.jpg`, 1),
       ].sort(),
     );
     expect(requests[0]?.headers.get("accept")).toBe("image/webp");
@@ -67,14 +68,17 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() =>
       expect(log.warn).toHaveBeenCalledWith(
-        { path: coverUrls(`${coverCdn}/first.jpg`, 0)[0], status: 504 },
+        {
+          path: coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0)[0],
+          status: 504,
+        },
         "Cover warm-up failed",
       ),
     );
   });
 
   it("keeps warming past a cover whose request fails", async () => {
-    const [failing] = coverUrls(`${coverCdn}/first.jpg`, 0);
+    const [failing] = coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0);
     server.use(
       http.get(`${origin}/_next/image`, ({ request }) =>
         request.url.endsWith(failing!) ? HttpResponse.error() : undefined,

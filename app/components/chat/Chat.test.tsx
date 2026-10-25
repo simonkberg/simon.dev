@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { type ChatHistoryResult, reactToChatMessage } from "@/actions/chat";
 import type { Message, Reaction } from "@/lib/discord/api";
@@ -12,10 +12,6 @@ import { Chat } from "./Chat";
 vi.mock(import("@/actions/chat"), () => ({ reactToChatMessage: vi.fn() }));
 
 describe("Chat", () => {
-  afterEach(() => {
-    document.cookie = "chatTipDismissed=; max-age=0";
-  });
-
   const chatElement = (result: ChatHistoryResult, tipDismissed = false) => (
     <Chat
       history={Promise.resolve(result)}

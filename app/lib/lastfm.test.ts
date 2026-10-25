@@ -1,7 +1,7 @@
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
-import { coverCdn } from "@/mocks/lastfm";
+import { config } from "@/config";
 import { server } from "@/mocks/node";
 
 import {
@@ -252,7 +252,7 @@ describe("userGetTopArtists", () => {
 });
 
 describe("userGetTopAlbums", () => {
-  const images = (hash: string, host = coverCdn) =>
+  const images = (hash: string, host: string = config.lastfmCoverCdn) =>
     [
       ["small", "34s"],
       ["medium", "64s"],
@@ -260,7 +260,7 @@ describe("userGetTopAlbums", () => {
       ["extralarge", "300x300"],
     ].map(([size, path]) => ({
       size,
-      "#text": hash && `${host}/${path}/${hash}.jpg`,
+      "#text": hash && `${host}${path}/${hash}.jpg`,
     }));
   const album = (
     name: string,
@@ -304,7 +304,7 @@ describe("userGetTopAlbums", () => {
         playcount: 250,
         rank: 1,
         url: "https://www.last.fm/music/Test",
-        cover: `${coverCdn}/abc123.jpg`,
+        cover: `${config.lastfmCoverCdn}abc123.jpg`,
       },
       {
         name: "Another",
@@ -332,7 +332,7 @@ describe("userGetTopAlbums", () => {
   it.each([
     ["no art", ""],
     ["Last.fm's placeholder star", "2a96cbd8b46e442fc41c2b86b821562f"],
-    ["another host", "abc123", "https://example.com/i/u"],
+    ["another host", "abc123", "https://example.com/i/u/"],
   ])("should leave out the cover for %s", async (_, hash, host?: string) => {
     lastfmReturns({
       topalbums: { album: [album("Test", 1, 250, images(hash, host))] },

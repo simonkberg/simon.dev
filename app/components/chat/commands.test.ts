@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { forgetMe, getNotesOnMe } from "@/actions/simonBot";
 import type { Username } from "@/lib/session";
-import { resetPreferences } from "@/mocks/preferences";
 
 import { runCommand } from "./commands";
 
@@ -12,8 +11,6 @@ vi.mock(import("@/actions/simonBot"), () => ({
 }));
 
 const username = "brave-otter" as Username;
-
-afterEach(resetPreferences);
 
 describe("runCommand", () => {
   it("aligns the help after each usage", () => {

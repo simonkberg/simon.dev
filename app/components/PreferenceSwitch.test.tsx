@@ -1,6 +1,6 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   grounds,
@@ -8,17 +8,16 @@ import {
   themePreference,
   variantPreference,
 } from "@/lib/preferences";
-import {
-  renderThemeColorTags,
-  resetPreferences,
-  themeColors,
-} from "@/mocks/preferences";
 
 import { PreferenceSwitch } from "./PreferenceSwitch";
+import { ThemeColorTags } from "./ThemeColorTags";
 
 const root = document.documentElement;
 
-afterEach(resetPreferences);
+const themeColors = () =>
+  [...document.querySelectorAll('meta[name="theme-color"]')].map((meta) =>
+    meta.getAttribute("content"),
+  );
 
 describe("PreferenceSwitch", () => {
   it("labels the group and presses the fallback without a choice", () => {
@@ -50,7 +49,7 @@ describe("PreferenceSwitch", () => {
   it("colours the browser with the chosen option's ground", async () => {
     root.setAttribute("data-variant", "panes");
     root.setAttribute("data-theme", "system");
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
     render(<PreferenceSwitch preference={variantPreference} />);
 
     await userEvent.click(screen.getByRole("button", { name: "ledger" }));
@@ -61,7 +60,7 @@ describe("PreferenceSwitch", () => {
   it("tints theme-color tags added before it mounts", () => {
     root.setAttribute("data-variant", "manual");
     document.cookie = preferenceCookie(themePreference, "dark");
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
 
     render(<PreferenceSwitch preference={themePreference} />);
 

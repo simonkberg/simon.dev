@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { identifiers } from "@/lib/identifiers";
+import { isDeniedRequest } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
 import { encrypt, type Username } from "@/lib/session";
 import { setTyping, stopTyping } from "@/lib/siteTyping";
 import { mockCookieJar } from "@/mocks/headers";
-import { loadDenyList } from "@/mocks/ipDenyList";
 
 import { DELETE, POST } from "./route";
 
@@ -16,6 +15,9 @@ vi.mock(import("@/lib/identifiers"), async (importOriginal) => ({
     Promise.resolve({ ip: "1.1.1.1", userAgent: "vitest" }),
   ),
 }));
+vi.mock(import("@/lib/ipDenyList"), () => ({
+  isDeniedRequest: vi.fn(() => false),
+}));
 vi.mock(import("@/lib/siteTyping"), () => ({
   setTyping: vi.fn(() => Promise.resolve()),
   stopTyping: vi.fn(() => Promise.resolve()),
@@ -24,7 +26,6 @@ vi.mock(import("@/lib/siteTyping"), () => ({
 describe("POST /api/chat/typing", () => {
   beforeEach(async () => {
     mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
-    await loadDenyList("6.6.6.6");
   });
 
   it("marks the session's visitor as typing", async () => {
@@ -42,12 +43,10 @@ describe("POST /api/chat/typing", () => {
   });
 
   it("turns away a listed IP", async () => {
-    vi.mocked(identifiers).mockResolvedValue({
-      ip: "6.6.6.6",
-      userAgent: "vitest",
-    });
+    vi.mocked(isDeniedRequest).mockReturnValue(true);
 
     expect((await POST()).status).toBe(403);
+    expect(isDeniedRequest).toHaveBeenCalledWith("1.1.1.1", "typing");
     expect(setTyping).not.toHaveBeenCalled();
   });
 

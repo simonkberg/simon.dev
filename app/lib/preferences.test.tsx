@@ -1,14 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 
-import { afterEach, describe, expect, it, onTestFinished } from "vitest";
+import { render } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
-import {
-  renderThemeColorTags,
-  resetPreferences,
-  runPreferencesScript,
-  themeColors,
-} from "@/mocks/preferences";
+import { ThemeColorTags } from "@/components/ThemeColorTags";
 
 import {
   applySavedPreferences,
@@ -23,7 +20,14 @@ import {
 
 const root = document.documentElement;
 
-afterEach(resetPreferences);
+// The head script with only the document in scope, so a reference to the bundle throws.
+const runPreferencesScript = () =>
+  runInNewContext(preferencesScript, { document });
+
+const themeColors = () =>
+  [...document.querySelectorAll('meta[name="theme-color"]')].map((meta) =>
+    meta.getAttribute("content"),
+  );
 
 describe("applySavedPreferences", () => {
   it("applies every saved option to the root", () => {
@@ -42,9 +46,6 @@ describe("applySavedPreferences", () => {
   it("leaves the fallbacks without valid cookies", () => {
     root.setAttribute("data-variant", "panes");
     root.setAttribute("data-theme", "system");
-    onTestFinished(() => {
-      document.cookie = "myvariant=; max-age=0; path=/";
-    });
     document.cookie = "myvariant=manual; path=/";
     document.cookie = "variant=neon; path=/";
     document.cookie = "theme=sepia; path=/";
@@ -69,7 +70,7 @@ describe("preferencesScript", () => {
     root.setAttribute("data-theme", themePreference.fallback);
     document.cookie = `variant=${variant}; path=/`;
     document.cookie = `theme=${theme}; path=/`;
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
     runPreferencesScript();
   }
 
@@ -89,7 +90,7 @@ describe("preferencesScript", () => {
   it("falls back to the fallback variant per scheme on unknown values", () => {
     root.setAttribute("data-variant", "neon");
     root.setAttribute("data-theme", "sepia");
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
 
     runPreferencesScript();
 
@@ -99,7 +100,7 @@ describe("preferencesScript", () => {
 
 describe("syncThemeColor", () => {
   it("retints the tags after a change", () => {
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
     root.setAttribute("data-variant", "ledger");
     root.setAttribute("data-theme", "light");
 
@@ -114,7 +115,7 @@ describe("syncThemeColor", () => {
   });
 
   it("falls back to the fallback variant's ground", () => {
-    renderThemeColorTags();
+    render(<ThemeColorTags />);
     root.setAttribute("data-variant", "neon");
     root.setAttribute("data-theme", "dark");
 
