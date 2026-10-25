@@ -57,8 +57,11 @@ afterEach(() => {
     // Left by preferences and the commands that set them.
     const root = document.documentElement;
     for (const name of root.getAttributeNames()) root.removeAttribute(name);
+    // happy-dom keeps a cookie expired by max-age, and matches it by path.
     for (const cookie of document.cookie.split("; ").filter(Boolean)) {
-      document.cookie = `${cookie.split("=")[0]}=; max-age=0; path=/`;
+      const expired = `${cookie.split("=")[0]}=; expires=${new Date(0).toUTCString()}`;
+      document.cookie = expired;
+      document.cookie = `${expired}; path=/`;
     }
     document.head.replaceChildren();
     // Cleared the way another tab would, so stores that cache it start over.
