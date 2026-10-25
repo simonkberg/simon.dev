@@ -46,18 +46,15 @@
   --title-display: block;
   --title-weight: bold;
   --title-prefix: none;
+  --title-prefix-color: var(--muted);
   --title-suffix: none;
   --title-link-display: inline;
   --title-link-padding: 0;
-  --title-link-bg: transparent;
-  --title-link-color: inherit;
   --title-link-hover-color: var(--link-hover-color);
-  --title-link-hover-bg: var(--link-hover-bg);
   --nav-gap: 1ch;
   --nav-link-padding: 0;
   --nav-prefix: none;
   --nav-current-color: var(--ink);
-  --nav-current-bg: transparent;
   --nav-current-weight: normal;
   --nav-current-marker: none;
   --nav-hover-color: var(--link-hover-color);
@@ -100,6 +97,7 @@
   --heading-sub-display: inline;
   --heading-sub-gap: 0;
   --heading-sub-case: none;
+  --heading-number: none;
 
   --stats-columns: minmax(0, 1fr) max-content;
   --stats-gap: 0;
@@ -208,13 +206,6 @@
   --code-border: none;
   --code-radius: 0;
   --pill-radius: 0;
-  --segment-point: 0em;
-  --segment-pad: calc(1ch + var(--segment-point));
-  --segment-tip:
-    calc(100% - var(--segment-point)) 0, 100% 50%,
-    calc(100% - var(--segment-point)) 100%, 0 100%;
-  --segment: none;
-  --segment-notched: none;
   --code-size: inherit;
   --meta-size: inherit;
   --spoiler-revealed-bg: var(--wash);
@@ -225,6 +216,7 @@
   --replying-clear-top: 0.25rem;
 
   --input-bleed: 0;
+  --history-bleed: 0;
   --input-rule: 1px solid var(--rule);
   --prompt-weight: normal;
   --buddy-size: inherit;
@@ -277,9 +269,9 @@
   color-scheme: dark;
 }
 
-/* Panes: a multiplexer session. Status line of powerline segments with a
-   window per page, sections as panes titled in their border; the pane in use
-   takes the highlight. */
+/* Panes: a multiplexer session drawn like a spec sheet. A status line with a
+   bracketed window per page, sections as numbered panes titled in their
+   border; the pane in use takes the highlight. */
 
 :root[data-variant="panes"] {
   --ground: light-dark(oklch(0.99 0.002 255), oklch(0.145 0.008 260));
@@ -293,9 +285,6 @@
     color-mix(in oklch, oklch(0.57 0.24 345) 10%, transparent),
     color-mix(in oklch, oklch(0.78 0.17 345) 12%, transparent)
   );
-  --segment-point: 0.6em;
-  --segment: polygon(0 0, var(--segment-tip));
-  --segment-notched: polygon(0 0, var(--segment-tip), var(--segment-point) 50%);
 
   --link-line: var(--muted);
   --link-hover-color: var(--accent);
@@ -312,15 +301,14 @@
     max(1rem, env(safe-area-inset-right));
   --title-case: lowercase;
   --title-link-display: block;
-  --title-link-padding: 0 var(--segment-pad) 0 1ch;
-  --title-link-bg: var(--accent);
-  --title-link-color: var(--on-accent);
-  --title-link-hover-color: var(--on-accent);
-  --title-link-hover-bg: var(--accent);
+  --title-link-padding: 0 2ch 0 0;
+  --title-prefix: "◆ ";
+  --title-prefix-color: var(--accent);
+  --title-link-hover-color: var(--accent);
   --nav-gap: 0;
-  --nav-link-padding: 0 var(--segment-pad);
-  --nav-prefix: counter(page) ":";
-  --nav-current-bg: var(--wash);
+  --nav-link-padding: 0 1ch;
+  --nav-prefix: "[" counter(page) "] ";
+  --nav-current-color: var(--accent);
   --nav-current-marker: "*";
   --nav-hover-color: var(--ink);
 
@@ -342,10 +330,13 @@
   --heading-max: calc(100% - 3ch);
   --heading-padding: 0 1ch;
   --heading-translate: 0 -50%;
-  --heading-bg: var(--ground);
-  --heading-size: 0.875rem;
-  --heading-case: lowercase;
-  --heading-sub-case: lowercase;
+  /* Solid down to the border, then gone within a few pixels, so the history
+     bleeding under it meets no box edge. */
+  --heading-bg: linear-gradient(var(--ground) 50%, transparent 55%);
+  --heading-size: 0.75rem;
+  --heading-case: uppercase;
+  --heading-tracking: 0.12em;
+  --heading-number: counter(pane, decimal-leading-zero) " ";
   --heading-wrap: nowrap;
 
   --stats-gap: 0 2ch;
@@ -353,6 +344,8 @@
   --stats-row-bleed: -1ch;
   --stats-heat: var(--heat);
   --stems-hover-bg: var(--heat);
+  --stems-marker: "◆";
+  --stems-marker-current: "◇";
   --cover-filter: saturate(0.85) contrast(1.05);
   --cover-overlay: repeating-linear-gradient(
     light-dark(oklch(1 0 0 / 0.1), oklch(0 0 0 / 0.18)) 0 1px,
@@ -377,13 +370,13 @@
   --topbar-position: absolute;
   --topbar-translate: 0 -50%;
   --topbar-padding: 0 0.5ch;
-  --topbar-bg: var(--ground);
+  --topbar-bg: var(--heading-bg);
   --topbar-size: 0.875rem;
   --control-padding: 0 0.5ch;
   --control-maximize: "z";
   --status-dot: inline-block;
 
-  --history-padding: 0.25rem 0.75rem;
+  --history-padding: 1.25rem 0.75rem;
   --reply-glyph: "";
   --reply-glyph-left: -1.5ch;
   --reply-glyph-top: 0.5lh;
@@ -395,6 +388,7 @@
   --user-chroma: 0.15;
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
+  --history-bleed: -1rem -2ch 0 0;
   --input-padding: 0.4rem 2ch 0.5rem;
   --prompt: "$";
   --buddy-size: 0.8rem;
@@ -413,8 +407,8 @@
   --menu-link-line: none;
   --menu-link-hover: var(--ink);
   --menu-current-padding: 0 1ch;
-  --menu-current-bg: var(--accent);
-  --menu-current-fg: var(--on-accent);
+  --menu-current-fg: var(--accent);
+  --menu-current-line: underline 1px var(--accent);
 
   --th-rule: 1px solid var(--rule);
   --th-padding: 1px;
@@ -903,15 +897,12 @@ button {
     > .link {
       display: var(--title-link-display);
       padding: var(--title-link-padding);
-      background: var(--title-link-bg);
-      color: var(--title-link-color);
-      clip-path: var(--segment);
       text-decoration: none;
       white-space: nowrap;
 
       &::before {
         content: var(--title-prefix);
-        color: var(--muted);
+        color: var(--title-prefix-color);
         font-weight: normal;
       }
 
@@ -920,7 +911,7 @@ button {
       }
 
       &:hover {
-        background: var(--title-link-hover-bg);
+        background: var(--link-hover-bg);
         color: var(--title-link-hover-color);
       }
     }
@@ -946,9 +937,7 @@ button {
       }
 
       &[aria-current] {
-        background: var(--nav-current-bg);
         color: var(--nav-current-color);
-        clip-path: var(--segment-notched);
         font-weight: var(--nav-current-weight);
 
         &::after {
@@ -957,11 +946,6 @@ button {
         }
       }
     }
-  }
-
-  /* A clip-path would cut the focus outline off. */
-  :is(.title > .link, .nav > a):focus-visible {
-    clip-path: none;
   }
 
   .host {
@@ -979,6 +963,7 @@ button {
 /* Layout */
 
 .page > .content {
+  counter-reset: pane;
   display: var(--content-display);
   flex-direction: column;
   grid-template-columns: var(--content-columns);
@@ -1010,6 +995,7 @@ section {
 }
 
 section:has(> .heading) {
+  counter-increment: pane;
   position: relative;
   min-width: 0;
   padding: var(--section-padding);
@@ -1065,6 +1051,13 @@ section:has(> .terminal) {
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color 0.15s;
+  /* Above a chat history bleeding into its section's padding, fade included. */
+  z-index: 2;
+
+  &::before {
+    content: var(--heading-number);
+    color: var(--accent);
+  }
 
   > .subtitle {
     display: var(--heading-sub-display);
@@ -1874,9 +1867,9 @@ ul {
     border: 0;
     border-radius: 0;
 
-    /* Panes hangs the bar on its section's border, which fullscreen hides. */
+    /* Panes hangs the bar on its section's border, which fullscreen hides, so
+       it floats over the top of the history instead. */
     > .topbar {
-      position: static;
       translate: none;
       justify-content: flex-end;
     }
@@ -1894,6 +1887,7 @@ ul {
     position: var(--topbar-position);
     top: 0;
     right: 1.5ch;
+    z-index: 2;
     translate: var(--topbar-translate);
     display: flex;
     align-items: center;
@@ -1982,6 +1976,7 @@ ul {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  margin: var(--history-bleed);
   overflow: hidden;
 
   &::before,
