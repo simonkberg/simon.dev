@@ -73,9 +73,10 @@ describe("ChatHistory", () => {
     });
 
     it("keeps the last reply to a message where it was until it slides out", async () => {
-      const slide = Promise.withResolvers<Animation>();
+      const finished = Promise.withResolvers<Animation>();
+      const slide = { finished: finished.promise, playState: "running" };
       vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
-        { finished: slide.promise } as Animation,
+        slide as Animation,
       ]);
       const { update } = renderHistory([
         message("1", "Parent", [
@@ -89,8 +90,16 @@ describe("ChatHistory", () => {
       expect(leaving).toHaveAttribute("data-motion", "leave");
       expect(leaving?.nextElementSibling).toBe(item("Message 3"));
 
-      // A cancelled slide settles too.
-      await act(async () => slide.reject(new DOMException("", "AbortError")));
+      // Cancelled while another slide runs, it waits for that one.
+      await act(async () =>
+        finished.reject(new DOMException("", "AbortError")),
+      );
+      expect(leaving).toBeInTheDocument();
+
+      slide.playState = "finished";
+      await act(async () =>
+        update([message("1", "Parent", [message("3", "Message 3")])]),
+      );
       expect(leaving).not.toBeInTheDocument();
     });
 

@@ -103,15 +103,22 @@ const ChatHistoryMessages = ({
           leaving
             ? (li: HTMLLIElement | null) => {
                 if (!li) return;
-                const done = () => remove(message.id);
                 const animations = li.getAnimations();
                 // Reduced motion leaves nothing to wait for.
-                if (animations.length === 0) done();
+                if (animations.length === 0) remove(message.id);
                 // Settles once the slide ends or is cancelled.
                 else
                   void Promise.allSettled(
                     animations.map(({ finished }) => finished),
-                  ).then(done);
+                  ).then(() => {
+                    // A slide started since, as when it left again, waits for itself.
+                    if (
+                      !li
+                        .getAnimations()
+                        .some(({ playState }) => playState === "running")
+                    )
+                      remove(message.id);
+                  });
               }
             : undefined
         }
