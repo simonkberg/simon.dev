@@ -51,11 +51,11 @@ describe("OnThisDay", () => {
       ],
     });
 
-    const rails = [
+    const grows = [
       ...document.querySelectorAll<HTMLElement>(".timeline li"),
-    ].map((li) => Number(li.style.getPropertyValue("--rail")));
-    expect(Math.max(...rails)).toBeLessThan(1);
-    expect(rails.at(-1)).toBe(0);
+    ].map((li) => Number(li.style.getPropertyValue("--grow")));
+    expect(Math.max(...grows)).toBeLessThan(1);
+    expect(grows.at(-1)).toBe(0);
     expect(screen.getByText("0 plays")).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("OnThisDay", () => {
       />,
     );
 
-    expect(html).toContain("--rail:1;--grow:1");
+    expect(html).toContain("--grow:1");
   });
 
   it("renders a notice when the days failed to load", async () => {

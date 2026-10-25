@@ -1,6 +1,6 @@
 "use client";
 
-import { animated, easings } from "@react-spring/web";
+import { animated } from "@react-spring/web";
 import { type CSSProperties, use } from "react";
 
 import type {
@@ -33,24 +33,18 @@ const toStops = (years: readonly DayInYear[]): Stop[] => {
   return stops;
 };
 
-// Each stop arrives as the rail above it lands, then fills in over a few more steps.
+// A stop fills in over a few steps, and the next one starts a step later.
 const stepMs = 90;
-const delay = (index: number) => index * stepMs;
+const steps = 4;
 
 export const OnThisDay = ({ days }: OnThisDayProps) => {
   const data = use(days);
   const stops = data ? toStops(data.years) : [];
   // The origin is stop 0.
-  const rails = useGrow(stops.length + 1, delay, { duration: stepMs });
-  const fills = useGrow(stops.length + 1, delay, {
-    duration: stepMs * 4,
-    easing: easings.easeOutQuad,
+  const springs = useGrow(stops.length + 1, (index) => index * stepMs, {
+    duration: stepMs * steps,
   });
-  const style = (step: number) =>
-    ({
-      "--rail": rails[step]?.grow,
-      "--grow": fills[step]?.grow,
-    }) as CSSProperties;
+  const grows = springs.map(({ grow }) => grow);
 
   if (data === undefined) {
     return <p>This day in past years is temporarily unavailable :(</p>;
@@ -59,8 +53,14 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
   const max = Math.max(0, ...data.years.map(({ count }) => count));
 
   return (
-    <ol className="timeline" style={{ "--max": max } as CSSProperties}>
-      <animated.li className="timeline-origin" style={style(0)}>
+    <ol
+      className="timeline"
+      style={{ "--max": max, "--steps": steps } as CSSProperties}
+    >
+      <animated.li
+        className="timeline-origin"
+        style={{ "--grow": grows[0] } as CSSProperties}
+      >
         {data.date}
       </animated.li>
       {stops.map((stop, index) => {
@@ -69,7 +69,10 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
           <animated.li
             key={stop.year.year}
             style={
-              { ...style(step), "--value": stop.year.count } as CSSProperties
+              {
+                "--grow": grows[step],
+                "--value": stop.year.count,
+              } as CSSProperties
             }
           >
             <span className="timeline-year">{stop.year.year}</span>
@@ -78,7 +81,7 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             </span>
             <span className="timeline-plays">
               <animated.span aria-hidden="true">
-                {countUp(stop.year.count, fills[step]?.grow, (shown) =>
+                {countUp(stop.year.count, grows[step], (shown) =>
                   formatPlays(stop.year.count, shown),
                 )}
               </animated.span>
@@ -88,7 +91,11 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             </span>
           </animated.li>
         ) : (
-          <animated.li key={stop.to} style={style(step)} data-silent>
+          <animated.li
+            key={stop.to}
+            style={{ "--grow": grows[step] } as CSSProperties}
+            data-silent
+          >
             <span className="timeline-year">
               {stop.from === stop.to ? stop.to : `${stop.from}–${stop.to}`}
             </span>
