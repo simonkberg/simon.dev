@@ -7,6 +7,12 @@ import { GET } from "./route";
 const shortcodes = (): Promise<EmojiShortcodes[]> => GET().json();
 
 describe("GET /api/emoji", () => {
+  it("lets browsers keep the list, since a static route alone only sends s-maxage", () => {
+    expect(GET().headers.get("Cache-Control")).toBe(
+      "public, max-age=86400, stale-while-revalidate=604800",
+    );
+  });
+
   it("names each emoji by JoyPixels' shortcode first", async () => {
     const emoji = await shortcodes();
 

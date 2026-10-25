@@ -136,19 +136,23 @@ describe("ChatHistory", () => {
       ).toHaveFocus();
     });
 
-    it("takes links in other messages out of the tab order", () => {
+    it("takes links and spoilers in other messages out of the tab order", () => {
       renderHistory([
-        message("1", "[First](https://example.com)"),
-        message("3", "[Last](https://example.com)"),
+        message("1", "[First](https://example.com) ||secret||"),
+        message("3", "[Last](https://example.com) ||secret||"),
       ]);
+      const spoiler = (content: string) =>
+        within(article(content)).getByRole("button", { name: "Spoiler" });
 
       expect(screen.getByRole("link", { name: "First" })).toHaveAttribute(
         "tabindex",
         "-1",
       );
+      expect(spoiler("First")).toHaveAttribute("tabindex", "-1");
       expect(screen.getByRole("link", { name: "Last" })).not.toHaveAttribute(
         "tabindex",
       );
+      expect(spoiler("Last")).toHaveAttribute("tabindex", "0");
     });
 
     it("moves the controls' tab order with the tab stop", async () => {

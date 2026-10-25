@@ -26,11 +26,13 @@ function setTabStop(root: Element, id: string | undefined) {
     const active = message.dataset["id"] === id;
     message.tabIndex = active ? 0 : -1;
     for (const control of message.querySelectorAll<HTMLElement>(
-      "a[href], button",
+      "a[href], button, [role='button']",
     )) {
+      if (!active) control.tabIndex = -1;
+      // A spoiler is a span, focusable only with a tabindex.
+      else if (control.matches("[role='button']")) control.tabIndex = 0;
       // Not 0: Safari would then tab to these even where it skips every other button and link.
-      if (active) control.removeAttribute("tabindex");
-      else control.tabIndex = -1;
+      else control.removeAttribute("tabindex");
     }
   }
 }
