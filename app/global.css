@@ -1867,9 +1867,9 @@ ul {
     border: 0;
     border-radius: 0;
 
-    /* Panes hangs the bar on its section's border, which fullscreen hides. */
+    /* Panes hangs the bar on its section's border, which fullscreen hides, so
+       it floats over the top of the history instead. */
     > .topbar {
-      position: static;
       translate: none;
       justify-content: flex-end;
     }
@@ -1880,11 +1880,6 @@ ul {
       max-height: none;
       min-height: 0;
       flex: 1;
-    }
-
-    /* A bleed into the section's padding would run under the bar. */
-    .chat-history {
-      margin-top: 0;
     }
   }
 
