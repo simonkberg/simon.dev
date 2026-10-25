@@ -285,6 +285,23 @@ describe("getScrobbles", () => {
       "Error fetching scrobbles",
     );
   });
+
+  it.each([new Error("API error"), "API error"])(
+    "should log an ended bucket's failure with its message, from %o",
+    async (reason) => {
+      vi.mocked(userGetScrobbles).mockRejectedValueOnce(reason);
+
+      await getScrobbles("7day");
+
+      expect(log.error).toHaveBeenCalledWith(
+        {
+          err: expect.objectContaining({ message: "API error" }),
+          action: "getScrobbles",
+        },
+        "Error fetching scrobbles",
+      );
+    },
+  );
 });
 
 describe("getTopArtistByBucket", () => {
