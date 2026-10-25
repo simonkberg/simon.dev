@@ -148,13 +148,16 @@ const periodBuckets = (period: Period, now: Date) =>
     : scrobbleBuckets(period, now);
 
 // Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
-function cacheUntil(end: Date, now: Date, maxSeconds: number) {
+function cacheUntil(end: number, now: Date, maxSeconds: number) {
   const revalidate = Math.min(
     maxSeconds,
-    Math.max(1, Math.ceil((end.getTime() - now.getTime()) / 1000)),
+    Math.max(1, Math.ceil((end - now.getTime()) / 1000)),
   );
   cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
 }
+
+const chartEnd = (buckets: readonly { to: Date }[]) =>
+  Math.max(...buckets.map(({ to }) => to.getTime()));
 
 const countIn = async (from: Date, to: Date) =>
   // Only the total is read, so one track per page is enough.
@@ -210,7 +213,7 @@ export async function getScrobbles(
         return { label, count, current };
       }),
     );
-    cacheUntil(buckets.at(-1)?.to ?? now, now, 3600);
+    cacheUntil(chartEnd(buckets), now, 3600);
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");
@@ -246,7 +249,7 @@ export async function getTopArtistByBucket(
             : unwrap(await endedTopArtist(from.getTime(), to.getTime())),
       })),
     );
-    cacheUntil(buckets.at(-1)?.to ?? now, now, 3600);
+    cacheUntil(chartEnd(buckets), now, 3600);
     return { status: "ok", buckets: artists };
   } catch (err) {
     cacheLife("seconds");
@@ -317,7 +320,7 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
       ),
     );
     // Every year shown has ended, so only the date changing can change them.
-    cacheUntil(nextMidnight(now), now, Infinity);
+    cacheUntil(nextMidnight(now).getTime(), now, Infinity);
     return { status: "ok", days: { date: dayLabel.format(now), years } };
   } catch (err) {
     cacheLife("seconds");

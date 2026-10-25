@@ -41,15 +41,15 @@ async function limited<T>(request: () => Promise<T>): Promise<T> {
     inFlight: 0,
     waiting: [] as (() => void)[],
   }));
-  if (slots.inFlight >= MAX_IN_FLIGHT) {
-    await new Promise<void>((resolve) => slots.waiting.push(resolve));
-  }
-  slots.inFlight++;
+  if (slots.inFlight < MAX_IN_FLIGHT) slots.inFlight++;
+  // A finished call hands its slot straight over, so a newcomer can't take it first.
+  else await new Promise<void>((resolve) => slots.waiting.push(resolve));
   try {
     return await request();
   } finally {
-    slots.inFlight--;
-    slots.waiting.shift()?.();
+    const next = slots.waiting.shift();
+    if (next) next();
+    else slots.inFlight--;
   }
 }
 
