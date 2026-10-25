@@ -29,7 +29,7 @@ export const colorSchemes = ["light", "dark"] as const;
 
 // Each variant's --ground; preferences.test.ts keeps them in step with global.css.
 export const grounds = {
-  panes: { light: "oklch(0.965 0.004 255)", dark: "oklch(0.19 0.012 255)" },
+  panes: { light: "oklch(0.99 0.002 255)", dark: "oklch(0.145 0.008 260)" },
   ledger: { light: "oklch(0.975 0.004 265)", dark: "oklch(0.16 0.012 265)" },
   manual: { light: "oklch(0.985 0.002 100)", dark: "oklch(0.17 0.004 100)" },
 } as const satisfies Record<

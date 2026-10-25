@@ -35,6 +35,7 @@
 
   --header-position: static;
   --header-bg: transparent;
+  --header-rule: none;
   --header-size: 1rem;
   --header-leading: inherit;
   --header-justify: normal;
@@ -91,6 +92,10 @@
   --heading-padding: 0;
   --heading-translate: none;
   --heading-bg: transparent;
+  --heading-active-bg: var(--heading-bg);
+  --heading-active-color: var(--section-active);
+  --heading-active-sub: var(--muted);
+  --heading-link-hover: var(--link-hover-color);
   --heading-size: 1rem;
   --heading-case: none;
   --heading-tracking: normal;
@@ -206,6 +211,8 @@
   --code-border: none;
   --code-radius: 0;
   --pill-radius: 0;
+  --segment: none;
+  --segment-notched: none;
   --code-size: inherit;
   --meta-size: inherit;
   --spoiler-revealed-bg: var(--wash);
@@ -270,19 +277,35 @@
 }
 
 /* Panes: a multiplexer session. Status line with a window per page, sections
-   as panes titled in their border; the pane in use takes the highlight. */
+   as panes titled in their border, titles and windows as powerline segments;
+   the pane in use fills its title with the accent. */
 
 :root[data-variant="panes"] {
-  --ground: light-dark(oklch(0.965 0.004 255), oklch(0.19 0.012 255));
-  --wash: light-dark(oklch(0.915 0.008 255), oklch(0.235 0.014 255));
-  --ink: light-dark(oklch(0.25 0.015 255), oklch(0.87 0.012 255));
-  --muted: light-dark(oklch(0.5 0.02 255), oklch(0.63 0.02 255));
-  --rule: light-dark(oklch(0.8 0.01 255), oklch(0.36 0.015 255));
-  --accent: light-dark(oklch(0.58 0.23 338), oklch(0.76 0.17 338));
-  --on-accent: light-dark(oklch(0.99 0.01 338), oklch(0.22 0.03 338));
+  --ground: light-dark(oklch(0.99 0.002 255), oklch(0.145 0.008 260));
+  --wash: light-dark(oklch(0.93 0.008 255), oklch(0.23 0.012 260));
+  --ink: light-dark(oklch(0.2 0.015 260), oklch(0.94 0.006 260));
+  --muted: light-dark(oklch(0.5 0.016 260), oklch(0.68 0.014 260));
+  --rule: light-dark(oklch(0.88 0.006 260), oklch(0.3 0.01 260));
+  --accent: light-dark(oklch(0.57 0.24 345), oklch(0.78 0.17 345));
+  --on-accent: light-dark(oklch(0.99 0.01 345), oklch(0.22 0.03 345));
   --heat: light-dark(
-    color-mix(in oklch, oklch(0.58 0.23 338) 14%, transparent),
-    color-mix(in oklch, oklch(0.76 0.17 338) 16%, transparent)
+    color-mix(in oklch, oklch(0.57 0.24 345) 10%, transparent),
+    color-mix(in oklch, oklch(0.78 0.17 345) 12%, transparent)
+  );
+  --segment: polygon(
+    0 0,
+    calc(100% - 0.6em) 0,
+    100% 50%,
+    calc(100% - 0.6em) 100%,
+    0 100%
+  );
+  --segment-notched: polygon(
+    0 0,
+    calc(100% - 0.6em) 0,
+    100% 50%,
+    calc(100% - 0.6em) 100%,
+    0 100%,
+    0.6em 50%
   );
 
   --link-line: var(--muted);
@@ -290,7 +313,8 @@
 
   --header-position: sticky;
   --header-padding: env(safe-area-inset-top) 0 0;
-  --header-bg: var(--wash);
+  --header-bg: var(--ground);
+  --header-rule: 1px solid var(--rule);
   --header-size: 0.875rem;
   --header-leading: 1.75;
   --header-max: 66rem;
@@ -298,15 +322,15 @@
     max(1rem, env(safe-area-inset-right));
   --title-case: lowercase;
   --title-link-display: block;
-  --title-link-padding: 0 1ch;
+  --title-link-padding: 0 calc(1ch + 0.6em) 0 1ch;
   --title-link-bg: var(--accent);
   --title-link-color: var(--on-accent);
   --title-link-hover-color: var(--on-accent);
   --title-link-hover-bg: var(--accent);
-  --nav-link-padding: 0 1ch;
+  --nav-gap: 0;
+  --nav-link-padding: 0 calc(1ch + 0.6em);
   --nav-prefix: counter(page) ":";
-  --nav-current-bg: var(--rule);
-  --nav-current-marker: "*";
+  --nav-current-bg: var(--wash);
   --nav-hover-color: var(--ink);
 
   --content-display: grid;
@@ -324,10 +348,14 @@
   --section-active: var(--accent);
 
   --heading-position: absolute;
-  --heading-max: calc(100% - 3ch);
-  --heading-padding: 0 1ch;
+  --heading-max: calc(100% - 5ch);
+  --heading-padding: 0 calc(1ch + 0.6em) 0 1ch;
   --heading-translate: 0 -50%;
-  --heading-bg: var(--ground);
+  --heading-bg: var(--wash);
+  --heading-active-bg: var(--accent);
+  --heading-active-color: var(--on-accent);
+  --heading-active-sub: var(--on-accent);
+  --heading-link-hover: var(--on-accent);
   --heading-size: 0.875rem;
   --heading-case: lowercase;
   --heading-sub-case: lowercase;
@@ -381,7 +409,6 @@
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
   --input-padding: 0.4rem 2ch 0.5rem;
-  --input-rule: 1px dashed var(--rule);
   --prompt: "$";
   --buddy-size: 0.8rem;
   --buddy-leading: 1.875;
@@ -393,17 +420,16 @@
   --toast-size: 0.875rem;
   --toast-error-bg: oklch(0.62 0.18 27);
 
-  --menu-gap: 0.25rem 1ch;
-  --menu-item-padding: 0 1ch;
-  --menu-item-bg: var(--wash);
+  --menu-gap: 0.25rem 0;
+  --menu-item-padding: 0 calc(1ch + 0.6em);
   --menu-link-color: var(--muted);
   --menu-link-line: none;
   --menu-link-hover: var(--ink);
-  --menu-current-padding: 0 1ch;
+  --menu-current-padding: 0 calc(1ch + 0.6em);
   --menu-current-bg: var(--accent);
   --menu-current-fg: var(--on-accent);
 
-  --th-rule: 1px dashed var(--rule);
+  --th-rule: 1px solid var(--rule);
   --th-padding: 1px;
   --td-padding: 0.1rem 1px;
   --first-row-pad: 0.35rem;
@@ -864,6 +890,7 @@ button {
   top: 0;
   z-index: 3;
   padding: var(--header-padding);
+  border-bottom: var(--header-rule);
   background: var(--header-bg);
   font-size: var(--header-size);
   line-height: var(--header-leading);
@@ -891,6 +918,7 @@ button {
       padding: var(--title-link-padding);
       background: var(--title-link-bg);
       color: var(--title-link-color);
+      clip-path: var(--segment);
       text-decoration: none;
       white-space: nowrap;
 
@@ -933,6 +961,7 @@ button {
       &[aria-current] {
         background: var(--nav-current-bg);
         color: var(--nav-current-color);
+        clip-path: var(--segment-notched);
         font-weight: var(--nav-current-weight);
 
         &::after {
@@ -1000,7 +1029,12 @@ section:has(> .heading) {
     border-color: var(--section-active);
 
     > .heading {
-      color: var(--section-active);
+      background: var(--heading-active-bg);
+      color: var(--heading-active-color);
+
+      > .subtitle {
+        color: var(--heading-active-sub);
+      }
     }
   }
 }
@@ -1035,6 +1069,7 @@ section:has(> .terminal) {
   padding: var(--heading-padding);
   translate: var(--heading-translate);
   background: var(--heading-bg);
+  clip-path: var(--segment);
   font-size: var(--heading-size);
   font-weight: bold;
   text-transform: var(--heading-case);
@@ -1043,7 +1078,13 @@ section:has(> .terminal) {
   white-space: var(--heading-wrap);
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.15s;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+
+  a:hover {
+    color: var(--heading-link-hover);
+  }
 
   > .subtitle {
     display: var(--heading-sub-display);
@@ -2411,6 +2452,7 @@ menu {
     padding: var(--menu-current-padding);
     background: var(--menu-current-bg);
     color: var(--menu-current-fg);
+    clip-path: var(--segment-notched);
     text-decoration: var(--menu-current-line);
     text-underline-offset: 0.35em;
   }
