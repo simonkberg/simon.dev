@@ -549,7 +549,7 @@ export type SearchMessage = {
   id: string;
   username: string;
   content: string;
-  timestamp: string;
+  timestamp: Date;
 };
 
 export type SearchHit = { hit: SearchMessage; context: SearchMessage[] };
@@ -560,7 +560,7 @@ async function resolveSearchMessage(
   msg: z.infer<typeof SearchMessageSchema>,
 ): Promise<SearchMessage> {
   const { username, content } = await resolveMessageContent(msg);
-  return { id: msg.id, username, content, timestamp: msg.timestamp };
+  return { id: msg.id, username, content, timestamp: new Date(msg.timestamp) };
 }
 
 export async function searchChannelMessages(params: {
