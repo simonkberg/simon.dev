@@ -426,4 +426,18 @@ describe("typing", () => {
 
     expect(typing()).toEqual(["POST", "DELETE"]);
   });
+
+  it("sends the stop only once the ping it ends has landed", async () => {
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    const typing = recordTyping();
+    vi.mocked(fetch).mockReturnValueOnce(promise);
+    const { user, input } = renderChatInput();
+
+    await user.type(input, "H");
+    await user.clear(input);
+    expect(typing()).toEqual(["POST"]);
+
+    resolve(new Response(null, { status: 204 }));
+    await waitFor(() => expect(typing()).toEqual(["POST", "DELETE"]));
+  });
 });

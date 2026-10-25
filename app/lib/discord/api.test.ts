@@ -495,18 +495,34 @@ describe("subscribeToChannel", () => {
     await subscribeToChannel(callback);
     await getChannelMessages();
 
+    await vi.advanceTimersByTimeAsync(150);
+    callback.mockClear();
     const apply = vi.mocked(subscribe).mock.calls[0]![0];
 
     apply({ t: "MESSAGE_CREATE", d: message("burst-1") });
-    await vi.advanceTimersByTimeAsync(150);
-    callback.mockClear();
-    apply({ t: "MESSAGE_CREATE", d: message("burst-2") });
     await vi.advanceTimersByTimeAsync(100);
-    apply({ t: "MESSAGE_CREATE", d: message("burst-3") });
-    await vi.advanceTimersByTimeAsync(149);
+    apply({ t: "MESSAGE_CREATE", d: message("burst-2") });
+    await vi.advanceTimersByTimeAsync(49);
     expect(callback).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it("should still call back while changes keep coming", async () => {
+    server.use(history());
+    const callback = vi.fn();
+    await subscribeToChannel(callback);
+    await getChannelMessages();
+    await vi.advanceTimersByTimeAsync(150);
+    callback.mockClear();
+    const apply = vi.mocked(subscribe).mock.calls[0]![0];
+
+    for (let i = 0; i < 4; i++) {
+      apply({ t: "MESSAGE_CREATE", d: message(`steady-${i}`) });
+      await vi.advanceTimersByTimeAsync(100);
+    }
+
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 
   it("should not call back after unsubscribing", async () => {

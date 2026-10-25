@@ -386,7 +386,8 @@ export function getChannelRevision(): number {
 }
 
 // A replay or a reseed notifies once per event; each tab refreshes once for the lot.
-const NOTIFY_DEBOUNCE_MS = 150;
+// Timed from the first, so a steady stream of changes still refreshes.
+const NOTIFY_BATCH_MS = 150;
 
 /** Calls back once the history may have changed; rejects if the gateway can't connect. */
 export async function subscribeToChannel(
@@ -394,8 +395,10 @@ export async function subscribeToChannel(
 ): Promise<() => void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const unlisten = getStore().listen(() => {
-    clearTimeout(timer);
-    timer = setTimeout(callback, NOTIFY_DEBOUNCE_MS);
+    timer ??= setTimeout(() => {
+      timer = undefined;
+      callback();
+    }, NOTIFY_BATCH_MS);
   });
   const unsubscribe = () => {
     clearTimeout(timer);

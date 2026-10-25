@@ -155,7 +155,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Chat stream:** `ChatStream` (in the chat's title bar) owns the SSE connection and shows
   its state: `live`, `connecting` or `offline`. The route sends a named `status` event when
   the gateway behind it drops or recovers, so an open stream alone doesn't read as live.
-  Each change, or burst of them within 150ms, makes tabs `router.refresh()`, served from history cached per store revision.
+  Each change, batched with any in the next 150ms, makes tabs `router.refresh()`, served from history cached per store revision.
 - **Presence:** an open chat stream counts its visitor as here: one Turso `presence` row per
   stream. A replica's heartbeat is the only writer of its streams' rows: it runs on every open
   and close and each 15s, upserts the open ones, deletes the closed ones until that succeeds,
