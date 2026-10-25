@@ -1115,10 +1115,10 @@ ul {
     );
   }
 
-  /* The average rises with the middle stem. */
+  /* The average rises with the middle stem; the last starts within 450ms however many stems. */
   li,
   > .average {
-    --grow-delay: calc(var(--index) * 15ms);
+    --grow-delay: calc(var(--index) * min(15ms, 450ms / var(--count)));
   }
 
   li {
