@@ -10,6 +10,12 @@ import { server } from "@/mocks/node";
 import { sendToggle } from "@/mocks/popover";
 
 import { ChatSuggestInput } from "./ChatSuggestInput";
+import { reloadShortcodes } from "./shortcodes";
+
+vi.mock(import("./shortcodes"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, reloadShortcodes: vi.fn(actual.reloadShortcodes) };
+});
 
 const EMOJI: EmojiShortcodes[] = [
   ["🧑‍🚒", ["firefighter"], []],
@@ -156,6 +162,14 @@ describe("ChatSuggestInput", () => {
     fireEvent.change(input, { target: { value: ":fire" } });
 
     expect(await screen.findByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("reloads the emoji on focus, so a failed load retries", async () => {
+    const { user, input } = renderSuggestInput();
+
+    await user.click(input);
+
+    expect(reloadShortcodes).toHaveBeenCalledOnce();
   });
 
   it("chooses the first with an up or down arrow when none is", async () => {

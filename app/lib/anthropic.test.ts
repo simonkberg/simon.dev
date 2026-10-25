@@ -268,7 +268,8 @@ describe("createMessage", () => {
         input: { category: "self", content: "i like trains" },
         run: remember,
         called: { category: "self", content: "i like trains" },
-        result: { status: "ok", memory: note },
+        stub: () =>
+          vi.mocked(remember).mockResolvedValue({ status: "ok", memory: note }),
         expected: note,
       },
       {
@@ -276,7 +277,7 @@ describe("createMessage", () => {
         input: { category: "self" },
         run: recall,
         called: { category: "self", limit: 20 },
-        result: [note],
+        stub: () => vi.mocked(recall).mockResolvedValue([note]),
         expected: [note],
       },
       {
@@ -294,7 +295,8 @@ describe("createMessage", () => {
           newContent: "i like trains",
           category: "self",
         },
-        result: { status: "ok", memory: note },
+        stub: () =>
+          vi.mocked(edit).mockResolvedValue({ status: "ok", memory: note }),
         expected: note,
       },
       {
@@ -302,13 +304,13 @@ describe("createMessage", () => {
         input: { id: 3, content: "i like trains" },
         run: forget,
         called: { id: 3, content: "i like trains" },
-        result: { status: "ok" },
+        stub: () => vi.mocked(forget).mockResolvedValue({ status: "ok" }),
         expected: { forgotten: true },
       },
     ] as const)(
       "should run $tool on memory",
-      async ({ tool, input, run, called, result, expected }) => {
-        vi.mocked(run).mockResolvedValue(result as never);
+      async ({ tool, input, run, called, stub, expected }) => {
+        stub();
 
         expect(JSON.parse(await runTool(tool, input))).toEqual(expected);
         expect(run).toHaveBeenCalledWith(called);
