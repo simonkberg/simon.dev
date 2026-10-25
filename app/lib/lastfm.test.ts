@@ -11,7 +11,6 @@ import {
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
-  userGetTopArtistInRange,
   userGetTopArtists,
   userGetTopTracks,
 } from "./lastfm";
@@ -458,10 +457,14 @@ describe("userGetChartInRange", () => {
   );
 });
 
-describe("userGetTopArtistInRange", () => {
-  const range = {
-    from: new Date("2021-01-01T00:00:00Z"),
-    to: new Date("2021-01-02T00:00:00Z"),
+describe("userGetChartInRange for one artist", () => {
+  const topArtist = async () => {
+    const [top] = await userGetChartInRange("testuser", "artist", {
+      from: new Date("2021-01-01T00:00:00Z"),
+      to: new Date("2021-01-02T00:00:00Z"),
+      limit: 1,
+    });
+    return top;
   };
   const artist = (name: string, playcount: string) => ({
     name,
@@ -474,7 +477,7 @@ describe("userGetTopArtistInRange", () => {
       weeklyartistchart: { artist: [artist("Smog", "23"), artist("Low", "4")] },
     });
 
-    const top = await userGetTopArtistInRange("testuser", range);
+    const top = await topArtist();
 
     expect(params()).toMatchObject({
       method: "user.getweeklyartistchart",
@@ -488,16 +491,13 @@ describe("userGetTopArtistInRange", () => {
   it("should read a chart of one, which Last.fm lists bare", async () => {
     lastfmReturns({ weeklyartistchart: { artist: artist("Smog", "1") } });
 
-    expect(await userGetTopArtistInRange("testuser", range)).toEqual({
-      name: "Smog",
-      playcount: 1,
-    });
+    expect(await topArtist()).toEqual({ name: "Smog", playcount: 1 });
   });
 
   it("should find no artist in an empty range", async () => {
     lastfmReturns({ weeklyartistchart: {} });
 
-    expect(await userGetTopArtistInRange("testuser", range)).toBeUndefined();
+    expect(await topArtist()).toBeUndefined();
   });
 });
 

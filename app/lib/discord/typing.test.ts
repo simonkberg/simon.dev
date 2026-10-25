@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { message } from "@/mocks/discord";
 import { mockEnv } from "@/mocks/env";
+import { gatewayDispatcher } from "@/mocks/gateway";
 
-import { type EventSubscriber, subscribe } from "./gateway";
 import type { TypingStart } from "./schemas";
 import { subscribeToTyping } from "./typing";
 
@@ -32,8 +32,7 @@ const memberless = { user_id: "someone" };
 function listen() {
   const listener = vi.fn();
   subscribeToTyping(listener);
-  const dispatch: EventSubscriber = vi.mocked(subscribe).mock.calls[0]![0];
-  return { listener, dispatch };
+  return { listener, dispatch: gatewayDispatcher() };
 }
 
 const typing = (typist: Omit<TypingStart, "channel_id">) =>

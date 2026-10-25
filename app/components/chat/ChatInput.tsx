@@ -8,7 +8,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { requestFormReset } from "react-dom";
 
 import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 import { TooltipButton } from "@/components/Tooltip";
@@ -132,7 +131,6 @@ export const ChatInput = ({
       if (result.status === "ok") {
         // Nested startTransition required: after await, we're outside the original transition context
         startTransition(() => {
-          requestFormReset(form);
           setReplyToId(null);
           typing.posted();
           setInputValue("");

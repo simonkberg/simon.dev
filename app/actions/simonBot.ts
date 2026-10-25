@@ -13,16 +13,16 @@ import {
 import { getSession, type Username } from "@/lib/session";
 
 export type GetBotNotesResult =
-  | { status: "ok"; notes: Record<PublicCategory, Memory[]> }
+  | { status: "ok"; data: Record<PublicCategory, Memory[]> }
   | { status: "error"; error: string };
 
 export async function getBotNotes(): Promise<GetBotNotesResult> {
   "use cache";
 
   try {
-    const notes = await readPublicNotes();
+    const data = await readPublicNotes();
     cacheLife("minutes");
-    return { status: "ok", notes };
+    return { status: "ok", data };
   } catch (err) {
     cacheLife("seconds");
     log.error({ err, action: "getBotNotes" }, "Error fetching bot notes");

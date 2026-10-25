@@ -3,8 +3,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
+import { gatewayDispatcher as dispatcher } from "@/mocks/gateway";
 
-import { type EventSubscriber, subscribe } from "./gateway";
+import { subscribe } from "./gateway";
 import { gatewayTracker } from "./tracker";
 
 vi.mock(import("./gateway"), () => ({
@@ -20,9 +21,6 @@ const tracker = () =>
     },
     names: (heard) => [...heard],
   });
-
-const dispatcher = (): EventSubscriber =>
-  vi.mocked(subscribe).mock.calls[0]![0];
 
 describe("gatewayTracker", () => {
   it("tells a listener the names now and on every change", () => {

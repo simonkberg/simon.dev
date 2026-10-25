@@ -296,10 +296,6 @@ const userGetScrobblesResponseSchema = z
     tracks: data.recenttracks.track.filter((track) => !track.nowPlaying),
   }));
 
-export type UserGetScrobblesResponse = z.infer<
-  typeof userGetScrobblesResponseSchema
->;
-
 const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
   from: toUnixTime(from),
   // `to` is inclusive, and the next range starts on this second.
@@ -309,7 +305,7 @@ const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
 export async function userGetScrobbles(
   user: string,
   params: { from: Date; to: Date; limit: number },
-): Promise<UserGetScrobblesResponse> {
+) {
   return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
     user,
     limit: params.limit,
@@ -366,17 +362,6 @@ export async function userGetChartInRange(
     user,
     ...rangeParams(params),
   });
-}
-
-export async function userGetTopArtistInRange(
-  user: string,
-  params: { from: Date; to: Date },
-): Promise<ChartItem | undefined> {
-  const [top] = await userGetChartInRange(user, "artist", {
-    ...params,
-    limit: 1,
-  });
-  return top;
 }
 
 // Last.fm leaves the count out for an unknown user rather than failing.

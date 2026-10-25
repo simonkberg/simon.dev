@@ -8,6 +8,7 @@ import { MIGRATIONS } from "@/lib/migrations";
 import { reflect } from "@/lib/reflection";
 import { query } from "@/lib/turso";
 import { message } from "@/mocks/discord";
+import { gatewayDispatcher } from "@/mocks/gateway";
 import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
@@ -534,9 +535,7 @@ describe("startBotSubscription", () => {
 
   async function startAndGetSubscriber() {
     await startBotSubscription();
-    const callback = vi.mocked(subscribe).mock.calls[0]?.[0];
-    if (!callback) throw new Error("Bot did not subscribe");
-    return callback;
+    return gatewayDispatcher();
   }
 
   it("should handle created messages", async () => {

@@ -11,7 +11,7 @@ vi.mock(import("@/actions/simonBot"), () => ({
   getBotNotes: vi.fn(() =>
     Promise.resolve<GetBotNotesResult>({
       status: "ok",
-      notes: {
+      data: {
         self: [
           {
             id: 1,

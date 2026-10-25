@@ -9,9 +9,9 @@ import {
   type ChartItem,
   type Period,
   TOP_ALBUMS,
+  userGetChartInRange,
   userGetRecentTracks,
   userGetScrobbles,
-  userGetTopArtistInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   type UserGetTopAlbumsResponse,
@@ -167,8 +167,16 @@ const countIn = async (from: Date, to: Date) =>
     )
   ).total;
 
-const topArtistIn = (from: Date, to: Date) =>
-  bulk(() => userGetTopArtistInRange(config.lastfmUsername, { from, to }));
+const topArtistIn = async (from: Date, to: Date) => {
+  const [top] = await bulk(() =>
+    userGetChartInRange(config.lastfmUsername, "artist", {
+      from,
+      to,
+      limit: 1,
+    }),
+  );
+  return top;
+};
 
 type Settled<T> =
   | { status: "ok"; data: T }

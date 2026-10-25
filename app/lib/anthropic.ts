@@ -136,8 +136,6 @@ const contentBlockSchema = z.discriminatedUnion("type", [
     name: z.string(),
     input: z.record(z.string(), z.unknown()),
   }),
-  z.object({ type: z.literal("server_tool_use") }),
-  z.object({ type: z.literal("web_search_tool_result") }),
 ]);
 
 const createMessageResponseSchema = z.object({

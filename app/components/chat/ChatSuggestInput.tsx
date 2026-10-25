@@ -18,9 +18,9 @@ import {
 } from "@/lib/emoji";
 
 import { arrowIndex, gridColumns } from "./arrowFocus";
-import { ChatCommandSuggestions } from "./ChatCommandSuggestions";
-import { ChatEmojiSuggestions } from "./ChatEmojiSuggestions";
+import { ChatSuggestions } from "./ChatSuggestions";
 import { typedCommand } from "./commands";
+import { EmojiButton } from "./EmojiButton";
 import { loadShortcodes, reloadShortcodes } from "./shortcodes";
 import { useSkinTone } from "./skinTone";
 
@@ -101,6 +101,7 @@ export const ChatSuggestInput = ({
 
   const open = picks.length > 0;
   const chosen = active === null ? undefined : picks[active];
+  const chosenEmoji = active === null ? undefined : emojiMatches[active];
 
   useEffect(() => {
     const input = ref.current;
@@ -212,23 +213,45 @@ export const ChatSuggestInput = ({
       />
       {open &&
         (shown?.kind === "command" ? (
-          <ChatCommandSuggestions
+          <ChatSuggestions
             ref={list}
             id={id}
+            label="Commands"
+            className="command-picker"
             matches={commandMatches}
             active={active}
-            onPick={pick}
             onDismiss={dismiss}
+            option={({ value, label, detail }, props) => (
+              <button key={value} {...props} onClick={() => pick(value)}>
+                <span className="label">{label}</span>
+                {detail && <span className="detail">{detail}</span>}
+              </button>
+            )}
           />
         ) : (
-          <ChatEmojiSuggestions
+          <ChatSuggestions
             ref={list}
             id={id}
+            label="Emoji"
+            className="emoji-picker"
             matches={emojiMatches}
             active={active}
-            onPick={pick}
             onDismiss={dismiss}
-          />
+            option={({ emoji, name }, props) => (
+              <EmojiButton
+                key={emoji}
+                {...props}
+                emoji={emoji}
+                name={name}
+                picker={id}
+                onClick={() => pick(emoji)}
+              />
+            )}
+          >
+            <p className="name" aria-hidden="true">
+              {chosenEmoji && `:${chosenEmoji.name}:`}
+            </p>
+          </ChatSuggestions>
         ))}
     </>
   );

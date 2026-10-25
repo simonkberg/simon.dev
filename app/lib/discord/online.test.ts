@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { mockEnv } from "@/mocks/env";
+import { gatewayDispatcher } from "@/mocks/gateway";
 
 import { memberName } from "./api";
-import { type EventSubscriber, subscribe } from "./gateway";
 import { subscribeToOnline } from "./online";
 import type { GuildCreate } from "./schemas";
 
@@ -30,8 +30,7 @@ const members: GuildCreate["members"] = [
 function listen() {
   const listener = vi.fn();
   subscribeToOnline(listener);
-  const dispatch: EventSubscriber = vi.mocked(subscribe).mock.calls[0]![0];
-  return { listener, dispatch };
+  return { listener, dispatch: gatewayDispatcher() };
 }
 
 const guild = (presences: GuildCreate["presences"]) =>
@@ -89,6 +88,29 @@ describe("subscribeToOnline", () => {
     expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
   });
 
+  it("keeps a name a new session brought while its lookup failed", async () => {
+    const { promise, reject } = Promise.withResolvers<string | undefined>();
+    vi.mocked(memberName).mockReturnValueOnce(promise);
+    const { listener, dispatch } = listen();
+    dispatch(presence("newcomer-id", "online"));
+
+    const newcomer = { user: { id: "newcomer-id", username: "newcomer" } };
+    dispatch({
+      t: "GUILD_CREATE",
+      d: {
+        id: GUILD,
+        members: [newcomer],
+        presences: [{ user: { id: "newcomer-id" }, status: "online" }],
+      },
+    });
+    reject(new Error("boom"));
+    await vi.advanceTimersByTimeAsync(0);
+    dispatch(presence("newcomer-id", "dnd"));
+
+    expect(memberName).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
+  });
+
   it("doesn't tell of a name that arrives after its member left", async () => {
     const { listener, dispatch } = listen();
 
@@ -100,19 +122,21 @@ describe("subscribeToOnline", () => {
     expect(listener).toHaveBeenCalledTimes(told);
   });
 
-  it("logs when it can't name a member, and leaves them out without asking again", async () => {
-    vi.mocked(memberName).mockRejectedValue(new Error("boom"));
+  it("logs when it can't name a member, and asks again on their next update", async () => {
+    vi.mocked(memberName).mockRejectedValueOnce(new Error("boom"));
     const { listener, dispatch } = listen();
 
     dispatch(presence("newcomer-id", "online"));
     await vi.advanceTimersByTimeAsync(0);
-    dispatch(presence("newcomer-id", "dnd"));
-
-    expect(memberName).toHaveBeenCalledOnce();
     expect(listener).toHaveBeenLastCalledWith([]);
     expect(log.warn).toHaveBeenCalledWith(
       { err: new Error("boom") },
       "Failed to name an online member",
     );
+
+    dispatch(presence("newcomer-id", "dnd"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(memberName).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenLastCalledWith(["newcomer"]);
   });
 });

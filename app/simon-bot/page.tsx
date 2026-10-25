@@ -43,7 +43,7 @@ export default function SimonBotPage() {
           <Suspense fallback={<NoteListSkeleton />}>
             <NoteList
               notes={result.then((notes) =>
-                notes.status === "ok" ? notes.notes[category] : undefined,
+                notes.status === "ok" ? notes.data[category] : undefined,
               )}
             />
           </Suspense>
