@@ -28,6 +28,9 @@ ARG TURSO_AUTH_TOKEN
 ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 ARG RAILWAY_ENVIRONMENT_ID
 ARG RAILWAY_ENVIRONMENT_NAME
+# A tab still running an older deploy's JS then reloads instead of crashing on navigation.
+ARG RAILWAY_DEPLOYMENT_ID
+ENV NEXT_DEPLOYMENT_ID=${RAILWAY_DEPLOYMENT_ID}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
