@@ -26,7 +26,6 @@
   },
   "dependencies": {
     "@next/third-parties": "16.4.2",
-    "@react-spring/web": "10.1.2",
     "@tanstack/markdown": "1.0.0",
     "comparator.ts": "2.0.0",
     "emojibase-data": "18.0.0",

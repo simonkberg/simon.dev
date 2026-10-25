@@ -1,7 +1,6 @@
-import { Globals } from "@react-spring/web";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Message } from "@/lib/discord/api";
 import { createMessage } from "@/mocks/messages";
@@ -56,29 +55,83 @@ describe("ChatHistory", () => {
   });
 
   describe("animations", () => {
-    beforeEach(() => {
-      Globals.assign({ skipAnimation: false });
-    });
+    const item = (text: string) => screen.getByText(text).closest("li");
+
+    const slide = () => {
+      const finished = Promise.withResolvers<Animation>();
+      vi.spyOn(HTMLElement.prototype, "getAnimations").mockReturnValue([
+        { finished: finished.promise } as Animation,
+      ]);
+      return finished;
+    };
 
     it("slides in the first reply to a message", () => {
       const { update } = renderHistory([message("1", "Parent")]);
 
       update([message("1", "Parent", [message("2", "Message 2")])]);
 
-      expect(screen.getByText("Message 2").closest("li")).toHaveStyle({
-        opacity: "0",
-        transform: "translateX(-100%)",
-      });
+      expect(item("Message 2")).toHaveAttribute("data-motion", "enter");
     });
 
-    it("keeps the last reply to a message while it slides out", () => {
+    it("keeps the last reply to a message where it was until it slides out", async () => {
+      const finished = slide();
+      const { update } = renderHistory([
+        message("1", "Parent", [
+          message("2", "Message 2"),
+          message("3", "Message 3"),
+        ]),
+      ]);
+
+      update([message("1", "Parent", [message("3", "Message 3")])]);
+      const leaving = item("Message 2");
+      expect(leaving).toHaveAttribute("data-motion", "leave");
+      expect(leaving).toHaveAttribute("inert");
+      expect(leaving?.nextElementSibling).toBe(item("Message 3"));
+
+      // A cancelled slide settles too.
+      await act(async () =>
+        finished.reject(new DOMException("", "AbortError")),
+      );
+      expect(leaving).not.toBeInTheDocument();
+    });
+
+    it("keeps messages that leave one after another in order", () => {
+      slide();
+      const { update } = renderHistory([
+        message("1", "Message 1"),
+        message("2", "Message 2"),
+        message("3", "Message 3"),
+      ]);
+
+      update([message("1", "Message 1"), message("3", "Message 3")]);
+      update([message("3", "Message 3")]);
+
+      expect(
+        screen
+          .getAllByRole("listitem", { hidden: true })
+          .map((li) => li.dataset["motion"]),
+      ).toEqual(["leave", "leave", undefined]);
+    });
+
+    it("removes a message at once without an animation to wait for", () => {
       const { update } = renderHistory([
         message("1", "Parent", [message("2", "Message 2")]),
       ]);
 
       update([message("1", "Parent")]);
 
-      expect(screen.getByText("Message 2")).toBeInTheDocument();
+      expect(screen.queryByText("Message 2")).not.toBeInTheDocument();
+    });
+
+    it("slides a message back in when it returns while leaving", async () => {
+      const finished = slide();
+      const { update } = renderHistory([message("1", "Message 1")]);
+
+      update([]);
+      update([message("1", "Message 1")]);
+      await act(async () => finished.resolve({} as Animation));
+
+      expect(item("Message 1")).toHaveAttribute("data-motion", "enter");
     });
   });
 

@@ -169,9 +169,6 @@ importers:
       '@next/third-parties':
         specifier: 16.4.2
         version: 16.4.2(next@16.4.2(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
-      '@react-spring/web':
-        specifier: 10.1.2
-        version: 10.1.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/markdown':
         specifier: 1.0.0
         version: 1.0.0(react@19.3.1)
@@ -1024,33 +1021,6 @@ packages:
     resolution: {integrity: sha512-aLS50FAUwTENen3tBqBn9j3ID5OeYhdDcl+oSVv8mclntHD5yvF/Zh+2oD8emP/I4cUCEGDeDyJ8OVv4QBD9ww==}
     engines: {node: '>=16.0.0'}
     hasBin: true
-
-  '@react-spring/animated@10.1.2':
-    resolution: {integrity: sha512-yAsQ/bbp6+vko7WNCI1M00c6KLE9XKTGCrgRhQqS4JcK3oF5qBV4rHYrQEprvEvYXxt+1H5FsLS2eVValEPfFw==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  '@react-spring/core@10.1.2':
-    resolution: {integrity: sha512-lPGOAg0V+PV3ucopOajD+YCxoe8twALqAeG4c/+sqVjBsyUNNdx8qfz/DcNSPKA8PV3+AyQELlCxlDfap9cmBQ==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  '@react-spring/rafz@10.1.2':
-    resolution: {integrity: sha512-KC6vSFZyPnRJ2rXqipV9QqR4SaYbYXjvKfdYKWipNK2mWuV79gr20WmpVUOsTiEHGRY3WSOdWCHN+P9Pdaqb7Q==}
-
-  '@react-spring/shared@10.1.2':
-    resolution: {integrity: sha512-47/8bNQ/o0uEmxEnPBuERlC29VSqiTn5P9ln9tUMSVkYKYxBtouYE686F5kAGj+eHRPoNCw7drxWE9nv2d1LMw==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  '@react-spring/types@10.1.2':
-    resolution: {integrity: sha512-G4CWowmVPz+rDG1y9QRVq/prZNxiNwQaHC0kgT/MgY6jAGgdRgTV4VThpvJDwWvUitk3xZB4soP4d36fjeQ09g==}
-
-  '@react-spring/web@10.1.2':
-    resolution: {integrity: sha512-KxDB3zaDqy9qFsu7fdxjyraAxweHH4k5TW5WGT/OuMK6hKaxSDfhrQfRBzfFaSVvMBf+NghbJFanllV4ia6i7A==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   '@rolldown/binding-android-arm-eabi@1.2.13':
     resolution: {integrity: sha512-Vu/NICrgdRvUOeaJZIyB2FP63s6fO/4ud5l8dXmxDx9yDyn+mN0y+gsvsVviSli+T361Aqo0h46EuMoobrwawA==}
@@ -2728,39 +2698,6 @@ snapshots:
     dependencies:
       node-fetch: 3.3.2
       tar: 6.2.1
-
-  '@react-spring/animated@10.1.2(react@19.3.1)':
-    dependencies:
-      '@react-spring/shared': 10.1.2(react@19.3.1)
-      '@react-spring/types': 10.1.2
-      react: 19.3.1
-
-  '@react-spring/core@10.1.2(react@19.3.1)':
-    dependencies:
-      '@react-spring/animated': 10.1.2(react@19.3.1)
-      '@react-spring/shared': 10.1.2(react@19.3.1)
-      '@react-spring/types': 10.1.2
-      react: 19.3.1
-
-  '@react-spring/rafz@10.1.2': {}
-
-  '@react-spring/shared@10.1.2(react@19.3.1)':
-    dependencies:
-      '@react-spring/rafz': 10.1.2
-      '@react-spring/types': 10.1.2
-      react: 19.3.1
-
-  '@react-spring/types@10.1.2': {}
-
-  '@react-spring/web@10.1.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
-    dependencies:
-      '@react-spring/animated': 10.1.2(react@19.3.1)
-      '@react-spring/core': 10.1.2(react@19.3.1)
-      '@react-spring/shared': 10.1.2(react@19.3.1)
-      '@react-spring/types': 10.1.2
-      csstype: 3.2.3
-      react: 19.3.1
-      react-dom: 19.3.1(react@19.3.1)
 
   '@rolldown/binding-android-arm-eabi@1.2.13':
     optional: true

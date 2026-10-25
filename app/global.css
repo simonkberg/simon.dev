@@ -1731,6 +1731,26 @@ ul {
   white-space: nowrap;
 }
 
+@keyframes chat-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes chat-enter {
+  from {
+    opacity: 0;
+    translate: -100% 0;
+  }
+}
+
+@keyframes chat-leave {
+  to {
+    opacity: 0;
+    translate: 100% 0;
+  }
+}
+
 /* Registered so it animates from the first paint, before hydration. */
 @property --grow {
   syntax: "<number>";
@@ -1976,11 +1996,29 @@ ul {
       padding-block: var(--history-padding);
       /* Room for a focused message's outline, which the scroller would clip. */
       padding-inline: 4px;
+      animation-name: chat-appear;
+
+      /* Longhands, since the minifier turns a nameless animation shorthand into none. */
+      &,
+      li[data-motion] {
+        animation-duration: 500ms;
+        /* easeOutCubic */
+        animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+      }
 
       > li + li {
         margin-top: var(--message-gap);
       }
     }
+  }
+
+  li[data-motion="enter"] {
+    animation-name: chat-enter;
+  }
+
+  li[data-motion="leave"] {
+    animation-name: chat-leave;
+    animation-fill-mode: forwards;
   }
 
   ul ul {
