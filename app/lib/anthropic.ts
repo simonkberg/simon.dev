@@ -7,6 +7,7 @@ import md from "string-dedent";
 import { z } from "zod";
 
 import { config } from "@/config";
+import { clockTime, dayRange, todayLabel } from "@/lib/dates";
 import {
   getChannelMessages,
   type Message as ChannelMessage,
@@ -43,7 +44,6 @@ import {
   MessageIdSchema,
   withSiteReactions,
 } from "@/lib/reactions";
-import { clockTime, dayRange, todayLabel } from "@/lib/scrobbleBuckets";
 import type { Username } from "@/lib/session";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 

@@ -3,6 +3,7 @@
 import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
+import { dayLabel, nextMidnight } from "@/lib/dates";
 import {
   bulk,
   type ChartItem,
@@ -21,8 +22,6 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
-  dayLabel,
-  nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
