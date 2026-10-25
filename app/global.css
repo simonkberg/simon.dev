@@ -1116,7 +1116,7 @@ ul {
   }
 
   /* The average rises with the middle stem; the last starts within 450ms however many stems. */
-  li,
+  > ol > li,
   > .average {
     --grow-delay: calc(var(--index) * min(15ms, 450ms / var(--count)));
   }
