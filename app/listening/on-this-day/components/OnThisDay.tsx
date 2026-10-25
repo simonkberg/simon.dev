@@ -1,6 +1,5 @@
 "use client";
 
-import { animated } from "@react-spring/web";
 import { type CSSProperties, use } from "react";
 
 import type {
@@ -8,8 +7,8 @@ import type {
   OnThisDay as OnThisDayData,
   PlayedYear,
 } from "@/actions/lastfm";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
-import { countUp, useGrow } from "@/components/useGrow";
 import { formatPlays } from "@/lib/formatNumber";
 
 export interface OnThisDayProps {
@@ -33,46 +32,32 @@ const toStops = (years: readonly DayInYear[]): Stop[] => {
   return stops;
 };
 
-// A stop fills in over a few steps, and the next one starts a step later.
-const stepMs = 90;
-const steps = 4;
-
 export const OnThisDay = ({ days }: OnThisDayProps) => {
   const data = use(days);
-  const stops = data ? toStops(data.years) : [];
-  // The origin is stop 0.
-  const springs = useGrow(stops.length + 1, (index) => index * stepMs, {
-    duration: stepMs * steps,
-  });
-  const grows = springs.map(({ grow }) => grow);
 
   if (data === undefined) {
     return <p>This day in past years is temporarily unavailable :(</p>;
   }
 
   const max = Math.max(0, ...data.years.map(({ count }) => count));
+  const stops = toStops(data.years);
 
   return (
     <ol
       className="timeline"
-      style={{ "--max": max, "--steps": steps } as CSSProperties}
+      style={{ "--max": max, "--count": stops.length + 1 } as CSSProperties}
     >
-      <animated.li
-        className="timeline-origin"
-        style={{ "--grow": grows[0] } as CSSProperties}
-      >
+      <li className="timeline-origin" style={{ "--index": 0 } as CSSProperties}>
         {data.date}
-      </animated.li>
+      </li>
       {stops.map((stop, index) => {
+        // The origin is stop 0.
         const step = index + 1;
         return stop.kind === "played" ? (
-          <animated.li
+          <li
             key={stop.year.year}
             style={
-              {
-                "--grow": grows[step],
-                "--value": stop.year.count,
-              } as CSSProperties
+              { "--index": step, "--value": stop.year.count } as CSSProperties
             }
           >
             <span className="timeline-year">{stop.year.year}</span>
@@ -80,27 +65,29 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
               {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
             </span>
             <span className="timeline-plays">
-              <animated.span aria-hidden="true">
-                {countUp(stop.year.count, grows[step], (shown) =>
-                  formatPlays(stop.year.count, shown),
-                )}
-              </animated.span>
+              <span aria-hidden="true">
+                <AnimatedNumber
+                  value={stop.year.count}
+                  follow
+                  format={(shown) => formatPlays(stop.year.count, shown)}
+                />
+              </span>
               <span className="visually-hidden">
                 {formatPlays(stop.year.count)}
               </span>
             </span>
-          </animated.li>
+          </li>
         ) : (
-          <animated.li
+          <li
             key={stop.to}
-            style={{ "--grow": grows[step] } as CSSProperties}
+            style={{ "--index": step } as CSSProperties}
             data-silent
           >
             <span className="timeline-year">
               {stop.from === stop.to ? stop.to : `${stop.from}–${stop.to}`}
             </span>
             <span className="timeline-top">nothing played</span>
-          </animated.li>
+          </li>
         );
       })}
     </ol>

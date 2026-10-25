@@ -1115,9 +1115,15 @@ ul {
     );
   }
 
+  /* The average rises with the middle stem; the last starts within 450ms however many stems. */
+  > ol > li,
+  > .average {
+    --grow-delay: calc(var(--index) * min(15ms, 450ms / var(--count)));
+  }
+
   li {
     --stems-top: calc(
-      var(--value) / var(--max) * var(--grow, 1) * var(--stems-height)
+      var(--value) / var(--max) * var(--grow) * var(--stems-height)
     );
     position: relative;
     min-width: 0;
@@ -1241,7 +1247,7 @@ ul {
     position: absolute;
     inset-inline: 0;
     bottom: calc(
-      var(--stems-zero) + var(--average) / var(--max) * var(--grow, 1) *
+      var(--stems-zero) + var(--average) / var(--max) * var(--grow) *
         var(--stems-height)
     );
     display: grid;
@@ -1317,10 +1323,16 @@ ul {
     }
   }
 
+  /* Each bar sweeps out after the stem above its start, the last within 600ms however many columns. */
+  .lane-label,
+  .lane-run {
+    --grow-delay: calc(150ms + var(--column) * min(30ms, 450ms / var(--count)));
+  }
+
   /* Sized here, not on the list, so the gutter's ch matches the stems'. */
   .lane-label {
     grid-row: 1;
-    opacity: var(--grow, 1);
+    opacity: var(--grow);
     font-size: var(--meta-size);
     white-space: nowrap;
 
@@ -1336,7 +1348,7 @@ ul {
     margin-inline: 2px;
     background: var(--accent);
     /* Clipped rather than scaled, so the current run's dashes keep their spacing. */
-    clip-path: inset(0 calc((1 - var(--grow, 1)) * 100%) 0 0);
+    clip-path: inset(0 calc((1 - var(--grow)) * 100%) 0 0);
 
     /* Like the current stem, still filling up. */
     &[data-current] {
@@ -1376,9 +1388,12 @@ ul {
   > li {
     --timeline-rails: var(--stems-glyph) var(--stems-glyph) var(--stems-glyph)
       var(--stems-glyph);
-    /* The rail lands in the first of a stop's steps, as the next stop starts. */
-    --rail: min(1, var(--grow, 1) * var(--steps, 1));
-    --fill: calc(var(--grow, 1) * (2 - var(--grow, 1)));
+    /* A stop fills in over four steps, and the next one starts a step later: 600ms in all, at most. */
+    --step: min(60ms, 600ms / (var(--count) + 3));
+    --grow-delay: calc(var(--index) * var(--step));
+    --grow-duration: calc(var(--step) * 4);
+    /* easeOutQuad */
+    --grow-easing: cubic-bezier(0.5, 1, 0.89, 1);
     position: relative;
     display: grid;
     grid-template-columns: 5ch minmax(0, 1fr);
@@ -1397,7 +1412,8 @@ ul {
       line-height: 0.6;
       text-align: center;
       white-space: pre;
-      clip-path: inset(0 0 calc((1 - var(--rail)) * 100%) 0);
+      /* Lands in the stop's first step, as the next stop starts. */
+      animation: rail var(--step) linear var(--grow-delay) backwards;
     }
 
     &::after {
@@ -1408,11 +1424,11 @@ ul {
       width: 2ch;
       color: var(--accent);
       text-align: center;
-      scale: var(--fill);
+      scale: var(--grow);
     }
 
     > span {
-      opacity: var(--fill);
+      opacity: var(--grow);
     }
 
     &:last-child::before {
@@ -1452,7 +1468,10 @@ ul {
     white-space: nowrap;
   }
 
+  /* Grows at the lanes' pace from its stop's start, while later stops keep coming. */
   .timeline-plays {
+    --grow-duration: initial;
+    --grow-easing: initial;
     --timeline-bars: var(--timeline-bar) var(--timeline-bar) var(--timeline-bar)
       var(--timeline-bar);
     grid-area: 1 / 2;
@@ -1462,7 +1481,7 @@ ul {
       content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
         var(--timeline-bars);
       display: inline-block;
-      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--fill) * 16ch);
+      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--grow) * 16ch);
       margin-inline-end: 1ch;
       overflow: hidden;
       color: var(--timeline-bar-color);
@@ -1710,6 +1729,47 @@ ul {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Registered so it animates from the first paint, before hydration. */
+@property --grow {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@keyframes grow {
+  from {
+    --grow: 0;
+  }
+}
+
+@keyframes rail {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/* A count follows the --grow it inherits, or grows on its own. */
+.stems > ol > li,
+.stems > .average,
+.lane-label,
+.lane-run,
+.timeline > li,
+.timeline-plays,
+.animated-number:not([data-follow]) {
+  /* easeOutCubic; filled both ways so a count whose value changes can restart it. */
+  animation: grow var(--grow-duration, 600ms)
+    var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
+    both;
+}
+
+/* Until it hydrates and counts along, a count waits for its --grow to finish. */
+.animated-number:not([data-counting]) {
+  opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
 }
 
 /* Registered so it animates, snapped to whole characters where it is read. */

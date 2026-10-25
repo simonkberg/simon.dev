@@ -1,50 +1,82 @@
-import { Globals } from "@react-spring/web";
 import { act, render, screen } from "@testing-library/react";
-import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
-
-import { mockReducedMotion } from "@/mocks/matchMedia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AnimatedNumber } from "./AnimatedNumber";
 
+// happy-dom doesn't inherit custom properties, so this sets the count's own.
+const setGrow = (grow: number) => {
+  const style =
+    document.querySelector("style") ??
+    document.head.appendChild(document.createElement("style"));
+  style.textContent = `.animated-number { --grow: ${grow} }`;
+};
+
+const nextFrame = () =>
+  act(() => {
+    vi.advanceTimersToNextFrame();
+  });
+
 beforeEach(() => {
-  Globals.assign({ skipAnimation: false });
+  vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
 });
 
 describe("AnimatedNumber", () => {
   it("renders the value in server markup", () => {
     expect(renderToString(<AnimatedNumber value={1234.5} decimals={2} />)).toBe(
-      "<span>1,234.50</span>",
+      '<span class="animated-number">1,234.50</span>',
     );
   });
 
-  it("keeps the server value when hydrating", async () => {
-    const container = document.createElement("div");
-    container.innerHTML = renderToString(<AnimatedNumber value={42} />);
-    document.body.append(container);
-    const root = await act(async () =>
-      hydrateRoot(container, <AnimatedNumber value={42} />),
-    );
-    onTestFinished(() => {
-      act(() => root.unmount());
-      container.remove();
-    });
+  it("counts along with the --grow it follows", () => {
+    setGrow(0.5);
+    render(<AnimatedNumber value={100} follow />);
+    nextFrame();
+    const count = screen.getByText("50");
+    expect(count).toHaveAttribute("data-counting");
 
-    expect(container).toHaveTextContent("42");
+    setGrow(1);
+    nextFrame();
+
+    expect(count).toHaveTextContent("100");
   });
 
-  it("counts up from zero when rendered on the client", () => {
-    render(<AnimatedNumber value={100} />);
+  it.each([
+    { growing: true, restarts: [[0]], committed: "100" },
+    { growing: false, restarts: [], committed: "200" },
+  ])(
+    "counts on from the number shown when its value changes (growing: $growing)",
+    ({ growing, restarts, committed }) => {
+      const { rerender } = render(<AnimatedNumber value={100} />);
+      nextFrame();
+      const count = screen.getByText("100");
+      const restart = vi.fn();
+      const animation = (properties: object) =>
+        Object.defineProperty(properties, "currentTime", { set: restart });
+      vi.spyOn(count, "getAnimations").mockReturnValue([
+        // A transition on the same element stays put.
+        animation({}) as Animation,
+        // A count that follows its row, or reduced motion, has no grow of its own.
+        ...(growing
+          ? [animation({ animationName: "grow" }) as CSSAnimation]
+          : []),
+      ]);
 
-    expect(screen.getByText("0")).toBeInTheDocument();
-  });
+      setGrow(0.5);
+      rerender(<AnimatedNumber value={200} />);
+      expect(count).toHaveTextContent(committed);
+      nextFrame();
 
-  it("shows the value at once with reduced motion", () => {
-    mockReducedMotion(true);
+      // Only a count with its own grow restarts and holds its number.
+      expect(restart.mock.calls).toEqual(restarts);
+      expect(count).toHaveTextContent("150");
+    },
+  );
 
+  it("shows the value once --grow isn't animating", () => {
     render(<AnimatedNumber value={50} decimals={2} />);
+    nextFrame();
 
-    expect(screen.getByText("50.00")).toBeInTheDocument();
+    expect(screen.getByText("50.00")).toHaveAttribute("data-counting");
   });
 });
