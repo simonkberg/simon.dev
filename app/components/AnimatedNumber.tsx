@@ -51,15 +51,20 @@ export const AnimatedNumber = ({
       // A new value counts on from the one shown, growing again unless it follows its row.
       if (last && last.to !== value) {
         Object.assign(count, { from: last.shown, to: value });
-        if (!follow) {
+        const grow = follow
+          ? undefined
+          : span
+              .getAnimations()
+              .find(
+                (animation) =>
+                  "animationName" in animation &&
+                  animation.animationName === "grow",
+              );
+        // Reduced motion leaves no grow to restart, so React's new value stands.
+        if (grow) {
           // React just wrote the new value; show the old one until the next frame counts on.
           span.textContent = format(last.shown);
-          for (const animation of span.getAnimations())
-            if (
-              "animationName" in animation &&
-              animation.animationName === "grow"
-            )
-              animation.currentTime = 0;
+          grow.currentTime = 0;
         }
       }
       spans.set(span, count);

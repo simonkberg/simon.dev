@@ -33,11 +33,12 @@ describe("AnimatedNumber", () => {
   });
 
   it.each([
-    { follow: false, restarts: [[0]], committed: "100" },
-    { follow: true, restarts: [], committed: "200" },
+    { follow: false, growing: true, restarts: [[0]], committed: "100" },
+    { follow: false, growing: false, restarts: [], committed: "200" },
+    { follow: true, growing: true, restarts: [], committed: "200" },
   ])(
-    "counts on from the number shown when its value changes (follow: $follow)",
-    ({ follow, restarts, committed }) => {
+    "counts on from the number shown when its value changes (follow: $follow, growing: $growing)",
+    ({ follow, growing, restarts, committed }) => {
       vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
       const style = document.createElement("style");
       document.head.append(style);
@@ -52,9 +53,12 @@ describe("AnimatedNumber", () => {
       const animation = (properties: object) =>
         Object.defineProperty(properties, "currentTime", { set: restart });
       vi.spyOn(count, "getAnimations").mockReturnValue([
-        animation({ animationName: "grow" }) as CSSAnimation,
         // A transition on the same element stays put.
         animation({}) as Animation,
+        // Reduced motion leaves no grow animation.
+        ...(growing
+          ? [animation({ animationName: "grow" }) as CSSAnimation]
+          : []),
       ]);
 
       style.textContent = ".animated-number { --grow: 0.5 }";
