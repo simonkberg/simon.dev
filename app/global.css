@@ -216,6 +216,7 @@
   --replying-clear-top: 0.25rem;
 
   --input-bleed: 0;
+  --history-bleed: 0;
   --input-rule: 1px solid var(--rule);
   --prompt-weight: normal;
   --buddy-size: inherit;
@@ -373,7 +374,7 @@
   --control-maximize: "z";
   --status-dot: inline-block;
 
-  --history-padding: 0.25rem 0.75rem;
+  --history-padding: 1.25rem 0.75rem;
   --reply-glyph: "";
   --reply-glyph-left: -1.5ch;
   --reply-glyph-top: 0.5lh;
@@ -385,6 +386,7 @@
   --user-chroma: 0.15;
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
+  --history-bleed: -1rem -2ch 0 0;
   --input-padding: 0.4rem 2ch 0.5rem;
   --prompt: "$";
   --buddy-size: 0.8rem;
@@ -1047,6 +1049,8 @@ section:has(> .terminal) {
   overflow: hidden;
   text-overflow: ellipsis;
   transition: color 0.15s;
+  /* Above a chat history bleeding into its section's padding, fade included. */
+  z-index: 2;
 
   &::before {
     content: var(--heading-number);
@@ -1875,12 +1879,18 @@ ul {
       min-height: 0;
       flex: 1;
     }
+
+    /* A bleed into the section's padding would run under the bar. */
+    .chat-history {
+      margin-top: 0;
+    }
   }
 
   > .topbar {
     position: var(--topbar-position);
     top: 0;
     right: 1.5ch;
+    z-index: 2;
     translate: var(--topbar-translate);
     display: flex;
     align-items: center;
@@ -1969,6 +1979,7 @@ ul {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  margin: var(--history-bleed);
   overflow: hidden;
 
   &::before,
