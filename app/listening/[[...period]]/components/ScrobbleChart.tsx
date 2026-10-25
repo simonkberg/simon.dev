@@ -160,60 +160,58 @@ const Lanes = ({
   items: readonly ScrobbleCount[];
   rows: readonly Lane[];
   onActive: (runs: readonly Run[]) => void;
-}) => {
-  return (
-    <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
-      {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
-      <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
-        {rows.map(({ name, runs, plays, first, last }) => {
-          const end = first > items.length / 2;
-          const span = runs
-            .map((run) => {
-              const from = items[run.first]?.label;
-              return run.first === run.last
-                ? from
-                : `${from}–${items[run.last]?.label}`;
-            })
-            .join(", ");
-          const text = `${name}: ${formatPlays(plays)} in ${span}`;
-          return (
-            <li key={name} onPointerEnter={() => onActive(runs)}>
-              <div
-                className="lane-label"
+}) => (
+  <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
+    {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
+    <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
+      {rows.map(({ name, runs, plays, first, last }) => {
+        const end = first > items.length / 2;
+        const span = runs
+          .map((run) => {
+            const from = items[run.first]?.label;
+            return run.first === run.last
+              ? from
+              : `${from}–${items[run.last]?.label}`;
+          })
+          .join(", ");
+        const text = `${name}: ${formatPlays(plays)} in ${span}`;
+        return (
+          <li key={name} onPointerEnter={() => onActive(runs)}>
+            <div
+              className="lane-label"
+              style={
+                {
+                  gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
+                  // Fades in under the bar's end it's aligned to.
+                  "--column": end ? last : first,
+                } as CSSProperties
+              }
+              data-end={end || undefined}
+            >
+              <span className="lane-name" aria-hidden="true">
+                {name}
+              </span>
+              <span className="visually-hidden">{text}</span>
+            </div>
+            {runs.map((run) => (
+              <span
+                key={run.first}
+                className="lane-run"
                 style={
                   {
-                    gridColumn: end ? `1 / ${last + 2}` : `${first + 1} / -1`,
-                    // Fades in under the bar's end it's aligned to.
-                    "--column": end ? last : first,
+                    gridColumn: `${run.first + 1} / ${run.last + 2}`,
+                    "--column": run.first,
                   } as CSSProperties
                 }
-                data-end={end || undefined}
-              >
-                <span className="lane-name" aria-hidden="true">
-                  {name}
-                </span>
-                <span className="visually-hidden">{text}</span>
-              </div>
-              {runs.map((run) => (
-                <span
-                  key={run.first}
-                  className="lane-run"
-                  style={
-                    {
-                      gridColumn: `${run.first + 1} / ${run.last + 2}`,
-                      "--column": run.first,
-                    } as CSSProperties
-                  }
-                  data-current={run.current || undefined}
-                />
-              ))}
-            </li>
-          );
-        })}
-      </ol>
-    </div>
-  );
-};
+                data-current={run.current || undefined}
+              />
+            ))}
+          </li>
+        );
+      })}
+    </ol>
+  </div>
+);
 
 export const ScrobbleChart = ({
   scrobbles,

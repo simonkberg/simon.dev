@@ -1,8 +1,25 @@
 import { act, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AnimatedNumber } from "./AnimatedNumber";
+
+// happy-dom doesn't inherit custom properties, so this sets the count's own.
+const setGrow = (grow: number) => {
+  const style =
+    document.querySelector("style") ??
+    document.head.appendChild(document.createElement("style"));
+  style.textContent = `.animated-number { --grow: ${grow} }`;
+};
+
+const nextFrame = () =>
+  act(() => {
+    vi.advanceTimersToNextFrame();
+  });
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
+});
 
 describe("AnimatedNumber", () => {
   it("renders the value in server markup", () => {
@@ -12,42 +29,26 @@ describe("AnimatedNumber", () => {
   });
 
   it("counts along with the --grow it follows", () => {
-    vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
-    // happy-dom doesn't inherit custom properties, so this sets the count's own.
-    const style = document.createElement("style");
-    style.textContent = ".animated-number { --grow: 0.5 }";
-    document.head.append(style);
+    setGrow(0.5);
     render(<AnimatedNumber value={100} follow />);
-    act(() => {
-      vi.advanceTimersToNextFrame();
-    });
+    nextFrame();
     const count = screen.getByText("50");
     expect(count).toHaveAttribute("data-counting");
 
-    act(() => {
-      style.textContent = ".animated-number { --grow: 1 }";
-      vi.advanceTimersToNextFrame();
-    });
+    setGrow(1);
+    nextFrame();
 
     expect(count).toHaveTextContent("100");
   });
 
   it.each([
-    { follow: false, growing: true, restarts: [[0]], committed: "100" },
-    { follow: false, growing: false, restarts: [], committed: "200" },
-    { follow: true, growing: true, restarts: [], committed: "200" },
+    { growing: true, restarts: [[0]], committed: "100" },
+    { growing: false, restarts: [], committed: "200" },
   ])(
-    "counts on from the number shown when its value changes (follow: $follow, growing: $growing)",
-    ({ follow, growing, restarts, committed }) => {
-      vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
-      const style = document.createElement("style");
-      document.head.append(style);
-      const { rerender } = render(
-        <AnimatedNumber value={100} follow={follow} />,
-      );
-      act(() => {
-        vi.advanceTimersToNextFrame();
-      });
+    "counts on from the number shown when its value changes (growing: $growing)",
+    ({ growing, restarts, committed }) => {
+      const { rerender } = render(<AnimatedNumber value={100} />);
+      nextFrame();
       const count = screen.getByText("100");
       const restart = vi.fn();
       const animation = (properties: object) =>
@@ -55,31 +56,26 @@ describe("AnimatedNumber", () => {
       vi.spyOn(count, "getAnimations").mockReturnValue([
         // A transition on the same element stays put.
         animation({}) as Animation,
-        // Reduced motion leaves no grow animation.
+        // A count that follows its row, or reduced motion, has no grow of its own.
         ...(growing
           ? [animation({ animationName: "grow" }) as CSSAnimation]
           : []),
       ]);
 
-      style.textContent = ".animated-number { --grow: 0.5 }";
-      rerender(<AnimatedNumber value={200} follow={follow} />);
+      setGrow(0.5);
+      rerender(<AnimatedNumber value={200} />);
       expect(count).toHaveTextContent(committed);
-      act(() => {
-        vi.advanceTimersToNextFrame();
-      });
+      nextFrame();
 
-      // Only a count growing on its own restarts and holds its number; one that follows its row grows with it.
+      // Only a count with its own grow restarts and holds its number.
       expect(restart.mock.calls).toEqual(restarts);
       expect(count).toHaveTextContent("150");
     },
   );
 
   it("shows the value once --grow isn't animating", () => {
-    vi.useFakeTimers({ toFake: ["requestAnimationFrame"] });
     render(<AnimatedNumber value={50} decimals={2} />);
-    act(() => {
-      vi.advanceTimersToNextFrame();
-    });
+    nextFrame();
 
     expect(screen.getByText("50.00")).toHaveAttribute("data-counting");
   });

@@ -47,37 +47,39 @@ export const AnimatedNumber = ({
     // Reads --grow rather than timing itself, so a count hydrating mid-animation joins in step.
     ref={(span: HTMLSpanElement) => {
       const last = spans.get(span);
-      const count = { from: 0, to: value, shown: value, ...last };
-      // A new value counts on from the one shown, growing again unless it follows its row.
-      if (last && last.to !== value) {
-        Object.assign(count, { from: last.shown, to: value });
-        const grow = follow
-          ? undefined
-          : span
-              .getAnimations()
-              .find(
-                (animation) =>
-                  "animationName" in animation &&
-                  animation.animationName === "grow",
-              );
-        // Reduced motion leaves no grow to restart, so React's new value stands.
-        if (grow) {
-          // React just wrote the new value; show the old one until the next frame counts on.
-          span.textContent = format(last.shown);
-          grow.currentTime = 0;
-        }
-      }
+      // A new value counts on from the one shown.
+      const count =
+        last?.to === value
+          ? last
+          : { from: last?.shown ?? 0, to: value, shown: last?.shown ?? value };
       spans.set(span, count);
-      counting.set(span, (grow) => {
+      const show = (grow: number) => {
         const growing = grow < 1;
         count.shown = growing
           ? count.from + (value - count.from) * grow
           : value;
+        const text = format(count.shown);
         // A lone text child is React's text content, so this is what it would write.
-        span.textContent = format(count.shown);
-        span.dataset["counting"] = "";
+        if (span.textContent !== text) span.textContent = text;
+        span.dataset["counting"] ??= "";
         if (!growing) counting.delete(span);
-      });
+      };
+      // Only a count growing on its own has a grow to restart; one that follows, or reduced motion, keeps React's value.
+      const grow =
+        last &&
+        count !== last &&
+        span
+          .getAnimations()
+          .find(
+            (animation) =>
+              "animationName" in animation &&
+              animation.animationName === "grow",
+          );
+      if (grow) {
+        grow.currentTime = 0;
+        show(0);
+      }
+      counting.set(span, show);
       schedule();
       return () => {
         counting.delete(span);

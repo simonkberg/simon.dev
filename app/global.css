@@ -1115,8 +1115,13 @@ ul {
     );
   }
 
-  li {
+  /* The average rises with the middle stem. */
+  li,
+  > .average {
     --grow-delay: calc(var(--index) * 15ms);
+  }
+
+  li {
     --stems-top: calc(
       var(--value) / var(--max) * var(--grow) * var(--stems-height)
     );
@@ -1238,9 +1243,7 @@ ul {
     translate: -0.5ch 0;
   }
 
-  /* Rises with the middle stem. */
   > .average {
-    --grow-delay: calc(var(--index) * 15ms);
     position: absolute;
     inset-inline: 0;
     bottom: calc(
@@ -1409,7 +1412,6 @@ ul {
       line-height: 0.6;
       text-align: center;
       white-space: pre;
-      clip-path: inset(0 0 calc((1 - var(--rail)) * 100%) 0);
       /* Lands in the stop's first step, as the next stop starts. */
       animation: rail var(--step) linear var(--grow-delay) backwards;
     }
@@ -1726,16 +1728,10 @@ ul {
   white-space: nowrap;
 }
 
-/* Registered so they animate from the first paint, before hydration. */
+/* Registered so it animates from the first paint, before hydration. */
 @property --grow {
   syntax: "<number>";
   inherits: true;
-  initial-value: 1;
-}
-
-@property --rail {
-  syntax: "<number>";
-  inherits: false;
   initial-value: 1;
 }
 
@@ -1747,7 +1743,10 @@ ul {
 
 @keyframes rail {
   from {
-    --rail: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
   }
 }
 
@@ -1758,15 +1757,10 @@ ul {
 .lane-run,
 .timeline > li,
 .animated-number:not([data-follow]) {
-  /* easeOutCubic */
+  /* easeOutCubic; filled both ways so a count whose value changes can restart it. */
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
-    var(--grow-fill, backwards);
-}
-
-/* Kept in effect once it ends, so a changed value can restart it. */
-.animated-number:not([data-follow]) {
-  --grow-fill: both;
+    both;
 }
 
 /* Until it hydrates and counts along, a count waits for its --grow to finish. */
