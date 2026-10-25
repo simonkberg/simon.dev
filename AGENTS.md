@@ -139,8 +139,9 @@ new one. Unset the previous once "Session verified with SESSION_SECRET_PREVIOUS"
 
 `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` is a Docker build arg, not validated by Zod: pin it in
 Railway so server action references stay valid across redeploys.
-`NEXT_DEPLOYMENT_ID` comes from Railway's `RAILWAY_DEPLOYMENT_ID` build arg, so a tab on an
-older deploy reloads on its next navigation instead of mixing in the new deploy's chunks.
+`NEXT_DEPLOYMENT_ID` comes from Railway's `RAILWAY_GIT_COMMIT_SHA` build arg (its `RAILWAY_DEPLOYMENT_ID`
+isn't passed to builds), so a tab on an older deploy reloads on its next navigation instead
+of mixing in the new deploy's chunks.
 
 ## Architecture
 
