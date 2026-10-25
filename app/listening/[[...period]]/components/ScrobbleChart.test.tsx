@@ -110,6 +110,31 @@ describe("ScrobbleChart", () => {
     );
   });
 
+  it("redraws the lanes when only the artists change", async () => {
+    const scrobbles = Promise.resolve(
+      buckets.map(({ label }) => ({ label, count: 10, current: false })),
+    );
+    const { rerender } = await act(async () =>
+      render(
+        <ScrobbleChart
+          scrobbles={scrobbles}
+          topArtistByBucket={Promise.resolve(buckets)}
+        />,
+      ),
+    );
+
+    await act(async () =>
+      rerender(
+        <ScrobbleChart
+          scrobbles={scrobbles}
+          topArtistByBucket={Promise.resolve(buckets.slice(0, 3))}
+        />,
+      ),
+    );
+
+    expect(lanes()).toHaveLength(2);
+  });
+
   it("lights a lane's stems while it is hovered", async () => {
     await renderLanes(buckets);
     const active = () =>
