@@ -43,7 +43,7 @@ import {
   MessageIdSchema,
   withSiteReactions,
 } from "@/lib/reactions";
-import { clockTime, dayRange, today } from "@/lib/scrobbleBuckets";
+import { clockTime, dayRange, todayLabel } from "@/lib/scrobbleBuckets";
 import type { Username } from "@/lib/session";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -290,7 +290,7 @@ const LOOKUP_TOOLS = [
   {
     name: "get_chat_history",
     description:
-      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements like the conversation's, oldest first, each with its Stockholm time and, for a reply, the id it replies to.",
+      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements, oldest first, with the conversation's attributes plus each one's Stockholm time and, for a reply, the id it replies to.",
     input_schema: toolSchema(chatHistoryInputSchema),
   },
   {
@@ -575,7 +575,7 @@ function formatMessage({
 }
 
 export function formatConversation(chatMessages: ChatMessage[]): string {
-  return `<conversation today="${today(new Date())}">\n${chatMessages.map(formatMessage).join("\n")}\n</conversation>`;
+  return `<conversation today="${todayLabel(new Date())}">\n${chatMessages.map(formatMessage).join("\n")}\n</conversation>`;
 }
 
 function formatHistory(messages: ChannelMessage[]): string {

@@ -6,7 +6,7 @@ import {
   nextMidnight,
   sameDayBuckets,
   scrobbleBuckets,
-  today,
+  todayLabel,
   yearBuckets,
 } from "./scrobbleBuckets";
 
@@ -145,9 +145,11 @@ describe("nextMidnight", () => {
   });
 });
 
-describe("today", () => {
+describe("todayLabel", () => {
   it("should name Stockholm's day once UTC is still on the one before", () => {
-    expect(today(new Date("2026-10-25T23:30:00Z"))).toBe("Monday 2026-10-26");
+    expect(todayLabel(new Date("2026-10-25T23:30:00Z"))).toBe(
+      "Monday 2026-10-26",
+    );
   });
 });
 

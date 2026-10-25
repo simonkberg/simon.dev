@@ -137,7 +137,7 @@ export const clockTime = (instant: Date) =>
   localDate(instant).toISOString().slice(0, 16).replace("T", " ");
 
 /** Today in Stockholm, like "Sunday 2026-10-25". */
-export const today = (now: Date) =>
+export const todayLabel = (now: Date) =>
   `${weekday.format(now)} ${clockTime(now).slice(0, 10)}`;
 
 /** The start of tomorrow in Stockholm. */
