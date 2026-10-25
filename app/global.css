@@ -217,6 +217,7 @@
 
   --input-bleed: 0;
   --history-bleed: 0;
+  --history-fade-inset: 0;
   --input-rule: 1px solid var(--rule);
   --prompt-weight: normal;
   --buddy-size: inherit;
@@ -374,7 +375,7 @@
   --control-maximize: "z";
   --status-dot: inline-block;
 
-  --history-padding: 1.25rem 0.75rem;
+  --history-padding: 1.5rem 0.75rem;
   --reply-glyph: "";
   --reply-glyph-left: -1.5ch;
   --reply-glyph-top: 0.5lh;
@@ -387,6 +388,7 @@
   --meta-size: 0.8rem;
   --input-bleed: -2ch;
   --history-bleed: -1rem -2ch 0 0;
+  --history-fade-inset: 0.75rem;
   --input-padding: 0.4rem 2ch 0.5rem;
   --prompt: "$";
   --buddy-size: 0.8rem;
@@ -1882,6 +1884,7 @@ ul {
 
     /* A bleed into the section's padding would run under the bar. */
     .chat-history {
+      --history-fade-inset: 0;
       margin-top: 0;
     }
   }
@@ -1993,9 +1996,14 @@ ul {
     pointer-events: none;
   }
 
+  /* Solid under labels that hang into the history, so they leave no edge. */
   &::before {
     top: 0;
-    background: linear-gradient(var(--surface), transparent);
+    height: calc(var(--history-fade-inset) + var(--fade));
+    background: linear-gradient(
+      var(--surface) var(--history-fade-inset),
+      transparent
+    );
   }
 
   &::after {
@@ -2086,7 +2094,7 @@ ul {
   position: relative;
   text-wrap: pretty;
   /* Keeps a message focused by arrow keys clear of the history's edge fades. */
-  scroll-margin-block: var(--fade);
+  scroll-margin-block: calc(var(--history-fade-inset) + var(--fade)) var(--fade);
   border-radius: var(--code-radius);
 
   &:focus-visible {
