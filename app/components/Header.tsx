@@ -6,12 +6,6 @@ export interface HeaderProps {
   section?: string;
 }
 
-const pages = [
-  { href: "/", name: "home" },
-  { href: "/listening/", name: "listening" },
-  { href: "/simon-bot", name: "simon-bot" },
-] as const;
-
 export const Header = ({ section = "home" }: HeaderProps) => (
   <header className="header">
     <div className="container">
@@ -21,7 +15,7 @@ export const Header = ({ section = "home" }: HeaderProps) => (
         </Link>
       </h1>
       <nav className="nav" aria-label="Pages">
-        {pages.map(({ href, name }) => (
+        {config.pages.map(({ href, name }) => (
           <Link
             key={href}
             href={href}
