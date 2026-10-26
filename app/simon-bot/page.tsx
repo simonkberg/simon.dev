@@ -23,7 +23,7 @@ const headings: Record<PublicCategory, { title: string; what: string }> = {
 };
 
 export default function SimonBotPage() {
-  // Renders the notes per request, so their relative times are in the HTML.
+  // Keeps the cached notes out of the static shell, so their relative times render per request.
   const result = io().then(getBotNotes);
 
   return (
