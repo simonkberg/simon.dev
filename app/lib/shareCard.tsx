@@ -1,3 +1,6 @@
+// Satori calls these components as plain functions, outside React, so memoising them buys nothing.
+"use no memo";
+
 import "server-only";
 import { readFile } from "node:fs/promises";
 
@@ -23,9 +26,11 @@ export const palette = {
 
 // Satori reads neither oklch() nor woff2, hence the conversion and the woff subsets.
 export function oklchToHex(color: string): string {
-  const [l = 0, c = 0, h = 0] = (/oklch\(([^)]+)\)/.exec(color)?.[1] ?? "")
-    .split(" ")
-    .map(Number);
+  const [l, c, h] = color.slice("oklch(".length, -1).split(" ").map(Number) as [
+    number,
+    number,
+    number,
+  ];
   const a = c * Math.cos((h * Math.PI) / 180);
   const b = c * Math.sin((h * Math.PI) / 180);
   const lms = [
