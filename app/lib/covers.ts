@@ -48,10 +48,10 @@ export async function inlineCover(
     if (!res.ok) {
       throw new Error(`Cover responded ${res.status}`);
     }
-    const type = res.headers.get("content-type") ?? "image/jpeg";
-    const data = Buffer.from(await res.arrayBuffer()).toString("base64");
+    const image = await res.blob();
+    const data = Buffer.from(await image.arrayBuffer()).toString("base64");
     cacheLife("hours");
-    return `data:${type};base64,${data}`;
+    return `data:${image.type};base64,${data}`;
   } catch (err) {
     cacheLife("seconds");
     log.warn({ err, path }, "Cover inline failed");
