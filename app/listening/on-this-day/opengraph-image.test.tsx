@@ -18,6 +18,8 @@ vi.mock(import("@/actions/lastfm"), () => ({
       days: {
         date: "Oct 26",
         years: [
+          { year: "2027", count: 0 },
+          { year: "2026", count: 0 },
           { year: "2025", count: 0 },
           {
             year: "2024",
@@ -50,7 +52,7 @@ describe("opengraph-image", () => {
       { window: "listening" },
       expect.anything(),
     );
-    expect(screen.getByText("(2 of 4 years)")).toBeInTheDocument();
+    expect(screen.getByText("(2 of 6 years)")).toBeInTheDocument();
     expect(screen.getByText("Oct 26")).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
       "busiest:2024·Apartment Story–The National·62 plays",
@@ -58,10 +60,10 @@ describe("opengraph-image", () => {
     expect(
       screen.getAllByText(/^(The National|Car Seat Headrest)$/),
     ).toHaveLength(3);
-    // Oldest first; silent years only on years divisible by three.
+    // Oldest first; a silent run shows only its first and last year.
     expect(
       screen.getAllByText(/^’\d\d$/).map((year) => year.textContent),
-    ).toEqual(["’22", "’24", "’25"]);
+    ).toEqual(["’22", "’23", "’24", "’25", "’27"]);
   });
 
   it("leaves out the busiest year when nothing was played", async () => {

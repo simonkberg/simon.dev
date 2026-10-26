@@ -24,6 +24,10 @@ const clip = {
 } as const;
 const keep = { flexShrink: 0 };
 
+// A silent year between two others: only a silent run's ends are labelled.
+const midSilence = (years: readonly DayInYear[], index: number) =>
+  [years[index - 1], years[index + 1]].every((year) => year && !year.top);
+
 const Timeline = ({
   years,
   busiest,
@@ -112,7 +116,7 @@ const Timeline = ({
                 }}
               />
             )}
-            {(top || Number(year) % 3 === 0) && (
+            {(top || !midSilence(years, index)) && (
               <span
                 style={{
                   position: "absolute",
