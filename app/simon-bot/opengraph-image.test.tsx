@@ -67,7 +67,8 @@ describe("opengraph-image", () => {
   it.each([
     ["short", " word  ".repeat(12), 44, "word"],
     ["medium", "word ".repeat(30), 38, "word"],
-    ["long", "word ".repeat(80), 32, "word…"],
+    // The cut lands on a toned emoji, which stays whole.
+    ["long", `${"word ".repeat(63)}${"wo👍🏽d ".repeat(20)}`, 32, "wo👍🏽d…"],
   ])(
     "sizes a %s note to fit and cuts what doesn't",
     async (_, content, size, last) => {

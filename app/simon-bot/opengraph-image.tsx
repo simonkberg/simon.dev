@@ -21,14 +21,19 @@ const bot = stringToColor("simon-bot");
 
 const touched = (note: Memory) => note.updatedAt ?? note.createdAt;
 
+// In graphemes, so a cut never splits an emoji.
+const graphemes = new Intl.Segmenter();
+
 // What fits six lines at the smallest size.
 const maxLength = 320;
-const clip = (content: string) =>
-  content.length > maxLength ? `${content.slice(0, maxLength - 1)}…` : content;
+const clip = (chars: readonly string[]) =>
+  chars.length > maxLength
+    ? `${chars.slice(0, maxLength - 1).join("")}…`
+    : chars.join("");
 
 // Notes are one line of any length, so a long one gets a smaller size.
-const fontSize = (content: string) =>
-  content.length <= 110 ? 44 : content.length <= 180 ? 38 : 32;
+const fontSize = (length: number) =>
+  length <= 110 ? 44 : length <= 180 ? 38 : 32;
 
 const newest = (notes: Record<PublicCategory, Memory[]>) =>
   PUBLIC_CATEGORIES.flatMap((category) =>
@@ -39,31 +44,37 @@ const newest = (notes: Record<PublicCategory, Memory[]>) =>
     undefined,
   );
 
-const Note = ({ note }: { note: Memory }) => (
-  <div style={{ display: "flex", flexDirection: "column" }}>
-    {/* Satori lays out no inline text, so words wrap as flex items for the caret to follow. */}
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        marginTop: 14,
-        fontSize: fontSize(note.content),
-        lineHeight: 1.35,
-        columnGap: "0.5em",
-      }}
-    >
-      {clip(note.content.trim())
-        .split(/\s+/)
-        .map((word, index) => (
-          <span key={index}>{word}</span>
-        ))}
-      <span style={{ color: bot }}>█</span>
+const Note = ({ note }: { note: Memory }) => {
+  const chars = Array.from(
+    graphemes.segment(note.content.trim()),
+    ({ segment }) => segment,
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* Satori lays out no inline text, so words wrap as flex items for the caret to follow. */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          marginTop: 14,
+          fontSize: fontSize(chars.length),
+          lineHeight: 1.35,
+          columnGap: "0.5em",
+        }}
+      >
+        {clip(chars)
+          .split(/\s+/)
+          .map((word, index) => (
+            <span key={index}>{word}</span>
+          ))}
+        <span style={{ color: bot }}>█</span>
+      </div>
+      <span style={{ marginTop: 24, fontSize: 19, color: color.muted }}>
+        {`${note.updatedAt ? "rewritten" : "noted"} ${dayLabel.format(touched(note))} · simon-bot rewrites its notes after every conversation`}
+      </span>
     </div>
-    <span style={{ marginTop: 24, fontSize: 19, color: color.muted }}>
-      {`${note.updatedAt ? "rewritten" : "noted"} ${dayLabel.format(touched(note))} · simon-bot rewrites its notes after every conversation`}
-    </span>
-  </div>
-);
+  );
+};
 
 const Missing = ({ children }: { children: string }) => (
   <span style={{ marginTop: 14, fontSize: 32, color: color.muted }}>
