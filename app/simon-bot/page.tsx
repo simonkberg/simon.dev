@@ -7,19 +7,14 @@ import { getBotNotes } from "@/actions/simonBot";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
-import { PUBLIC_CATEGORIES, type PublicCategory } from "@/lib/memory";
+import { PUBLIC_CATEGORIES } from "@/lib/memory";
 
+import { headings } from "./components/headings";
 import { NoteList, NoteListSkeleton } from "./components/NoteList";
 
 export const metadata: Metadata = {
   title: "simon-bot",
   description: "Who simon-bot thinks it is, in its own notes",
-};
-
-const headings: Record<PublicCategory, { title: string; what: string }> = {
-  self: { title: "Self", what: "who it is" },
-  style: { title: "Style", what: "how it writes" },
-  interests: { title: "Interests", what: "what it likes" },
 };
 
 export default function SimonBotPage() {
