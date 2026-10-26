@@ -1803,9 +1803,9 @@ ul {
   animation-play-state: var(--grow-play-state, running);
 }
 
-/* With JS, entry animations wait for hydration, so a count starts from 0 with what it follows. */
+/* With JS, entry animations wait while a count waits to hydrate, so it starts from 0 with what it follows. */
 @media (scripting: enabled) {
-  :root:not([data-hydrated]) {
+  :root:has(.animated-number:not([data-counting])) {
     --grow-play-state: paused;
   }
 }
