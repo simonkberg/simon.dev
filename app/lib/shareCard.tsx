@@ -102,10 +102,6 @@ const Segment = ({
 const StatusLine = ({ title }: { title: string }) => (
   <div
     style={{
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
       display: "flex",
       fontSize: 17,
       borderTop: `1px solid ${color.rule}`,
@@ -198,7 +194,6 @@ export async function shareCard(
       style={{
         display: "flex",
         flexDirection: "column",
-        position: "relative",
         width: "100%",
         height: "100%",
         background: color.ground,

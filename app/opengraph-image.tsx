@@ -23,7 +23,7 @@ export default async function openGraphImage() {
         display: "flex",
         flexDirection: "column",
         flex: 1,
-        padding: "56px 48px 76px",
+        padding: "56px 48px 40px",
       }}
     >
       <div
