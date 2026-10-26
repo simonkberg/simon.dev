@@ -91,7 +91,7 @@ export default function RootPage() {
           <RecentTracksList recentTracks={recentTracks} />
         </Suspense>
         <p>
-          See <Link href="/listening/">listening statistics</Link>.
+          See <Link href="/listening">listening statistics</Link>.
         </p>
         <Suspense fallback={<OnThisDayTeaserSkeleton />}>
           <OnThisDayTeaser onThisDay={onThisDay} />

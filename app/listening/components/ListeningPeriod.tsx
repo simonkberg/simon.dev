@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import {
   getScrobbles,
@@ -14,26 +13,13 @@ import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { config } from "@/config";
-import {
-  isValidPeriod,
-  type Period,
-  periodLabels,
-  periods,
-} from "@/lib/lastfm";
+import { type Period, periodLabels } from "@/lib/lastfm";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
-import { AlbumCollage, AlbumCollageSkeleton } from "./components/AlbumCollage";
-import {
-  ScrobbleChart,
-  ScrobbleChartSkeleton,
-} from "./components/ScrobbleChart";
-import { TopTable, TopTableSkeleton } from "./components/TopTable";
-
-export const prefetch = "partial";
-export const unstable_paramMatching = { period: "not-found" };
-// Every valid period is prerendered, so reading params up front never blocks.
-export const instant = false;
+import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
+import { ScrobbleChart, ScrobbleChartSkeleton } from "./ScrobbleChart";
+import { TopTable, TopTableSkeleton } from "./TopTable";
 
 const trackColumns = [
   { label: "Track", key: "name" },
@@ -41,41 +27,12 @@ const trackColumns = [
 ] as const;
 const artistColumns = [{ label: "Artist", key: "name" }] as const;
 
-type ListeningPageProps = PageProps<"/listening/[[...period]]">;
+export const periodMetadata = (period: Period): Metadata => ({
+  title: `Listening - ${periodLabels[period]}`,
+  description: `My ${periodLabels[period]} listening statistics from Last.fm`,
+});
 
-const toPeriod = (param?: string[]): Period => {
-  if (param === undefined) return "overall";
-
-  const [period, ...rest] = param;
-  if (rest.length === 0 && isValidPeriod(period)) {
-    return period;
-  }
-
-  notFound();
-};
-
-export async function generateMetadata({
-  params,
-}: ListeningPageProps): Promise<Metadata> {
-  const period = toPeriod((await params).period);
-  const periodLabel = periodLabels[period];
-
-  return {
-    title: `Listening - ${periodLabel}`,
-    description: `My ${periodLabel} listening statistics from Last.fm`,
-  };
-}
-
-export function generateStaticParams(): Awaited<
-  ListeningPageProps["params"]
->[] {
-  return periods.map((period) => ({
-    period: period === "overall" ? [] : [period],
-  }));
-}
-
-export default function ListeningPage({ params }: ListeningPageProps) {
-  const period = toPeriod(use(params).period);
+export function ListeningPeriod({ period }: { period: Period }) {
   const scrobbles = getScrobbles(period).then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );

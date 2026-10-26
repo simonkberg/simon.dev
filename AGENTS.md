@@ -101,10 +101,6 @@ Key settings in `next.config.ts`:
 > regenerates it. With `getRecentTracks` in the shell it went stale every minute, so every
 > action hit it. Only reproduces with real data in the prerender.
 
-### Typed Routes
-
-For optional catch-all routes like `[[...param]]`, use a trailing slash to link to the base path (e.g., `/listening/` not `/listening`).
-
 ### Lint and Format Config
 
 Oxlint (`oxlint.config.ts`) lints, Oxfmt (`oxfmt.config.ts`) formats, and they never

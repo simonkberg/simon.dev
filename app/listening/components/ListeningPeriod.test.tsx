@@ -13,15 +13,9 @@ import {
   getTopTracks,
   type GetTopTracksResult,
 } from "@/actions/lastfm";
-import { periods } from "@/lib/lastfm";
+import type { Period } from "@/lib/lastfm";
 
-import ListeningPage, { generateMetadata, generateStaticParams } from "./page";
-
-vi.mock(import("next/navigation"), () => ({
-  notFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-}));
+import { ListeningPeriod, periodMetadata } from "./ListeningPeriod";
 
 vi.mock(import("@/actions/lastfm"), () => ({
   getScrobbles: vi.fn(() =>
@@ -41,53 +35,21 @@ vi.mock(import("@/actions/lastfm"), () => ({
   ),
 }));
 
-const searchParams = Promise.resolve({});
+const renderPage = (period: Period = "overall") =>
+  act(async () => render(<ListeningPeriod period={period} />));
 
-const metadataFor = (period?: string[]) =>
-  generateMetadata({ params: Promise.resolve({ period }), searchParams });
-
-const renderPage = (period?: string[]) =>
-  act(async () =>
-    render(
-      <ListeningPage
-        params={Promise.resolve({ period })}
-        searchParams={searchParams}
-      />,
-    ),
-  );
-
-describe("generateMetadata", () => {
-  it.each([
-    [undefined, "all time"],
-    [["7day"], "7 days"],
-  ])("should return the metadata for %j", async (period, label) => {
-    expect(await metadataFor(period)).toEqual({
-      title: `Listening - ${label}`,
-      description: `My ${label} listening statistics from Last.fm`,
+describe("periodMetadata", () => {
+  it("names the period", () => {
+    expect(periodMetadata("7day")).toEqual({
+      title: "Listening - 7 days",
+      description: "My 7 days listening statistics from Last.fm",
     });
   });
-
-  it.each([[["invalid"]], [["7day", "extra"]]])(
-    "should call notFound for %j",
-    async (period) => {
-      await expect(metadataFor(period)).rejects.toThrow("NEXT_NOT_FOUND");
-    },
-  );
 });
 
-describe("generateStaticParams", () => {
-  it("should return params for all periods, overall as the base path", () => {
-    expect(generateStaticParams()).toEqual(
-      periods.map((period) => ({
-        period: period === "overall" ? [] : [period],
-      })),
-    );
-  });
-});
-
-describe("ListeningPage", () => {
+describe("ListeningPeriod", () => {
   it("should render page with period content", async () => {
-    await renderPage(["7day"]);
+    await renderPage("7day");
 
     expect(
       screen.getByText(/My 7 days listening statistics from/),
@@ -99,7 +61,7 @@ describe("ListeningPage", () => {
   });
 
   it("should render period selector with current period", async () => {
-    await renderPage(["7day"]);
+    await renderPage("7day");
 
     const selector = screen.getByRole("list", { name: "Period" });
     expect(within(selector).getByText("7 days")).toHaveAttribute(
