@@ -24,6 +24,8 @@ const stackSize = (coverSize - 2 * coverGap) / 3;
 // What the full chart leaves its average label.
 const coversGap = 107;
 const coversWidth = coverSize + coverGap + stackSize;
+// What the stats and the chart's average label leave before the covers.
+const gutter = 24;
 const laneHeight = 26;
 // What fits under the chart; the most played, in order of first appearance.
 const laneCount = 4;
@@ -85,41 +87,87 @@ const Lanes = ({
   );
 };
 
+const ellipsis = {
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+  textOverflow: "ellipsis",
+} as const;
+
+// A long artist name gives way, so the row never runs into the covers.
+const statSize = 19;
+const totalSize = 32;
+const nameSize = 25;
+const statGap = 44;
+const partGap = 10;
+
+// Iosevka's advance is half its size.
+const textWidth = (text: string, size: number) =>
+  (Array.from(text).length * size) / 2;
+
+const fit = (text: string, size: number, room: number) => {
+  const chars = Array.from(text);
+  const max = Math.floor(room / (size / 2));
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : text;
+};
+
 const Stats = ({
   items,
   top,
+  width,
 }: {
   items: readonly ScrobbleCount[] | undefined;
   top: TopArtist | undefined;
-}) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "baseline",
-      gap: 44,
-      fontSize: 19,
-      color: color.muted,
-    }}
-  >
-    {items && (
-      <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <span style={{ fontSize: 32, fontWeight: 700, color: color.ink }}>
-          {formatNumber(items.reduce((sum, { count }) => sum + count, 0))}
+  width: number;
+}) => {
+  const total =
+    items && formatNumber(items.reduce((sum, { count }) => sum + count, 0));
+  const plays = top && formatNumber(top.playcount);
+  // The top artist's name gives way, so the row never runs into the covers.
+  const nameRoom =
+    width -
+    (total
+      ? textWidth(total, totalSize) +
+        textWidth("scrobbles", statSize) +
+        partGap +
+        statGap
+      : 0) -
+    textWidth(`top artist${plays}`, statSize) -
+    2 * partGap;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: statGap,
+        fontSize: statSize,
+        whiteSpace: "nowrap",
+        color: color.muted,
+      }}
+    >
+      {total && (
+        <span style={{ display: "flex", alignItems: "baseline", gap: partGap }}>
+          <span
+            style={{ fontSize: totalSize, fontWeight: 700, color: color.ink }}
+          >
+            {total}
+          </span>
+          scrobbles
         </span>
-        scrobbles
-      </span>
-    )}
-    {top && (
-      <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        top artist
-        <span style={{ fontSize: 25, fontWeight: 700, color: color.accent }}>
-          {top.name}
+      )}
+      {top && (
+        <span style={{ display: "flex", alignItems: "baseline", gap: partGap }}>
+          top artist
+          <span
+            style={{ fontSize: nameSize, fontWeight: 700, color: color.accent }}
+          >
+            {fit(top.name, nameSize, nameRoom)}
+          </span>
+          {plays}
         </span>
-        {formatNumber(top.playcount)}
-      </span>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
+};
 
 type CoverAlbum = TopAlbum & { image: string | undefined };
 
@@ -154,12 +202,6 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => (
     </span>
   </div>
 );
-
-const ellipsis = {
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textOverflow: "ellipsis",
-} as const;
 
 const Covers = ({ albums: [first, ...rest] }: { albums: CoverAlbum[] }) =>
   first && (
@@ -236,9 +278,19 @@ export async function listeningCard(period: Period) {
         title="Scrobbles"
         subtitle={`${periodLabels[period]} · per ${bucketUnits[period]}`}
       >
-        <div style={{ display: "flex", gap: coversGap }}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <Stats items={items} top={top} />
+        <div style={{ display: "flex", gap: gutter }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              width: chartWidth + coversGap - gutter,
+            }}
+          >
+            <Stats
+              items={items}
+              top={top}
+              width={chartWidth + coversGap - gutter}
+            />
             {items ? (
               <div
                 style={{

@@ -114,6 +114,19 @@ describe("listeningCard", () => {
     ]);
   });
 
+  it("cuts a top artist's name that would run into the covers", async () => {
+    vi.mocked(getTopArtists).mockResolvedValue({
+      status: "ok",
+      artists: [
+        { name: "The Magnetic Fields and Friends", playcount: 13041, rank: 1 },
+      ],
+    });
+
+    await renderCard();
+
+    expect(screen.getByText("The Magnetic Fiel…")).toBeInTheDocument();
+  });
+
   it("leaves out the covers when the albums fail", async () => {
     vi.mocked(getTopAlbums).mockResolvedValue(error);
 
