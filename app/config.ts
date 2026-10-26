@@ -14,6 +14,7 @@ export const config = {
   ],
   gtmId: "GTM-P3HX5HW",
   lastfmUsername: "magijo",
+  location: "Stockholm, Sweden",
   lastfmSince: 2007,
   // next/image's remotePatterns: the optimiser refuses covers from anywhere else.
   lastfmCoverCdn: "https://lastfm-img.freetls.fastly.net/i/u/",

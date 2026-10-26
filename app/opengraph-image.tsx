@@ -5,7 +5,7 @@ import { color, shareCard, Stems } from "@/lib/shareCard";
 
 export { contentType, size } from "@/lib/shareCard";
 
-export const alt = `${config.title}, fullstack engineer in Stockholm, Sweden`;
+export const alt = `${config.title}, fullstack engineer in ${config.location}`;
 
 export default async function openGraphImage() {
   const [recentTracks, scrobbles] = await Promise.all([
@@ -17,7 +17,7 @@ export default async function openGraphImage() {
   const counts = scrobbles.status === "ok" ? scrobbles.scrobbles : undefined;
 
   return shareCard(
-    { window: "home", title: "home" },
+    { window: "home" },
     <div
       style={{
         display: "flex",
@@ -48,7 +48,7 @@ export default async function openGraphImage() {
           color: color.muted,
         }}
       >
-        Fullstack engineer in Stockholm, Sweden.
+        {`Fullstack engineer in ${config.location}.`}
       </div>
       <div
         style={{

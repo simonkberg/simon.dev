@@ -116,7 +116,7 @@ const StatusLine = ({ title }: { title: string }) => (
     >
       {title.toUpperCase()}
     </Segment>
-    <Segment>stockholm, sweden</Segment>
+    <Segment>{config.location.toLowerCase()}</Segment>
     <Segment
       style={{
         marginLeft: "auto",
@@ -186,7 +186,7 @@ export const Stems = ({ counts, width, height }: StemsProps) => {
 };
 
 export async function shareCard(
-  { window, title }: { window: Window; title: string },
+  { window }: { window: Window },
   body: ReactNode,
 ): Promise<ImageResponse> {
   return new ImageResponse(
@@ -203,7 +203,7 @@ export async function shareCard(
     >
       <Header current={window} />
       {body}
-      <StatusLine title={title} />
+      <StatusLine title={window} />
     </div>,
     { ...size, fonts: await loadFonts() },
   );

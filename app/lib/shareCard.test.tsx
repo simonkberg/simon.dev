@@ -61,10 +61,7 @@ describe("color", () => {
 
 describe("shareCard", () => {
   it("renders a PNG", async () => {
-    const response = await shareCard(
-      { window: "home", title: "home" },
-      <div>body</div>,
-    );
+    const response = await shareCard({ window: "home" }, <div>body</div>);
 
     expect(response.headers.get("content-type")).toBe("image/png");
     const png = new Uint8Array(await response.arrayBuffer());

@@ -46,7 +46,7 @@ export default function RootPage() {
     <Page>
       <section aria-labelledby="about-heading">
         <Heading level={2} id="about-heading">
-          About <Subtitle>(Location: Stockholm, Sweden)</Subtitle>
+          About <Subtitle>(Location: {config.location})</Subtitle>
         </Heading>
         <p>{config.description}</p>
         <p>
