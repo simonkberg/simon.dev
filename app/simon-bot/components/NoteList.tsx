@@ -29,7 +29,6 @@ export const NoteList = ({ notes }: NoteListProps) => {
           <Subtitle>
             ({note.updatedAt ? "rewritten" : "noted"}{" "}
             <Suspense fallback="Loading">
-              {/* Suspends due to usage of Date */}
               <RelativeTime date={note.updatedAt ?? note.createdAt} />
             </Suspense>
             )
