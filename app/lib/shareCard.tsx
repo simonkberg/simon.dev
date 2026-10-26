@@ -14,7 +14,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 // Panes' dark palette from global.css, in hex since Satori reads no oklch();
-// shareCard.test.ts keeps them in step.
+// shareCard.test.tsx keeps them in step.
 export const color = {
   ground: "#080a0e",
   wash: "#1a1d23",
