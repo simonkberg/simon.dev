@@ -87,5 +87,6 @@ describe("opengraph-image", () => {
     expect(
       screen.getByText("This day in past years is temporarily unavailable :("),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/years\)$/)).not.toBeInTheDocument();
   });
 });

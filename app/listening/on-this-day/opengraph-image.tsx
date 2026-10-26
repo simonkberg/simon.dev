@@ -148,7 +148,7 @@ export default async function openGraphImage() {
       <Pane
         number={1}
         title="On this day"
-        subtitle={`${played} of ${years.length} years`}
+        subtitle={days && `${played} of ${years.length} years`}
       >
         {days ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
