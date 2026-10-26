@@ -1428,6 +1428,7 @@ ul {
       white-space: pre;
       /* Lands in the stop's first step, as the next stop starts. */
       animation: rail var(--step) linear var(--grow-delay) backwards;
+      animation-play-state: var(--grow-play-state, running);
     }
 
     &::after {
@@ -1799,11 +1800,27 @@ ul {
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
     both;
+  animation-play-state: var(--grow-play-state, running);
 }
 
-/* Until it hydrates and counts along, a count waits for its --grow to finish. */
-.animated-number:not([data-counting]) {
-  opacity: clamp(0, (var(--grow) - 0.99) * 100, 1);
+/* With JS, entry animations wait while a count waits to hydrate, so it starts from 0 with what it follows. */
+@media (scripting: enabled) {
+  :root:has(.animated-number:not([data-counting])) {
+    --grow-play-state: paused;
+  }
+}
+
+/* Until it counts, a count shows its 0 and clips the number it will count to. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .animated-number:not([data-counting]) {
+    display: inline-grid;
+    grid: auto / auto 0;
+    overflow: clip;
+
+    &::before {
+      content: attr(data-from) / "";
+    }
+  }
 }
 
 /* Registered so it animates, snapped to whole characters where it is read. */

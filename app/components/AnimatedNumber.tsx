@@ -87,6 +87,7 @@ export const AnimatedNumber = ({
       };
     }}
     className="animated-number"
+    data-from={format(0)}
     data-follow={follow || undefined}
   >
     {format(value)}

@@ -330,12 +330,12 @@ inline-text kind, used for emoji in messages and timestamps: hover (after `delay
 
 ### Entry Animations
 
-Charts, lanes and the timeline grow in with CSS, so they play from the first paint, not only
-after a client navigation: each animates a registered `--grow` from 0 to 1 (`@keyframes grow`
-in `app/global.css`) after its `--grow-delay`. `AnimatedNumber` counts along by reading its
-computed `--grow` each frame, so one hydrating mid-animation joins in step; until it hydrates
-it stays hidden while its `--grow` runs. Long staggers divide a fixed budget by the inline
-`--count`, so many stops or columns animate faster rather than longer.
+Charts, lanes and the timeline grow in with CSS: each animates a registered `--grow` from 0 to
+1 (`@keyframes grow` in `app/global.css`) after its `--grow-delay`. They wait, paused, while any
+`AnimatedNumber` on the page hasn't hydrated: it counts along by reading its computed `--grow`
+each frame and, with JS, shows its `data-from` 0 until it does; without JS or with reduced
+motion it shows its number. Long staggers divide a fixed budget by the inline `--count`,
+so many stops or columns animate faster rather than longer.
 
 ### Server-Only Code
 
