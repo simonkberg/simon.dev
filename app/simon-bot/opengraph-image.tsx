@@ -52,8 +52,8 @@ const Note = ({ note }: { note: Memory }) => (
         columnGap: "0.5em",
       }}
     >
-      {clip(note.content)
-        .split(" ")
+      {clip(note.content.trim())
+        .split(/\s+/)
         .map((word, index) => (
           <span key={index}>{word}</span>
         ))}

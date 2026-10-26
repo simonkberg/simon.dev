@@ -65,7 +65,7 @@ describe("opengraph-image", () => {
   });
 
   it.each([
-    ["short", "word ".repeat(20), 44, "word"],
+    ["short", " word  ".repeat(12), 44, "word"],
     ["medium", "word ".repeat(30), 38, "word"],
     ["long", "word ".repeat(80), 32, "word…"],
   ])(
@@ -80,6 +80,8 @@ describe("opengraph-image", () => {
       const words = screen.getAllByText(/^wo/);
       expect(words.at(-1)).toHaveTextContent(new RegExp(`^${last}$`));
       expect(words[0]?.parentElement).toHaveStyle({ fontSize: `${size}px` });
+      // Only the words and the caret: no gaps for runs of spaces.
+      expect(words[0]?.parentElement?.childElementCount).toBe(words.length + 1);
       expect(document.body).toHaveTextContent("noted Oct 24 ·");
     },
   );
