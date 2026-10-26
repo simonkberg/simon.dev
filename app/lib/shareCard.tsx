@@ -8,7 +8,6 @@ import { cacheLife } from "next/cache";
 import { ImageResponse } from "next/og";
 import { type CSSProperties, Fragment, type ReactNode } from "react";
 
-import { pages } from "@/components/Header";
 import { config } from "@/config";
 
 export const size = { width: 1200, height: 630 };
@@ -47,7 +46,7 @@ async function loadFonts() {
   ];
 }
 
-export type Window = (typeof pages)[number]["name"];
+export type Window = (typeof config.pages)[number]["name"];
 
 const host = new URL(config.url).host;
 
@@ -67,7 +66,7 @@ const Header = ({ current }: { current: Window }) => (
     <span style={{ fontWeight: 700, marginRight: 10 }}>
       {config.title.toLowerCase()}
     </span>
-    {pages.map(({ name }, index) => (
+    {config.pages.map(({ name }, index) => (
       <span
         key={name}
         style={{ color: name === current ? color.accent : color.muted }}
