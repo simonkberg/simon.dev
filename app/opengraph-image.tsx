@@ -41,14 +41,15 @@ export default async function openGraphImage() {
       </div>
       <div
         style={{
+          display: "flex",
           marginTop: 28,
-          maxWidth: 860,
           fontSize: 27,
           lineHeight: 1.45,
           color: color.muted,
         }}
       >
-        {`Fullstack engineer in ${config.location}.`}
+        Fullstack engineer. Come say hi in the chat
+        <span style={{ color: color.accent, marginLeft: 12 }}>›</span>
       </div>
       <div
         style={{
