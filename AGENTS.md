@@ -324,8 +324,8 @@ their own markup so each variant styles it; chat keeps `Loader`.
 
 Each page's `opengraph-image.tsx` draws its card with `shareCard()` (`app/lib/shareCard.tsx`): panes
 in dark, the default look, with each page's own data. Satori reads neither oklch nor woff2, so the
-palette mirrors panes' dark values (a test keeps them in step) as hex, and fonts are woff subsets in
-`app/assets/og/`, made with `pyftsubset <woff2> --unicodes="U+0000-024F,U+0300-04FF,U+1E00-1EFF,U+2000-22FF,U+2500-25FF" --no-hinting --desubroutinize --layout-features='' --flavor=woff`.
+palette mirrors panes' dark values (a test keeps them in step) as hex, and `app/assets/og/` holds the
+TTFs from the same Iosevka release as the site's woff2: SS08, from `PkgWebFont-IosevkaSS08-<version>.zip`.
 Satori lays out only flexbox: every element with several children needs `display: "flex"`.
 
 ### Tooltips
