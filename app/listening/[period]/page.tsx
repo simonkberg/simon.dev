@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { use } from "react";
 
-import { isValidPeriod, type Period, periods } from "@/lib/lastfm";
+import { periods } from "@/lib/lastfm";
 import {
   ListeningPeriod,
   periodMetadata,
 } from "@/listening/components/ListeningPeriod";
+
+import { toPeriod } from "./toPeriod";
 
 export const prefetch = "partial";
 export const unstable_paramMatching = { period: "not-found" };
@@ -14,12 +15,6 @@ export const unstable_paramMatching = { period: "not-found" };
 export const instant = false;
 
 type ListeningPeriodPageProps = PageProps<"/listening/[period]">;
-
-// All time is /listening itself.
-const toPeriod = (param: string): Exclude<Period, "overall"> => {
-  if (isValidPeriod(param) && param !== "overall") return param;
-  notFound();
-};
 
 export async function generateMetadata({
   params,

@@ -1,0 +1,27 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { listeningCard } from "@/listening/components/listeningCard";
+
+import openGraphImage from "./opengraph-image";
+
+vi.mock(import("next/navigation"), () => ({
+  notFound: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+}));
+
+vi.mock(
+  import("@/listening/components/listeningCard"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    listeningCard: vi.fn(),
+  }),
+);
+
+describe("opengraph-image", () => {
+  it("draws the period", async () => {
+    await openGraphImage({ params: Promise.resolve({ period: "7day" }) });
+
+    expect(listeningCard).toHaveBeenCalledWith("7day");
+  });
+});

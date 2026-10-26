@@ -7,26 +7,19 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
+import {
+  type Lane,
+  labelTick,
+  lanes,
+  type Run,
+  stemStats,
+} from "@/lib/scrobbleChart";
 
 export interface ScrobbleChartProps {
   // Undefined when the counts failed to load.
   scrobbles: Promise<readonly ScrobbleCount[] | undefined>;
   // Undefined when the artists failed to load.
   topArtistByBucket: Promise<readonly BucketTopArtist[] | undefined>;
-}
-
-// Labels count back from the current bucket. Narrow charts show every other one.
-const labelStep = (count: number) => (count <= 8 ? 1 : Math.ceil(count / 6));
-
-const labelTick = (fromEnd: number, step: number) => {
-  if (fromEnd % (step * 2) === 0) return "narrow";
-  if (fromEnd % step === 0) return "wide";
-  return undefined;
-};
-
-interface Run {
-  first: number;
-  last: number;
 }
 
 const Stems = ({
@@ -36,19 +29,7 @@ const Stems = ({
   items: readonly ScrobbleCount[];
   active: readonly Run[];
 }) => {
-  const counts = items.map(({ count }) => count);
-  // All-zero counts would make the stems' `--value / --max` a 0/0.
-  const max = Math.max(0, ...counts) || 1;
-  const peak = counts.indexOf(max);
-  // The current bucket is still filling up, so it would drag the average down.
-  const settled = items.filter(({ current }) => !current);
-  const average =
-    settled.length > 0
-      ? Math.round(
-          settled.reduce((sum, { count }) => sum + count, 0) / settled.length,
-        )
-      : undefined;
-  const step = labelStep(items.length);
+  const { max, peak, average } = stemStats(items);
 
   return (
     <figure
@@ -64,7 +45,7 @@ const Stems = ({
       <ol>
         {items.map(({ label, count, current }, index) => {
           const text = `${label}: ${formatNumber(count)}${current ? " so far" : ""}`;
-          const tick = labelTick(items.length - 1 - index, step);
+          const tick = labelTick(index, items.length);
           return (
             <li
               key={label}
@@ -111,45 +92,6 @@ const Stems = ({
       )}
     </figure>
   );
-};
-
-interface Lane {
-  name: string;
-  runs: (Run & { current: boolean })[];
-  plays: number;
-  first: number;
-  last: number;
-}
-
-const lanes = (
-  items: readonly ScrobbleCount[],
-  buckets: readonly BucketTopArtist[],
-): Lane[] => {
-  // By label, in case the two loads straddle a new bucket.
-  const artistOf = new Map(buckets.map(({ label, artist }) => [label, artist]));
-  const byName = new Map<string, Lane>();
-  items.forEach(({ label, current }, index) => {
-    const topArtist = artistOf.get(label);
-    if (!topArtist) return;
-    const lane = byName.get(topArtist.name) ?? {
-      name: topArtist.name,
-      runs: [],
-      plays: 0,
-      first: index,
-      last: index,
-    };
-    byName.set(topArtist.name, lane);
-    lane.plays += topArtist.playcount;
-    lane.last = index;
-    const run = lane.runs.at(-1);
-    if (run?.last === index - 1) {
-      run.last = index;
-      run.current = current;
-    } else {
-      lane.runs.push({ first: index, last: index, current });
-    }
-  });
-  return [...byName.values()];
 };
 
 const Lanes = ({

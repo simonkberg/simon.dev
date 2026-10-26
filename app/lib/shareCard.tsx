@@ -8,7 +8,10 @@ import { cacheLife } from "next/cache";
 import { ImageResponse } from "next/og";
 import { type CSSProperties, Fragment, type ReactNode } from "react";
 
+import type { ScrobbleCount } from "@/actions/lastfm";
 import { config } from "@/config";
+import { formatNumber } from "@/lib/formatNumber";
+import { labelTick, stemStats } from "@/lib/scrobbleChart";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -130,17 +133,74 @@ const StatusLine = ({ title }: { title: string }) => (
   </div>
 );
 
+export const Pane = ({
+  number,
+  title,
+  subtitle,
+  children,
+}: {
+  number: number;
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) => (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      flex: 1,
+      position: "relative",
+      padding: "34px 28px 24px",
+      border: `1px solid ${color.rule}`,
+    }}
+  >
+    <div
+      style={{
+        position: "absolute",
+        top: -12,
+        left: 16,
+        display: "flex",
+        gap: 10,
+        padding: "0 8px",
+        background: color.ground,
+        fontSize: 17,
+      }}
+    >
+      <span style={{ color: color.accent }}>
+        {String(number).padStart(2, "0")}
+      </span>
+      <span style={{ fontWeight: 700, letterSpacing: 1.4 }}>
+        {title.toUpperCase()}
+      </span>
+      <span style={{ color: color.muted }}>{`(${subtitle})`}</span>
+    </div>
+    {children}
+  </div>
+);
+
 export interface StemsProps {
-  counts: readonly { count: number; current: boolean }[];
+  counts: readonly ScrobbleCount[];
   width: number;
   height: number;
+  // Labels the peak, the average and the buckets, as the listening page does.
+  annotated?: boolean;
 }
 
+const dot = 7;
+// Room above the peak for its label.
+const peakRoom = 30;
+
 // The scrobble chart's stems: a dot per bucket, hollow while it fills up.
-export const Stems = ({ counts, width, height }: StemsProps) => {
-  const max = Math.max(1, ...counts.map(({ count }) => count));
+export const Stems = ({
+  counts,
+  width,
+  height,
+  annotated = false,
+}: StemsProps) => {
+  const { max, peak, average } = stemStats(counts);
   const step = width / counts.length;
-  const dot = 7;
+  const reach = height - dot - (annotated ? peakRoom : 0);
+  const top = (count: number) => height - (count / max) * reach;
   return (
     <div
       style={{
@@ -149,19 +209,42 @@ export const Stems = ({ counts, width, height }: StemsProps) => {
         width,
         height,
         borderBottom: `1px solid ${color.rule}`,
+        fontSize: 16,
       }}
     >
-      {counts.map(({ count, current }, index) => {
-        const stem = (count / max) * (height - dot);
+      {annotated && average !== undefined && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: top(average),
+              width,
+              borderTop: `1px dashed ${color.muted}`,
+            }}
+          />
+          <span
+            style={{
+              position: "absolute",
+              left: width + 10,
+              top: top(average) - 11,
+              color: color.muted,
+            }}
+          >
+            {`${formatNumber(average)} avg`}
+          </span>
+        </>
+      )}
+      {counts.map(({ label, count, current }, index) => {
         const x = step * index + step / 2;
         return (
-          <Fragment key={index}>
+          <Fragment key={label}>
             <div
               style={{
                 position: "absolute",
                 left: x - 0.75,
-                top: height - stem,
-                height: stem,
+                top: top(count),
+                height: height - top(count),
                 width: 1.5,
                 background: color.accent,
               }}
@@ -170,7 +253,7 @@ export const Stems = ({ counts, width, height }: StemsProps) => {
               style={{
                 position: "absolute",
                 left: x - dot / 2,
-                top: height - stem - dot / 2,
+                top: top(count) - dot / 2,
                 width: dot,
                 height: dot,
                 borderRadius: dot,
@@ -178,6 +261,35 @@ export const Stems = ({ counts, width, height }: StemsProps) => {
                 background: current ? color.ground : color.accent,
               }}
             />
+            {annotated && index === peak && (
+              <span
+                style={{
+                  position: "absolute",
+                  left: x - 60,
+                  width: 120,
+                  justifyContent: "center",
+                  top: top(count) - peakRoom,
+                  fontSize: 19,
+                  color: color.accent,
+                }}
+              >
+                {formatNumber(count)}
+              </span>
+            )}
+            {annotated && labelTick(index, counts.length) && (
+              <span
+                style={{
+                  position: "absolute",
+                  left: x - 60,
+                  width: 120,
+                  justifyContent: "center",
+                  top: height + 8,
+                  color: color.muted,
+                }}
+              >
+                {label}
+              </span>
+            )}
           </Fragment>
         );
       })}
