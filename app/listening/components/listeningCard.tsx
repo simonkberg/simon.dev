@@ -106,7 +106,7 @@ const textWidth = (text: string, size: number) =>
 
 const fit = (text: string, size: number, room: number) => {
   const chars = Array.from(text);
-  const max = Math.floor(room / (size / 2));
+  const max = Math.max(1, Math.floor(room / (size / 2)));
   return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : text;
 };
 
