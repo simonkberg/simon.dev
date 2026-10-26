@@ -8,11 +8,13 @@ import RootLayout, { metadata, viewport } from "./layout";
 vi.mock(import("@/components/Layout"), () => import("@/mocks/layout"));
 
 describe("metadata", () => {
-  it("should have the title template, description and canonical URL", () => {
+  it("should have the title template, description, canonical URL and large share cards", () => {
     expect(metadata).toEqual({
+      metadataBase: new URL(config.url),
       title: { default: config.title, template: `%s - ${config.title}` },
       description: config.description,
       alternates: { canonical: new URL(config.url) },
+      twitter: { card: "summary_large_image" },
     });
   });
 });

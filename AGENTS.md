@@ -320,6 +320,14 @@ their own markup so each variant styles it; chat keeps `Loader`.
 - 404s use `not-found.tsx`, not `global-not-found.tsx`: that one is a separate root layout, so
   `<Link>`s out of it change the URL but not the page
 
+### Share Cards
+
+Each page's `opengraph-image.tsx` draws its card with `shareCard()` (`app/lib/shareCard.tsx`): panes
+in dark, the default look, with each page's own data. Satori reads neither oklch nor woff2, so the
+palette mirrors panes' dark values (a test keeps them in step) as hex, and fonts are woff subsets in
+`app/assets/og/`, made with `pyftsubset <woff2> --unicodes="U+0000-024F,U+0300-04FF,U+1E00-1EFF,U+2000-22FF,U+2500-25FF" --no-hinting --desubroutinize --layout-features='' --flavor=woff`.
+Satori lays out only flexbox: every element with several children needs `display: "flex"`.
+
 ### Tooltips
 
 Use `TooltipButton` from `app/components/Tooltip.tsx`, not `title`: a manual popover anchored to
