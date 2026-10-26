@@ -390,7 +390,7 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 ### Suspense for Date-Dependent Components
 
-Next's prerender needs a `<Suspense>` above a client component that reads the clock — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`. The clock still moves between the server render and hydration, so `RelativeTime` hydrates over the server's text (`suppressHydrationWarning`) and then remounts its `<time>` with its own.
+Next's prerender needs a `<Suspense>` above a client component that reads the clock — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`. The clock still moves between the server render and hydration, so `RelativeTime` hydrates over the server's text (`suppressHydrationWarning`) and then remounts its `<time>` with its own. On a fully prerendered page the time never reaches the HTML: the browser fills in the fallback, so `/simon-bot` waits on `io()` before its cached notes, as `/` does.
 
 ### setState During Render
 

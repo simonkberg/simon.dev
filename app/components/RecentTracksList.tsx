@@ -39,7 +39,6 @@ export const RecentTracksList = ({ recentTracks }: RecentTracksListProps) => {
             <Subtitle>
               (
               <Suspense fallback="Loading">
-                {/* Suspends due to usage of Date */}
                 <RelativeTime date={track.playedAt} />
               </Suspense>
               )
