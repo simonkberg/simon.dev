@@ -6,7 +6,7 @@ export interface HeaderProps {
   section?: string;
 }
 
-const pages = [
+export const pages = [
   { href: "/", name: "home" },
   { href: "/listening/", name: "listening" },
   { href: "/simon-bot", name: "simon-bot" },
