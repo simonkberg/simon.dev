@@ -1810,19 +1810,19 @@ ul {
 
 /* With JS, a count shows 0, and the chart or timeline it follows waits, until it hydrates to count up. */
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-  .stems:has(.animated-number:not([data-counting])) > ol > li,
-  .stems:has(.animated-number:not([data-counting])) > .average,
-  .timeline:has(.animated-number:not([data-counting])) > li,
-  .timeline:has(.animated-number:not([data-counting])) .timeline-plays,
-  .animated-number:not([data-counting]) {
-    animation-play-state: paused;
-  }
-
-  :has(> .animated-number:not([data-counting])) {
+  :has(> .animated-number) {
     --count-size: 1em;
   }
 
+  :is(.stems, .timeline):has(.animated-number:not([data-counting])) {
+    *,
+    *::before {
+      animation-play-state: paused;
+    }
+  }
+
   .animated-number:not([data-counting]) {
+    animation-play-state: paused;
     font-size: 0;
 
     &::before {
