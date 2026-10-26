@@ -1,7 +1,6 @@
 "use client";
 
-import { io } from "next/cache";
-import { use, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
 
@@ -29,8 +28,6 @@ export interface RelativeTimeProps {
 const subscribe = () => () => {};
 
 export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
-  // Renders at request time even on a static page, rather than in the browser.
-  use(io());
   const [now, setNow] = useState(Date.now);
   const hydrating = useSyncExternalStore(
     subscribe,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { io } from "next/cache";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -22,7 +23,8 @@ const headings: Record<PublicCategory, { title: string; what: string }> = {
 };
 
 export default function SimonBotPage() {
-  const result = getBotNotes();
+  // Renders the notes per request, so their relative times are in the HTML.
+  const result = io().then(getBotNotes);
 
   return (
     <Page section="simon-bot">

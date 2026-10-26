@@ -390,7 +390,7 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 ### Suspense for Date-Dependent Components
 
-A client component that reads the clock calls `use(io())` first, so it renders at request time instead of only in the browser on a static page, under a `<Suspense>` — see `RelativeTime` and its callers. The clock still moves between the server render and hydration, so `RelativeTime` hydrates over the server's text (`suppressHydrationWarning`) and then remounts its `<time>` with its own.
+Next's prerender needs a `<Suspense>` above a client component that reads the clock — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`. The clock still moves between the server render and hydration, so `RelativeTime` hydrates over the server's text (`suppressHydrationWarning`) and then remounts its `<time>` with its own.
 
 ### setState During Render
 
