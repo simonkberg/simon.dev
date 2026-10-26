@@ -137,8 +137,9 @@ export default async function openGraphImage() {
   const result = await getOnThisDay();
   const days = result.status === "ok" ? result.days : undefined;
   // Oldest first, along the time axis.
+  // Before reversing, so a tie goes to the newest year, as on the home page.
+  const busiest = busiestYear(days?.years ?? []);
   const years = days?.years.toReversed() ?? [];
-  const busiest = busiestYear(years);
   const played = years.filter(({ top }) => top).length;
 
   return shareCard(

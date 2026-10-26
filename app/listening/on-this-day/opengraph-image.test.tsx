@@ -21,7 +21,7 @@ vi.mock(import("@/actions/lastfm"), () => ({
           { year: "2025", count: 0 },
           {
             year: "2024",
-            count: 15,
+            count: 62,
             top: { track: "Apartment Story", artist: "The National" },
           },
           { year: "2023", count: 0 },
@@ -43,7 +43,7 @@ const renderCard = async () => {
 };
 
 describe("opengraph-image", () => {
-  it("draws the day's busiest year and every year's top artist", async () => {
+  it("draws the day's busiest year, the newest on a tie, and every year's top artist", async () => {
     await renderCard();
 
     expect(shareCard).toHaveBeenCalledWith(
@@ -53,7 +53,7 @@ describe("opengraph-image", () => {
     expect(screen.getByText("(2 of 4 years)")).toBeInTheDocument();
     expect(screen.getByText("Oct 26")).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      "busiest:2022·Sober to Death–Car Seat Headrest·62 plays",
+      "busiest:2024·Apartment Story–The National·62 plays",
     );
     expect(
       screen.getAllByText(/^(The National|Car Seat Headrest)$/),
