@@ -4,11 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type BucketTopArtist,
   getScrobbles,
+  getTopAlbums,
   getTopArtistByBucket,
   getTopArtists,
   type ScrobbleCount,
 } from "@/actions/lastfm";
+import { config } from "@/config";
+import { inlineCover } from "@/lib/covers";
 import { shareCard } from "@/lib/shareCard";
+import { topAlbum } from "@/mocks/lastfm";
 
 import { listeningCard } from "./listeningCard";
 
@@ -29,7 +33,21 @@ const buckets: BucketTopArtist[] = names.map((name, index) => ({
   artist: { name, playcount: name === "Frog" ? 1 : 50 - index },
 }));
 
+vi.mock(import("@/lib/covers"), () => ({
+  inlineCover: vi.fn((src: string) => Promise.resolve(`data:${src}`)),
+}));
+
+const cover = (name: string) => `${config.lastfmCoverCdn}${name}.jpg`;
+const albums = [
+  topAlbum("Knock Knock", "Bill Callahan", 1, cover("knock")),
+  topAlbum("Pale", "Mimi", 2, cover("pale")),
+  topAlbum("Coverless", "Torquil", 3),
+  topAlbum("Fourth", "Fourth", 4, cover("fourth")),
+  topAlbum("Fifth", "Fifth", 5, cover("fifth")),
+];
+
 vi.mock(import("@/actions/lastfm"), () => ({
+  getTopAlbums: vi.fn(() => Promise.resolve({ status: "ok" as const, albums })),
   getScrobbles: vi.fn(() =>
     Promise.resolve({ status: "ok" as const, scrobbles }),
   ),
@@ -71,6 +89,37 @@ describe("listeningCard", () => {
         .getAllByText(/^(Smog|Low|Stars|Hop Along|Frog)$/)
         .map((lane) => lane.textContent),
     ).toEqual(["Smog", "Smog", "Low", "Stars", "Hop Along"]);
+  });
+
+  it("shows the top album and the covers of the top four", async () => {
+    await renderCard();
+
+    expect(getTopAlbums).toHaveBeenCalledWith("12month");
+    expect(vi.mocked(inlineCover).mock.calls).toEqual([
+      [cover("knock"), 0],
+      [cover("pale"), 1],
+      [cover("fourth"), 3],
+    ]);
+    expect(screen.getByText("top album · 39 plays")).toBeInTheDocument();
+    expect(screen.getByText("Knock Knock")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByText(/^[1-4]$/)
+        .map((rank) => rank.parentElement?.style.backgroundImage),
+    ).toEqual([
+      `url("data:${cover("knock")}")`,
+      `url("data:${cover("pale")}")`,
+      "",
+      `url("data:${cover("fourth")}")`,
+    ]);
+  });
+
+  it("leaves out the covers when the albums fail", async () => {
+    vi.mocked(getTopAlbums).mockResolvedValue(error);
+
+    await renderCard();
+
+    expect(screen.queryByText(/^top album/)).not.toBeInTheDocument();
   });
 
   it("leaves out the lanes when the artists fail", async () => {

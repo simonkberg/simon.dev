@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife } from "next/cache";
 import { getImageProps } from "next/image";
 
 import { config } from "@/config";
@@ -9,6 +10,10 @@ import { log } from "@/lib/log";
 const WARM_MS = 60 * 60 * 1000;
 const WARM_CONCURRENCY = 2;
 const WARM_TIMEOUT_MS = 30_000;
+const INLINE_TIMEOUT_MS = 10_000;
+
+// This replica's own server, whose image cache the warm-up fills.
+export const localOrigin = `http://localhost:${process.env["PORT"] ?? 3000}`;
 
 // A fixed width gives each cover just a 1x and a 2x URL to warm.
 export const coverWidth = (index: number) => (index === 0 ? 480 : 160);
@@ -23,6 +28,35 @@ export function coverUrls(src: string, index: number): string[] {
   return String(srcSet)
     .split(", ")
     .map((candidate) => candidate.slice(0, candidate.lastIndexOf(" ")));
+}
+
+// Satori refuses to fetch from localhost, so a share card gets the resize inline.
+export async function inlineCover(
+  src: string,
+  index: number,
+): Promise<string | undefined> {
+  "use cache";
+
+  // The 1x resize: a card is drawn at its own size.
+  const [path] = coverUrls(src, index);
+  try {
+    const res = await fetch(new URL(String(path), localOrigin), {
+      // Satori draws no WebP backgrounds, so this keeps the upload's own format.
+      headers: { accept: "image/jpeg,image/png" },
+      signal: AbortSignal.timeout(INLINE_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      throw new Error(`Cover responded ${res.status}`);
+    }
+    const type = res.headers.get("content-type") ?? "image/jpeg";
+    const data = Buffer.from(await res.arrayBuffer()).toString("base64");
+    cacheLife("hours");
+    return `data:${type};base64,${data}`;
+  } catch (err) {
+    cacheLife("seconds");
+    log.warn({ err, path }, "Cover inline failed");
+    return undefined;
+  }
 }
 
 async function warmPath(origin: string, path: string): Promise<void> {

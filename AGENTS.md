@@ -216,6 +216,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   covers with properties that transition, so hover or focus fades them to the original from
   one image: manual dithers by adding a Bayer grain under a `contrast()` threshold, since a
   `url()` filter can't interpolate.
+  The listening share cards inline the 1x resizes from the replica's own `/_next/image`
+  (`inlineCover`), since Satori fetches nothing from localhost, as JPEG or PNG: it draws no WebP backgrounds.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.
