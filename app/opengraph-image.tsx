@@ -5,7 +5,7 @@ import { color, shareCard, Stems } from "@/lib/shareCard";
 
 export { contentType, size } from "@/lib/shareCard";
 
-export const alt = `${config.title}, fullstack engineer in Stockholm`;
+export const alt = `${config.title}, fullstack engineer in Stockholm, Sweden`;
 
 export default async function openGraphImage() {
   const [recentTracks, scrobbles] = await Promise.all([
@@ -48,8 +48,7 @@ export default async function openGraphImage() {
           color: color.muted,
         }}
       >
-        Fullstack engineer, specialized in React, Node.js and Java. Senior
-        engineer at Spotify, Stockholm.
+        Fullstack engineer in Stockholm, Sweden.
       </div>
       <div
         style={{
