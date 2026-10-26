@@ -9,10 +9,9 @@ export { contentType, size } from "@/lib/shareCard";
 
 export const alt = listeningAlt;
 
+// Images get the page's params, but no searchParams.
 export default async function openGraphImage({
   params,
-}: {
-  params: Promise<{ period: string }>;
-}) {
+}: Pick<PageProps<"/listening/[period]">, "params">) {
   return listeningCard(toPeriod((await params).period));
 }
