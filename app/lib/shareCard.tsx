@@ -141,7 +141,7 @@ export const Pane = ({
 }: {
   number: number;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: ReactNode;
 }) => (
   <div
@@ -172,7 +172,9 @@ export const Pane = ({
       <span style={{ fontWeight: 700, letterSpacing: 1.4 }}>
         {title.toUpperCase()}
       </span>
-      <span style={{ color: color.muted }}>{`(${subtitle})`}</span>
+      {subtitle && (
+        <span style={{ color: color.muted }}>{`(${subtitle})`}</span>
+      )}
     </div>
     {children}
   </div>

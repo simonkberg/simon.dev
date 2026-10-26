@@ -1,28 +1,19 @@
 import Link from "next/link";
 import { use } from "react";
 
-import type {
-  DayInYear,
-  GetOnThisDayResult,
-  PlayedYear,
-} from "@/actions/lastfm";
+import type { GetOnThisDayResult } from "@/actions/lastfm";
 import { Skeleton } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
+import { busiestYear } from "@/lib/onThisDay";
 
 export interface OnThisDayTeaserProps {
   onThisDay: Promise<GetOnThisDayResult>;
 }
 
-const busiest = (years: readonly DayInYear[]) =>
-  years.reduce<PlayedYear | undefined>(
-    (busiest, year) =>
-      year.top && year.count > (busiest?.count ?? 0) ? year : busiest,
-    undefined,
-  );
-
 export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
   const result = use(onThisDay);
-  const year = result.status === "ok" ? busiest(result.days.years) : undefined;
+  const year =
+    result.status === "ok" ? busiestYear(result.days.years) : undefined;
 
   if (year === undefined) return null;
 
