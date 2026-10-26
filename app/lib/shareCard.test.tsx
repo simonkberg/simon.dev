@@ -2,9 +2,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { color, shareCard } from "./shareCard";
+import { color, shareCard, Stems } from "./shareCard";
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
@@ -66,5 +67,21 @@ describe("shareCard", () => {
     expect(response.headers.get("content-type")).toBe("image/png");
     const png = new Uint8Array(await response.arrayBuffer());
     expect([...png.subarray(1, 4)]).toEqual([0x50, 0x4e, 0x47]);
+  });
+});
+
+describe("Stems", () => {
+  it("leaves out the average while the only bucket fills up", () => {
+    const html = renderToStaticMarkup(
+      <Stems
+        counts={[{ label: "2026", count: 10, current: true }]}
+        width={100}
+        height={50}
+        annotated
+      />,
+    );
+
+    expect(html).toContain("2026");
+    expect(html).not.toContain("avg");
   });
 });

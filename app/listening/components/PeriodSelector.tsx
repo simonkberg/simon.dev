@@ -22,7 +22,7 @@ export const PeriodSelector = ({ current }: PeriodSelectorProps) => (
           label
         ) : (
           <Link
-            href={`/listening/${tab === "overall" ? "" : tab}`}
+            href={tab === "overall" ? "/listening" : `/listening/${tab}`}
             prefetch
             replace
           >
