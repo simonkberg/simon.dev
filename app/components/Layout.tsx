@@ -10,6 +10,7 @@ import {
   variantPreference,
 } from "@/lib/preferences";
 
+import { Hydrated } from "./Hydrated";
 import { ThemeColorTags } from "./ThemeColorTags";
 
 export const Layout = ({ children }: PropsWithChildren) => {
@@ -28,7 +29,10 @@ export const Layout = ({ children }: PropsWithChildren) => {
         <script dangerouslySetInnerHTML={{ __html: preferencesScript }} />
       </head>
       <GoogleTagManager gtmId={config.gtmId} />
-      <body>{children}</body>
+      <body>
+        {children}
+        <Hydrated />
+      </body>
     </html>
   );
 };

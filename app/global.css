@@ -1428,6 +1428,7 @@ ul {
       white-space: pre;
       /* Lands in the stop's first step, as the next stop starts. */
       animation: rail var(--step) linear var(--grow-delay) backwards;
+      animation-play-state: var(--grow-play-state, running);
     }
 
     &::after {
@@ -1799,35 +1800,25 @@ ul {
   animation: grow var(--grow-duration, 600ms)
     var(--grow-easing, cubic-bezier(0.33, 1, 0.68, 1)) var(--grow-delay, 0ms)
     both;
+  animation-play-state: var(--grow-play-state, running);
 }
 
-/* Registered so 1em computes to a length on the parent, before a waiting count's font-size: 0. */
-@property --count-size {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 0px;
+/* With JS, entry animations wait for hydration, so a count starts from 0 with what it follows. */
+@media (scripting: enabled) {
+  :root:not([data-hydrated]) {
+    --grow-play-state: paused;
+  }
 }
 
-/* With JS, a count shows 0, and the chart or timeline it follows waits, until it hydrates to count up. */
+/* Until it counts, a count shows its 0 and clips the number it will count to. */
 @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-  :has(> .animated-number) {
-    --count-size: 1em;
-  }
-
-  :is(.stems, .timeline):has(.animated-number:not([data-counting])) {
-    *,
-    *::before {
-      animation-play-state: paused;
-    }
-  }
-
   .animated-number:not([data-counting]) {
-    animation-play-state: paused;
-    font-size: 0;
+    display: inline-grid;
+    grid: auto / auto 0;
+    overflow: clip;
 
     &::before {
       content: attr(data-from) / "";
-      font-size: var(--count-size);
     }
   }
 }
