@@ -25,7 +25,7 @@ export const color = {
   onAccent: "#25151e",
 };
 
-// Satori reads no woff2 either, hence the woff subsets.
+// Satori reads no woff2 either, hence the release TTFs.
 // An ArrayBuffer, since a cached Buffer comes back as one Satori can't read.
 const read = async (url: URL) => new Uint8Array(await readFile(url)).buffer;
 
@@ -35,9 +35,9 @@ async function loadFonts() {
   "use cache";
   cacheLife("max");
   const [regular, bold, italic] = await Promise.all([
-    read(new URL("../assets/og/IosevkaSS08-Regular.woff", import.meta.url)),
-    read(new URL("../assets/og/IosevkaSS08-Bold.woff", import.meta.url)),
-    read(new URL("../assets/og/IosevkaSS08-Italic.woff", import.meta.url)),
+    read(new URL("../assets/og/IosevkaSS08-Regular.ttf", import.meta.url)),
+    read(new URL("../assets/og/IosevkaSS08-Bold.ttf", import.meta.url)),
+    read(new URL("../assets/og/IosevkaSS08-Italic.ttf", import.meta.url)),
   ]);
   return [
     { name: "Iosevka", data: regular, weight: 400, style: "normal" } as const,
