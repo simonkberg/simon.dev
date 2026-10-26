@@ -3,7 +3,7 @@ export async function register() {
     const { startBotSubscription } = await import("@/lib/discord/bot");
     const { watchOnline } = await import("@/lib/discord/online");
     const { refreshIpDenyList } = await import("@/lib/ipDenyList");
-    const { warmCovers } = await import("@/lib/covers");
+    const { localOrigin, warmCovers } = await import("@/lib/covers");
     const { bridgeConsole, log } = await import("@/lib/log");
     const { runMigrationsUntilApplied } = await import("@/lib/migrations");
     const { markReady } = await import("@/lib/readiness");
@@ -23,7 +23,7 @@ export async function register() {
       })
       .then(() => {
         markReady("bot");
-        warmCovers(`http://localhost:${process.env["PORT"] ?? 3000}`);
+        warmCovers(localOrigin);
       })
       .catch((err) => {
         log.error({ err }, "Failed to start bot subscription");

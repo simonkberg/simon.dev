@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+import { cacheLife } from "next/cache";
 import { getImageProps } from "next/image";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,9 @@ import { log } from "@/lib/log";
 import { topAlbum } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 
-import { coverUrls, warmCovers } from "./covers";
+import { coverUrls, inlineCover, warmCovers } from "./covers";
+
+vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
 vi.mock(import("next/image"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -119,6 +122,46 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() =>
       expect(log.warn).toHaveBeenCalledWith({ err }, "Cover warm-up failed"),
+    );
+  });
+});
+
+describe("inlineCover", () => {
+  const cover = `${config.lastfmCoverCdn}first.png`;
+
+  it("inlines the 1x resize in the upload's own format", async () => {
+    server.use(
+      http.get(`${origin}/_next/image`, ({ request }) => {
+        requests.push(request);
+        return HttpResponse.arrayBuffer(new Uint8Array([1, 2, 3]).buffer, {
+          headers: { "content-type": "image/png" },
+        });
+      }),
+    );
+
+    await expect(inlineCover(cover, 1)).resolves.toBe(
+      "data:image/png;base64,AQID",
+    );
+    expect(requests.map(({ url }) => url.replace(origin, ""))).toEqual([
+      coverUrls(cover, 1)[0],
+    ]);
+    expect(requests[0]?.headers.get("accept")).toBe("image/jpeg,image/png");
+    expect(cacheLife).toHaveBeenCalledWith("hours");
+  });
+
+  it("caches a failed resize briefly", async () => {
+    server.use(
+      http.get(
+        `${origin}/_next/image`,
+        () => new HttpResponse(null, { status: 504 }),
+      ),
+    );
+
+    await expect(inlineCover(cover, 0)).resolves.toBeUndefined();
+    expect(cacheLife).toHaveBeenCalledWith("seconds");
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: new Error("Cover responded 504"), path: coverUrls(cover, 0)[0] },
+      "Cover inline failed",
     );
   });
 });
