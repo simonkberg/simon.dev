@@ -301,8 +301,8 @@ const userGetScrobblesResponseSchema = z
 
 const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
   from: toUnixTime(from),
-  // `to` is inclusive, and the next range starts on this second.
-  to: toUnixTime(to) - 1,
+  // Last.fm leaves out the second `to` names, so ranges can meet on it.
+  to: toUnixTime(to),
 });
 
 export async function userGetScrobbles(
@@ -313,9 +313,7 @@ export async function userGetScrobbles(
     user,
     limit: params.limit,
     page: params.page ?? 1,
-    from: toUnixTime(params.from),
-    // Unlike the charts', this `to` already leaves out its own second.
-    to: toUnixTime(params.to),
+    ...rangeParams(params),
   });
 }
 
