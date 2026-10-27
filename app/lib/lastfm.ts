@@ -304,11 +304,12 @@ const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
 
 export async function userGetScrobbles(
   user: string,
-  params: { from: Date; to: Date; limit: number },
+  params: { from: Date; to: Date; limit: number; page?: number },
 ) {
   return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
     user,
     limit: params.limit,
+    page: params.page ?? 1,
     ...rangeParams(params),
   });
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 
+import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { batch, query } from "@/lib/turso";
 
@@ -43,6 +44,14 @@ export const MIGRATIONS: readonly string[] = [
     username TEXT PRIMARY KEY,
     until INTEGER NOT NULL
   )`,
+  // Last.fm gives scrobbles no id, so one is its second and what played.
+  `CREATE TABLE IF NOT EXISTS scrobbles (
+    played_at INTEGER NOT NULL,
+    artist TEXT NOT NULL,
+    track TEXT NOT NULL,
+    album TEXT NOT NULL,
+    PRIMARY KEY (played_at, artist, track)
+  ) WITHOUT ROWID`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.
@@ -77,17 +86,8 @@ async function acquireLock(owner: string): Promise<void> {
   const deadline = Date.now() + LOCK_WAIT_MS;
   let lastError: unknown;
   while (Date.now() < deadline) {
-    const now = Date.now();
     try {
-      // Matching our own owner makes a retry after a lost response succeed.
-      const { rowsAffected } = await query(
-        `INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
-         ON CONFLICT (name) DO UPDATE
-         SET owner = excluded.owner, expires_at = excluded.expires_at
-         WHERE locks.expires_at < ? OR locks.owner = excluded.owner`,
-        [LOCK_NAME, owner, now + LOCK_TTL_MS, now],
-      );
-      if (rowsAffected > 0) return;
+      if (await tryLock(LOCK_NAME, owner, LOCK_TTL_MS)) return;
     } catch (err) {
       lastError = err;
       log.warn({ err }, "Failed to take the migrations lock, retrying");
@@ -170,10 +170,7 @@ export async function runMigrations(): Promise<void> {
   try {
     await applyPending();
   } finally {
-    await query("DELETE FROM locks WHERE name = ? AND owner = ?", [
-      LOCK_NAME,
-      owner,
-    ]).catch((err: unknown) => {
+    await releaseLock(LOCK_NAME, owner).catch((err: unknown) => {
       log.warn({ err }, "Failed to release the migrations lock");
     });
   }

@@ -392,12 +392,14 @@ describe("userGetScrobbles", () => {
       from: new Date("2021-01-01T00:00:00Z"),
       to: new Date("2021-01-02T00:00:00Z"),
       limit: 1,
+      page: 2,
     });
 
     expect(params()).toMatchObject({
       method: "user.getrecenttracks",
       user: "testuser",
       limit: "1",
+      page: "2",
       from: "1609459200",
       to: "1609545599",
     });

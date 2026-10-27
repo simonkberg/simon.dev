@@ -221,6 +221,13 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year with one `getRecentTracks` page per year; the home page teases the
   busiest year through the same cached call.
+- **Scrobble mirror:** `app/lib/scrobbles.ts` copies every Last.fm scrobble into Turso's
+  `scrobbles`, keyed by second, artist and track since Last.fm gives them no id. One replica,
+  holding the `scrobbles` lock, syncs each minute: when Last.fm's count for the last two
+  weeks differs from ours (offline players scrobble late), it refetches them oldest page
+  first, so an interrupted sync leaves no gap, then backfills backwards from the oldest
+  stored. Edits and deletions on Last.fm never reach it. Previews fork testing's copy and
+  sync only the gap; to refresh it, deploy `testing` until "Backfilled every scrobble" logs, then stop it.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
   Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never
