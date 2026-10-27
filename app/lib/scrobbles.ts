@@ -120,7 +120,7 @@ export type Play = { artist: string; track: string };
 /** What played from `from` until `to`, oldest first. */
 export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   const { rows } = await query(
-    "SELECT artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at",
+    "SELECT artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
     [from.getTime(), to.getTime()],
   );
   return rows.map((row) => ({
