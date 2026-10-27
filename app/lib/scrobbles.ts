@@ -18,10 +18,13 @@ const LATE_MS = 14 * 24 * 60 * 60_000;
 
 type Tracks = Awaited<ReturnType<typeof userGetScrobbles>>["tracks"];
 
-function state() {
+type State = { owner: string; backfilled: boolean; drift: number };
+
+function state(): State {
   return getGlobal("scrobble-sync", () => ({
     owner: crypto.randomUUID(),
     backfilled: false,
+    drift: 0,
   }));
 }
 
@@ -57,7 +60,7 @@ async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
 
 const toSecond = (ms: number) => ms - (ms % 1000);
 
-async function catchUp(): Promise<void> {
+async function catchUp(current: State): Promise<void> {
   const newest = await storedEdge("MAX");
   if (newest === undefined) return;
   // A fixed `to`, so scrobbles arriving meanwhile don't shift the pages.
@@ -65,16 +68,21 @@ async function catchUp(): Promise<void> {
   const from = Math.min(newest, toSecond(to - LATE_MS));
   const range = { from: new Date(from), to: new Date(to) };
   const first = await fetchPage(range);
-  const { rows } = await query(
-    "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
-    [from, to],
-  );
-  if (rows[0]?.["count"] === first.total) return;
+  const drift = async () => {
+    const { rows } = await query(
+      "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
+      [from, to],
+    );
+    return first.total - Number(rows[0]?.["count"]);
+  };
+  if ((await drift()) === current.drift) return;
   // Oldest page first, so a sync cut short leaves no gap below the newest stored.
   for (let page = Math.ceil(first.total / PAGE); page > 1; page--) {
     await store((await fetchPage({ ...range, page })).tracks);
   }
   await store(first.tracks);
+  // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
+  current.drift = await drift();
 }
 
 /** Stores the page before the oldest stored scrobble, and returns whether it was the last. */
@@ -94,7 +102,7 @@ export async function syncScrobbles(): Promise<boolean> {
   const current = state();
   if (!(await tryLock(LOCK_NAME, current.owner, LOCK_TTL_MS))) return false;
 
-  await catchUp();
+  await catchUp(current);
   if (current.backfilled) return false;
 
   const deadline = Date.now() + BACKFILL_SLICE_MS;

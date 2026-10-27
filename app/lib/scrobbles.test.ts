@@ -127,6 +127,17 @@ describe("syncScrobbles", () => {
     expect(userGetScrobbles).toHaveBeenCalledOnce();
   });
 
+  it("should not refetch what storing can't settle, like a repeat in one second", async () => {
+    lastfm = [NOW, ...played(250)];
+    await syncScrobbles();
+    await syncScrobbles();
+    vi.mocked(userGetScrobbles).mockClear();
+
+    await syncScrobbles();
+
+    expect(userGetScrobbles).toHaveBeenCalledOnce();
+  });
+
   it("should leave no gap below the newest stored when a catch-up fails", async () => {
     lastfm = played(50);
     await syncScrobbles();
