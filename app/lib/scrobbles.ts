@@ -32,24 +32,24 @@ function fetchPage(params: {
   from: Date;
   to: Date;
   page?: number;
-}): ReturnType<typeof userGetScrobbles> {
+  limit?: number;
+}) {
   return bulk(() =>
-    userGetScrobbles(config.lastfmUsername, { ...params, limit: PAGE }),
+    userGetScrobbles(config.lastfmUsername, { limit: PAGE, ...params }),
   );
 }
 
 async function store(tracks: Tracks): Promise<void> {
-  const rows = tracks.map(({ playedAt, artist, name, album }) => [
-    playedAt.getTime(),
-    artist,
-    name,
-    album,
-  ]);
-  if (rows.length === 0) return;
+  if (tracks.length === 0) return;
   await query(
     `INSERT OR IGNORE INTO scrobbles (played_at, artist, track, album)
-     VALUES ${rows.map(() => "(?, ?, ?, ?)").join(", ")}`,
-    rows.flat(),
+     VALUES ${tracks.map(() => "(?, ?, ?, ?)").join(", ")}`,
+    tracks.flatMap(({ playedAt, artist, name, album }) => [
+      playedAt.getTime(),
+      artist,
+      name,
+      album,
+    ]),
   );
 }
 
@@ -70,35 +70,38 @@ async function catchUp(current: State): Promise<void> {
   const to = toSecond(Date.now());
   const from = Math.min(newest, toSecond(to - LATE_MS));
   const range = { from: new Date(from), to: new Date(to) };
-  const first = await fetchPage(range);
-  const drift = async () => {
+  const countStored = async () => {
     const { rows } = await query(
       "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
       [from, to],
     );
-    return first.total - Number(rows[0]?.["count"]);
+    return Number(rows[0]?.["count"]);
   };
-  if ((await drift()) === current.drift) return;
+  const [{ total }, stored] = await Promise.all([
+    fetchPage({ ...range, limit: 1 }),
+    countStored(),
+  ]);
+  if (total - stored === current.drift) return;
   // Oldest page first, so a sync cut short leaves no gap below the newest stored.
-  for (let page = Math.ceil(first.total / PAGE); page > 1; page--) {
+  for (let page = Math.ceil(total / PAGE); page >= 1; page--) {
     await store((await fetchPage({ ...range, page })).tracks);
   }
-  await store(first.tracks);
   // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
-  current.drift = await drift();
+  current.drift = total - (await countStored());
 }
 
-/** Stores the page before the oldest stored scrobble, and returns whether it reached back no further. */
-async function backfillPage(): Promise<boolean> {
-  const oldest = await storedEdge("MIN");
+/** Stores the page before `oldest`, and returns the oldest stored after it. */
+async function backfillPage(
+  oldest: number | undefined,
+): Promise<number | undefined> {
   // `to` is exclusive: a second past the oldest keeps others played in its second.
   const { tracks } = await fetchPage({
     from: new Date(0),
     to: new Date((oldest ?? Date.now()) + 1000),
   });
   await store(tracks);
-  // Not a short page: one can be short while a track plays, since Last.fm lists it in the page.
-  return (await storedEdge("MIN")) === oldest;
+  const played = tracks.map(({ playedAt }) => playedAt.getTime());
+  return played.length === 0 ? oldest : Math.min(oldest ?? Infinity, ...played);
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */
@@ -110,10 +113,13 @@ export async function syncScrobbles(): Promise<boolean> {
   if (current.backfilled) return false;
 
   const deadline = Date.now() + BACKFILL_SLICE_MS;
+  let oldest = await storedEdge("MIN");
   while (!current.backfilled && Date.now() < deadline) {
-    current.backfilled = await backfillPage();
+    const reached = await backfillPage(oldest);
+    // Not a short page: one can be short while a track plays, since Last.fm lists it in the page.
+    current.backfilled = reached === oldest;
+    oldest = reached;
   }
-  const oldest = await storedEdge("MIN");
   log.info(
     { oldest: oldest === undefined ? undefined : new Date(oldest) },
     current.backfilled ? "Backfilled every scrobble" : "Backfilling scrobbles",
