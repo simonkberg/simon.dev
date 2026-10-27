@@ -129,14 +129,17 @@ describe("syncScrobbles", () => {
     expect(await stored()).toEqual(lastfm);
   });
 
-  it("should ask Last.fm once when nothing changed", async () => {
-    lastfm = played(50);
+  it("should fetch only what follows the newest stored for a new scrobble", async () => {
+    lastfm = played(250);
     await syncScrobbles();
+    lastfm = [NOW + 60_000, ...lastfm];
+    vi.setSystemTime(NOW + 61_000);
     vi.mocked(userGetScrobbles).mockClear();
 
     await syncScrobbles();
 
-    expect(userGetScrobbles).toHaveBeenCalledOnce();
+    expect(await stored()).toEqual(lastfm);
+    expect(userGetScrobbles).toHaveBeenCalledTimes(2);
   });
 
   it("should not refetch what storing can't settle, like a repeat in one second", async () => {

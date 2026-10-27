@@ -63,13 +63,22 @@ async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
 
 const toSecond = (ms: number) => ms - (ms % 1000);
 
+/** Stores a range's pages oldest first, so one cut short leaves no gap below the newest stored. */
+async function refetch(range: { from: Date; to: Date }): Promise<void> {
+  const first = await fetchPage(range);
+  for (let page = Math.ceil(first.total / PAGE); page > 1; page--) {
+    await store((await fetchPage({ ...range, page })).tracks);
+  }
+  await store(first.tracks);
+}
+
 async function catchUp(current: State): Promise<void> {
   const newest = await storedEdge("MAX");
   if (newest === undefined) return;
   // A fixed `to`, so scrobbles arriving meanwhile don't shift the pages.
   const to = toSecond(Date.now());
   const from = Math.min(newest, toSecond(to - LATE_MS));
-  const range = { from: new Date(from), to: new Date(to) };
+  const window = { from: new Date(from), to: new Date(to) };
   const countStored = async () => {
     const { rows } = await query(
       "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
@@ -78,14 +87,14 @@ async function catchUp(current: State): Promise<void> {
     return Number(rows[0]?.["count"]);
   };
   const [{ total }, stored] = await Promise.all([
-    fetchPage({ ...range, limit: 1 }),
+    fetchPage({ ...window, limit: 1 }),
     countStored(),
   ]);
   if (total - stored === current.drift) return;
-  // Oldest page first, so a sync cut short leaves no gap below the newest stored.
-  for (let page = Math.ceil(total / PAGE); page >= 1; page--) {
-    await store((await fetchPage({ ...range, page })).tracks);
-  }
+  // New scrobbles usually all follow the newest stored, so those come first.
+  await refetch({ from: new Date(newest), to: window.to });
+  if (total - (await countStored()) === current.drift) return;
+  await refetch(window);
   // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
   current.drift = total - (await countStored());
 }
@@ -100,8 +109,7 @@ async function backfillPage(
     to: new Date((oldest ?? Date.now()) + 1000),
   });
   await store(tracks);
-  const played = tracks.map(({ playedAt }) => playedAt.getTime());
-  return played.length === 0 ? oldest : Math.min(oldest ?? Infinity, ...played);
+  return tracks.at(-1)?.playedAt.getTime() ?? oldest;
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */
