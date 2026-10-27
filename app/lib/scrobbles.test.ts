@@ -185,4 +185,18 @@ describe("startScrobbleSync", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(userGetScrobbles).toHaveBeenCalled();
   });
+
+  it("should sync again straight away while history remains", async () => {
+    vi.useFakeTimers({ now: NOW + 1000 });
+    lastfm = played(450);
+    // Each request outlasts a backfill slice, so every sync stores one page.
+    vi.mocked(userGetScrobbles).mockImplementation(async (...args) => {
+      vi.setSystemTime(Date.now() + 60_000);
+      return fakeLastfm(...args);
+    });
+
+    startScrobbleSync();
+
+    await vi.waitFor(async () => expect(await stored()).toEqual(lastfm));
+  });
 });

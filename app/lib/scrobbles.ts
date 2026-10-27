@@ -39,9 +39,12 @@ function fetchPage(params: {
 }
 
 async function store(tracks: Tracks): Promise<void> {
-  const rows = tracks.flatMap(({ playedAt, artist, name, album }) =>
-    playedAt ? [[playedAt.getTime(), artist, name, album]] : [],
-  );
+  const rows = tracks.map(({ playedAt, artist, name, album }) => [
+    playedAt.getTime(),
+    artist,
+    name,
+    album,
+  ]);
   if (rows.length === 0) return;
   await query(
     `INSERT OR IGNORE INTO scrobbles (played_at, artist, track, album)

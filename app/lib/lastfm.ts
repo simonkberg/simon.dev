@@ -292,8 +292,11 @@ const userGetScrobblesResponseSchema = z
   })
   .transform((data) => ({
     total: data.recenttracks["@attr"].total,
-    // The track playing now is listed whatever the range.
-    tracks: data.recenttracks.track.filter((track) => !track.nowPlaying),
+    // The track playing now is listed whatever the range, without a date.
+    tracks: data.recenttracks.track.filter(
+      (track): track is typeof track & { playedAt: Date } =>
+        track.playedAt !== undefined,
+    ),
   }));
 
 const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
