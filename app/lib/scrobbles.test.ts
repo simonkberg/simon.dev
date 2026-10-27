@@ -80,6 +80,18 @@ describe("syncScrobbles", () => {
     );
   });
 
+  it("should keep backfilling past a short page", async () => {
+    lastfm = played(450);
+    vi.mocked(userGetScrobbles).mockImplementationOnce(async (...args) => {
+      const page = await fakeLastfm(...args);
+      return { ...page, tracks: page.tracks.slice(0, -1) };
+    });
+
+    await syncScrobbles();
+
+    expect(await stored()).toEqual(lastfm);
+  });
+
   it("should stop a backfill after its slice and resume it next time", async () => {
     lastfm = played(450);
     vi.mocked(userGetScrobbles).mockImplementationOnce(async (...args) => {

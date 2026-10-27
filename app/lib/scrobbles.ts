@@ -88,16 +88,17 @@ async function catchUp(current: State): Promise<void> {
   current.drift = await drift();
 }
 
-/** Stores the page before the oldest stored scrobble, and returns whether it was the last. */
+/** Stores the page before the oldest stored scrobble, and returns whether it reached back no further. */
 async function backfillPage(): Promise<boolean> {
-  const oldest = (await storedEdge("MIN")) ?? Date.now();
+  const oldest = await storedEdge("MIN");
   // `to` is exclusive: a second past the oldest keeps others played in its second.
   const { tracks } = await fetchPage({
     from: new Date(0),
-    to: new Date(oldest + 1000),
+    to: new Date((oldest ?? Date.now()) + 1000),
   });
   await store(tracks);
-  return tracks.length < PAGE;
+  // Not a short page: one can be short while a track plays, since Last.fm lists it in the page.
+  return (await storedEdge("MIN")) === oldest;
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */
