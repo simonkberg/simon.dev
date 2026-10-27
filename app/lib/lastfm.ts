@@ -292,8 +292,11 @@ const userGetScrobblesResponseSchema = z
   })
   .transform((data) => ({
     total: data.recenttracks["@attr"].total,
-    // The track playing now is listed whatever the range.
-    tracks: data.recenttracks.track.filter((track) => !track.nowPlaying),
+    // The track playing now is listed whatever the range, without a date.
+    tracks: data.recenttracks.track.filter(
+      (track): track is typeof track & { playedAt: Date } =>
+        track.playedAt !== undefined,
+    ),
   }));
 
 const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
@@ -304,11 +307,12 @@ const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
 
 export async function userGetScrobbles(
   user: string,
-  params: { from: Date; to: Date; limit: number },
+  params: { from: Date; to: Date; limit: number; page?: number },
 ) {
   return call("user.getrecenttracks", userGetScrobblesResponseSchema, {
     user,
     limit: params.limit,
+    page: params.page ?? 1,
     ...rangeParams(params),
   });
 }

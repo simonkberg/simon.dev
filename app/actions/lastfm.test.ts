@@ -23,7 +23,6 @@ import {
   getTopAlbums,
   getTopArtists,
   getTopTracks,
-  type RecentTrack,
   refreshRecentTracks,
 } from "./lastfm";
 
@@ -355,7 +354,7 @@ describe("getTopArtistByBucket", () => {
 });
 
 describe("getOnThisDay", () => {
-  const played = (name: string, artist: string): RecentTrack => ({
+  const played = (name: string, artist: string) => ({
     name,
     artist,
     album: "",

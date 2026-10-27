@@ -7,6 +7,7 @@ export async function register() {
     const { bridgeConsole, log } = await import("@/lib/log");
     const { runMigrationsUntilApplied } = await import("@/lib/migrations");
     const { markReady } = await import("@/lib/readiness");
+    const { startScrobbleSync } = await import("@/lib/scrobbles");
     const { keepWarm } = await import("@/lib/turso");
 
     bridgeConsole();
@@ -17,6 +18,7 @@ export async function register() {
       .then(() => {
         markReady("migrations");
         keepWarm();
+        startScrobbleSync();
         watchOnline();
         // After migrations, so new bot code never meets an old schema.
         return startBotSubscription();
