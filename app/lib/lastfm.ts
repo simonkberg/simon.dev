@@ -313,7 +313,9 @@ export async function userGetScrobbles(
     user,
     limit: params.limit,
     page: params.page ?? 1,
-    ...rangeParams(params),
+    from: toUnixTime(params.from),
+    // Unlike the charts', this `to` already leaves out its own second.
+    to: toUnixTime(params.to),
   });
 }
 

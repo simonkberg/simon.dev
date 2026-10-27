@@ -401,7 +401,7 @@ describe("userGetScrobbles", () => {
       limit: "1",
       page: "2",
       from: "1609459200",
-      to: "1609545599",
+      to: "1609545600",
     });
     expect(scrobbles).toEqual({
       total: 1234,
