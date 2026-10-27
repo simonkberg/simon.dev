@@ -1478,9 +1478,7 @@ ul {
 
   .timeline-top {
     grid-area: 2 / 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   /* Grows at the lanes' pace from its stop's start, while later stops keep coming. */
