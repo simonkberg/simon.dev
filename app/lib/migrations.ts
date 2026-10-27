@@ -51,7 +51,7 @@ export const MIGRATIONS: readonly string[] = [
     track TEXT NOT NULL,
     album TEXT NOT NULL,
     PRIMARY KEY (played_at, artist, track)
-  ) WITHOUT ROWID`,
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.
