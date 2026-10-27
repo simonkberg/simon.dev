@@ -1,7 +1,7 @@
 import "server-only";
 import { config } from "@/config";
 import { getGlobal } from "@/lib/global";
-import { bulk, userGetScrobbles } from "@/lib/lastfm";
+import { bulk, type ChartItem, userGetScrobbles } from "@/lib/lastfm";
 import { tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
@@ -119,7 +119,7 @@ export async function countScrobbles(from: Date, to: Date): Promise<number> {
 export async function topArtist(
   from: Date,
   to: Date,
-): Promise<{ name: string; playcount: number } | undefined> {
+): Promise<ChartItem | undefined> {
   const { rows } = await query(
     `SELECT artist, COUNT(*) AS plays FROM scrobbles
      WHERE played_at >= ? AND played_at < ?
