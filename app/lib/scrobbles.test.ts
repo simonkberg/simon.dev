@@ -8,7 +8,12 @@ import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
-import { startScrobbleSync, syncScrobbles } from "./scrobbles";
+import {
+  countScrobbles,
+  startScrobbleSync,
+  syncScrobbles,
+  topArtist,
+} from "./scrobbles";
 
 vi.mock(import("@/lib/turso"), async () =>
   (await import("@/mocks/sqlite")).mockTurso(),
@@ -213,5 +218,39 @@ describe("startScrobbleSync", () => {
     startScrobbleSync();
 
     await vi.waitFor(async () => expect(await stored()).toEqual(lastfm));
+  });
+});
+
+describe("countScrobbles", () => {
+  it("should count from `from` until `to`", async () => {
+    await query(
+      `INSERT INTO scrobbles VALUES
+       (999, 'A', 'T', ''), (1000, 'A', 'T', ''), (1999, 'B', 'T', ''), (2000, 'A', 'T', '')`,
+    );
+
+    await expect(countScrobbles(new Date(1000), new Date(2000))).resolves.toBe(
+      2,
+    );
+  });
+});
+
+describe("topArtist", () => {
+  it("should pick the most played artist, first by name on a tie", async () => {
+    await query(
+      `INSERT INTO scrobbles VALUES
+       (1, 'B', 'T', ''), (2, 'C', 'T', ''), (3, 'C', 'U', ''),
+       (4, 'B', 'U', ''), (5, 'D', 'T', ''), (6, 'D', 'U', ''), (7, 'D', 'V', '')`,
+    );
+
+    await expect(topArtist(new Date(0), new Date(5))).resolves.toEqual({
+      name: "B",
+      playcount: 2,
+    });
+  });
+
+  it("should find no artist where nothing played", async () => {
+    await expect(
+      topArtist(new Date(0), new Date(1000)),
+    ).resolves.toBeUndefined();
   });
 });

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   userGetRecentTracks,
   userGetScrobbles,
-  userGetChartInRange,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   userGetTopArtists,
@@ -13,6 +12,7 @@ import {
   type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import { countScrobbles, topArtist } from "@/lib/scrobbles";
 import { topAlbum } from "@/mocks/lastfm";
 
 import {
@@ -30,11 +30,15 @@ vi.mock(import("@/lib/lastfm"), () => ({
   bulk: (request) => request(),
   userGetRecentTracks: vi.fn(),
   userGetScrobbles: vi.fn(),
-  userGetChartInRange: vi.fn(),
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
   TOP_ALBUMS: 10 as const,
+}));
+
+vi.mock(import("@/lib/scrobbles"), () => ({
+  countScrobbles: vi.fn(),
+  topArtist: vi.fn(),
 }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));
@@ -211,18 +215,17 @@ describe("getScrobbles", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
-    vi.mocked(userGetScrobbles).mockResolvedValue({ total: 42, tracks: [] });
+    vi.mocked(countScrobbles).mockResolvedValue(42);
   });
 
   it("should count each bucket", async () => {
     const result = await getScrobbles("7day");
 
-    expect(userGetScrobbles).toHaveBeenCalledTimes(7);
-    expect(userGetScrobbles).toHaveBeenLastCalledWith("magijo", {
-      from: new Date("2026-10-22T22:00:00Z"),
-      to: new Date("2026-10-23T22:00:00Z"),
-      limit: 1,
-    });
+    expect(countScrobbles).toHaveBeenCalledTimes(7);
+    expect(countScrobbles).toHaveBeenLastCalledWith(
+      new Date("2026-10-22T22:00:00Z"),
+      new Date("2026-10-23T22:00:00Z"),
+    );
     expect(vi.mocked(cacheLife).mock.calls).toEqual([
       ...Array.from({ length: 6 }, () => ["days"]),
       [{ stale: 300, revalidate: 3600, expire: 3600 + 86_400 }],
@@ -258,7 +261,7 @@ describe("getScrobbles", () => {
   it("should count all time per year since the first scrobbles", async () => {
     const result = await getScrobbles("overall");
 
-    expect(userGetScrobbles).toHaveBeenCalledTimes(2026 - 2007 + 1);
+    expect(countScrobbles).toHaveBeenCalledTimes(2026 - 2007 + 1);
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
@@ -270,7 +273,7 @@ describe("getScrobbles", () => {
 
   it("should return error status when a count fails", async () => {
     const mockError = new Error("API error");
-    vi.mocked(userGetScrobbles).mockRejectedValue(mockError);
+    vi.mocked(countScrobbles).mockRejectedValue(mockError);
 
     const result = await getScrobbles("7day");
 
@@ -288,7 +291,7 @@ describe("getScrobbles", () => {
   it.each([new Error("API error"), "API error"])(
     "should log an ended bucket's failure with its message, from %o",
     async (reason) => {
-      vi.mocked(userGetScrobbles).mockRejectedValueOnce(reason);
+      vi.mocked(countScrobbles).mockRejectedValueOnce(reason);
 
       await getScrobbles("7day");
 
@@ -311,16 +314,15 @@ describe("getTopArtistByBucket", () => {
 
   it("should find each bucket's top artist", async () => {
     const artist = { name: "Smog", playcount: 23 };
-    vi.mocked(userGetChartInRange).mockResolvedValue([artist]);
+    vi.mocked(topArtist).mockResolvedValue(artist);
 
     const result = await getTopArtistByBucket("7day");
 
-    expect(userGetChartInRange).toHaveBeenCalledTimes(7);
-    expect(userGetChartInRange).toHaveBeenLastCalledWith("magijo", "artist", {
-      from: new Date("2026-10-22T22:00:00Z"),
-      to: new Date("2026-10-23T22:00:00Z"),
-      limit: 1,
-    });
+    expect(topArtist).toHaveBeenCalledTimes(7);
+    expect(topArtist).toHaveBeenLastCalledWith(
+      new Date("2026-10-22T22:00:00Z"),
+      new Date("2026-10-23T22:00:00Z"),
+    );
     expect(cacheLife).toHaveBeenLastCalledWith({
       stale: 300,
       revalidate: 3600,
@@ -337,7 +339,7 @@ describe("getTopArtistByBucket", () => {
 
   it("should return error status when an artist fails", async () => {
     const mockError = new Error("API error");
-    vi.mocked(userGetChartInRange).mockRejectedValue(mockError);
+    vi.mocked(topArtist).mockRejectedValue(mockError);
 
     const result = await getTopArtistByBucket("7day");
 
