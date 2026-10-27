@@ -354,7 +354,7 @@ describe("getTopArtistByBucket", () => {
 });
 
 describe("getOnThisDay", () => {
-  const played = (track: string, artist: string) => ({ artist, track });
+  const played = (artist: string, track: string) => ({ artist, track });
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -364,11 +364,11 @@ describe("getOnThisDay", () => {
 
   it("should read today's date in each past year", async () => {
     vi.mocked(playsIn).mockResolvedValueOnce([
-      played("First", "Top"),
-      played("First", "Top"),
-      played("Second", "Top"),
-      played("Second", "Top"),
-      played("Late", "Other"),
+      played("Top", "First"),
+      played("Top", "First"),
+      played("Top", "Second"),
+      played("Top", "Second"),
+      played("Other", "Late"),
     ]);
 
     const result = await getOnThisDay();

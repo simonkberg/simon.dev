@@ -23,7 +23,7 @@ import {
   scrobbleBuckets,
   yearBuckets,
 } from "@/lib/scrobbleBuckets";
-import { countScrobbles, playsIn, topArtist } from "@/lib/scrobbles";
+import { countScrobbles, type Play, playsIn, topArtist } from "@/lib/scrobbles";
 
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
@@ -263,10 +263,7 @@ export async function getTopArtistByBucket(
 }
 
 // The day's most played artist and their most played track, earliest first on ties.
-export interface TopOfDay {
-  artist: string;
-  track: string;
-}
+export type TopOfDay = Play;
 
 export type PlayedYear = { year: string; count: number; top: TopOfDay };
 
@@ -291,9 +288,7 @@ function mostPlayed(items: readonly string[]): string | undefined {
   return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
-function topOfDay(
-  played: readonly { artist: string; track: string }[],
-): TopOfDay | undefined {
+function topOfDay(played: readonly Play[]): TopOfDay | undefined {
   const artist = mostPlayed(played.map((play) => play.artist));
   const track = mostPlayed(
     played.filter((play) => play.artist === artist).map((play) => play.track),
