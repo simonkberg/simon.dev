@@ -9,7 +9,6 @@ import {
   type ChartItem,
   type Period,
   TOP_ALBUMS,
-  userGetChartInRange,
   userGetRecentTracks,
   userGetScrobbles,
   type UserGetRecentTracksResponse,
@@ -26,6 +25,7 @@ import {
   scrobbleBuckets,
   yearBuckets,
 } from "@/lib/scrobbleBuckets";
+import { countScrobbles, topArtist } from "@/lib/scrobbles";
 
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
@@ -159,25 +159,6 @@ function cacheUntil(end: number, now: Date, maxSeconds = Infinity) {
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
-const countIn = async (from: Date, to: Date) =>
-  (
-    await bulk(() =>
-      // Only the total is read, so one track per page is enough.
-      userGetScrobbles(config.lastfmUsername, { from, to, limit: 1 }),
-    )
-  ).total;
-
-const topArtistIn = async (from: Date, to: Date) => {
-  const [top] = await bulk(() =>
-    userGetChartInRange(config.lastfmUsername, "artist", {
-      from,
-      to,
-      limit: 1,
-    }),
-  );
-  return top;
-};
-
 type Settled<T> =
   | { status: "ok"; data: T }
   | { status: "error"; error: string };
@@ -200,12 +181,12 @@ async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
 
 async function endedCount(from: Date, to: Date) {
   "use cache";
-  return settle(() => countIn(from, to));
+  return settle(() => countScrobbles(from, to));
 }
 
 async function endedTopArtist(from: Date, to: Date) {
   "use cache";
-  return settle(() => topArtistIn(from, to));
+  return settle(() => topArtist(from, to));
 }
 
 // A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
@@ -234,7 +215,7 @@ export async function getScrobbles(
     const scrobbles = await Promise.all(
       buckets.map(async (bucket) => ({
         label: bucket.label,
-        count: await inBucket(bucket, now, countIn, endedCount),
+        count: await inBucket(bucket, now, countScrobbles, endedCount),
         current: bucket.to > now,
       })),
     );
@@ -268,7 +249,7 @@ export async function getTopArtistByBucket(
     const artists = await Promise.all(
       buckets.map(async (bucket) => ({
         label: bucket.label,
-        artist: await inBucket(bucket, now, topArtistIn, endedTopArtist),
+        artist: await inBucket(bucket, now, topArtist, endedTopArtist),
       })),
     );
     cacheUntil(chartEnd(buckets), now, 3600);

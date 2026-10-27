@@ -79,13 +79,7 @@ async function catchUp(current: State): Promise<void> {
   const to = toSecond(Date.now());
   const from = Math.min(newest, toSecond(to - LATE_MS));
   const window = { from: new Date(from), to: new Date(to) };
-  const countStored = async () => {
-    const { rows } = await query(
-      "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
-      [from, to],
-    );
-    return Number(rows[0]?.["count"]);
-  };
+  const countStored = () => countScrobbles(window.from, window.to);
   const [{ total }, stored] = await Promise.all([
     fetchPage({ ...window, limit: 1 }),
     countStored(),
@@ -110,6 +104,32 @@ async function backfillPage(
   });
   await store(tracks);
   return tracks.at(-1)?.playedAt.getTime() ?? oldest;
+}
+
+/** Scrobbles played from `from` until `to`. */
+export async function countScrobbles(from: Date, to: Date): Promise<number> {
+  const { rows } = await query(
+    "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
+    [from.getTime(), to.getTime()],
+  );
+  return Number(rows[0]?.["count"]);
+}
+
+/** The most played artist from `from` until `to`, first by name on a tie. */
+export async function topArtist(
+  from: Date,
+  to: Date,
+): Promise<{ name: string; playcount: number } | undefined> {
+  const { rows } = await query(
+    `SELECT artist, COUNT(*) AS plays FROM scrobbles
+     WHERE played_at >= ? AND played_at < ?
+     GROUP BY artist ORDER BY plays DESC, artist LIMIT 1`,
+    [from.getTime(), to.getTime()],
+  );
+  const [top] = rows;
+  return (
+    top && { name: String(top["artist"]), playcount: Number(top["plays"]) }
+  );
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */
