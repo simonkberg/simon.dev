@@ -5,12 +5,10 @@ import { cacheLife, refresh } from "next/cache";
 import { config } from "@/config";
 import { dayLabel, nextMidnight } from "@/lib/dates";
 import {
-  bulk,
   type ChartItem,
   type Period,
   TOP_ALBUMS,
   userGetRecentTracks,
-  userGetScrobbles,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   type UserGetTopAlbumsResponse,
@@ -25,7 +23,7 @@ import {
   scrobbleBuckets,
   yearBuckets,
 } from "@/lib/scrobbleBuckets";
-import { countScrobbles, topArtist } from "@/lib/scrobbles";
+import { countScrobbles, playsIn, topArtist } from "@/lib/scrobbles";
 
 export type RecentTrack = UserGetRecentTracksResponse[number];
 
@@ -293,12 +291,12 @@ function mostPlayed(items: readonly string[]): string | undefined {
   return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
-function topOfDay(tracks: readonly RecentTrack[]): TopOfDay | undefined {
-  // Last.fm lists newest first.
-  const played = tracks.toReversed();
-  const artist = mostPlayed(played.map((track) => track.artist));
+function topOfDay(
+  played: readonly { artist: string; track: string }[],
+): TopOfDay | undefined {
+  const artist = mostPlayed(played.map((play) => play.artist));
   const track = mostPlayed(
-    played.filter((t) => t.artist === artist).map((t) => t.name),
+    played.filter((play) => play.artist === artist).map((play) => play.track),
   );
   return artist === undefined || track === undefined
     ? undefined
@@ -313,11 +311,8 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
     const years = await Promise.all(
       sameDayBuckets(config.lastfmSince, now).map(
         async ({ label, from, to }) => {
-          // Last.fm's largest page; a busier day picks its top from the latest 200.
-          const { total, tracks } = await bulk(() =>
-            userGetScrobbles(config.lastfmUsername, { from, to, limit: 200 }),
-          );
-          return { year: label, count: total, top: topOfDay(tracks) };
+          const played = await playsIn(from, to);
+          return { year: label, count: played.length, top: topOfDay(played) };
         },
       ),
     );

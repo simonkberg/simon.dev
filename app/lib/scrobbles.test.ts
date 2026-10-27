@@ -10,6 +10,7 @@ import { sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
   countScrobbles,
+  playsIn,
   startScrobbleSync,
   syncScrobbles,
   topArtist,
@@ -231,6 +232,20 @@ describe("countScrobbles", () => {
     await expect(countScrobbles(new Date(1000), new Date(2000))).resolves.toBe(
       2,
     );
+  });
+});
+
+describe("playsIn", () => {
+  it("should list what played from `from` until `to`, oldest first", async () => {
+    await query(
+      `INSERT INTO scrobbles VALUES
+       (2000, 'C', 'V', ''), (1000, 'A', 'T', ''), (999, 'Z', 'Z', ''), (1500, 'B', 'U', '')`,
+    );
+
+    await expect(playsIn(new Date(1000), new Date(2000))).resolves.toEqual([
+      { artist: "A", track: "T" },
+      { artist: "B", track: "U" },
+    ]);
   });
 });
 
