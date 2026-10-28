@@ -1,6 +1,6 @@
 import { dayCard } from "@/listening/components/listeningCard";
 
-import { toDay } from "./toDay";
+import { toDay } from "../toDay";
 
 export { contentType, size } from "@/lib/shareCard";
 

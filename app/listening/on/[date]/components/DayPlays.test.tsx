@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { DayPlay } from "@/actions/listening";
@@ -6,12 +6,12 @@ import type { DayPlay } from "@/actions/listening";
 import { DayPlays } from "./DayPlays";
 
 const renderPlays = (plays: readonly DayPlay[] | undefined) =>
-  act(async () => render(<DayPlays plays={Promise.resolve(plays)} />));
+  render(<DayPlays plays={plays} />);
 
 describe("DayPlays", () => {
-  it("lists each play with its time, the same track twice included", async () => {
+  it("lists each play with its time, the same track twice included", () => {
     const play = { name: "Old Fools", artist: "The Magnetic Fields" };
-    await renderPlays([
+    renderPlays([
       { ...play, time: "16:27" },
       { ...play, time: "16:27" },
     ]);
@@ -22,14 +22,14 @@ describe("DayPlays", () => {
     );
   });
 
-  it("says nothing played on a quiet day", async () => {
-    await renderPlays([]);
+  it("says nothing played on a quiet day", () => {
+    renderPlays([]);
 
     expect(screen.getByText("Nothing played this day.")).toBeInTheDocument();
   });
 
-  it("says the plays are unavailable when they failed to load", async () => {
-    await renderPlays(undefined);
+  it("says the plays are unavailable when they failed to load", () => {
+    renderPlays(undefined);
 
     expect(
       screen.getByText("The day’s plays are temporarily unavailable :("),

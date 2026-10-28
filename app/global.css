@@ -1547,11 +1547,6 @@ ul {
   }
 }
 
-.time-travel-plays {
-  color: var(--muted);
-  font-size: var(--meta-size);
-}
-
 .time-travel-tape {
   position: relative;
   height: 4.5rem;
@@ -1704,8 +1699,8 @@ ul {
   }
 }
 
-/* While a drag waits for its month, the days shown are the old month's. */
-.time-travel[data-scrubbing] :is(.time-travel-days, .time-travel-lens) {
+/* While a drag or link waits for its day, the days shown are the old month's. */
+.time-travel[data-pending] :is(.time-travel-days, .time-travel-lens) {
   opacity: 0.4;
 }
 

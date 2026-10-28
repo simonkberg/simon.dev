@@ -225,9 +225,11 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   through the same cached call.
 - **Time travel:** `/listening/on/YYYY-MM-DD`, the tab after it, draws a tape of every month
   (the range input scrubs it, navigating once the drag rests) zoomed to the day's month, its
-  plays and that month's tops. Each day renders on first visit (`instant = false`) and caches,
-  as the charts' settled buckets do. `/listening/on` is a route handler, so it answers a real 307
-  to a year back: a page's `redirect()` after `connection()` streams in a 200.
+  plays and that month's tops. A new date is a new page, so the tape lives in the layout
+  (reading the date with `useParams`) and the month's days in its `@days` slot; both day pages
+  block (`instant = false`) rather than suspend, so the day before stays until the next is ready.
+  `/listening/on` is a route handler, so it answers a real 307 to a year back: a page's
+  `redirect()` after `connection()` streams in a 200.
 - **Scrobble mirror:** `app/lib/scrobbles.ts` copies every Last.fm scrobble into Turso's
   `scrobbles`, keyed by second, artist and track since Last.fm gives them no id. One replica,
   holding the `scrobbles` lock, syncs each minute: when Last.fm's count for the last two

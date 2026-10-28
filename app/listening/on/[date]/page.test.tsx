@@ -4,13 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getDayPlays,
   type GetDayPlaysResult,
-  getDailyScrobbles,
-  getScrobbleMonths,
-  type GetScrobblesResult,
   getTopAlbums,
   type GetTopAlbumsResult,
-  getTopArtistByBucket,
-  type GetTopArtistByBucketResult,
   getTopArtists,
   type GetTopArtistsResult,
   getTopTracks,
@@ -23,25 +18,13 @@ vi.mock(import("next/navigation"), () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
-  useRouter: vi.fn(),
 }));
-
-const scrobbles = (count: number, label: string): Promise<GetScrobblesResult> =>
-  Promise.resolve({
-    status: "ok",
-    scrobbles: [{ label, count, current: false }],
-  });
 
 vi.mock(import("@/lib/today"), () => ({
   getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
 }));
 
 vi.mock(import("@/actions/listening"), () => ({
-  getScrobbleMonths: vi.fn(() => scrobbles(811, "Jan 2007")),
-  getTopArtistByBucket: vi.fn(() =>
-    Promise.resolve<GetTopArtistByBucketResult>({ status: "ok", buckets: [] }),
-  ),
-  getDailyScrobbles: vi.fn(() => scrobbles(46, "Jan 1")),
   getDayPlays: vi.fn(() =>
     Promise.resolve<GetDayPlaysResult>({
       status: "ok",
@@ -79,35 +62,29 @@ describe("generateMetadata", () => {
 });
 
 describe("TimeTravelPage", () => {
-  it("shows the day on the tape, what played and its month's tops", async () => {
+  it("shows what played and its month's tops", async () => {
     await act(async () =>
       render(
         await TimeTravelPage({ params: params("2012-10-14"), searchParams }),
       ),
     );
 
-    expect(screen.getByText("time travel")).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(getScrobbleMonths).toHaveBeenCalled();
-    expect(getTopArtistByBucket).toHaveBeenCalledWith("overall");
-    expect(getDailyScrobbles).toHaveBeenCalledWith("2012-10");
     expect(getDayPlays).toHaveBeenCalledWith("2012-10-14");
     for (const top of [getTopTracks, getTopArtists, getTopAlbums]) {
       expect(top).toHaveBeenCalledWith("2012-10");
     }
-    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
+    expect(
+      screen.getByText("(Sun, Oct 14, 2012 · 1 play)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Old Fools")).toBeInTheDocument();
     expect(screen.getAllByText("(Oct 2012)")).toHaveLength(3);
   });
 
-  it("says what failed to load", async () => {
-    const error = { status: "error", error: "Failed" } as const;
-    vi.mocked(getScrobbleMonths).mockResolvedValue(error);
-    vi.mocked(getTopArtistByBucket).mockResolvedValue(error);
-    vi.mocked(getDailyScrobbles).mockResolvedValue(error);
-    vi.mocked(getDayPlays).mockResolvedValue(error);
+  it("says the plays failed to load", async () => {
+    vi.mocked(getDayPlays).mockResolvedValue({
+      status: "error",
+      error: "Failed",
+    });
 
     await act(async () =>
       render(
@@ -115,9 +92,7 @@ describe("TimeTravelPage", () => {
       ),
     );
 
-    expect(
-      screen.getByText("Time travel is temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByText("(Sun, Oct 14, 2012)")).toBeInTheDocument();
     expect(
       screen.getByText("The day’s plays are temporarily unavailable :("),
     ).toBeInTheDocument();

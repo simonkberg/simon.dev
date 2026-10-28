@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { dayCard } from "@/listening/components/listeningCard";
 
+import { toDay } from "../toDay";
 import openGraphImage from "./opengraph-image";
-import { toDay } from "./toDay";
 
-vi.mock(import("./toDay"), () => ({
+vi.mock(import("../toDay"), () => ({
   toDay: vi.fn((param: string) => Promise.resolve(param as "2012-10-14")),
 }));
 

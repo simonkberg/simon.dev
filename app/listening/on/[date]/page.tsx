@@ -2,30 +2,19 @@
 "use no memo";
 
 import type { Metadata } from "next";
-import { Suspense } from "react";
 
-import {
-  getDayPlays,
-  getDailyScrobbles,
-  getScrobbleMonths,
-  getTopArtistByBucket,
-} from "@/actions/listening";
-import { ExternalLink } from "@/components/ExternalLink";
+import { getDayPlays } from "@/actions/listening";
 import { Heading } from "@/components/Heading";
-import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
-import { config } from "@/config";
 import { fullDayLabel, monthLabel, monthOf } from "@/lib/days";
-import { getToday } from "@/lib/today";
-import { PeriodSelector } from "@/listening/components/PeriodSelector";
+import { formatPlays } from "@/lib/formatNumber";
 import { TopLists } from "@/listening/components/TopLists";
 
-import { DayPlays, DayPlaysSkeleton } from "./components/DayPlays";
-import { TimeTravel, TimeTravelSkeleton } from "./components/TimeTravel";
-import { toDay } from "./toDay";
+import { toDay } from "../toDay";
+import { DayPlays } from "./components/DayPlays";
 
 export const prefetch = "partial";
-// Each day renders on its first visit, so reading params up front makes it its own cached page.
+// Blocks on the day, so the day before stays on screen until this one is ready.
 export const instant = false;
 
 type TimeTravelPageProps = PageProps<"/listening/on/[date]">;
@@ -48,64 +37,24 @@ export async function generateMetadata({
 }
 
 export default async function TimeTravelPage({ params }: TimeTravelPageProps) {
-  const [day, today] = await Promise.all([
-    params.then(({ date }) => toDay(date)),
-    getToday(),
-  ]);
-  const months = getScrobbleMonths().then((result) =>
-    result.status === "ok" ? result.scrobbles : undefined,
-  );
-  const years = getTopArtistByBucket("overall").then((result) =>
-    result.status === "ok" ? result.buckets : undefined,
-  );
-  const days = getDailyScrobbles(monthOf(day)).then((result) =>
-    result.status === "ok" ? result.scrobbles : undefined,
-  );
-  const plays = getDayPlays(day).then((result) =>
-    result.status === "ok" ? result.plays : undefined,
-  );
+  const day = await toDay((await params).date);
+  const result = await getDayPlays(day);
+  const plays = result.status === "ok" ? result.plays : undefined;
 
   return (
-    <Page section="Listening">
-      <section>
-        <p>
-          My listening on any day since {config.lastfmSince}, from{" "}
-          <ExternalLink
-            href={`https://www.last.fm/user/${config.lastfmUsername}`}
-          >
-            Last.fm
-          </ExternalLink>
-          .
-        </p>
-      </section>
-
-      <PeriodSelector current="on" />
-
+    <>
       <section>
         <Heading level={2}>
-          Time Travel <Subtitle>(drag, or use the arrow keys)</Subtitle>
+          That Day{" "}
+          <Subtitle>
+            ({fullDayLabel(day)}
+            {plays && ` · ${formatPlays(plays.length)}`})
+          </Subtitle>
         </Heading>
-        <Suspense fallback={<TimeTravelSkeleton />}>
-          <TimeTravel
-            day={day}
-            today={today}
-            months={months}
-            years={years}
-            days={days}
-          />
-        </Suspense>
-      </section>
-
-      <section>
-        <Heading level={2}>
-          That Day <Subtitle>({fullDayLabel(day)})</Subtitle>
-        </Heading>
-        <Suspense fallback={<DayPlaysSkeleton />}>
-          <DayPlays plays={plays} />
-        </Suspense>
+        <DayPlays plays={plays} />
       </section>
 
       <TopLists span={monthOf(day)} subtitle={monthLabel(day)} />
-    </Page>
+    </>
   );
 }

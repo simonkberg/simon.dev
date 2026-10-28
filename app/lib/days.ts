@@ -59,13 +59,6 @@ export function dayInMonth(index: number, day: Day): Day {
   return toDay(Date.UTC(year, month, Math.min(utc(day).getUTCDate(), length)));
 }
 
-export const daysInMonth = (day: Day) => {
-  const date = utc(day);
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-};
-
 const longLabel = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
   weekday: "short",

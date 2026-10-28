@@ -1,17 +1,25 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
 import type { Day } from "@/lib/dates";
 
+import { MonthDays } from "./MonthDays";
 import { TimeTravel, type TimeTravelProps } from "./TimeTravel";
 
 const replace = vi.fn();
 
-vi.mock(import("next/navigation"), () => ({ useRouter: vi.fn() }));
+// The date in the URL, as the router gives it.
+const at = (date: string) => vi.mocked(useParams).mockReturnValue({ date });
+
+vi.mock(import("next/navigation"), () => ({
+  useParams: vi.fn(),
+  useRouter: vi.fn(),
+}));
 
 beforeEach(() => {
+  at("2012-10-14");
   vi.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<
     typeof useRouter
   >);
@@ -45,36 +53,48 @@ const october: ScrobbleCount[] = Array.from({ length: 31 }, (_, index) => ({
   current: false,
 }));
 
-const renderTape = (
-  day: Day = "2012-10-14",
-  props: Partial<TimeTravelProps> = {},
-) =>
-  act(async () =>
-    render(
-      <TimeTravel
-        day={day}
-        today="2026-10-28"
-        months={Promise.resolve(months)}
-        years={Promise.resolve(years)}
-        days={Promise.resolve(october)}
-        {...props}
-      />,
-    ),
-  );
+// The tape with the day's month under it, as the layout and its slot render them.
+const tape = (day: Day, props: Partial<TimeTravelProps> = {}) => (
+  <TimeTravel
+    today={Promise.resolve("2026-10-28")}
+    months={Promise.resolve(months)}
+    years={Promise.resolve(years)}
+    {...props}
+  >
+    {/* Keyed as each day's page is its own. */}
+    <MonthDays key={day} day={day} days={october} />
+  </TimeTravel>
+);
+
+const renderTape = (props: Partial<TimeTravelProps> = {}) =>
+  act(async () => render(tape("2012-10-14", props)));
+
+// The router moving to another day's page.
+const arrive = async (rerender: (ui: React.ReactNode) => void, day: Day) => {
+  at(day);
+  await act(async () => rerender(tape(day)));
+};
+
+const drag = (month: number) =>
+  fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+    target: { value: String(month) },
+  });
+
+const pending = () =>
+  screen.getByRole("slider", { name: "Month" }).closest(".time-travel");
 
 describe("TimeTravel", () => {
-  it("shows the day, its plays and its era", async () => {
+  it("shows the day and its era", async () => {
     await renderTape();
 
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
-    expect(screen.getByText("46 plays")).toBeInTheDocument();
     expect(screen.getByText("era · The Magnetic Fields")).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Month" })).toHaveValue(
       String(5 * 12 + 9),
     );
   });
 
-  it("links the days around it and every other day of its month", async () => {
+  it("links the days around it", async () => {
     await renderTape();
 
     expect(screen.getByRole("link", { name: "Day before" })).toHaveAttribute(
@@ -85,50 +105,34 @@ describe("TimeTravel", () => {
       "href",
       "/listening/on/2012-10-15",
     );
-    expect(
-      screen.getByRole("link", { name: "Oct 1: 10 plays" }),
-    ).toHaveAttribute("href", "/listening/on/2012-10-01");
-    expect(
-      screen.getByRole("link", { name: "Oct 14: 46 plays" }),
-    ).toHaveAttribute("aria-current", "date");
-  });
-
-  it("keeps a followed day focused as its page arrives", async () => {
-    const props = {
-      today: "2026-10-28",
-      months: Promise.resolve(months),
-      years: Promise.resolve(years),
-      days: Promise.resolve(october),
-    } as const;
-    const { rerender } = await act(async () =>
-      render(<TimeTravel day="2012-10-14" {...props} />),
-    );
-    screen.getByRole("link", { name: "Oct 1: 10 plays" }).focus();
-
-    await act(async () => rerender(<TimeTravel day="2012-10-01" {...props} />));
-
-    expect(screen.getByRole("link", { name: "Oct 1: 10 plays" })).toHaveFocus();
   });
 
   it.each([
     ["2007-01-01", "Day before"],
     ["2026-10-28", "Day after"],
   ] as const)("on %s, has no %s", async (day, name) => {
-    await renderTape(day);
+    at(day);
+    await act(async () => render(tape(day)));
 
     expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing for a date the day's page turns away", async () => {
+    at("2026-10-29");
+    const { container } = await act(async () => render(tape("2012-10-14")));
+
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("travels to the month a drag stops at, keeping the date", async () => {
     vi.useFakeTimers();
     await renderTape();
 
-    const slider = screen.getByRole("slider", { name: "Month" });
-    fireEvent.change(slider, { target: { value: "10" } });
-    fireEvent.change(slider, { target: { value: "13" } });
+    drag(10);
+    drag(13);
 
     expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
-    expect(screen.queryByText("46 plays")).not.toBeInTheDocument();
+    expect(pending()).toHaveAttribute("data-pending");
     expect(replace).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -141,35 +145,47 @@ describe("TimeTravel", () => {
     );
   });
 
+  it("keeps the slider focused as the drag's page arrives", async () => {
+    vi.useFakeTimers();
+    const { rerender } = await renderTape();
+    screen.getByRole("slider", { name: "Month" }).focus();
+    drag(13);
+
+    await arrive(rerender, "2008-02-14");
+
+    expect(screen.getByRole("slider", { name: "Month" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
+    expect(pending()).not.toHaveAttribute("data-pending");
+  });
+
   it("steps from the day a drag is on, instead of the drag", async () => {
     vi.useFakeTimers();
     await renderTape();
 
-    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-      target: { value: "13" },
-    });
+    drag(13);
     const after = screen.getByRole("link", { name: "Day after" });
+    expect(after).toHaveAttribute("href", "/listening/on/2008-02-15");
     fireEvent.click(after);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(after).toHaveAttribute("href", "/listening/on/2008-02-15");
+    expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("lets a clicked day win over a drag", async () => {
+  it("moves to a clicked day before its page arrives, over a drag", async () => {
     vi.useFakeTimers();
     await renderTape();
 
-    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-      target: { value: "13" },
-    });
+    drag(13);
     fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
+    expect(screen.getByRole("status")).toHaveTextContent("Mon, Oct 1, 2012");
+    expect(pending()).toHaveAttribute("data-pending");
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -177,55 +193,39 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-      target: { value: "13" },
-    });
+    drag(13);
     fireEvent.click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
-    expect(screen.getByText("46 plays")).toBeInTheDocument();
+    expect(pending()).not.toHaveAttribute("data-pending");
   });
 
-  it("keeps the slider focused as the drag's page arrives", async () => {
-    vi.useFakeTimers();
-    const props = {
-      today: "2026-10-28",
-      months: Promise.resolve(months),
-      years: Promise.resolve(years),
-      days: Promise.resolve(october),
-    } as const;
-    const { rerender } = await act(async () =>
-      render(<TimeTravel day="2012-10-14" {...props} />),
-    );
-    const slider = screen.getByRole("slider", { name: "Month" });
-    slider.focus();
-    fireEvent.change(slider, { target: { value: "13" } });
+  it("focuses a followed day's link on its new page", async () => {
+    const { rerender } = await renderTape();
+    const link = screen.getByRole("link", { name: "Oct 1: 10 plays" });
+    link.focus();
+    fireEvent.click(link);
 
-    await act(async () => rerender(<TimeTravel day="2008-02-14" {...props} />));
+    await arrive(rerender, "2012-10-01");
 
-    expect(screen.getByRole("slider", { name: "Month" })).toHaveFocus();
-    expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
-    expect(
-      screen.getByRole("slider", { name: "Month" }).closest(".time-travel"),
-    ).not.toHaveAttribute("data-scrubbing");
+    expect(screen.getByRole("link", { name: "Oct 1: 10 plays" })).toHaveFocus();
+  });
+
+  it("leaves focus alone when a day's link is clicked unfocused", async () => {
+    const { rerender } = await renderTape();
+    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
+
+    await arrive(rerender, "2012-10-01");
+
+    expect(document.body).toHaveFocus();
   });
 
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
-    const props = {
-      today: "2026-10-28",
-      months: Promise.resolve(months),
-      years: Promise.resolve(years),
-      days: Promise.resolve(october),
-    } as const;
-    const { rerender } = await act(async () =>
-      render(<TimeTravel day="2012-10-14" {...props} />),
-    );
-    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-      target: { value: "13" },
-    });
+    const { rerender } = await renderTape();
+    drag(13);
 
-    await act(async () => rerender(<TimeTravel day="2012-10-13" {...props} />));
+    await arrive(rerender, "2012-10-13");
     await act(async () => vi.runAllTimers());
 
     expect(replace).not.toHaveBeenCalled();
@@ -233,11 +233,10 @@ describe("TimeTravel", () => {
 
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
-    await renderTape("2025-10-30");
+    at("2025-10-30");
+    await act(async () => render(tape("2025-10-30")));
 
-    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-      target: { value: String(months.length - 1) },
-    });
+    drag(months.length - 1);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -251,19 +250,18 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    const slider = screen.getByRole("slider", { name: "Month" });
-    fireEvent.change(slider, { target: { value: "10" } });
-    fireEvent.change(slider, { target: { value: String(5 * 12 + 9) } });
+    drag(10);
+    drag(5 * 12 + 9);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
     expect(replace).not.toHaveBeenCalled();
-    expect(screen.getByText("46 plays")).toBeInTheDocument();
+    expect(pending()).not.toHaveAttribute("data-pending");
   });
 
   it("shows no era for a year without scrobbles", async () => {
-    await renderTape("2012-10-14", {
+    await renderTape({
       years: Promise.resolve(
         years.map((year, index) =>
           index === 5 ? { ...year, artist: undefined } : year,
@@ -275,21 +273,13 @@ describe("TimeTravel", () => {
   });
 
   it("shows no era when the years failed to load", async () => {
-    await renderTape("2012-10-14", { years: Promise.resolve(undefined) });
+    await renderTape({ years: Promise.resolve(undefined) });
 
     expect(screen.queryByText(/^era ·/)).not.toBeInTheDocument();
   });
 
-  it("says the days are unavailable when they failed to load", async () => {
-    await renderTape("2012-10-14", { days: Promise.resolve(undefined) });
-
-    expect(
-      screen.getByText("This month’s days are temporarily unavailable :("),
-    ).toBeInTheDocument();
-  });
-
   it("says time travel is unavailable without the tape", async () => {
-    await renderTape("2012-10-14", { months: Promise.resolve(undefined) });
+    await renderTape({ months: Promise.resolve(undefined) });
 
     expect(
       screen.getByText("Time travel is temporarily unavailable :("),

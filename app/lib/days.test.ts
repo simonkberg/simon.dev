@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   dayInMonth,
-  daysInMonth,
   fullDayLabel,
   monthIndex,
   monthLabel,
@@ -66,6 +65,5 @@ describe("labels", () => {
     expect(fullDayLabel("2012-10-14")).toBe("Sun, Oct 14, 2012");
     expect(monthLabel("2012-10-14")).toBe("Oct 2012");
     expect(monthOf("2012-10-14")).toBe("2012-10");
-    expect(daysInMonth("2012-02-14")).toBe(29);
   });
 });
