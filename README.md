@@ -15,12 +15,11 @@ My personal website built with Next.js 16.
 
 Requirements:
 
-- Node.js 26
-- pnpm
+- pnpm, which installs the Node version in package.json
 
 ```bash
-# Install pnpm (it switches to the version in package.json)
-npm install -g pnpm
+# Install pnpm if not already installed
+curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 # Install dependencies
 pnpm install

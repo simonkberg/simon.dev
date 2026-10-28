@@ -20,8 +20,8 @@ This is a personal website built with Next.js 16 (App Router) that integrates wi
 
 ## Requirements
 
-- Node.js 26
-- pnpm: `npm install -g pnpm` (it switches to the `packageManager` version)
+- pnpm ([installation](https://pnpm.io/installation)). It follows `packageManager` and runs scripts on the
+  Node that `devEngines.runtime` pins, downloading it on install.
 
 ## Development Commands
 
