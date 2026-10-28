@@ -174,7 +174,11 @@ export async function getTopAlbums(
   "use cache";
 
   const top = await getTopAlbumPlays(period);
-  if (!top) return { status: "error", error: "Failed to fetch top albums" };
+  if (!top) {
+    // Next refuses a nested short cache under an outer one without its own.
+    cacheLife("seconds");
+    return { status: "error", error: "Failed to fetch top albums" };
+  }
   // Lasts as long as the list and its covers do.
   const albums = await Promise.all(
     ranked(top).map(async (album) => ({
