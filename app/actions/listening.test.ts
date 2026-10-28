@@ -19,7 +19,6 @@ import {
   getRecentTracks,
   getOnThisDay,
   getScrobbleMonths,
-  getToday,
   getScrobbles,
   getTopArtistByBucket,
   getTopAlbums,
@@ -550,20 +549,6 @@ describe("getDayPlays", () => {
       { err: mockError, action: "getDayPlays", date: "2012-10-14" },
       "Error fetching day plays",
     );
-  });
-});
-
-describe("getToday", () => {
-  it("should give Stockholm's date until its midnight", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-23T22:30:00Z"));
-
-    expect(await getToday()).toBe("2026-10-24");
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
-      stale: 300,
-      revalidate: 84_600,
-      expire: 84_600 + 86_400,
-    });
   });
 });
 

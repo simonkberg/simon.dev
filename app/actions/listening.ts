@@ -3,6 +3,7 @@
 import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
+import { cacheUntil } from "@/lib/cacheUntil";
 import { TOP_ALBUMS } from "@/lib/covers";
 import {
   clockTime,
@@ -39,6 +40,7 @@ import {
   topArtists,
   topPlayed,
 } from "@/lib/scrobbles";
+import { localDay } from "@/lib/today";
 
 export type GetRecentTracksResult =
   | { status: "ok"; tracks: RecentTrack[] }
@@ -75,8 +77,6 @@ export type GetTopTracksResult =
   | { status: "error"; error: string };
 
 const TOP = 10;
-
-const localDay = (now: Date) => clockTime(now).slice(0, 10) as Day;
 
 function historyDay(value: string, now: Date): Day {
   const day = inHistory(value, localDay(now));
@@ -231,14 +231,6 @@ const periodBuckets = (period: Period, now: Date) =>
     : scrobbleBuckets(period, now);
 
 // Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
-function cacheUntil(end: number, now: Date, maxSeconds = Infinity) {
-  const revalidate = Math.min(
-    maxSeconds,
-    Math.ceil((end - now.getTime()) / 1000),
-  );
-  cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
-}
-
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
@@ -483,12 +475,4 @@ export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
     log.error({ err, action: "getDayPlays", date }, "Error fetching day plays");
     return { status: "error", error: "Failed to fetch the day's plays" };
   }
-}
-
-/** Today's Stockholm date, as "YYYY-MM-DD". */
-export async function getToday(): Promise<Day> {
-  "use cache";
-  const now = new Date();
-  cacheUntil(nextMidnight(now).getTime(), now);
-  return localDay(now);
 }

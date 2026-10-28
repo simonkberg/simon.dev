@@ -8,7 +8,6 @@ import {
   getDayPlays,
   getDailyScrobbles,
   getScrobbleMonths,
-  getToday,
   getTopArtistByBucket,
 } from "@/actions/listening";
 import { ExternalLink } from "@/components/ExternalLink";
@@ -17,6 +16,7 @@ import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { config } from "@/config";
 import { fullDayLabel, monthLabel, monthOf } from "@/lib/days";
+import { getToday } from "@/lib/today";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 import { TopLists } from "@/listening/components/TopLists";
 

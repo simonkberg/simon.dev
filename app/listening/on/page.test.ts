@@ -11,7 +11,7 @@ vi.mock(import("next/navigation"), () => ({
 
 vi.mock(import("next/server"), () => ({ connection: vi.fn() }));
 
-vi.mock(import("@/actions/listening"), () => ({
+vi.mock(import("@/lib/today"), () => ({
   getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
 }));
 

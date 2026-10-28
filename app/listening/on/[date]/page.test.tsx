@@ -32,8 +32,11 @@ const scrobbles = (count: number, label: string): Promise<GetScrobblesResult> =>
     scrobbles: [{ label, count, current: false }],
   });
 
-vi.mock(import("@/actions/listening"), () => ({
+vi.mock(import("@/lib/today"), () => ({
   getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
+}));
+
+vi.mock(import("@/actions/listening"), () => ({
   getScrobbleMonths: vi.fn(() => scrobbles(811, "Jan 2007")),
   getTopArtistByBucket: vi.fn(() =>
     Promise.resolve<GetTopArtistByBucketResult>({ status: "ok", buckets: [] }),

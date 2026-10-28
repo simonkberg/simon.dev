@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
-import { getToday } from "@/actions/listening";
 import { yearBefore } from "@/lib/days";
+import { getToday } from "@/lib/today";
 
 export const instant = false;
 

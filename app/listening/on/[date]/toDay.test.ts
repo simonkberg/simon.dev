@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getToday } from "@/actions/listening";
+import { getToday } from "@/lib/today";
 
 import { toDay } from "./toDay";
 
@@ -10,7 +10,7 @@ vi.mock(import("next/navigation"), () => ({
   }),
 }));
 
-vi.mock(import("@/actions/listening"), () => ({
+vi.mock(import("@/lib/today"), () => ({
   getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
 }));
 
