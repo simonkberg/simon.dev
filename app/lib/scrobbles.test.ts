@@ -11,6 +11,7 @@ import { sqliteBeforeEach } from "@/mocks/sqlite";
 import {
   countScrobbles,
   playsIn,
+  recentPlays,
   startScrobbleSync,
   syncScrobbles,
   topArtist,
@@ -33,6 +34,12 @@ const NOW = Date.UTC(2026, 9, 27);
 
 // Last.fm's history, one scrobble a minute up to `NOW`.
 let lastfm: number[];
+// What Last.fm lists as playing now, whatever the range.
+let playing: ReturnType<typeof scrobble> | undefined;
+
+beforeEach(() => {
+  playing = undefined;
+});
 
 function scrobble(playedAt: number) {
   return {
@@ -60,6 +67,7 @@ const fakeLastfm: typeof userGetScrobbles = async (
   return {
     total: inRange.length,
     tracks: inRange.slice((page - 1) * limit, page * limit).map(scrobble),
+    ...(playing && { nowPlaying: playing }),
   };
 };
 
@@ -175,6 +183,25 @@ describe("syncScrobbles", () => {
 
     // Only the oldest page landed, right above what was already stored.
     expect(await stored()).toEqual(lastfm.slice(-100));
+  });
+
+  it("should keep what plays now, and clear it once it stops", async () => {
+    lastfm = played(10);
+    await syncScrobbles();
+    playing = { ...scrobble(NOW), name: "Playing", nowPlaying: true };
+
+    await syncScrobbles();
+
+    expect(await recentPlays(1)).toEqual([
+      expect.objectContaining({ name: "Playing", nowPlaying: true }),
+    ]);
+
+    playing = undefined;
+    await syncScrobbles();
+
+    expect(await recentPlays(1)).toEqual([
+      expect.objectContaining({ nowPlaying: false }),
+    ]);
   });
 
   it("should leave the sync to the replica holding the lock", async () => {
@@ -338,6 +365,62 @@ describe("playsIn", () => {
     await expect(playsIn(new Date(1000), new Date(2000))).resolves.toEqual([
       { artist: "A", track: "T" },
       { artist: "B", track: "U" },
+    ]);
+  });
+});
+
+describe("recentPlays", () => {
+  beforeEach(async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    await query(
+      `INSERT INTO scrobbles VALUES
+       (1000, 'A', 'Old', 'X'), (3000, 'A', 'Newest', 'X'), (2000, 'B', 'Loved', 'Y')`,
+    );
+    await query(
+      "INSERT INTO loved VALUES ('B', 'Loved', 1), ('C', 'Playing', 1)",
+    );
+  });
+
+  const playingUntil = (until: number) =>
+    query("INSERT INTO now_playing VALUES (1, 'C', 'Playing', 'Z', ?)", [
+      until,
+    ]);
+
+  it("should list what plays now, then the latest plays, each marked loved or not", async () => {
+    await playingUntil(NOW + 60_000);
+
+    await expect(recentPlays(3)).resolves.toEqual([
+      {
+        name: "Playing",
+        artist: "C",
+        album: "Z",
+        nowPlaying: true,
+        loved: true,
+      },
+      {
+        name: "Newest",
+        artist: "A",
+        album: "X",
+        playedAt: new Date(3000),
+        nowPlaying: false,
+        loved: false,
+      },
+      {
+        name: "Loved",
+        artist: "B",
+        album: "Y",
+        playedAt: new Date(2000),
+        nowPlaying: false,
+        loved: true,
+      },
+    ]);
+  });
+
+  it("should leave out what plays now once a sync could no longer have renewed it", async () => {
+    await playingUntil(NOW);
+
+    await expect(recentPlays(1)).resolves.toEqual([
+      expect.objectContaining({ name: "Newest" }),
     ]);
   });
 });

@@ -58,6 +58,14 @@ export const MIGRATIONS: readonly string[] = [
     loved_at INTEGER NOT NULL,
     PRIMARY KEY (artist, track)
   )`,
+  // One row at most: what the sync last saw playing, until a sync could no longer renew it.
+  `CREATE TABLE IF NOT EXISTS now_playing (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    artist TEXT NOT NULL,
+    track TEXT NOT NULL,
+    album TEXT NOT NULL,
+    until INTEGER NOT NULL
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

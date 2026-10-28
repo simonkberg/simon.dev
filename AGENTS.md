@@ -229,7 +229,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   weeks differs from ours (offline players scrobble late), it refetches them oldest page
   first, so an interrupted sync leaves no gap, then backfills backwards from the oldest
   stored. Edits and deletions on Last.fm never reach it. Loved tracks do, into `loved`: once
-  backfilled, each sync rereads the whole list and writes only what changed. Previews fork testing's copy and
+  backfilled, each sync rereads the whole list and writes only what changed. Recent tracks read the
+  mirror too, after what the sync last saw playing (`now_playing`), dropped once a sync could
+  no longer have renewed it. Previews fork testing's copy and
   sync only the gap; to refresh it, deploy `testing` until "Backfilled every scrobble" logs, then stop it.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
@@ -312,7 +314,7 @@ export async function getData(): Promise<Result> {
 }
 ```
 
-Use `"minutes"` for frequently-changing data (recent tracks), `"hours"` for aggregated data (top tracks).
+Use `"minutes"` for frequently-changing data from an API, `"hours"` for aggregated data (top tracks).
 
 ### Promise Props with `use()` Hook
 

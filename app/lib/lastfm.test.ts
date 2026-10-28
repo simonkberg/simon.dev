@@ -484,6 +484,7 @@ describe("userGetScrobbles", () => {
     expect(scrobbles).toEqual({
       total: 1234,
       tracks: [expect.objectContaining({ name: "Test" })],
+      nowPlaying: expect.objectContaining({ name: "Now", nowPlaying: true }),
     });
   });
 
