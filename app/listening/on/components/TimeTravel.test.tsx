@@ -364,6 +364,20 @@ describe("TimeTravel", () => {
     expect(replace()).not.toHaveBeenCalled();
   });
 
+  it("lets a day reached again another way win over a drag", async () => {
+    vi.useFakeTimers();
+    const { rerender } = await renderTape();
+    await click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
+    await arrive(rerender, "2012-10-01");
+    await arrive(rerender, "2012-10-14");
+
+    await drag(13);
+    await arrive(rerender, "2012-10-01");
+    await act(async () => vi.runAllTimers());
+
+    expect(replace()).toHaveBeenCalledOnce();
+  });
+
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
     at("2025-10-30");

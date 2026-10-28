@@ -65,6 +65,7 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   // A day reached another way (back, forward) wins over a scrub not yet sent.
   useEffect(() => {
     if (date !== sent.current) settle(undefined);
+    sent.current = undefined;
   }, [date]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
