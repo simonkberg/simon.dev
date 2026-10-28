@@ -290,7 +290,6 @@ async function inBucket<T>(
 }
 
 // A chart that has settled only changes by a late scrobble; one still under way regenerates as a bar ends.
-// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
 function cacheChart(buckets: readonly { to: Date }[], now: Date) {
   const end = chartEnd(buckets);
   if (hasSettled(end, now)) cacheEnded(end, now);

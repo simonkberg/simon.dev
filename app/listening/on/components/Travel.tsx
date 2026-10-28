@@ -114,9 +114,10 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
     clearTimeout(timer.current);
     scrubbed.current = undefined;
     refocus.current = focused ? to : undefined;
-    setSent(to);
     // Going to the shown day changes no `date`, so nothing else would let go.
-    setTarget(to === date ? undefined : to);
+    const away = to === date ? undefined : to;
+    setSent(away);
+    setTarget(away);
   };
 
   const takeFocus = (to: Day) => {

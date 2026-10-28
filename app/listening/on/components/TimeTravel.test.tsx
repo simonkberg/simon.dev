@@ -329,6 +329,18 @@ describe("TimeTravel", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
   });
 
+  it("asks for nothing when a drag returns after a link to the shown day", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+    fireEvent.click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
+
+    drag(13);
+    drag(5 * 12 + 9);
+    await act(async () => vi.runAllTimers());
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
