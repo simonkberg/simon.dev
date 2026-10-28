@@ -175,5 +175,8 @@ describe("dayCard", () => {
     // The second bar's count, not the month's.
     expect(screen.getByText("200")).toBeInTheDocument();
     expect(screen.queryByText("Low")).not.toBeInTheDocument();
+    expect(screen.getByText(/plays that day/)).toBeInTheDocument();
+    expect(screen.getByText(/month's top artist/)).toBeInTheDocument();
+    expect(screen.getByText(/month's top album/)).toBeInTheDocument();
   });
 });

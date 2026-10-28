@@ -116,12 +116,19 @@ const fit = (text: string, size: number, room: number) => {
   return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : text;
 };
 
+interface Labels {
+  scrobbled: string;
+  top: string;
+}
+
 const Stats = ({
   scrobbled,
+  labels,
   top,
   width,
 }: {
   scrobbled: number | undefined;
+  labels: Labels;
   top: TopArtist | undefined;
   width: number;
 }) => {
@@ -132,11 +139,11 @@ const Stats = ({
     width -
     (total
       ? textWidth(total, totalSize) +
-        textWidth("scrobbles", statSize) +
+        textWidth(labels.scrobbled, statSize) +
         partGap +
         statGap
       : 0) -
-    textWidth(`top artist${plays}`, statSize) -
+    textWidth(`${labels.top} artist${plays}`, statSize) -
     2 * partGap;
   return (
     <div
@@ -156,12 +163,12 @@ const Stats = ({
           >
             {total}
           </span>
-          scrobbles
+          {labels.scrobbled}
         </span>
       )}
       {top && (
         <span style={{ display: "flex", alignItems: "baseline", gap: partGap }}>
-          top artist
+          {`${labels.top} artist`}
           <span
             style={{ fontSize: nameSize, fontWeight: 700, color: color.accent }}
           >
@@ -208,7 +215,13 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => (
   </div>
 );
 
-const Covers = ({ albums: [first, ...rest] }: { albums: CoverAlbum[] }) =>
+const Covers = ({
+  albums: [first, ...rest],
+  top,
+}: {
+  albums: CoverAlbum[];
+  top: string;
+}) =>
   first && (
     <div
       style={{ display: "flex", flexDirection: "column", width: coversWidth }}
@@ -224,7 +237,7 @@ const Covers = ({ albums: [first, ...rest] }: { albums: CoverAlbum[] }) =>
         </div>
       </div>
       <span style={{ marginTop: 12, fontSize: 16, color: color.muted }}>
-        {`top album · ${formatPlays(first.playcount)}`}
+        {`${top} album · ${formatPlays(first.playcount)}`}
       </span>
       <span
         style={{ marginTop: 2, fontSize: 20, fontWeight: 700, ...ellipsis }}
@@ -253,6 +266,7 @@ interface CardData {
   scrobbles: Promise<GetScrobblesResult>;
   // What the stats count: every bar's scrobbles, or one bar's.
   scrobbled: (items: readonly ScrobbleCount[]) => number | undefined;
+  labels: Labels;
   topArtistByBucket?: Promise<GetTopArtistByBucketResult>;
 }
 
@@ -262,6 +276,7 @@ export const listeningCard = (period: Period) =>
     span: period,
     scrobbles: getScrobbles(period),
     scrobbled: (items) => items.reduce((sum, { count }) => sum + count, 0),
+    labels: { scrobbled: "scrobbles", top: "top" },
     topArtistByBucket: getTopArtistByBucket(period),
   });
 
@@ -272,6 +287,8 @@ export const dayCard = (day: Day) =>
     span: monthOf(day),
     scrobbles: getDailyScrobbles(monthOf(day)),
     scrobbled: (items) => items[Number(day.slice(8)) - 1]?.count,
+    // The count is the day's, the tops its month's.
+    labels: { scrobbled: "plays that day", top: "month's top" },
   });
 
 async function card({
@@ -279,6 +296,7 @@ async function card({
   span,
   scrobbles: scrobblesResult,
   scrobbled,
+  labels,
   topArtistByBucket: lanesResult,
 }: CardData) {
   const [scrobbles, topArtistByBucket, topArtists, covers] = await Promise.all([
@@ -323,6 +341,7 @@ async function card({
           >
             <Stats
               scrobbled={items && scrobbled(items)}
+              labels={labels}
               top={top}
               width={chartWidth + coversGap - gutter}
             />
@@ -352,7 +371,7 @@ async function card({
               </span>
             )}
           </div>
-          <Covers albums={covers} />
+          <Covers albums={covers} top={labels.top} />
         </div>
       </Pane>
     </div>,
