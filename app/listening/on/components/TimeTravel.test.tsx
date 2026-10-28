@@ -7,11 +7,15 @@ import type { Day } from "@/lib/dates";
 
 import { MonthDays } from "./MonthDays";
 import { TimeTravel, type TimeTravelProps } from "./TimeTravel";
+import { TravelProvider } from "./Travel";
 
 const replace = vi.fn();
 
 // The date in the URL, as the router gives it.
-const at = (date: string) => vi.mocked(useParams).mockReturnValue({ date });
+const at = (date: string) =>
+  vi
+    .mocked(useParams)
+    .mockReturnValue({ month: date.slice(0, 7), day: date.slice(8) });
 
 vi.mock(import("next/navigation"), () => ({
   useParams: vi.fn(),
@@ -55,15 +59,17 @@ const october: ScrobbleCount[] = Array.from({ length: 31 }, (_, index) => ({
 
 // The tape with the day's month under it, as the layout and its slot render them.
 const tape = (day: Day, props: Partial<TimeTravelProps> = {}) => (
-  <TimeTravel
-    today={Promise.resolve("2026-10-28")}
-    months={Promise.resolve(months)}
-    years={Promise.resolve(years)}
-    {...props}
-  >
-    {/* Keyed as each day's page is its own. */}
-    <MonthDays key={day} day={day} days={october} />
-  </TimeTravel>
+  <TravelProvider>
+    <TimeTravel
+      today={Promise.resolve("2026-10-28")}
+      months={Promise.resolve(months)}
+      years={Promise.resolve(years)}
+      {...props}
+    >
+      {/* Keyed as each month's layout is its own. */}
+      <MonthDays key={day.slice(0, 7)} month="2012-10" days={october} />
+    </TimeTravel>
+  </TravelProvider>
 );
 
 const renderTape = (props: Partial<TimeTravelProps> = {}) =>
@@ -80,8 +86,9 @@ const drag = (month: number) =>
     target: { value: String(month) },
   });
 
+// The month's days, which dim while the page travels to another month.
 const pending = () =>
-  screen.getByRole("slider", { name: "Month" }).closest(".time-travel");
+  screen.getByRole("list", { name: "Days" }).closest(".time-travel-pending");
 
 describe("TimeTravel", () => {
   it("shows the day and its era", async () => {
@@ -145,6 +152,24 @@ describe("TimeTravel", () => {
     );
   });
 
+  it("waits for a held drag to be let go, wherever that is", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
+
+    drag(13);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(replace).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window);
+    expect(replace).toHaveBeenCalledExactlyOnceWith(
+      "/listening/on/2008-02-14",
+      { scroll: false },
+    );
+  });
+
   it("keeps the slider focused as the drag's page arrives", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
@@ -185,7 +210,9 @@ describe("TimeTravel", () => {
     });
 
     expect(screen.getByRole("status")).toHaveTextContent("Mon, Oct 1, 2012");
-    expect(pending()).toHaveAttribute("data-pending");
+    expect(
+      screen.getByRole("link", { name: "Oct 1: 10 plays" }),
+    ).toHaveAttribute("aria-current", "date");
     expect(replace).not.toHaveBeenCalled();
   });
 

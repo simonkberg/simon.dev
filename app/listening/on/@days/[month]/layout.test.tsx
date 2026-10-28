@@ -6,7 +6,7 @@ import {
   type GetScrobblesResult,
 } from "@/actions/listening";
 
-import MonthDaysPage, { generateStaticParams } from "./page";
+import MonthDaysLayout, { generateStaticParams } from "./layout";
 
 vi.mock(import("next/navigation"), () => ({
   notFound: vi.fn(() => {
@@ -28,24 +28,25 @@ vi.mock(import("@/actions/listening"), () => ({
 }));
 
 const props = {
-  params: Promise.resolve({ date: "2012-10-01" }),
-  searchParams: Promise.resolve({}),
+  params: Promise.resolve({ month: "2012-10" }),
+  children: <p>The day</p>,
 };
 
 describe("generateStaticParams", () => {
-  it("prerenders the first day scrobbled, as the day's page does", () => {
-    expect(generateStaticParams()).toEqual([{ date: "2007-12-18" }]);
+  it("prerenders the first month scrobbled, as the day's layout does", () => {
+    expect(generateStaticParams()).toEqual([{ month: "2007-12" }]);
   });
 });
 
-describe("MonthDaysPage", () => {
-  it("shows the day's month", async () => {
-    render(await MonthDaysPage(props));
+describe("MonthDaysLayout", () => {
+  it("shows the month's days", async () => {
+    render(await MonthDaysLayout(props));
 
     expect(getDailyScrobbles).toHaveBeenCalledWith("2012-10");
     expect(
       screen.getByRole("link", { name: "Oct 1: 46 plays" }),
-    ).toHaveAttribute("aria-current", "date");
+    ).toHaveAttribute("href", "/listening/on/2012-10-01");
+    expect(screen.getByText("The day")).toBeInTheDocument();
   });
 
   it("says the days failed to load", async () => {
@@ -54,7 +55,7 @@ describe("MonthDaysPage", () => {
       error: "Failed",
     });
 
-    render(await MonthDaysPage(props));
+    render(await MonthDaysLayout(props));
 
     expect(
       screen.getByText("This month’s days are temporarily unavailable :("),

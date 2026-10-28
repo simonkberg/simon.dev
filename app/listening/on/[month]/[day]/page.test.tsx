@@ -1,16 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  getDayPlays,
-  type GetDayPlaysResult,
-  getTopAlbums,
-  type GetTopAlbumsResult,
-  getTopArtists,
-  type GetTopArtistsResult,
-  getTopTracks,
-  type GetTopTracksResult,
-} from "@/actions/listening";
+import { getDayPlays, type GetDayPlaysResult } from "@/actions/listening";
 
 import TimeTravelPage, { generateMetadata, generateStaticParams } from "./page";
 
@@ -33,23 +24,15 @@ vi.mock(import("@/actions/listening"), () => ({
       ],
     }),
   ),
-  getTopTracks: vi.fn(() =>
-    Promise.resolve<GetTopTracksResult>({ status: "ok", tracks: [] }),
-  ),
-  getTopArtists: vi.fn(() =>
-    Promise.resolve<GetTopArtistsResult>({ status: "ok", artists: [] }),
-  ),
-  getTopAlbums: vi.fn(() =>
-    Promise.resolve<GetTopAlbumsResult>({ status: "ok", albums: [] }),
-  ),
 }));
 
-const params = (date: string) => Promise.resolve({ date });
+const params = (date: string) =>
+  Promise.resolve({ month: date.slice(0, 7), day: date.slice(8) });
 const searchParams = Promise.resolve({});
 
 describe("generateStaticParams", () => {
-  it("prerenders the first day scrobbled", () => {
-    expect(generateStaticParams()).toEqual([{ date: "2007-12-18" }]);
+  it("prerenders the first day scrobbled, in its month", () => {
+    expect(generateStaticParams()).toEqual([{ day: "18" }]);
   });
 });
 
@@ -62,7 +45,7 @@ describe("generateMetadata", () => {
 });
 
 describe("TimeTravelPage", () => {
-  it("shows what played and its month's tops", async () => {
+  it("shows what played", async () => {
     await act(async () =>
       render(
         await TimeTravelPage({ params: params("2012-10-14"), searchParams }),
@@ -70,14 +53,10 @@ describe("TimeTravelPage", () => {
     );
 
     expect(getDayPlays).toHaveBeenCalledWith("2012-10-14");
-    for (const top of [getTopTracks, getTopArtists, getTopAlbums]) {
-      expect(top).toHaveBeenCalledWith("2012-10");
-    }
     expect(
       screen.getByText("(Sun, Oct 14, 2012 · 1 play)"),
     ).toBeInTheDocument();
     expect(screen.getByText("Old Fools")).toBeInTheDocument();
-    expect(screen.getAllByText("(Oct 2012)")).toHaveLength(3);
   });
 
   it("says the plays failed to load", async () => {

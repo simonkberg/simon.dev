@@ -17,7 +17,7 @@ vi.mock(import("next/navigation"), () => ({
 }));
 
 beforeEach(() => {
-  vi.mocked(useParams).mockReturnValue({ date: "2012-10-14" });
+  vi.mocked(useParams).mockReturnValue({ month: "2012-10", day: "14" });
 });
 
 vi.mock(import("@/lib/today"), () => ({

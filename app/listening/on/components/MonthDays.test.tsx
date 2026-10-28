@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ScrobbleCount } from "@/actions/listening";
+import type { Day } from "@/lib/dates";
 
 import { MonthDays } from "./MonthDays";
+import { TravelContext } from "./Travel";
 
 const october: ScrobbleCount[] = Array.from({ length: 31 }, (_, index) => ({
   label: `Oct ${index + 1}`,
@@ -11,9 +13,30 @@ const october: ScrobbleCount[] = Array.from({ length: 31 }, (_, index) => ({
   current: false,
 }));
 
+// October 2012's days, on `date`'s page while it travels to `target`.
+const renderDays = (
+  days: ScrobbleCount[] | undefined,
+  date: Day,
+  target?: Day,
+) =>
+  render(
+    <TravelContext
+      value={{
+        date,
+        target,
+        travel: vi.fn(),
+        scrub: vi.fn(),
+        release: vi.fn(),
+        takeFocus: () => false,
+      }}
+    >
+      <MonthDays month="2012-10" days={days} />
+    </TravelContext>,
+  );
+
 describe("MonthDays", () => {
   it("links every day of the month, marking the day's own", () => {
-    render(<MonthDays day="2012-10-14" days={october} />);
+    renderDays(october, "2012-10-14");
 
     expect(screen.getAllByRole("link")).toHaveLength(31);
     expect(
@@ -25,7 +48,7 @@ describe("MonthDays", () => {
   });
 
   it("numbers each week's first day, unless it crowds the day's own", () => {
-    render(<MonthDays day="2012-10-09" days={october} />);
+    renderDays(october, "2012-10-09");
 
     const ticked = screen
       .getAllByRole("listitem")
@@ -35,8 +58,26 @@ describe("MonthDays", () => {
     expect(ticked).toEqual([1, 9, 15, 22, 29]);
   });
 
+  it("marks a day of the month being travelled to, without dimming", () => {
+    const { container } = renderDays(october, "2012-10-14", "2012-10-02");
+
+    expect(
+      screen.getByRole("link", { name: "Oct 2: 10 plays" }),
+    ).toHaveAttribute("aria-current", "date");
+    expect(container.firstChild).not.toHaveAttribute("data-pending");
+  });
+
+  it("dims while travelling to another month", () => {
+    const { container } = renderDays(october, "2012-10-14", "2008-02-14");
+
+    expect(
+      screen.getByRole("link", { name: "Oct 14: 46 plays" }),
+    ).toHaveAttribute("aria-current", "date");
+    expect(container.firstChild).toHaveAttribute("data-pending");
+  });
+
   it("says the days are unavailable when they failed to load", () => {
-    render(<MonthDays day="2012-10-14" days={undefined} />);
+    renderDays(undefined, "2012-10-14");
 
     expect(
       screen.getByText("This month’s days are temporarily unavailable :("),

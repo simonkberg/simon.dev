@@ -4,31 +4,32 @@ import Link from "next/link";
 import { type CSSProperties, use } from "react";
 
 import type { ScrobbleCount } from "@/actions/listening";
-import type { Day } from "@/lib/dates";
-import { addDays } from "@/lib/days";
+import type { Day, Month } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
-import { href, isPlainClick, TravelContext } from "./TimeTravel";
+import { href, isPlainClick, TravelContext, TravelPending } from "./Travel";
 
 export interface MonthDaysProps {
-  day: Day;
+  month: Month;
   // Undefined when they failed to load.
   days: readonly ScrobbleCount[] | undefined;
 }
 
 /** The day's month under the tape's lens, a link to each of its days. */
-export const MonthDays = ({ day, days }: MonthDaysProps) => {
-  const { travel, takeFocus } = use(TravelContext);
+export const MonthDays = ({ month, days }: MonthDaysProps) => {
+  const { date, target, travel, takeFocus } = use(TravelContext);
 
   if (days === undefined) {
     return <p>This month’s days are temporarily unavailable :(</p>;
   }
 
-  const dayOfMonth = Number(day.slice(8));
+  // A day the page is travelling to within the month is already here.
+  const shown = target?.startsWith(month) ? target : date;
+  const dayOfMonth = Number(shown?.slice(8));
   const max = Math.max(1, ...days.map(({ count }) => count));
 
   return (
-    <>
+    <TravelPending of="month">
       <div className="time-travel-lens" aria-hidden="true" />
       <ol
         className="time-travel-days"
@@ -36,8 +37,8 @@ export const MonthDays = ({ day, days }: MonthDaysProps) => {
         aria-label="Days"
       >
         {days.map(({ label, count }, index) => {
-          const date = addDays(day, index + 1 - dayOfMonth);
-          const current = date === day;
+          const day = `${month}-${String(index + 1).padStart(2, "0")}` as Day;
+          const current = day === shown;
           // Every week's first day, unless it would crowd the current one's.
           const tick =
             current ||
@@ -50,21 +51,21 @@ export const MonthDays = ({ day, days }: MonthDaysProps) => {
               data-tick={tick || undefined}
             >
               <Link
-                href={href(date)}
+                href={href(day)}
                 replace
                 scroll={false}
                 aria-current={current ? "date" : undefined}
-                // Each day is its own page, so the link followed is a new one.
+                // A day of another month is a new page, so the link followed is a new one.
                 ref={
                   current
                     ? (link) => {
-                        if (link && takeFocus(date)) link.focus();
+                        if (link && takeFocus(day)) link.focus();
                       }
                     : undefined
                 }
                 onClick={(event) =>
                   isPlainClick(event) &&
-                  travel(date, event.currentTarget === document.activeElement)
+                  travel(day, event.currentTarget === document.activeElement)
                 }
               >
                 <span className="visually-hidden">{`${label}: ${formatPlays(count)}`}</span>
@@ -76,6 +77,6 @@ export const MonthDays = ({ day, days }: MonthDaysProps) => {
           );
         })}
       </ol>
-    </>
+    </TravelPending>
   );
 };

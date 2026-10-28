@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { dayCard } from "@/listening/components/listeningCard";
 
-import { toDay } from "../toDay";
+import { toDay } from "../../toDay";
 import openGraphImage from "./opengraph-image";
 
-vi.mock(import("../toDay"), () => ({
-  toDay: vi.fn((param: string) => Promise.resolve(param as "2012-10-14")),
+vi.mock(import("../../toDay"), () => ({
+  toDay: vi.fn(() => Promise.resolve("2012-10-14" as const)),
 }));
 
 vi.mock(
@@ -16,9 +16,11 @@ vi.mock(
 
 describe("opengraph-image", () => {
   it("draws the day", async () => {
-    await openGraphImage({ params: Promise.resolve({ date: "2012-10-14" }) });
+    await openGraphImage({
+      params: Promise.resolve({ month: "2012-10", day: "14" }),
+    });
 
-    expect(toDay).toHaveBeenCalledWith("2012-10-14");
+    expect(toDay).toHaveBeenCalledWith({ month: "2012-10", day: "14" });
     expect(dayCard).toHaveBeenCalledWith("2012-10-14");
   });
 });

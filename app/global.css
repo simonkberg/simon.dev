@@ -1699,9 +1699,17 @@ ul {
   }
 }
 
-/* While a drag or link waits for its day, the days shown are the old month's. */
-.time-travel[data-pending] :is(.time-travel-days, .time-travel-lens) {
-  opacity: 0.4;
+/* While a drag or link waits for its day, what it wraps still shows the old one. */
+.time-travel-pending {
+  display: contents;
+
+  > * {
+    transition: opacity 0.15s;
+  }
+
+  &[data-pending] > * {
+    opacity: 0.4;
+  }
 }
 
 .time-travel-eras {
@@ -1724,14 +1732,26 @@ ul {
   }
 }
 
+/* Starts under its era, sliding left to fit on one line, and truncates past that. */
 .time-travel-era {
+  display: flex;
   margin: 0.4rem 0 0;
-  margin-inline-start: min(
-    calc(var(--tape-slot) * var(--first)),
-    calc(100% - 24ch)
-  );
   color: var(--accent);
   font-size: var(--meta-size);
+  white-space: nowrap;
+
+  &::before {
+    content: "";
+    flex: 0 1 calc(var(--tape-slot) * var(--first));
+    min-width: 0;
+  }
+
+  > span {
+    flex: none;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .day-plays {

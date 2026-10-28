@@ -10,6 +10,7 @@ import { getToday } from "@/lib/today";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
 import { TimeTravel, TimeTravelSkeleton } from "./components/TimeTravel";
+import { TravelProvider } from "./components/Travel";
 
 // The tape lives here so moving between days keeps it, and its focus, in place.
 export default function TimeTravelLayout({
@@ -39,18 +40,20 @@ export default function TimeTravelLayout({
 
       <PeriodSelector current="on" />
 
-      <section>
-        <Heading level={2}>
-          Time Travel <Subtitle>(drag, or use the arrow keys)</Subtitle>
-        </Heading>
-        <Suspense fallback={<TimeTravelSkeleton />}>
-          <TimeTravel today={getToday()} months={months} years={years}>
-            {days}
-          </TimeTravel>
-        </Suspense>
-      </section>
+      <TravelProvider>
+        <section>
+          <Heading level={2}>
+            Time Travel <Subtitle>(drag, or use the arrow keys)</Subtitle>
+          </Heading>
+          <Suspense fallback={<TimeTravelSkeleton />}>
+            <TimeTravel today={getToday()} months={months} years={years}>
+              {days}
+            </TimeTravel>
+          </Suspense>
+        </section>
 
-      {children}
+        {children}
+      </TravelProvider>
     </Page>
   );
 }
