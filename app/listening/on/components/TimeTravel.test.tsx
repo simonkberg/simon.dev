@@ -313,6 +313,22 @@ describe("TimeTravel", () => {
     });
   });
 
+  it("stays on the day when a drag returns while another loads", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+    drag(13);
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    drag(5 * 12 + 9);
+
+    expect(replace).toHaveBeenLastCalledWith("/listening/on/2012-10-14", {
+      scroll: false,
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
+  });
+
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();

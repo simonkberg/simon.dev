@@ -101,7 +101,13 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
     // The shown day needs no page, so nothing is left to wait for.
     scrubbed.current = to === date ? undefined : to;
     setTarget(scrubbed.current);
-    if (!held) timer.current = setTimeout(release, SCRUB_MS);
+    if (to === date && sent !== undefined) {
+      // Staying is a navigation too, superseding the one still loading.
+      setSent(undefined);
+      router.replace(href(to), { scroll: false });
+    } else if (!held) {
+      timer.current = setTimeout(release, SCRUB_MS);
+    }
   };
 
   const travel = (to: Day, focused: boolean) => {
