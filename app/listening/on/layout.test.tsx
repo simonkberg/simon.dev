@@ -64,10 +64,9 @@ describe("TimeTravelLayout", () => {
   });
 
   it("says time travel is unavailable without the months", async () => {
-    vi.mocked(getScrobbleMonths).mockResolvedValue({
-      status: "error",
-      error: "Failed",
-    });
+    const error = { status: "error", error: "Failed" } as const;
+    vi.mocked(getScrobbleMonths).mockResolvedValue(error);
+    vi.mocked(getTopArtistByBucket).mockResolvedValue(error);
 
     await renderLayout();
 

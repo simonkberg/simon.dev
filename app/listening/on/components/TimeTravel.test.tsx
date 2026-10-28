@@ -189,6 +189,20 @@ describe("TimeTravel", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("stays put when a day opens in a new tab", async () => {
+    await renderTape();
+
+    fireEvent.click(screen.getByRole("link", { name: "Day after" }), {
+      metaKey: true,
+    });
+    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }), {
+      ctrlKey: true,
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
+    expect(pending()).not.toHaveAttribute("data-pending");
+  });
+
   it("lets go of a drag when a link to the shown day is clicked", async () => {
     vi.useFakeTimers();
     await renderTape();

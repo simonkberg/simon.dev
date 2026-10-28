@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   createContext,
   type CSSProperties,
+  type MouseEvent,
   type PropsWithChildren,
   use,
   useEffect,
@@ -55,6 +56,14 @@ const eras = (years: readonly BucketTopArtist[], months: number): Era[] =>
 
 export const href = (day: Day) => `/listening/on/${day}` as const;
 
+/** Whether Link navigates on the click, rather than the browser opening a tab. */
+export const isPlainClick = (event: MouseEvent) =>
+  event.button === 0 &&
+  !event.metaKey &&
+  !event.ctrlKey &&
+  !event.shiftKey &&
+  !event.altKey;
+
 interface Travel {
   /** Moves the tape to a day whose link is followed, before its page arrives. */
   travel: (to: Day, focused: boolean) => void;
@@ -81,7 +90,7 @@ const Step = ({ to, label, glyph }: StepProps) => {
       replace
       scroll={false}
       aria-label={label}
-      onClick={() => travel(to, false)}
+      onClick={(event) => isPlainClick(event) && travel(to, false)}
     >
       {glyph}
     </Link>
@@ -106,7 +115,7 @@ export const TimeTravel = ({
   const { date } = useParams<{ date: string }>();
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const followed = useRef<Day>(undefined);
+  const refocus = useRef<Day>(undefined);
   // Where a drag or link is taking the tape, until that day's page arrives.
   const [target, setTarget] = useState<Day>();
   const [shownDate, setShownDate] = useState(date);
@@ -142,14 +151,14 @@ export const TimeTravel = ({
 
   const travel = (to: Day, focused: boolean) => {
     clearTimeout(timer.current);
-    followed.current = focused ? to : undefined;
+    refocus.current = focused ? to : undefined;
     // Going to the shown day changes no `date`, so nothing else would let go.
     setTarget(to === day ? undefined : to);
   };
 
   const takeFocus = (to: Day) => {
-    const take = followed.current === to;
-    if (take) followed.current = undefined;
+    const take = refocus.current === to;
+    if (take) refocus.current = undefined;
     return take;
   };
 

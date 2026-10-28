@@ -8,7 +8,7 @@ import type { Day } from "@/lib/dates";
 import { addDays } from "@/lib/days";
 import { formatPlays } from "@/lib/formatNumber";
 
-import { href, TravelContext } from "./TimeTravel";
+import { href, isPlainClick, TravelContext } from "./TimeTravel";
 
 export interface MonthDaysProps {
   day: Day;
@@ -63,6 +63,7 @@ export const MonthDays = ({ day, days }: MonthDaysProps) => {
                     : undefined
                 }
                 onClick={(event) =>
+                  isPlainClick(event) &&
                   travel(date, event.currentTarget === document.activeElement)
                 }
               >

@@ -24,6 +24,17 @@ describe("MonthDays", () => {
     ).toHaveAttribute("aria-current", "date");
   });
 
+  it("numbers each week's first day, unless it crowds the day's own", () => {
+    render(<MonthDays day="2012-10-09" days={october} />);
+
+    const ticked = screen
+      .getAllByRole("listitem")
+      .flatMap((item, index) =>
+        item.hasAttribute("data-tick") ? [index + 1] : [],
+      );
+    expect(ticked).toEqual([1, 9, 15, 22, 29]);
+  });
+
   it("says the days are unavailable when they failed to load", () => {
     render(<MonthDays day="2012-10-14" days={undefined} />);
 
