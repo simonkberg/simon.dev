@@ -24,8 +24,14 @@ beforeEach(() => {
 describe("AnimatedNumber", () => {
   it("renders the value and the 0 it counts from in server markup", () => {
     expect(renderToString(<AnimatedNumber value={1234.5} decimals={2} />)).toBe(
-      '<span class="animated-number" data-from="0.00">1,234.50</span>',
+      '<span data-hydrating="" class="animated-number" data-from="0.00">1,234.50</span>',
     );
+  });
+
+  it("isn't hydrating when rendered on the client", () => {
+    render(<AnimatedNumber value={100} />);
+
+    expect(screen.getByText("100")).not.toHaveAttribute("data-hydrating");
   });
 
   it("counts along with the --grow it follows", () => {
