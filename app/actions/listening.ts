@@ -104,7 +104,7 @@ function spanRange(span: Span, now: Date) {
 function cacheTopList(span: Span, now: Date) {
   if (!isValidPeriod(span)) {
     const { to } = spanRange(span, now);
-    if (hasSettled(to.getTime(), now)) cacheLife("days");
+    if (hasSettled(to.getTime(), now)) cacheEnded(to.getTime(), now);
     else cacheLife("hours");
   } else if (span === "7day" || span === "1month") cacheLife("hours");
   else cacheUntil(nextMidnight(now).getTime(), now);
@@ -469,7 +469,7 @@ export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
       "oldest",
       DAY_PLAYS,
     );
-    if (hasSettled(to.getTime(), now)) cacheLife("days");
+    if (hasSettled(to.getTime(), now)) cacheEnded(to.getTime(), now);
     else cacheLife("minutes");
     return {
       status: "ok",

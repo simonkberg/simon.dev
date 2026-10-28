@@ -165,12 +165,16 @@ export const TimeTravel = ({
   const scrub = (index: number) => {
     const next = travelTo(index);
     refocus.current = undefined;
-    setTarget(next);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      if (next === day) setTarget(undefined);
-      else router.replace(href(next), { scroll: false });
-    }, SCRUB_MS);
+    if (next === day) {
+      setTarget(undefined);
+      return;
+    }
+    setTarget(next);
+    timer.current = setTimeout(
+      () => router.replace(href(next), { scroll: false }),
+      SCRUB_MS,
+    );
   };
 
   return (

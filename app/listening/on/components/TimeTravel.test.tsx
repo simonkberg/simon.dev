@@ -280,12 +280,12 @@ describe("TimeTravel", () => {
 
     drag(10);
     drag(5 * 12 + 9);
+
+    expect(pending()).not.toHaveAttribute("data-pending");
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
-
     expect(replace).not.toHaveBeenCalled();
-    expect(pending()).not.toHaveAttribute("data-pending");
   });
 
   it("shows no era for a year without scrobbles", async () => {

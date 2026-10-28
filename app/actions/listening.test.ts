@@ -137,7 +137,7 @@ describe("top lists", () => {
     });
 
     it.each([
-      ["2012-10", "days", "2012-09-30T22:00:00Z", "2012-10-31T23:00:00Z"],
+      ["2012-10", "max", "2012-09-30T22:00:00Z", "2012-10-31T23:00:00Z"],
       ["2026-10", "hours", "2026-09-30T22:00:00Z", "2026-10-31T23:00:00Z"],
     ] as const)(
       "should count all of %s's Stockholm month, cached for %s",
@@ -520,7 +520,7 @@ describe("getDayPlays", () => {
       "oldest",
       1000,
     );
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("days");
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("max");
     expect(result).toEqual({
       status: "ok",
       plays: [
