@@ -283,7 +283,7 @@ describe("topPlayed", () => {
       ],
     ],
   ] as const)(
-    "should rank each %s from `from` until `to`, first by name on a tie",
+    "should rank each %s from `from` until `to`, ties by artist, then title",
     async (kind, top) => {
       await expect(
         topPlayed(kind, new Date(0), new Date(7), 2),

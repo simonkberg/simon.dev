@@ -144,7 +144,7 @@ const groups = {
   album: { name: "album", by: "artist, album", where: "AND album != ''" },
 } as const satisfies Record<ChartKind, unknown>;
 
-/** The most played of a kind from `from` until `to`, first by name on a tie. */
+/** The most played of a kind from `from` until `to`, ties by artist, then title. */
 export async function topPlayed(
   kind: ChartKind,
   from: Date,
