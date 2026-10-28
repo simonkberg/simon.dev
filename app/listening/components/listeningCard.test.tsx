@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   type BucketTopArtist,
+  getDailyScrobbles,
   getScrobbles,
   getTopAlbums,
   getTopArtistByBucket,
@@ -14,7 +15,7 @@ import { inlineCover } from "@/lib/covers";
 import { shareCard } from "@/lib/shareCard";
 import { topAlbum } from "@/mocks/listening";
 
-import { listeningCard } from "./listeningCard";
+import { dayCard, listeningCard } from "./listeningCard";
 
 vi.mock(import("@/lib/shareCard"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -51,6 +52,9 @@ vi.mock(import("@/actions/listening"), () => ({
   getScrobbles: vi.fn(() =>
     Promise.resolve({ status: "ok" as const, scrobbles }),
   ),
+  getDailyScrobbles: vi.fn(() =>
+    Promise.resolve({ status: "ok" as const, scrobbles }),
+  ),
   getTopArtistByBucket: vi.fn(() =>
     Promise.resolve({ status: "ok" as const, buckets }),
   ),
@@ -62,8 +66,8 @@ vi.mock(import("@/actions/listening"), () => ({
   ),
 }));
 
-const renderCard = async () => {
-  await listeningCard("12month");
+const renderCard = async (draw = () => listeningCard("12month")) => {
+  await draw();
   const [[, body] = []] = vi.mocked(shareCard).mock.calls;
   await act(async () => render(body));
 };
@@ -154,5 +158,22 @@ describe("listeningCard", () => {
       screen.getByText("Scrobbles are temporarily unavailable :("),
     ).toBeInTheDocument();
     expect(screen.queryByText("top artist")).not.toBeInTheDocument();
+  });
+});
+
+describe("dayCard", () => {
+  it("shows the day's scrobbles in its month, with the month's top artist and albums", async () => {
+    await renderCard(() => dayCard("2012-10-02"));
+
+    expect(getDailyScrobbles).toHaveBeenCalledWith("2012-10");
+    expect(getTopArtists).toHaveBeenCalledWith("2012-10");
+    expect(getTopAlbums).toHaveBeenCalledWith("2012-10");
+    expect(getTopArtistByBucket).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("(Tue, Oct 2, 2012 · per day)"),
+    ).toBeInTheDocument();
+    // The second bar's count, not the month's.
+    expect(screen.getByText("200")).toBeInTheDocument();
+    expect(screen.queryByText("Low")).not.toBeInTheDocument();
   });
 });

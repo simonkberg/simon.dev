@@ -1,15 +1,21 @@
 "use no memo";
 
 import {
+  getDailyScrobbles,
+  type GetScrobblesResult,
+  type GetTopArtistByBucketResult,
   getScrobbles,
   getTopAlbums,
   getTopArtistByBucket,
   getTopArtists,
   type ScrobbleCount,
+  type Span,
   type TopAlbum,
   type TopArtist,
 } from "@/actions/listening";
 import { inlineCover } from "@/lib/covers";
+import type { Day } from "@/lib/dates";
+import { fullDayLabel, monthOf } from "@/lib/days";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
 import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
@@ -111,16 +117,15 @@ const fit = (text: string, size: number, room: number) => {
 };
 
 const Stats = ({
-  items,
+  scrobbled,
   top,
   width,
 }: {
-  items: readonly ScrobbleCount[] | undefined;
+  scrobbled: number | undefined;
   top: TopArtist | undefined;
   width: number;
 }) => {
-  const total =
-    items && formatNumber(items.reduce((sum, { count }) => sum + count, 0));
+  const total = scrobbled === undefined ? undefined : formatNumber(scrobbled);
   const plays = top && formatNumber(top.playcount);
   // The top artist's name gives way, so the row never runs into the covers.
   const nameRoom =
@@ -241,12 +246,46 @@ const Covers = ({ albums: [first, ...rest] }: { albums: CoverAlbum[] }) =>
 
 export const listeningAlt = "Scrobbles per day, week, month or year on Last.fm";
 
-export async function listeningCard(period: Period) {
+interface CardData {
+  subtitle: string;
+  // Whose top artist and albums the card shows.
+  span: Span;
+  scrobbles: Promise<GetScrobblesResult>;
+  // What the stats count: every bar's scrobbles, or one bar's.
+  scrobbled: (items: readonly ScrobbleCount[]) => number | undefined;
+  topArtistByBucket?: Promise<GetTopArtistByBucketResult>;
+}
+
+export const listeningCard = (period: Period) =>
+  card({
+    subtitle: `${periodLabels[period]} · per ${bucketUnits[period]}`,
+    span: period,
+    scrobbles: getScrobbles(period),
+    scrobbled: (items) => items.reduce((sum, { count }) => sum + count, 0),
+    topArtistByBucket: getTopArtistByBucket(period),
+  });
+
+/** A time travel day: its month's days, with its own scrobbles counted. */
+export const dayCard = (day: Day) =>
+  card({
+    subtitle: `${fullDayLabel(day)} · per day`,
+    span: monthOf(day),
+    scrobbles: getDailyScrobbles(monthOf(day)),
+    scrobbled: (items) => items[Number(day.slice(8)) - 1]?.count,
+  });
+
+async function card({
+  subtitle,
+  span,
+  scrobbles: scrobblesResult,
+  scrobbled,
+  topArtistByBucket: lanesResult,
+}: CardData) {
   const [scrobbles, topArtistByBucket, topArtists, covers] = await Promise.all([
-    getScrobbles(period),
-    getTopArtistByBucket(period),
-    getTopArtists(period),
-    getTopAlbums(period).then((result) =>
+    scrobblesResult,
+    lanesResult,
+    getTopArtists(span),
+    getTopAlbums(span).then((result) =>
       result.status === "ok"
         ? Promise.all(
             result.albums
@@ -263,7 +302,7 @@ export async function listeningCard(period: Period) {
   const top = topArtists.status === "ok" ? topArtists.artists[0] : undefined;
   const chartWidth = covers.length > 0 ? fullWidth - coversWidth : fullWidth;
   const rows =
-    items && topArtistByBucket.status === "ok"
+    items && topArtistByBucket?.status === "ok"
       ? lanes(items, topArtistByBucket.buckets)
           .toSorted((a, b) => b.plays - a.plays)
           .slice(0, laneCount)
@@ -273,11 +312,7 @@ export async function listeningCard(period: Period) {
   return shareCard(
     { window: "listening" },
     <div style={{ display: "flex", flex: 1, padding: "40px 48px 36px" }}>
-      <Pane
-        number={1}
-        title="Scrobbles"
-        subtitle={`${periodLabels[period]} · per ${bucketUnits[period]}`}
-      >
+      <Pane number={1} title="Scrobbles" subtitle={subtitle}>
         <div style={{ display: "flex", gap: gutter }}>
           <div
             style={{
@@ -287,7 +322,7 @@ export async function listeningCard(period: Period) {
             }}
           >
             <Stats
-              items={items}
+              scrobbled={items && scrobbled(items)}
               top={top}
               width={chartWidth + coversGap - gutter}
             />

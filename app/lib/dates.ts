@@ -1,5 +1,9 @@
 export const timeZone = "Europe/Stockholm";
 
+/** A Stockholm calendar date, as "YYYY-MM-DD". */
+export type Day = `${number}-${number}-${number}`;
+export type Month = `${number}-${number}`;
+
 const wallClock = new Intl.DateTimeFormat("en-US", {
   timeZone,
   hourCycle: "h23",

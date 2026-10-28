@@ -2,6 +2,7 @@ import { cacheLife, refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { albumGetInfo } from "@/lib/lastfm";
+import { plays } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   countScrobbles,
@@ -13,8 +14,12 @@ import {
 } from "@/lib/scrobbles";
 
 import {
+  getDayPlays,
+  getDailyScrobbles,
   getRecentTracks,
   getOnThisDay,
+  getScrobbleMonths,
+  getToday,
   getScrobbles,
   getTopArtistByBucket,
   getTopAlbums,
@@ -37,6 +42,8 @@ vi.mock(import("@/lib/scrobbles"), () => ({
   topArtists: vi.fn(),
   topPlayed: vi.fn(),
 }));
+
+vi.mock(import("@/lib/listeningQuery"), () => ({ plays: vi.fn() }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));
 
@@ -128,6 +135,26 @@ describe("top lists", () => {
         ],
       });
     });
+
+    it.each([
+      ["2012-10", "days", "2012-09-30T22:00:00Z", "2012-10-31T23:00:00Z"],
+      ["2026-10", "hours", "2026-09-30T22:00:00Z", "2026-10-31T23:00:00Z"],
+    ] as const)(
+      "should count all of %s's Stockholm month, cached for %s",
+      async (month, life, from, to) => {
+        vi.mocked(topPlayed).mockResolvedValue([]);
+
+        await getTopTracks(month);
+
+        expect(topPlayed).toHaveBeenCalledExactlyOnceWith(
+          "track",
+          new Date(from),
+          new Date(to),
+          10,
+        );
+        expect(cacheLife).toHaveBeenCalledExactlyOnceWith(life);
+      },
+    );
 
     it("should return error status when the query fails", async () => {
       const mockError = new Error("Database error");
@@ -361,6 +388,155 @@ describe("getScrobbles", () => {
       );
     },
   );
+});
+
+describe("getScrobbleMonths", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+    vi.mocked(countScrobbles).mockResolvedValue(42);
+  });
+
+  it("should count every month since the first year's January", async () => {
+    const result = await getScrobbleMonths();
+
+    expect(countScrobbles).toHaveBeenCalledTimes((2026 - 2007) * 12 + 10);
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Jan 2007", count: 42, current: false },
+        { label: "Oct 2026", count: 42, current: true },
+      ]),
+    });
+  });
+});
+
+describe("getDailyScrobbles", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+    vi.mocked(countScrobbles).mockResolvedValue(42);
+  });
+
+  it("should count a past month's days, kept for days", async () => {
+    const result = await getDailyScrobbles("2012-10");
+
+    expect(countScrobbles).toHaveBeenCalledTimes(31);
+    expect(cacheLife).toHaveBeenLastCalledWith("days");
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Oct 31", count: 42, current: false },
+      ]),
+    });
+  });
+
+  it("should regenerate a month that ended within the hour once it settles", async () => {
+    vi.setSystemTime(new Date("2026-10-31T23:30:00Z"));
+
+    await getDailyScrobbles("2026-10");
+
+    expect(cacheLife).toHaveBeenLastCalledWith({
+      stale: 300,
+      revalidate: 1800,
+      expire: 1800 + 86_400,
+    });
+  });
+
+  it("should return error status when a count fails", async () => {
+    const mockError = new Error("Database error");
+    vi.mocked(countScrobbles).mockRejectedValue(mockError);
+
+    const result = await getDailyScrobbles("2026-10");
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch scrobbles",
+    });
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getDailyScrobbles" },
+      "Error fetching scrobbles",
+    );
+  });
+});
+
+describe("getDayPlays", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+  });
+
+  it("should list the Stockholm day's plays with their wall-clock time", async () => {
+    vi.mocked(plays).mockResolvedValue({
+      total: 1,
+      plays: [
+        {
+          name: "Old Fools",
+          artist: "The Magnetic Fields",
+          album: "Distortion",
+          playedAt: new Date("2012-10-14T14:27:43Z"),
+          loved: false,
+        },
+      ],
+    });
+
+    const result = await getDayPlays("2012-10-14");
+
+    expect(plays).toHaveBeenCalledExactlyOnceWith(
+      {
+        from: new Date("2012-10-13T22:00:00Z"),
+        to: new Date("2012-10-14T22:00:00Z"),
+      },
+      "oldest",
+      1000,
+    );
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("days");
+    expect(result).toEqual({
+      status: "ok",
+      plays: [
+        { name: "Old Fools", artist: "The Magnetic Fields", time: "16:27" },
+      ],
+    });
+  });
+
+  it("should reread today's plays every few minutes", async () => {
+    vi.mocked(plays).mockResolvedValue({ total: 0, plays: [] });
+
+    await getDayPlays("2026-10-23");
+
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+  });
+
+  it("should return error status when the query fails", async () => {
+    const mockError = new Error("Database error");
+    vi.mocked(plays).mockRejectedValue(mockError);
+
+    const result = await getDayPlays("2012-10-14");
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch the day's plays",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getDayPlays", date: "2012-10-14" },
+      "Error fetching day plays",
+    );
+  });
+});
+
+describe("getToday", () => {
+  it("should give Stockholm's date until its midnight", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T22:30:00Z"));
+
+    expect(await getToday()).toBe("2026-10-24");
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
+      stale: 300,
+      revalidate: 84_600,
+      expire: 84_600 + 86_400,
+    });
+  });
 });
 
 describe("getTopArtistByBucket", () => {
