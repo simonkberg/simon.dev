@@ -204,6 +204,7 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => {
               justifyContent: "flex-end",
               padding: size / 16,
               overflow: "hidden",
+              wordBreak: "break-word",
               fontSize: large ? 24 : 11,
               lineHeight: 1.25,
               backgroundColor: color.wash,
