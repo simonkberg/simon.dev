@@ -60,11 +60,21 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   const scrubbed = useRef<Day>(undefined);
   const refocus = useRef<Day>(undefined);
   const [target, setTarget] = useState<Day>();
+  // The day last asked for, so its arrival can tell itself from back or forward.
+  const [sent, setSent] = useState<Day>();
+  const [arrivals, setArrivals] = useState(0);
   const [shownDate, setShownDate] = useState(date);
 
+  // The day asked for keeps a scrub begun while it loaded; any other drops it.
   if (date !== shownDate) {
     setShownDate(date);
-    setTarget(undefined);
+    setSent(undefined);
+    if (date !== sent) {
+      setTarget(undefined);
+      setArrivals((count) => count + 1);
+    } else if (target === date) {
+      setTarget(undefined);
+    }
   }
 
   // A day reached another way (back, forward) wins over a pending scrub.
@@ -73,14 +83,16 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
       clearTimeout(timer.current);
       scrubbed.current = undefined;
     },
-    [date],
+    [arrivals],
   );
 
   const release = () => {
     clearTimeout(timer.current);
     const to = scrubbed.current;
     scrubbed.current = undefined;
-    if (to !== undefined) router.replace(href(to), { scroll: false });
+    if (to === undefined) return;
+    setSent(to);
+    router.replace(href(to), { scroll: false });
   };
 
   const scrub = (to: Day, held: boolean) => {
@@ -96,6 +108,7 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
     clearTimeout(timer.current);
     scrubbed.current = undefined;
     refocus.current = focused ? to : undefined;
+    setSent(to);
     // Going to the shown day changes no `date`, so nothing else would let go.
     setTarget(to === date ? undefined : to);
   };
