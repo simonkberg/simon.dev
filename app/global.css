@@ -1703,7 +1703,9 @@ ul {
 .time-travel-pending {
   display: contents;
 
+  /* Its children take the place it gives up in the page's layout. */
   > * {
+    grid-column: 1 / -1;
     transition: opacity 0.15s;
   }
 
