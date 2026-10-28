@@ -314,7 +314,7 @@ export async function getData(): Promise<Result> {
 }
 ```
 
-Use `"minutes"` for frequently-changing data (recent tracks), `"hours"` for aggregated data (top tracks).
+Use `"minutes"` for frequently-changing data from an API, `"hours"` for aggregated data (top tracks).
 
 ### Promise Props with `use()` Hook
 

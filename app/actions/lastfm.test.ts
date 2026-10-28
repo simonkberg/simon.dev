@@ -56,7 +56,11 @@ describe("getRecentTracks", () => {
 
     const result = await getRecentTracks();
 
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
+      stale: 15,
+      revalidate: 15,
+      expire: 15,
+    });
     expect(recentPlays).toHaveBeenCalledWith(5);
     expect(result).toEqual({ status: "ok", tracks });
   });

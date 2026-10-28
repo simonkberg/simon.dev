@@ -43,7 +43,8 @@ export async function getRecentTracks(): Promise<GetRecentTracksResult> {
 
   try {
     const tracks = await recentPlays(5);
-    cacheLife("minutes");
+    // A few rows from Turso, so it rereads often rather than add a minute to the sync's.
+    cacheLife({ stale: 15, revalidate: 15, expire: 15 });
     return { status: "ok", tracks };
   } catch (err) {
     cacheLife("seconds");
