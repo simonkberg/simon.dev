@@ -45,7 +45,8 @@ jobs:
             - As the last step before posting, read this PR's review threads and replies. Drop any finding already raised on this PR, whether fixed, answered or resolved, unless this push changed that code. If you reverse an earlier suggestion, say so.
             - Post only findings you verified in the code or with a check. Leave out anything you would call unverified.
             - Settled: trade-offs the PR body lists; AGENTS.md's conventions, including its testing rules; no old-browser support; the Dockerfile's build-arg secrets and cache mount; hardening simon-bot (it's for fun, and the Discord server has only Simon). Don't guess how Discord behaves.
-            - Keep the summary short: the result, one line per inline finding, and only what can't be anchored to a line.
+            - Post every verified finding inline, minor ones included; the summary is rewritten on each push, so a finding left only there has no thread to answer.
+            - Keep the summary short: the result, one line per inline finding, and only what can't be anchored to a line. Leave out candidates you dropped or couldn't confirm, and what you checked and found fine.
           # --allowedTools is what starts the inline comment MCP server.
           claude_args: >-
             --permission-mode auto
