@@ -1533,8 +1533,11 @@ ul {
   > a,
   > span[aria-hidden] {
     padding-inline: 0.5ch;
-    color: var(--accent);
     text-decoration: none;
+  }
+
+  > a {
+    color: var(--accent);
   }
 
   > span[aria-hidden] {

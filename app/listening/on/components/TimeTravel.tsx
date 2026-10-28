@@ -12,15 +12,15 @@ import {
 
 import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
 import { SkeletonStatus } from "@/components/Skeleton";
-import type { Day } from "@/lib/dates";
 import {
   addDays,
+  type Day,
   dayInMonth,
   firstDay,
   fullDayLabel,
   inHistory,
   monthIndex,
-} from "@/lib/days";
+} from "@/lib/dates";
 import { lanes } from "@/lib/scrobbleChart";
 
 import { href, isPlainClick, TravelContext } from "./Travel";
@@ -67,7 +67,7 @@ const Step = ({ to, label, glyph }: StepProps) => {
       replace
       scroll={false}
       aria-label={label}
-      onClick={(event) => isPlainClick(event) && travel(to, false)}
+      onClick={(event) => isPlainClick(event) && travel(to)}
     >
       {glyph}
     </Link>

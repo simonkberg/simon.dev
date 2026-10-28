@@ -12,7 +12,7 @@ import {
   useState,
 } from "react";
 
-import type { Day } from "@/lib/dates";
+import { type Day, monthOf } from "@/lib/dates";
 
 // Served by the rewrite in next.config.ts, which typed routes don't read.
 export const href = (day: Day) => `/listening/on/${day}` as Route;
@@ -31,12 +31,10 @@ interface Travel {
   /** Where a drag or link is taking the page, until that day's page arrives. */
   target: Day | undefined;
   /** Moves to a day whose link is followed, before its page arrives. */
-  travel: (to: Day, focused: boolean) => void;
+  travel: (to: Day) => void;
   /** Moves to a day the tape is on; `held` waits for `release` to go there. */
   scrub: (to: Day, held: boolean) => void;
   release: () => void;
-  /** Whether the day's link was focused when followed, so its new page's should be. */
-  takeFocus: (day: Day) => boolean;
 }
 
 export const TravelContext = createContext<Travel>({
@@ -45,7 +43,6 @@ export const TravelContext = createContext<Travel>({
   travel: () => {},
   scrub: () => {},
   release: () => {},
-  takeFocus: () => false,
 });
 
 // Long enough that holding an arrow key navigates once, where it stops.
@@ -58,7 +55,6 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const scrubbed = useRef<Day>(undefined);
-  const refocus = useRef<Day>(undefined);
   const [target, setTarget] = useState<Day>();
   // The day last asked for, so its arrival can tell itself from back or forward.
   const [sent, setSent] = useState<Day>();
@@ -97,7 +93,6 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
 
   const scrub = (to: Day, held: boolean) => {
     clearTimeout(timer.current);
-    refocus.current = undefined;
     // The shown day needs no page, so nothing is left to wait for.
     scrubbed.current = to === date ? undefined : to;
     setTarget(scrubbed.current);
@@ -110,24 +105,17 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const travel = (to: Day, focused: boolean) => {
+  const travel = (to: Day) => {
     clearTimeout(timer.current);
     scrubbed.current = undefined;
-    refocus.current = focused ? to : undefined;
     // Going to the shown day changes no `date`, so nothing else would let go.
     const away = to === date ? undefined : to;
     setSent(away);
     setTarget(away);
   };
 
-  const takeFocus = (to: Day) => {
-    const take = refocus.current === to;
-    if (take) refocus.current = undefined;
-    return take;
-  };
-
   return (
-    <TravelContext value={{ date, target, travel, scrub, release, takeFocus }}>
+    <TravelContext value={{ date, target, travel, scrub, release }}>
       {children}
     </TravelContext>
   );
@@ -143,7 +131,7 @@ export const TravelPending = ({ of, children }: TravelPendingProps) => {
   const { date, target } = use(TravelContext);
   const pending =
     target !== undefined &&
-    (of === "day" || target.slice(0, 7) !== date?.slice(0, 7));
+    (of === "day" || monthOf(target) !== date?.slice(0, 7));
   return (
     <div className="time-travel-pending" data-pending={pending || undefined}>
       {children}

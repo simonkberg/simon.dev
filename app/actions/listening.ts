@@ -11,10 +11,11 @@ import {
   type Month,
   dayLabel,
   dayStart,
+  inHistory,
+  localDay,
   midnight,
   nextMidnight,
 } from "@/lib/dates";
-import { inHistory } from "@/lib/days";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
 import { plays } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
@@ -41,7 +42,6 @@ import {
   topArtists,
   topPlayed,
 } from "@/lib/scrobbles";
-import { localDay } from "@/lib/today";
 
 export type GetRecentTracksResult =
   | { status: "ok"; tracks: RecentTrack[] }
@@ -101,11 +101,9 @@ function spanRange(span: Span, now: Date) {
 }
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
-function cacheTopList(span: Span, now: Date) {
+function cacheTopList(span: Span, to: Date, now: Date) {
   if (!isValidPeriod(span)) {
-    const { to } = spanRange(span, now);
-    if (hasSettled(to.getTime(), now)) cacheEnded(to.getTime(), now);
-    else cacheLife("hours");
+    if (!cacheSettled(to.getTime(), now)) cacheLife("hours");
   } else if (span === "7day" || span === "1month") cacheLife("hours");
   else cacheUntil(nextMidnight(now).getTime(), now);
 }
@@ -117,7 +115,7 @@ async function topIn<T>(
   const now = new Date();
   const { from, to } = spanRange(span, now);
   const result = await top(from, to);
-  cacheTopList(span, now);
+  cacheTopList(span, to, now);
   return result;
 }
 
@@ -277,6 +275,13 @@ const SETTLE_MS = 60 * 60 * 1000;
 
 const hasSettled = (end: number, now: Date) => end + SETTLE_MS <= now.getTime();
 
+/** Caches what ended at `end` once it has settled, and says whether it had. */
+function cacheSettled(end: number, now: Date) {
+  const settled = hasSettled(end, now);
+  if (settled) cacheEnded(end, now);
+  return settled;
+}
+
 async function inBucket<T>(
   { from, to }: { from: Date; to: Date },
   now: Date,
@@ -292,8 +297,8 @@ async function inBucket<T>(
 // A chart that has settled only changes by a late scrobble; one still under way regenerates as a bar ends.
 function cacheChart(buckets: readonly { to: Date }[], now: Date) {
   const end = chartEnd(buckets);
-  if (hasSettled(end, now)) cacheEnded(end, now);
-  else cacheUntil(end > now.getTime() ? end : end + SETTLE_MS, now, 3600);
+  if (!cacheSettled(end, now))
+    cacheUntil(end > now.getTime() ? end : end + SETTLE_MS, now, 3600);
 }
 
 async function countBuckets(
@@ -334,7 +339,7 @@ export async function getScrobbleMonths(): Promise<GetScrobblesResult> {
   );
 }
 
-/** The scrobbles on each day of a "YYYY-MM-DD" date's month, up to today. */
+/** The scrobbles on each day of a "YYYY-MM" month, up to today. */
 export async function getDailyScrobbles(
   month: Month,
 ): Promise<GetScrobblesResult> {
@@ -468,8 +473,7 @@ export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
       "oldest",
       DAY_PLAYS,
     );
-    if (hasSettled(to.getTime(), now)) cacheEnded(to.getTime(), now);
-    else cacheLife("minutes");
+    if (!cacheSettled(to.getTime(), now)) cacheLife("minutes");
     return {
       status: "ok",
       plays: played.plays.map(({ name, artist, playedAt }) => ({

@@ -27,7 +27,6 @@ const renderDays = (
         travel: vi.fn(),
         scrub: vi.fn(),
         release: vi.fn(),
-        takeFocus: () => false,
       }}
     >
       <MonthDays month="2012-10" days={days} />

@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 
-import type { Day, Month } from "@/lib/dates";
-import { inHistory, monthOf, parseDay } from "@/lib/days";
+import {
+  type Day,
+  inHistory,
+  type Month,
+  monthOf,
+  parseDay,
+} from "@/lib/dates";
 import { getToday } from "@/lib/today";
 
 /** The day's params, if time travel reaches it. */

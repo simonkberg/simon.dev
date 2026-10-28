@@ -14,8 +14,7 @@ import {
   type TopArtist,
 } from "@/actions/listening";
 import { inlineCover } from "@/lib/covers";
-import type { Day } from "@/lib/dates";
-import { fullDayLabel, monthOf } from "@/lib/days";
+import { type Day, fullDayLabel, monthOf } from "@/lib/dates";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
 import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";

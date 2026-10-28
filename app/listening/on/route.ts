@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { yearBefore } from "@/lib/days";
+import { yearBefore } from "@/lib/dates";
 import { getToday } from "@/lib/today";
 
 // Time travel starts a year back.

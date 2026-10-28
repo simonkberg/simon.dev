@@ -19,7 +19,6 @@ const renderPending = (of: TravelPendingProps["of"], target: Day) =>
         travel: vi.fn(),
         scrub: vi.fn(),
         release: vi.fn(),
-        takeFocus: () => false,
       }}
     >
       <TravelPending of={of}>

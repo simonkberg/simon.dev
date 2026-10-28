@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
 import type { Day } from "@/lib/dates";
+import { monthBuckets } from "@/lib/scrobbleBuckets";
 
 import { MonthDays } from "./MonthDays";
 import { TimeTravel, type TimeTravelProps } from "./TimeTravel";
@@ -29,21 +30,11 @@ beforeEach(() => {
   >);
 });
 
-const monthLabel = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 // January 2007 to October 2026, as the tape shows them.
-const months: ScrobbleCount[] = Array.from(
-  { length: 19 * 12 + 10 },
-  (_, index) => ({
-    label: monthLabel.format(new Date(Date.UTC(2007, index, 1))),
-    count: index,
-    current: false,
-  }),
-);
+const months: ScrobbleCount[] = monthBuckets(
+  2007,
+  new Date("2026-10-28T12:00:00Z"),
+).map(({ label }, index) => ({ label, count: index, current: false }));
 const years: BucketTopArtist[] = Array.from({ length: 20 }, (_, index) => ({
   label: String(2007 + index),
   artist: {

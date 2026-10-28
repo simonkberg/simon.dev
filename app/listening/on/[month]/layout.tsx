@@ -1,7 +1,7 @@
 // Async, which the React Compiler would turn into a component it can't call outside a render.
 "use no memo";
 
-import { monthLabel } from "@/lib/days";
+import { monthLabel } from "@/lib/dates";
 import { TopLists } from "@/listening/components/TopLists";
 
 import { TravelPending } from "../components/Travel";

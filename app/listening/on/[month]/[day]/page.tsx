@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { getDayPlays } from "@/actions/listening";
 import { Heading } from "@/components/Heading";
 import { Subtitle } from "@/components/Subtitle";
-import { fullDayLabel } from "@/lib/days";
+import { fullDayLabel } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
 import { toDay } from "../../toDay";

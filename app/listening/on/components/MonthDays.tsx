@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type CSSProperties, use } from "react";
 
 import type { ScrobbleCount } from "@/actions/listening";
-import type { Day, Month } from "@/lib/dates";
+import { type Day, type Month, monthOf } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
 import { href, isPlainClick, TravelContext, TravelPending } from "./Travel";
@@ -17,14 +17,14 @@ export interface MonthDaysProps {
 
 /** The day's month under the tape, a link to each of its days. */
 export const MonthDays = ({ month, days }: MonthDaysProps) => {
-  const { date, target, travel, takeFocus } = use(TravelContext);
+  const { date, target, travel } = use(TravelContext);
 
   if (days === undefined) {
     return <p>This month’s days are temporarily unavailable :(</p>;
   }
 
   // A day the page is travelling to within the month is already here.
-  const shown = target?.startsWith(month) ? target : date;
+  const shown = target && monthOf(target) === month ? target : date;
   const dayOfMonth = Number(shown?.slice(8));
   const max = Math.max(1, ...days.map(({ count }) => count));
 
@@ -54,18 +54,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
                 replace
                 scroll={false}
                 aria-current={current ? "date" : undefined}
-                // A day of another month is a new page, so the link followed is a new one.
-                ref={
-                  current
-                    ? (link) => {
-                        if (link && takeFocus(day)) link.focus();
-                      }
-                    : undefined
-                }
-                onClick={(event) =>
-                  isPlainClick(event) &&
-                  travel(day, event.currentTarget === document.activeElement)
-                }
+                onClick={(event) => isPlainClick(event) && travel(day)}
               >
                 <span className="visually-hidden">{`${label}: ${formatPlays(count)}`}</span>
               </Link>
