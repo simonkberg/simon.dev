@@ -103,7 +103,7 @@ describe("dayInMonth", () => {
 describe("labels", () => {
   it("should name the day, its month and its length", () => {
     expect(fullDayLabel("2012-10-14")).toBe("Sun, Oct 14, 2012");
-    expect(monthLabel("2012-10-14")).toBe("Oct 2012");
+    expect(monthLabel("2012-10")).toBe("Oct 2012");
     expect(monthOf("2012-10-14")).toBe("2012-10");
   });
 });

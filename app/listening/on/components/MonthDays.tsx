@@ -4,8 +4,9 @@ import Link from "next/link";
 import { type CSSProperties, use } from "react";
 
 import type { ScrobbleCount } from "@/actions/listening";
-import { type Day, type Month, monthOf } from "@/lib/dates";
+import { addDays, type Month, monthOf } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
+import { barHeights } from "@/lib/scrobbleChart";
 
 import { href } from "../href";
 import { TravelContext, TravelPending } from "./Travel";
@@ -27,7 +28,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
   // A day the page is travelling to within the month is already here.
   const shown = target && monthOf(target) === month ? target : date;
   const dayOfMonth = Number(shown?.slice(8));
-  const max = Math.max(1, ...days.map(({ count }) => count));
+  const heights = barHeights(days);
 
   return (
     <TravelPending of="month">
@@ -37,7 +38,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
         aria-label="Days"
       >
         {days.map(({ label, count }, index) => {
-          const day = `${month}-${String(index + 1).padStart(2, "0")}` as Day;
+          const day = addDays(`${month}-01`, index);
           const current = day === shown;
           // Every week's first day, unless it would crowd the current one's.
           const tick =
@@ -46,7 +47,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
           return (
             <li
               key={label}
-              style={{ "--value": Math.sqrt(count / max) } as CSSProperties}
+              style={{ "--value": heights[index] } as CSSProperties}
               data-active={current || undefined}
               data-tick={tick || undefined}
             >

@@ -25,7 +25,7 @@ export default async function MonthLayout({
     <>
       <TravelPending of="day">{children}</TravelPending>
       <TravelPending of="month">
-        <TopLists span={month} subtitle={monthLabel(`${month}-01`)} />
+        <TopLists span={month} subtitle={monthLabel(month)} />
       </TravelPending>
     </>
   );

@@ -112,14 +112,14 @@ describe("yearBuckets", () => {
 });
 
 describe("monthBuckets", () => {
-  it("should run from January of `since` to this month", () => {
-    const buckets = monthBuckets(2025, now);
+  it("should run from January of the first year to this month", () => {
+    const buckets = monthBuckets(now);
 
-    expect(buckets).toHaveLength(12 + 10);
+    expect(buckets).toHaveLength((2026 - 2007) * 12 + 10);
     expect(buckets.at(0)).toEqual({
-      label: "Jan 2025",
-      from: new Date("2024-12-31T23:00:00Z"),
-      to: new Date("2025-01-31T23:00:00Z"),
+      label: "Jan 2007",
+      from: new Date("2006-12-31T23:00:00Z"),
+      to: new Date("2007-01-31T23:00:00Z"),
     });
     expect(buckets.at(-1)?.label).toBe("Oct 2026");
   });

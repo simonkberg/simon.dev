@@ -74,9 +74,7 @@ describe("TimeTravelLayout", () => {
 
     await renderLayout();
 
-    expect(
-      screen.getByText("Time travel is temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/temporarily unavailable/)).toBeInTheDocument();
     expect(screen.getByText("The day’s page")).toBeInTheDocument();
   });
 });

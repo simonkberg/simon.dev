@@ -154,7 +154,7 @@ const monthFormat = new Intl.DateTimeFormat("en-US", {
 export const fullDayLabel = (day: Day) => longLabel.format(utc(day));
 
 /** Like "Oct 2012". */
-export const monthLabel = (day: Day) => monthFormat.format(utc(day));
+export const monthLabel = (month: Month) => monthFormat.format(new Date(month));
 
 /** The "YYYY-MM" month the day falls in. */
 export const monthOf = (day: Day) => day.slice(0, 7) as Month;

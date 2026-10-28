@@ -210,15 +210,16 @@ export async function countScrobbles(from: Date, to: Date): Promise<number> {
   return Number(rows[0]?.["count"]);
 }
 
-export type Play = { artist: string; track: string };
+export type Play = { playedAt: Date; artist: string; track: string };
 
 /** What played from `from` until `to`, oldest first. */
 export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   const { rows } = await query(
-    "SELECT artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
+    "SELECT played_at, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
     [from.getTime(), to.getTime()],
   );
   return rows.map((row) => ({
+    playedAt: new Date(Number(row["played_at"])),
     artist: String(row["artist"]),
     track: String(row["track"]),
   }));

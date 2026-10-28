@@ -2,7 +2,9 @@ import {
   type Month,
   dayLabel,
   localDate,
+  localDay,
   midnight,
+  monthIndex,
   timeZone,
 } from "@/lib/dates";
 import type { Period } from "@/lib/periods";
@@ -124,11 +126,9 @@ export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
   );
 }
 
-/** Calendar months in Stockholm, from January of `since` to the current one. */
-export function monthBuckets(since: number, now: Date): ScrobbleBucket[] {
-  const today = localDate(now);
-  const count = (today.getUTCFullYear() - since) * 12 + today.getUTCMonth() + 1;
-  return buckets("month", count, today);
+/** Calendar months in Stockholm, one per tape index, up to the current one. */
+export function monthBuckets(now: Date): ScrobbleBucket[] {
+  return buckets("month", monthIndex(localDay(now)) + 1, localDate(now));
 }
 
 /** The Stockholm days of a "YYYY-MM" month, up to today in the current one. */

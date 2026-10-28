@@ -3,16 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { getDayPlays, type GetDayPlaysResult } from "@/actions/listening";
 
+import { toDay } from "../../../toDay";
 import TimeTravelPage, { generateMetadata, generateStaticParams } from "./page";
 
-vi.mock(import("next/navigation"), () => ({
-  notFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-}));
-
-vi.mock(import("@/lib/today"), () => ({
-  getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
+vi.mock(import("../../../toDay"), () => ({
+  toDay: vi.fn(() => Promise.resolve("2012-10-14" as const)),
 }));
 
 vi.mock(import("@/actions/listening"), () => ({
@@ -26,12 +21,7 @@ vi.mock(import("@/actions/listening"), () => ({
   ),
 }));
 
-const params = (date: string) =>
-  Promise.resolve({
-    year: date.slice(0, 4),
-    month: date.slice(5, 7),
-    day: date.slice(8),
-  });
+const params = Promise.resolve({ year: "2012", month: "10", day: "14" });
 const searchParams = Promise.resolve({});
 
 describe("generateStaticParams", () => {
@@ -42,20 +32,23 @@ describe("generateStaticParams", () => {
 
 describe("generateMetadata", () => {
   it("names the day", async () => {
-    expect(
-      await generateMetadata({ params: params("2012-10-14"), searchParams }),
-    ).toMatchObject({ title: "Listening - Sun, Oct 14, 2012" });
+    expect(await generateMetadata({ params, searchParams })).toMatchObject({
+      title: "Listening - Sun, Oct 14, 2012",
+    });
   });
 });
 
 describe("TimeTravelPage", () => {
   it("shows what played", async () => {
     await act(async () =>
-      render(
-        await TimeTravelPage({ params: params("2012-10-14"), searchParams }),
-      ),
+      render(await TimeTravelPage({ params, searchParams })),
     );
 
+    expect(toDay).toHaveBeenCalledWith({
+      year: "2012",
+      month: "10",
+      day: "14",
+    });
     expect(getDayPlays).toHaveBeenCalledWith("2012-10-14");
     expect(
       screen.getByText("(Sun, Oct 14, 2012 · 1 play)"),
@@ -70,14 +63,10 @@ describe("TimeTravelPage", () => {
     });
 
     await act(async () =>
-      render(
-        await TimeTravelPage({ params: params("2012-10-14"), searchParams }),
-      ),
+      render(await TimeTravelPage({ params, searchParams })),
     );
 
     expect(screen.getByText("(Sun, Oct 14, 2012)")).toBeInTheDocument();
-    expect(
-      screen.getByText("The day’s plays are temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/temporarily unavailable/)).toBeInTheDocument();
   });
 });

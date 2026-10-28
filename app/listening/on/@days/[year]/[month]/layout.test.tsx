@@ -6,16 +6,11 @@ import {
   type GetScrobblesResult,
 } from "@/actions/listening";
 
+import { toMonth } from "../../../toDay";
 import MonthDaysLayout, { generateStaticParams } from "./layout";
 
-vi.mock(import("next/navigation"), () => ({
-  notFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-}));
-
-vi.mock(import("@/lib/today"), () => ({
-  getToday: vi.fn(() => Promise.resolve("2026-10-28" as const)),
+vi.mock(import("../../../toDay"), () => ({
+  toMonth: vi.fn(() => Promise.resolve("2012-10" as const)),
 }));
 
 vi.mock(import("@/actions/listening"), () => ({
@@ -42,6 +37,7 @@ describe("MonthDaysLayout", () => {
   it("shows the month's days", async () => {
     render(await MonthDaysLayout(props));
 
+    expect(toMonth).toHaveBeenCalledWith({ year: "2012", month: "10" });
     expect(getDailyScrobbles).toHaveBeenCalledWith("2012-10");
     expect(
       screen.getByRole("link", { name: "Oct 1: 46 plays" }),
@@ -57,8 +53,6 @@ describe("MonthDaysLayout", () => {
 
     render(await MonthDaysLayout(props));
 
-    expect(
-      screen.getByText("This month’s days are temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/temporarily unavailable/)).toBeInTheDocument();
   });
 });

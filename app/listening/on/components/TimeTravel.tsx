@@ -21,7 +21,7 @@ import {
   inHistory,
   monthIndex,
 } from "@/lib/dates";
-import { lanes } from "@/lib/scrobbleChart";
+import { barHeights, lanes } from "@/lib/scrobbleChart";
 
 import { href } from "../href";
 import { TravelContext } from "./Travel";
@@ -107,7 +107,7 @@ export const TimeTravel = ({
     const next = dayInMonth(index, going ?? day);
     return next > today ? today : next;
   };
-  const max = Math.max(1, ...counts.map(({ count }) => count));
+  const heights = barHeights(counts);
   const runs = tops ? eras(tops, counts.length) : [];
   const era = runs.find(({ first, last }) => at >= first && at <= last);
   const before = addDays(shown, -1);
@@ -150,11 +150,10 @@ export const TimeTravel = ({
 
       <div className="time-travel-tape">
         <ol aria-hidden="true">
-          {counts.map(({ label, count }, index) => (
+          {counts.map(({ label }, index) => (
             <li
               key={label}
-              // Square-rooted, so quiet years still show.
-              style={{ "--value": Math.sqrt(count / max) } as CSSProperties}
+              style={{ "--value": heights[index] } as CSSProperties}
               data-active={index === at || undefined}
             />
           ))}

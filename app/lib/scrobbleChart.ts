@@ -11,6 +11,12 @@ export const labelTick = (index: number, count: number) => {
   return undefined;
 };
 
+/** Each bar's height out of the busiest, square-rooted so quiet ones still show. */
+export function barHeights(items: readonly ScrobbleCount[]) {
+  const max = Math.max(1, ...items.map(({ count }) => count));
+  return items.map(({ count }) => Math.sqrt(count / max));
+}
+
 export function stemStats(items: readonly ScrobbleCount[]) {
   const counts = items.map(({ count }) => count);
   // All-zero counts would scale the stems by 0/0.

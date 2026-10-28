@@ -14,10 +14,10 @@ import {
   inHistory,
   localDay,
   midnight,
+  monthOf,
   nextMidnight,
 } from "@/lib/dates";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
-import { plays } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import { isValidPeriod, type Period } from "@/lib/periods";
 import {
@@ -102,10 +102,10 @@ function spanRange(span: Span, now: Date) {
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
 function cacheTopList(span: Span, to: Date, now: Date) {
-  if (!isValidPeriod(span)) {
-    if (!cacheSettled(to.getTime(), now)) cacheLife("hours");
-  } else if (span === "7day" || span === "1month") cacheLife("hours");
-  else cacheUntil(nextMidnight(now).getTime(), now);
+  if (cacheSettled(to.getTime(), now)) return;
+  if (!isValidPeriod(span) || span === "7day" || span === "1month") {
+    cacheLife("hours");
+  } else cacheUntil(nextMidnight(now).getTime(), now);
 }
 
 async function topIn<T>(
@@ -302,11 +302,12 @@ function cacheChart(buckets: readonly { to: Date }[], now: Date) {
 }
 
 async function countBuckets(
-  buckets: readonly ScrobbleBucket[],
+  bucketsAt: (now: Date) => readonly ScrobbleBucket[],
   action: string,
 ): Promise<GetScrobblesResult> {
   try {
     const now = new Date();
+    const buckets = bucketsAt(now);
     const scrobbles = await Promise.all(
       buckets.map(async (bucket) => ({
         label: bucket.label,
@@ -327,16 +328,13 @@ export async function getScrobbles(
   period: Period,
 ): Promise<GetScrobblesResult> {
   "use cache";
-  return countBuckets(periodBuckets(period, new Date()), "getScrobbles");
+  return countBuckets((now) => periodBuckets(period, now), "getScrobbles");
 }
 
 /** Every month's scrobbles since the first. */
 export async function getScrobbleMonths(): Promise<GetScrobblesResult> {
   "use cache";
-  return countBuckets(
-    monthBuckets(config.lastfmSince, new Date()),
-    "getScrobbleMonths",
-  );
+  return countBuckets(monthBuckets, "getScrobbleMonths");
 }
 
 /** The scrobbles on each day of a "YYYY-MM" month, up to today. */
@@ -344,12 +342,11 @@ export async function getDailyScrobbles(
   month: Month,
 ): Promise<GetScrobblesResult> {
   "use cache";
-  const now = new Date();
-  if (inHistory(`${month}-01`, localDay(now)) === undefined) {
-    cacheLife("seconds");
-    return { status: "error", error: "Not a month of the history" };
-  }
-  return countBuckets(monthDayBuckets(month, now), "getDailyScrobbles");
+  return countBuckets(
+    // Server actions take any string, and each one is its own cache entry.
+    (now) => monthDayBuckets(monthOf(historyDay(`${month}-01`, now)), now),
+    "getDailyScrobbles",
+  );
 }
 
 export interface BucketTopArtist {
@@ -389,7 +386,7 @@ export async function getTopArtistByBucket(
 }
 
 // The day's most played artist and their most played track, earliest first on ties.
-export type TopOfDay = Play;
+export type TopOfDay = Pick<Play, "artist" | "track">;
 
 export type PlayedYear = { year: string; count: number; top: TopOfDay };
 
@@ -458,9 +455,6 @@ export type GetDayPlaysResult =
   | { status: "ok"; plays: DayPlay[] }
   | { status: "error"; error: string };
 
-// More than any day has held.
-const DAY_PLAYS = 1000;
-
 /** What played on a "YYYY-MM-DD" Stockholm date, oldest first. */
 export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
   "use cache";
@@ -468,16 +462,12 @@ export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
   try {
     const now = new Date();
     const to = dayStart(historyDay(date, now), 1);
-    const played = await plays(
-      { from: dayStart(date), to },
-      "oldest",
-      DAY_PLAYS,
-    );
+    const played = await playsIn(dayStart(date), to);
     if (!cacheSettled(to.getTime(), now)) cacheLife("minutes");
     return {
       status: "ok",
-      plays: played.plays.map(({ name, artist, playedAt }) => ({
-        name,
+      plays: played.map(({ track, artist, playedAt }) => ({
+        name: track,
         artist,
         time: clockTime(playedAt).slice(11),
       })),

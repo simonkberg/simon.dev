@@ -37,7 +37,6 @@ const replace = () => navigation.navigate;
 
 // January 2007 to October 2026, as the tape shows them.
 const months: ScrobbleCount[] = monthBuckets(
-  2007,
   new Date("2026-10-28T12:00:00Z"),
 ).map(({ label }, index) => ({ label, count: index, current: false }));
 const years: BucketTopArtist[] = Array.from({ length: 20 }, (_, index) => ({
