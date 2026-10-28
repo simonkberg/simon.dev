@@ -164,6 +164,7 @@ export const TimeTravel = ({
 
   const scrub = (index: number) => {
     const next = travelTo(index);
+    refocus.current = undefined;
     setTarget(next);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {

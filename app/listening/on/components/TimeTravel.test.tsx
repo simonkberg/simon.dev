@@ -225,6 +225,20 @@ describe("TimeTravel", () => {
     expect(screen.getByRole("link", { name: "Oct 1: 10 plays" })).toHaveFocus();
   });
 
+  it("leaves focus alone when a drag overtakes a followed link", async () => {
+    vi.useFakeTimers();
+    const { rerender } = await renderTape();
+    const link = screen.getByRole("link", { name: "Oct 1: 10 plays" });
+    link.focus();
+    fireEvent.click(link);
+    drag(13);
+    link.blur();
+
+    await arrive(rerender, "2012-10-01");
+
+    expect(document.body).toHaveFocus();
+  });
+
   it("leaves focus alone when a day's link is clicked unfocused", async () => {
     const { rerender } = await renderTape();
     fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
