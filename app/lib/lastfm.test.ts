@@ -5,6 +5,8 @@ import { config } from "@/config";
 import { server } from "@/mocks/node";
 
 import {
+  albumGetInfo,
+  albumUrl,
   bulk,
   getUserPlays,
   userGetChartInRange,
@@ -344,6 +346,42 @@ describe("userGetTopAlbums", () => {
     });
 
     expect(first?.cover).toBeUndefined();
+  });
+});
+
+describe("albumGetInfo", () => {
+  it("should fetch an album's page and cover", async () => {
+    const params = lastfmReturns({
+      album: {
+        url: "https://www.last.fm/music/Stars/Set+Yourself+on+Fire",
+        image: [
+          {
+            size: "extralarge",
+            "#text": `${config.lastfmCoverCdn}300x300/abc.png`,
+          },
+        ],
+      },
+    });
+
+    await expect(
+      albumGetInfo("Stars", "Set Yourself on Fire"),
+    ).resolves.toEqual({
+      url: "https://www.last.fm/music/Stars/Set+Yourself+on+Fire",
+      cover: `${config.lastfmCoverCdn}abc.png`,
+    });
+    expect(params()).toMatchObject({
+      method: "album.getinfo",
+      artist: "Stars",
+      album: "Set Yourself on Fire",
+    });
+  });
+});
+
+describe("albumUrl", () => {
+  it("should link an album's page, writing a space as +", () => {
+    expect(albumUrl("Slaughter Beach, Dog", "AC/DC 50/50")).toBe(
+      "https://www.last.fm/music/Slaughter+Beach%2C+Dog/AC%2FDC+50%2F50",
+    );
   });
 });
 

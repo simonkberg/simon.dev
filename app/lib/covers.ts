@@ -2,9 +2,8 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import { getImageProps } from "next/image";
 
-import { config } from "@/config";
 import { getGlobal } from "@/lib/global";
-import { periods, TOP_ALBUMS, userGetTopAlbums } from "@/lib/lastfm";
+import { periods } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 
 const WARM_MS = 60 * 60 * 1000;
@@ -74,26 +73,35 @@ async function warmPath(origin: string, path: string): Promise<void> {
   }
 }
 
+const periodPages = periods.map((period) =>
+  period === "overall" ? "/listening" : `/listening/${period}`,
+);
+
+// The page's own render picks the covers, from its cached lists: "use cache" can't run outside a request.
+async function coverPaths(origin: string, page: string): Promise<string[]> {
+  try {
+    const res = await fetch(new URL(page, origin), {
+      signal: AbortSignal.timeout(WARM_TIMEOUT_MS),
+    });
+    const html = await res.text();
+    if (!res.ok) {
+      log.warn({ page, status: res.status }, "Cover warm-up failed");
+      return [];
+    }
+    return [...html.matchAll(/\/_next\/image\?[^"\s,]+/g)].map(([path]) =>
+      path.replaceAll("&amp;", "&"),
+    );
+  } catch (err) {
+    log.warn({ err, page }, "Cover warm-up failed");
+    return [];
+  }
+}
+
 async function warmOnce(origin: string): Promise<void> {
-  const lists = await Promise.allSettled(
-    periods.map((period) =>
-      userGetTopAlbums(config.lastfmUsername, { period, limit: TOP_ALBUMS }),
-    ),
+  const pages = await Promise.all(
+    periodPages.map((page) => coverPaths(origin, page)),
   );
-  const paths = new Set(
-    lists.flatMap((list, index) => {
-      if (list.status === "rejected") {
-        log.warn(
-          { err: list.reason, period: periods[index] },
-          "Cover warm-up failed",
-        );
-        return [];
-      }
-      return list.value.flatMap(({ cover }, rank) =>
-        cover ? coverUrls(cover, rank) : [],
-      );
-    }),
-  );
+  const paths = new Set(pages.flat());
   const queue = [...paths];
   const worker = async () => {
     for (let path = queue.shift(); path; path = queue.shift()) {
@@ -107,11 +115,9 @@ async function warmOnce(origin: string): Promise<void> {
 // The image cache is per replica and starts empty, and a cold cover can take seconds, so resize them before visitors do.
 export function warmCovers(origin: string): void {
   getGlobal("cover-warm-up", () => {
-    const run = () =>
-      warmOnce(origin).catch((err: unknown) => {
-        log.warn({ err }, "Cover warm-up failed");
-      });
-    void run();
+    // Every request logs its own failure, so a run never rejects.
+    const run = () => void warmOnce(origin);
+    run();
     return setInterval(run, WARM_MS).unref();
   });
 }

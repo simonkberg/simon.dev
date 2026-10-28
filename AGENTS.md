@@ -205,13 +205,16 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   lanes cached apart so a failure only drops them. Turso bills rows read, so a bar an hour past
   its end is cached on its own for a day: the hourly chart rereads only recent bars, and it
   regenerates as its current bar ends. A nested cache returns its error rather than throwing,
-  since a throw fails the prerender. Other Last.fm fan-outs go through `bulk()`
-  (`app/lib/lastfm.ts`), at most four at once.
+  since a throw fails the prerender. The top tracks, artists and albums count the chart's span
+  until now, cached hourly for the two shortest periods and until midnight for the rest. Only
+  Last.fm knows an album's cover and page: album.getInfo, cached per album for a day. Last.fm
+  fan-outs go through `bulk()` (`app/lib/lastfm.ts`), at most four at once.
 - **Album covers:** Next's image optimiser resizes each Last.fm cover from its original
   upload (the CDN path without a size segment): the CDN's own resized sizes 404 in some
   regions. A cold resize can take seconds and the image cache is per replica, so each tile
   has a fixed width, a 1x and a 2x URL (`coverWidth` in `app/lib/covers.ts`), and
-  `instrumentation.ts` warms every period's covers at boot and hourly. Each look filters the
+  `instrumentation.ts` warms them at boot and hourly, reading the paths from each period's
+  page (`"use cache"` only runs inside a request). Each look filters the
   covers with properties that transition, so hover or focus fades them to the original from
   one image: manual dithers by adding a Bayer grain under a `contrast()` threshold, since a
   `url()` filter can't interpolate.

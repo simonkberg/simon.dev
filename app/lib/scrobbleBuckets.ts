@@ -81,6 +81,14 @@ export function scrobbleBuckets(
   return buckets(bucketUnits[period], bucketCounts[period], localDate(now));
 }
 
+/** Where a period's first bucket starts. */
+export function periodStart(
+  period: Exclude<Period, "overall">,
+  now: Date,
+): Date {
+  return start(bucketUnits[period], localDate(now), bucketCounts[period] - 1);
+}
+
 /** Calendar years in Stockholm, from `since` to the current one. */
 export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
   const today = localDate(now);

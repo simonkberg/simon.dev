@@ -1,42 +1,39 @@
 import { http, HttpResponse } from "msw";
 import { cacheLife } from "next/cache";
-import { getImageProps } from "next/image";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { config } from "@/config";
-import { userGetTopAlbums } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { topAlbum } from "@/mocks/lastfm";
 import { server } from "@/mocks/node";
 
 import { coverUrls, inlineCover, warmCovers } from "./covers";
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
-vi.mock(import("next/image"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...actual, getImageProps: vi.fn(actual.getImageProps) };
-});
-
-vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  userGetTopAlbums: vi.fn(),
-}));
-
 const origin = "http://localhost:3000";
 
-const albums = [
-  topAlbum("first", "Artist", 1, `${config.lastfmCoverCdn}first.jpg`),
-  topAlbum("second", "Artist", 2, `${config.lastfmCoverCdn}second.jpg`),
-  topAlbum("third", "Artist", 3),
-];
+const first = coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0);
+const second = coverUrls(`${config.lastfmCoverCdn}second.jpg`, 1);
+
+// The collage's markup: each resize in a src and a srcset, its & escaped.
+const page = (...covers: string[][]) =>
+  covers
+    .map(([x1, x2]) =>
+      `<img srcset="${x1} 1x, ${x2} 2x" src="${x2}">`.replaceAll("&", "&amp;"),
+    )
+    .join("");
 
 let requests: Request[];
 
 beforeEach(() => {
   requests = [];
-  vi.mocked(userGetTopAlbums).mockResolvedValue(albums);
   server.use(
+    http.get(`${origin}/listening`, () =>
+      HttpResponse.html(page(first, second)),
+    ),
+    http.get(`${origin}/listening/:period`, () =>
+      HttpResponse.html(page(first)),
+    ),
     http.get(`${origin}/_next/image`, ({ request }) => {
       requests.push(request);
       return HttpResponse.arrayBuffer(new ArrayBuffer(1));
@@ -45,16 +42,12 @@ beforeEach(() => {
 });
 
 describe("warmCovers", () => {
-  it("requests each period's covers once, as the collage renders them", async () => {
+  it("requests every period page's covers once", async () => {
     warmCovers(origin);
 
     await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
-    expect(userGetTopAlbums).toHaveBeenCalledTimes(6);
     expect(requests.map(({ url }) => url.replace(origin, "")).sort()).toEqual(
-      [
-        ...coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0),
-        ...coverUrls(`${config.lastfmCoverCdn}second.jpg`, 1),
-      ].sort(),
+      [...first, ...second].sort(),
     );
     expect(requests[0]?.headers.get("accept")).toBe("image/webp");
   });
@@ -71,20 +64,16 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() =>
       expect(log.warn).toHaveBeenCalledWith(
-        {
-          path: coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0)[0],
-          status: 504,
-        },
+        { path: first[0], status: 504 },
         "Cover warm-up failed",
       ),
     );
   });
 
   it("keeps warming past a cover whose request fails", async () => {
-    const [failing] = coverUrls(`${config.lastfmCoverCdn}first.jpg`, 0);
     server.use(
       http.get(`${origin}/_next/image`, ({ request }) =>
-        request.url.endsWith(failing!) ? HttpResponse.error() : undefined,
+        request.url.endsWith(first[0]!) ? HttpResponse.error() : undefined,
       ),
     );
 
@@ -92,37 +81,41 @@ describe("warmCovers", () => {
 
     await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
     expect(log.warn).toHaveBeenCalledWith(
-      { err: expect.any(Error), path: failing },
+      { err: expect.any(Error), path: first[0] },
       "Cover warm-up failed",
     );
     expect(requests).toHaveLength(3);
   });
 
-  it("warms the other periods past a failed album list", async () => {
-    const err = new Error("Last.fm is down");
-    vi.mocked(userGetTopAlbums).mockRejectedValueOnce(err);
+  it("warms the other pages past one that fails", async () => {
+    server.use(
+      http.get(
+        `${origin}/listening`,
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
 
     warmCovers(origin);
 
     await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
     expect(log.warn).toHaveBeenCalledWith(
-      { err, period: "7day" },
+      { page: "/listening", status: 500 },
       "Cover warm-up failed",
     );
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(2);
   });
 
-  it("logs a warm-up that throws", async () => {
-    const err = new Error("Invalid image");
-    vi.mocked(getImageProps).mockImplementationOnce(() => {
-      throw err;
-    });
+  it("warms the other pages past one that can't be reached", async () => {
+    server.use(http.get(`${origin}/listening`, () => HttpResponse.error()));
 
     warmCovers(origin);
 
-    await vi.waitFor(() =>
-      expect(log.warn).toHaveBeenCalledWith({ err }, "Cover warm-up failed"),
+    await vi.waitFor(() => expect(log.info).toHaveBeenCalled());
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: expect.any(Error), page: "/listening" },
+      "Cover warm-up failed",
     );
+    expect(requests).toHaveLength(2);
   });
 });
 
