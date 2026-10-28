@@ -218,8 +218,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   The listening share cards inline the 1x resizes from the replica's own `/_next/image`
   (`inlineCover`), since Satori fetches nothing from localhost, as JPEG or PNG: it draws no WebP backgrounds.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
-  date in each past year with one `getRecentTracks` page per year; the home page teases the
-  busiest year through the same cached call.
+  date in each past year from the scrobble mirror; the home page teases the busiest year
+  through the same cached call.
 - **Scrobble mirror:** `app/lib/scrobbles.ts` copies every Last.fm scrobble into Turso's
   `scrobbles`, keyed by second, artist and track since Last.fm gives them no id. One replica,
   holding the `scrobbles` lock, syncs each minute: when Last.fm's count for the last two

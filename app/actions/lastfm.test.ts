@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   userGetRecentTracks,
-  userGetScrobbles,
   type UserGetRecentTracksResponse,
   userGetTopAlbums,
   userGetTopArtists,
@@ -12,7 +11,7 @@ import {
   type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { countScrobbles, topArtist } from "@/lib/scrobbles";
+import { countScrobbles, playsIn, topArtist } from "@/lib/scrobbles";
 import { topAlbum } from "@/mocks/lastfm";
 
 import {
@@ -27,9 +26,7 @@ import {
 } from "./lastfm";
 
 vi.mock(import("@/lib/lastfm"), () => ({
-  bulk: (request) => request(),
   userGetRecentTracks: vi.fn(),
-  userGetScrobbles: vi.fn(),
   userGetTopTracks: vi.fn(),
   userGetTopArtists: vi.fn(),
   userGetTopAlbums: vi.fn(),
@@ -38,6 +35,7 @@ vi.mock(import("@/lib/lastfm"), () => ({
 
 vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
+  playsIn: vi.fn(),
   topArtist: vi.fn(),
 }));
 
@@ -356,42 +354,31 @@ describe("getTopArtistByBucket", () => {
 });
 
 describe("getOnThisDay", () => {
-  const played = (name: string, artist: string) => ({
-    name,
-    artist,
-    album: "",
-    playedAt: new Date("2025-10-23T12:00:00Z"),
-    nowPlaying: false,
-    loved: false,
-  });
+  const played = (artist: string, track: string) => ({ artist, track });
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
-    vi.mocked(userGetScrobbles).mockResolvedValue({ total: 0, tracks: [] });
+    vi.mocked(playsIn).mockResolvedValue([]);
   });
 
   it("should read today's date in each past year", async () => {
-    // Newest first, so the earliest play is last.
-    vi.mocked(userGetScrobbles).mockResolvedValueOnce({
-      total: 5,
-      tracks: [
-        played("Late", "Other"),
-        played("Second", "Top"),
-        played("Second", "Top"),
-        played("First", "Top"),
-        played("First", "Top"),
-      ],
-    });
+    vi.mocked(playsIn).mockResolvedValueOnce([
+      played("Top", "First"),
+      played("Top", "First"),
+      played("Top", "Second"),
+      played("Top", "Second"),
+      played("Other", "Late"),
+    ]);
 
     const result = await getOnThisDay();
 
-    expect(userGetScrobbles).toHaveBeenCalledTimes(2026 - 2007);
-    expect(userGetScrobbles).toHaveBeenNthCalledWith(1, "magijo", {
-      from: new Date("2025-10-22T22:00:00Z"),
-      to: new Date("2025-10-23T22:00:00Z"),
-      limit: 200,
-    });
+    expect(playsIn).toHaveBeenCalledTimes(2026 - 2007);
+    expect(playsIn).toHaveBeenNthCalledWith(
+      1,
+      new Date("2025-10-22T22:00:00Z"),
+      new Date("2025-10-23T22:00:00Z"),
+    );
     // Until Stockholm's midnight.
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
       stale: 300,
@@ -411,8 +398,8 @@ describe("getOnThisDay", () => {
   });
 
   it("should return error status when a day fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetScrobbles).mockRejectedValue(mockError);
+    const mockError = new Error("Database error");
+    vi.mocked(playsIn).mockRejectedValue(mockError);
 
     const result = await getOnThisDay();
 

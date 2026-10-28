@@ -115,6 +115,20 @@ export async function countScrobbles(from: Date, to: Date): Promise<number> {
   return Number(rows[0]?.["count"]);
 }
 
+export type Play = { artist: string; track: string };
+
+/** What played from `from` until `to`, oldest first. */
+export async function playsIn(from: Date, to: Date): Promise<Play[]> {
+  const { rows } = await query(
+    "SELECT artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
+    [from.getTime(), to.getTime()],
+  );
+  return rows.map((row) => ({
+    artist: String(row["artist"]),
+    track: String(row["track"]),
+  }));
+}
+
 /** The most played artist from `from` until `to`, first by name on a tie. */
 export async function topArtist(
   from: Date,
