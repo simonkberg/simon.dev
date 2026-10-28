@@ -53,12 +53,6 @@ const summerTo = `datetime(date(${year} || '-10-25', 'weekday 0'), '+1 hour')`;
 // A play's Stockholm time, as SQLite knows no time zones.
 const LOCAL_TIME = `datetime(${seconds}, 'unixepoch', CASE WHEN ${utc} >= ${summerFrom} AND ${utc} < ${summerTo} THEN '+2 hours' ELSE '+1 hour' END)`;
 
-async function count(filters: Filters): Promise<number> {
-  const { sql, args } = matching(filters);
-  const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
-  return Number(rows[0]?.["total"]);
-}
-
 type Play = {
   name: string;
   artist: string;
@@ -75,16 +69,15 @@ export async function plays(
 ): Promise<{ total: number; plays: Play[] }> {
   const { sql, args } = matching(filters, { joinLoved: true });
   const direction = order === "newest" ? "DESC" : "ASC";
-  const [total, { rows }] = await Promise.all([
-    count(filters),
-    query(
-      `SELECT s.played_at, s.artist, s.track, s.album, l.track IS NOT NULL AS loved
-       ${sql} ORDER BY s.played_at ${direction} LIMIT ?`,
-      [...args, limit],
-    ),
-  ]);
+  const { rows } = await query(
+    // The total is counted before the limit, so it counts every match.
+    `SELECT s.played_at, s.artist, s.track, s.album, l.track IS NOT NULL AS loved,
+       COUNT(*) OVER () AS total
+     ${sql} ORDER BY s.played_at ${direction} LIMIT ?`,
+    [...args, limit],
+  );
   return {
-    total,
+    total: Number(rows[0]?.["total"] ?? 0),
     plays: rows.map((row) => ({
       name: String(row["track"]),
       artist: String(row["artist"]),
@@ -170,9 +163,12 @@ export async function playCounts(
   counts?: { period: string; plays: number }[];
   truncated?: boolean;
 }> {
-  if (per === undefined) return { total: await count(filters) };
-  const { key, sort = "key" } = periods[per];
   const { sql, args } = matching(filters);
+  if (per === undefined) {
+    const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
+    return { total: Number(rows[0]?.["total"]) };
+  }
+  const { key, sort = "key" } = periods[per];
   const { rows } = await query(
     // The total is summed before the limit, so it counts every period.
     `SELECT ${key} AS key, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}

@@ -315,7 +315,7 @@ const LOOKUP_TOOLS = [
   {
     name: "get_plays",
     description:
-      "Find Simon's individual plays (scrobbles) and how many match. Every filter is optional: a Stockholm date range, artist, track or album names containing some text (case-insensitive), or loved tracks only. For example: what he played on a day, or the first time he played something (order oldest, limit 1).",
+      "Find Simon's individual plays (scrobbles) and how many match. Every filter is optional: a Stockholm date range, artist, track or album names containing some text (ignoring case, though only for A-Z, so keep accented capitals like Ö as spelled), or loved tracks only. For example: what he played on a day, or the first time he played something (order oldest, limit 1).",
     input_schema: toolSchema(playsInputSchema),
   },
   {
