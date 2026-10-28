@@ -4,11 +4,9 @@ description: Install Node from .nvmrc and the project's dependencies.
 runs:
   using: composite
   steps:
-    - run: corepack enable
-      shell: bash
-    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+    - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
       with:
         node-version-file: .nvmrc
-        cache: "pnpm"
-    - run: pnpm install --frozen-lockfile
-      shell: bash
+        cache: true
+        # pnpm/setup saves a store per job, so only main's runs write it.
+        save-cache: ${{ github.ref == 'refs/heads/main' }}

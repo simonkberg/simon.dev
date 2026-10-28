@@ -20,10 +20,8 @@ This is a personal website built with Next.js 16 (App Router) that integrates wi
 
 ## Requirements
 
-- Node.js 24
-- Corepack enabled
-
-If Corepack is not enabled, run `corepack enable` before installing dependencies.
+- Node.js 26
+- pnpm: `npm install -g pnpm` (it switches to the `packageManager` version)
 
 ## Development Commands
 

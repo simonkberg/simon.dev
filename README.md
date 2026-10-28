@@ -15,12 +15,12 @@ My personal website built with Next.js 16.
 
 Requirements:
 
-- Node.js 24
-- Corepack enabled
+- Node.js 26
+- pnpm
 
 ```bash
-# Enable corepack if not already enabled
-corepack enable
+# Install pnpm (it switches to the version in package.json)
+npm install -g pnpm
 
 # Install dependencies
 pnpm install

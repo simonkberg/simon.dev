@@ -12,5 +12,9 @@
   ],
   pinDigest: { automerge: true },
   postUpdateOptions: ["pnpmDedupe"],
-  packageRules: [{ matchDepTypes: ["packageManager"], automerge: true }],
+  packageRules: [
+    { matchDepTypes: ["packageManager"], automerge: true },
+    // The Dockerfile copies pnpm from its image, so it moves with packageManager.
+    { matchPackageNames: ["pnpm", "ghcr.io/pnpm/pnpm"], groupName: "pnpm" },
+  ],
 }
