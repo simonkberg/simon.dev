@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { formatNumber } from "@/lib/formatNumber";
 
 export interface AnimatedNumberProps {
@@ -17,6 +19,15 @@ const spans = new WeakMap<
   { from: number; to: number; shown: number }
 >();
 let frame = 0;
+
+const subscribe = () => () => {};
+// True only for server markup React hasn't taken over: a count rendered on a hidden page never mounts, so it mustn't hold up the rest.
+const useHydrating = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => false,
+    () => true,
+  );
 
 function schedule() {
   cancelAnimationFrame(frame);
@@ -44,6 +55,7 @@ export const AnimatedNumber = ({
   format = (shown) => formatNumber(shown, decimals),
 }: AnimatedNumberProps) => (
   <span
+    data-hydrating={useHydrating() ? "" : undefined}
     // Reads --grow rather than timing itself, so a count hydrating mid-animation joins in step.
     ref={(span: HTMLSpanElement) => {
       const last = spans.get(span);

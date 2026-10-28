@@ -2060,7 +2060,7 @@ ul {
 
 /* With JS, entry animations wait while a count waits to hydrate, so it starts from 0 with what it follows. */
 @media (scripting: enabled) {
-  :root:has(.animated-number:not([data-counting])) {
+  :root:has(.animated-number[data-hydrating]) {
     --grow-play-state: paused;
   }
 }
