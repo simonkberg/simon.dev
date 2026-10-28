@@ -12,7 +12,6 @@ import {
   type ChartItem,
   type Period,
   TOP_ALBUMS,
-  userGetRecentTracks,
   type UserGetRecentTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
@@ -27,6 +26,7 @@ import {
   type Play,
   type Played,
   playsIn,
+  recentPlays,
   topArtist,
   topArtists,
   topPlayed,
@@ -42,9 +42,7 @@ export async function getRecentTracks(): Promise<GetRecentTracksResult> {
   "use cache";
 
   try {
-    const tracks = await userGetRecentTracks(config.lastfmUsername, {
-      limit: 5,
-    });
+    const tracks = await recentPlays(5);
     cacheLife("minutes");
     return { status: "ok", tracks };
   } catch (err) {

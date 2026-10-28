@@ -6,6 +6,7 @@ import {
   type ChartItem,
   type ChartKind,
   userGetLovedTracks,
+  type UserGetRecentTracksResponse,
   userGetScrobbles,
 } from "@/lib/lastfm";
 import { tryLock } from "@/lib/locks";
@@ -23,7 +24,8 @@ const BACKFILL_SLICE_MS = 50_000;
 // Last.fm takes scrobbles up to two weeks old, so an offline player's arrive late.
 const LATE_MS = 14 * 24 * 60 * 60_000;
 
-type Tracks = Awaited<ReturnType<typeof userGetScrobbles>>["tracks"];
+type Page = Awaited<ReturnType<typeof userGetScrobbles>>;
+type Tracks = Page["tracks"];
 
 type State = { owner: string; backfilled: boolean; drift: number };
 
@@ -68,6 +70,19 @@ async function store(tracks: Tracks): Promise<void> {
   await query(sql, args);
 }
 
+async function storeNowPlaying(track: Page["nowPlaying"]): Promise<void> {
+  if (!track) {
+    await query("DELETE FROM now_playing");
+    return;
+  }
+  await query(
+    `INSERT OR REPLACE INTO now_playing (id, artist, track, album, until)
+     VALUES (1, ?, ?, ?, ?)`,
+    // A sync that stopped leaves its row behind, so it lasts only as long as a sync could still renew it.
+    [track.artist, track.name, track.album, Date.now() + LOCK_TTL_MS],
+  );
+}
+
 async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
   const { rows } = await query(
     `SELECT ${edge}(played_at) AS played_at FROM scrobbles`,
@@ -95,10 +110,11 @@ async function catchUp(current: State): Promise<void> {
   const from = Math.min(newest, toSecond(to - LATE_MS));
   const window = { from: new Date(from), to: new Date(to) };
   const countStored = () => countScrobbles(window.from, window.to);
-  const [{ total }, stored] = await Promise.all([
+  const [{ total, nowPlaying }, stored] = await Promise.all([
     fetchPage({ ...window, limit: 1 }),
     countStored(),
   ]);
+  await storeNowPlaying(nowPlaying);
   if (total - stored === current.drift) return;
   // New scrobbles usually all follow the newest stored, so those come first.
   await refetch({ from: new Date(newest), to: window.to });
@@ -203,6 +219,37 @@ export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   return rows.map((row) => ({
     artist: String(row["artist"]),
     track: String(row["track"]),
+  }));
+}
+
+type RecentTrack = UserGetRecentTracksResponse[number];
+
+/** What plays now, if a sync saw it lately, then the latest plays: `limit` in all, newest first. */
+export async function recentPlays(limit: number): Promise<RecentTrack[]> {
+  const { rows } = await query(
+    `SELECT r.played_at, r.artist, r.track, r.album, l.track IS NOT NULL AS loved
+     FROM (
+       SELECT NULL AS played_at, artist, track, album FROM now_playing WHERE until > ?
+       UNION ALL
+       SELECT * FROM (
+         SELECT played_at, artist, track, album FROM scrobbles ORDER BY played_at DESC LIMIT ?
+       )
+     ) r
+     LEFT JOIN loved l ON l.artist = r.artist AND l.track = r.track
+     ORDER BY r.played_at IS NULL DESC, r.played_at DESC
+     LIMIT ?`,
+    [Date.now(), limit, limit],
+  );
+  return rows.map((row) => ({
+    name: String(row["track"]),
+    artist: String(row["artist"]),
+    album: String(row["album"]),
+    playedAt:
+      row["played_at"] === null
+        ? undefined
+        : new Date(Number(row["played_at"])),
+    nowPlaying: row["played_at"] === null,
+    loved: Boolean(row["loved"]),
   }));
 }
 

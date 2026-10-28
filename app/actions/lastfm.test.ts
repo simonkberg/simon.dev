@@ -1,15 +1,12 @@
 import { cacheLife, refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  albumGetInfo,
-  userGetRecentTracks,
-  type UserGetRecentTracksResponse,
-} from "@/lib/lastfm";
+import { albumGetInfo } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
   countScrobbles,
   playsIn,
+  recentPlays,
   topArtist,
   topArtists,
   topPlayed,
@@ -30,12 +27,12 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   ...(await importOriginal()),
   bulk: (request) => request(),
   albumGetInfo: vi.fn(),
-  userGetRecentTracks: vi.fn(),
 }));
 
 vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
   playsIn: vi.fn(),
+  recentPlays: vi.fn(),
   topArtist: vi.fn(),
   topArtists: vi.fn(),
   topPlayed: vi.fn(),
@@ -44,38 +41,29 @@ vi.mock(import("@/lib/scrobbles"), () => ({
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));
 
 describe("getRecentTracks", () => {
-  it("should return success status with tracks when userGetRecentTracks succeeds", async () => {
-    const mockTracks: UserGetRecentTracksResponse = [
+  it("should return the latest five plays", async () => {
+    const tracks = [
       {
         name: "Test Track",
         artist: "Test Artist",
         album: "Test Album",
-        playedAt: new Date("2021-01-01T00:00:00Z"),
-        nowPlaying: false,
+        playedAt: undefined,
+        nowPlaying: true,
         loved: true,
       },
-      {
-        name: "Another Track",
-        artist: "Another Artist",
-        album: "Another Album",
-        playedAt: new Date("2021-01-02T00:00:00Z"),
-        nowPlaying: false,
-        loved: false,
-      },
     ];
-
-    vi.mocked(userGetRecentTracks).mockResolvedValue(mockTracks);
+    vi.mocked(recentPlays).mockResolvedValue(tracks);
 
     const result = await getRecentTracks();
 
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
-    expect(userGetRecentTracks).toHaveBeenCalledWith("magijo", { limit: 5 });
-    expect(result).toEqual({ status: "ok", tracks: mockTracks });
+    expect(recentPlays).toHaveBeenCalledWith(5);
+    expect(result).toEqual({ status: "ok", tracks });
   });
 
-  it("should return error status when userGetRecentTracks fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetRecentTracks).mockRejectedValue(mockError);
+  it("should return error status when the query fails", async () => {
+    const mockError = new Error("Database error");
+    vi.mocked(recentPlays).mockRejectedValue(mockError);
 
     const result = await getRecentTracks();
 
@@ -83,7 +71,6 @@ describe("getRecentTracks", () => {
       status: "error",
       error: "Failed to fetch recent tracks",
     });
-
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
     expect(log.error).toHaveBeenCalledWith(
       { err: mockError, action: "getRecentTracks" },

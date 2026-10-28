@@ -317,14 +317,20 @@ const userGetScrobblesResponseSchema = z
       "@attr": z.object({ total: z.string().transform(Number) }),
     }),
   })
-  .transform((data) => ({
-    total: data.recenttracks["@attr"].total,
+  .transform((data) => {
     // The track playing now is listed whatever the range, without a date.
-    tracks: data.recenttracks.track.filter(
-      (track): track is typeof track & { playedAt: Date } =>
-        track.playedAt !== undefined,
-    ),
-  }));
+    const nowPlaying = data.recenttracks.track.find(
+      (track) => track.playedAt === undefined,
+    );
+    return {
+      total: data.recenttracks["@attr"].total,
+      tracks: data.recenttracks.track.filter(
+        (track): track is typeof track & { playedAt: Date } =>
+          track.playedAt !== undefined,
+      ),
+      ...(nowPlaying && { nowPlaying }),
+    };
+  });
 
 const rangeParams = ({ from, to }: { from: Date; to: Date }) => ({
   from: toUnixTime(from),
