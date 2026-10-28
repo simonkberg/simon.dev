@@ -132,6 +132,16 @@ describe("playCounts", () => {
     ).resolves.toEqual({ total: 3 });
   });
 
+  it("should count nothing when nothing matches", async () => {
+    await expect(
+      playCounts({ artist: "Z" }, "hour", "time", 5),
+    ).resolves.toEqual({ total: 0, counts: [] });
+    await expect(plays({ artist: "Z" }, "newest", 5)).resolves.toEqual({
+      total: 0,
+      plays: [],
+    });
+  });
+
   it("should count per Stockholm hour across summer time", async () => {
     await expect(playCounts({}, "hour", "time", 5)).resolves.toEqual({
       total: 4,

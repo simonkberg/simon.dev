@@ -141,12 +141,18 @@ const weekdays = [
   "Saturday",
 ];
 
+const weekday = `strftime('%w', ${LOCAL_TIME})`;
+
 type Per = "hour" | "weekday" | "day" | "week" | "month" | "year";
 
-const periods: Record<Per, { key: string; sort?: string }> = {
+const periods: Record<Per, { key: string; name?: string; sort?: string }> = {
   hour: { key: `strftime('%H', ${LOCAL_TIME})` },
-  // Monday first.
-  weekday: { key: `strftime('%w', ${LOCAL_TIME})`, sort: "(key + 6) % 7" },
+  weekday: {
+    key: weekday,
+    name: `CASE ${weekday} ${weekdays.map((day, i) => `WHEN '${i}' THEN '${day}'`).join(" ")} END`,
+    // Monday first.
+    sort: "(key + 6) % 7",
+  },
   day: { key: `date(${LOCAL_TIME})` },
   // The Monday the week starts on.
   week: { key: `date(${LOCAL_TIME}, '-6 days', 'weekday 1')` },
@@ -170,19 +176,16 @@ export async function playCounts(
     const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
     return { total: Number(rows[0]?.["total"]) };
   }
-  const { key, sort = "key" } = periods[per];
+  const { key, name = key, sort = "key" } = periods[per];
   const { rows } = await query(
     // The total is summed before the limit, so it counts every period.
-    `SELECT ${key} AS key, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
+    `SELECT ${key} AS key, ${name} AS name, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
      GROUP BY key ORDER BY ${order === "plays" ? "plays DESC, " : ""}${sort} LIMIT ?`,
     // One more than asked, to tell whether there are more.
     [...args, limit + 1],
   );
   const counts = rows.map((row) => ({
-    period:
-      per === "weekday"
-        ? (weekdays[Number(row["key"])] ?? String(row["key"]))
-        : String(row["key"]),
+    period: String(row["name"]),
     plays: Number(row["plays"]),
   }));
   return {
