@@ -114,14 +114,17 @@ async function catchUp(current: State): Promise<void> {
     fetchPage({ ...window, limit: 1 }),
     countStored(),
   ]);
+  if (total - stored !== current.drift) {
+    // New scrobbles usually all follow the newest stored, so those come first.
+    await refetch({ from: new Date(newest), to: window.to });
+    if (total - (await countStored()) !== current.drift) {
+      await refetch(window);
+      // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
+      current.drift = total - (await countStored());
+    }
+  }
+  // After the scrobbles, so a track stops playing only once it's listed as played.
   await storeNowPlaying(nowPlaying);
-  if (total - stored === current.drift) return;
-  // New scrobbles usually all follow the newest stored, so those come first.
-  await refetch({ from: new Date(newest), to: window.to });
-  if (total - (await countStored()) === current.drift) return;
-  await refetch(window);
-  // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
-  current.drift = total - (await countStored());
 }
 
 function fetchLovedPage(page: number) {
