@@ -62,10 +62,13 @@ describe("plays", () => {
     expect(found.map(({ name }) => name)).toEqual(["Held"]);
   });
 
-  it("should keep only loved plays", async () => {
-    const { plays: found } = await plays({ loved: true }, "newest", 5);
+  it.each([
+    { loved: true, names: ["Airbag"] },
+    { loved: false, names: ["Held", "Idioteque"] },
+  ])("should keep plays whose loved is $loved", async ({ loved, names }) => {
+    const { plays: found } = await plays({ loved }, "newest", 5);
 
-    expect(found.map(({ name }) => name)).toEqual(["Airbag"]);
+    expect(found.map(({ name }) => name)).toEqual(names);
   });
 
   it("should match LIKE's wildcards as text", async () => {

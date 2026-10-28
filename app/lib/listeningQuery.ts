@@ -36,8 +36,10 @@ function matching(
     where.push(`s.${column} LIKE ? ESCAPE '\\'`);
     args.push(likeContains(text));
   }
-  if (filters.loved) where.push("l.track IS NOT NULL");
-  const join = joinLoved || filters.loved ? ` ${LOVED_JOIN}` : "";
+  if (filters.loved !== undefined) {
+    where.push(`l.track IS ${filters.loved ? "NOT NULL" : "NULL"}`);
+  }
+  const join = joinLoved || filters.loved !== undefined ? ` ${LOVED_JOIN}` : "";
   return {
     sql: `FROM scrobbles s${join}${where.length > 0 ? ` WHERE ${where.join(" AND ")}` : ""}`,
     args,

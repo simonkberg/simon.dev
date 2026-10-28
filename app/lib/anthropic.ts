@@ -168,7 +168,10 @@ const filtersSchema = z.object({
   artist: z.string().min(1).optional().describe("Artist name contains this"),
   track: z.string().min(1).optional().describe("Track title contains this"),
   album: z.string().min(1).optional().describe("Album title contains this"),
-  loved: z.boolean().optional().describe("Only loved tracks"),
+  loved: z
+    .boolean()
+    .optional()
+    .describe("true for loved tracks only, false for the rest"),
 });
 const toFilters = ({
   from,
