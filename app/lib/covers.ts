@@ -35,16 +35,21 @@ export function coverUrls(src: string, index: number): string[] {
 }
 
 async function fetchResize(path: string, retries = INLINE_RETRY_MS) {
-  const res = await fetch(new URL(path, localOrigin), {
-    // Satori draws no WebP backgrounds, so this keeps the upload's own format.
-    headers: { accept: "image/jpeg,image/png" },
-    signal: AbortSignal.timeout(INLINE_TIMEOUT_MS),
-  });
-  if (res.ok) return res.blob();
-  const [wait, ...rest] = retries;
-  if (wait === undefined) throw new Error(`Cover responded ${res.status}`);
-  await new Promise((resolve) => setTimeout(resolve, wait));
-  return fetchResize(path, rest);
+  try {
+    const res = await fetch(new URL(path, localOrigin), {
+      // Satori draws no WebP backgrounds, so this keeps the upload's own format.
+      headers: { accept: "image/jpeg,image/png" },
+      signal: AbortSignal.timeout(INLINE_TIMEOUT_MS),
+    });
+    if (res.ok) return await res.blob();
+    await res.arrayBuffer();
+    throw new Error(`Cover responded ${res.status}`);
+  } catch (err) {
+    const [wait, ...rest] = retries;
+    if (wait === undefined) throw err;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    return fetchResize(path, rest);
+  }
 }
 
 // Satori refuses to fetch from localhost, so a share card gets the resize inline.

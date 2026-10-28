@@ -146,12 +146,15 @@ describe("inlineCover", () => {
     expect(cacheLife).toHaveBeenCalledWith("hours");
   });
 
-  it("asks for a failed resize again", async () => {
+  it.each([
+    ["responds with an error", () => new HttpResponse(null, { status: 504 })],
+    ["can't be reached", () => HttpResponse.error()],
+  ])("asks again for a resize that %s", async (_, failure) => {
     let failures = 1;
     server.use(
       http.get(`${origin}/_next/image`, () =>
         failures-- > 0
-          ? new HttpResponse(null, { status: 504 })
+          ? failure()
           : HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
               headers: { "content-type": "image/jpeg" },
             }),

@@ -27,6 +27,7 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
           <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
               <AlbumCover
+                key={album.cover}
                 src={album.cover}
                 width={coverWidth(index)}
                 name={album.name}

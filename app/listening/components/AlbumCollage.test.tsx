@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { TopAlbum } from "@/actions/listening";
@@ -44,6 +44,25 @@ describe("AlbumCollage", () => {
     expect(link.querySelector(".cover-sleeve")).toHaveTextContent(
       "Stuff Like That ThereYo La Tengo",
     );
+  });
+
+  it("doesn't pass a failed cover's sleeve to the album taking its rank", async () => {
+    const { rerender } = await renderCollage(albums);
+    const [image] = screen.getAllByRole("presentation");
+    fireEvent.error(image!);
+
+    await act(async () =>
+      rerender(
+        <AlbumCollage
+          albums={Promise.resolve([
+            topAlbum("Pale", "Mimi", 1, `${config.lastfmCoverCdn}pale.jpg`),
+          ])}
+        />,
+      ),
+    );
+
+    const link = screen.getByRole("link", { name: "Pale by Mimi on Last.fm" });
+    expect(link.querySelector(".cover-sleeve")).not.toBeInTheDocument();
   });
 
   it("pads a short list with empty tiles to fill the grid", async () => {
