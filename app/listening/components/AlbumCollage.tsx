@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { use } from "react";
 
 import type { TopAlbum } from "@/actions/listening";
@@ -6,6 +5,8 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { coverWidth, TOP_ALBUMS } from "@/lib/covers";
+
+import { AlbumCover } from "./AlbumCover";
 
 export interface AlbumCollageProps {
   // Undefined when the list failed to load.
@@ -25,16 +26,13 @@ export const AlbumCollage = ({ albums }: AlbumCollageProps) => {
         {items.map((album, index) => (
           <li key={album.rank}>
             <ExternalLink href={album.url} className="cover">
-              {album.cover && (
-                <span className="cover-art">
-                  <Image
-                    src={album.cover}
-                    width={coverWidth(index)}
-                    height={coverWidth(index)}
-                    alt=""
-                  />
-                </span>
-              )}
+              <AlbumCover
+                key={album.cover}
+                src={album.cover}
+                width={coverWidth(index)}
+                name={album.name}
+                artist={album.artist}
+              />
               <span className="cover-rank" aria-hidden="true">
                 {album.rank}
               </span>

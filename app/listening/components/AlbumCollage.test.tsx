@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { TopAlbum } from "@/actions/listening";
@@ -34,13 +34,35 @@ describe("AlbumCollage", () => {
     }
   });
 
-  it("leaves a cover's tile empty when the album has no art", async () => {
+  it("gives an album without art a sleeve of its name", async () => {
     await renderCollage(albums);
 
     const link = screen.getByRole("link", {
       name: "Stuff Like That There by Yo La Tengo on Last.fm",
     });
     expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
+    expect(link.querySelector(".cover-sleeve")).toHaveTextContent(
+      "Stuff Like That ThereYo La Tengo",
+    );
+  });
+
+  it("doesn't pass a failed cover's sleeve to the album taking its rank", async () => {
+    const { rerender } = await renderCollage(albums);
+    const [image] = screen.getAllByRole("presentation");
+    fireEvent.error(image!);
+
+    await act(async () =>
+      rerender(
+        <AlbumCollage
+          albums={Promise.resolve([
+            topAlbum("Pale", "Mimi", 1, `${config.lastfmCoverCdn}pale.jpg`),
+          ])}
+        />,
+      ),
+    );
+
+    const link = screen.getByRole("link", { name: "Pale by Mimi on Last.fm" });
+    expect(link.querySelector(".cover-sleeve")).not.toBeInTheDocument();
   });
 
   it("pads a short list with empty tiles to fill the grid", async () => {

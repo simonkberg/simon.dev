@@ -135,6 +135,7 @@
   --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
+  --sleeve-artist: var(--muted);
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -499,6 +500,8 @@
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-overlay: var(--cover-bg);
   --cover-blend: multiply;
+  /* Muted is too faint on the accent wash. */
+  --sleeve-artist: color-mix(in oklch, currentColor 75%, transparent);
   --lane-weight: 2px;
   --tape-bar: color-mix(in oklch, var(--accent) 45%, transparent);
   --timeline-origin: "◇";
@@ -2827,6 +2830,7 @@ tbody tr:hover {
   --cover-threshold-ease: cubic-bezier(1, 0, 1, 0);
   position: relative;
   display: block;
+  container-type: inline-size;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--cover-bg);
@@ -2843,7 +2847,7 @@ tbody tr:hover {
     transition: filter 0.2s linear;
   }
 
-  &:has(img)::after {
+  &:has(.cover-art:not([data-failed]))::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -2901,6 +2905,51 @@ tbody tr:hover {
     image-rendering: pixelated;
     mix-blend-mode: var(--cover-grain-blend);
     transition: opacity 0.2s var(--cover-grain-ease);
+  }
+
+  &[data-failed] {
+    visibility: hidden;
+  }
+}
+
+/* Stands in for a cover that is missing or failed to load, sized to its tile. */
+.cover-sleeve {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  /* Safe, so a name too long for a small tile runs off its foot rather than under the rank. */
+  justify-content: safe flex-end;
+  overflow: hidden;
+  padding: 2lh 1ch 0.5lh;
+  font-size: clamp(0.75rem, 7cqi, 1.25rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+
+  > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
+}
+
+.sleeve-name {
+  -webkit-line-clamp: 3;
+  font-weight: bold;
+}
+
+.sleeve-artist {
+  -webkit-line-clamp: 2;
+  color: var(--sleeve-artist);
+}
+
+@container (width < 12rem) {
+  .sleeve-name {
+    -webkit-line-clamp: 2;
+  }
+
+  .sleeve-artist {
+    -webkit-line-clamp: 1;
   }
 }
 

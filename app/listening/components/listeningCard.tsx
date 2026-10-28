@@ -182,37 +182,62 @@ const Stats = ({
 
 type CoverAlbum = TopAlbum & { image: string | undefined };
 
-const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => (
-  <div
-    style={{
-      display: "flex",
-      position: "relative",
-      width: size,
-      height: size,
-      flexShrink: 0,
-      border: `1px solid ${color.rule}`,
-      ...(album.image && {
-        backgroundImage: `url(${album.image})`,
-        backgroundSize: "100% 100%",
-      }),
-    }}
-  >
-    <span
+// A stacked tile's sleeve takes fewer lines, so it stays clear of the rank.
+const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => {
+  const large = size >= coverSize;
+  return (
+    <div
       style={{
-        position: "absolute",
-        left: -1,
-        top: -1,
-        padding: "1px 6px",
-        fontSize: album.rank === 1 ? 16 : 13,
-        fontWeight: 700,
-        background: album.rank === 1 ? color.accent : color.ground,
-        color: album.rank === 1 ? color.onAccent : color.ink,
+        display: "flex",
+        position: "relative",
+        width: size,
+        height: size,
+        flexShrink: 0,
+        border: `1px solid ${color.rule}`,
+        ...(album.image
+          ? {
+              backgroundImage: `url(${album.image})`,
+              backgroundSize: "100% 100%",
+            }
+          : {
+              flexDirection: "column",
+              justifyContent: "flex-end",
+              padding: size / 16,
+              overflow: "hidden",
+              wordBreak: "break-word",
+              fontSize: large ? 24 : 11,
+              lineHeight: 1.25,
+              backgroundColor: color.wash,
+            }),
       }}
     >
-      {album.rank}
-    </span>
-  </div>
-);
+      {!album.image && (
+        <>
+          <span style={{ fontWeight: 700, lineClamp: large ? 3 : 2 }}>
+            {album.name}
+          </span>
+          <span style={{ color: color.muted, lineClamp: large ? 2 : 1 }}>
+            {album.artist}
+          </span>
+        </>
+      )}
+      <span
+        style={{
+          position: "absolute",
+          left: -1,
+          top: -1,
+          padding: "1px 6px",
+          fontSize: album.rank === 1 ? 16 : 13,
+          fontWeight: 700,
+          background: album.rank === 1 ? color.accent : color.ground,
+          color: album.rank === 1 ? color.onAccent : color.ink,
+        }}
+      >
+        {album.rank}
+      </span>
+    </div>
+  );
+};
 
 const Covers = ({
   albums: [first, ...rest],

@@ -116,6 +116,23 @@ describe("listeningCard", () => {
       "",
       `url("data:${cover("fourth")}")`,
     ]);
+    expect(screen.getByText("Coverless")).toBeInTheDocument();
+    expect(screen.getByText("Torquil")).toBeInTheDocument();
+  });
+
+  it("sizes a sleeve to its tile", async () => {
+    vi.mocked(getTopAlbums).mockResolvedValue({
+      status: "ok",
+      albums: [topAlbum("Uncovered", "Mimi", 1), ...albums.slice(1)],
+    });
+    await renderCard();
+
+    expect(
+      screen.getAllByText("Uncovered")[0]?.parentElement?.style.fontSize,
+    ).toBe("24px");
+    expect(screen.getByText("Coverless").parentElement?.style.fontSize).toBe(
+      "11px",
+    );
   });
 
   it("cuts a top artist's name that would run into the covers", async () => {

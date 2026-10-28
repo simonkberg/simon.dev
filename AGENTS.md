@@ -218,6 +218,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   covers with properties that transition, so hover or focus fades them to the original from
   one image: manual dithers by adding a Bayer grain under a `contrast()` threshold, since a
   `url()` filter can't interpolate.
+  A resize fails at random (a 504 past the optimiser's 7s, or a CDN 404) and recovers when
+  asked again, so `AlbumCover` retries the same URL, after the 5s the browser caches its failure for,
+  and shows a text sleeve (name and artist) meanwhile and for albums without a cover;
+  `inlineCover` retries too, and a card draws the same sleeve.
   The listening share cards inline the 1x resizes from the replica's own `/_next/image`
   (`inlineCover`), since Satori fetches nothing from localhost, as JPEG or PNG: it draws no WebP backgrounds.
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm

@@ -12,7 +12,10 @@ export const TOP_ALBUMS = 10;
 const WARM_MS = 60 * 60 * 1000;
 const WARM_CONCURRENCY = 2;
 const WARM_TIMEOUT_MS = 30_000;
-const INLINE_TIMEOUT_MS = 10_000;
+// Room for a resize that fails at the optimiser's 7s and one that works.
+const INLINE_TIMEOUT_MS = 15_000;
+// A failed resize is random per request, so the same one is asked for again.
+const INLINE_RETRY_MS = [1_000, 3_000];
 
 // This replica's own server, whose image cache the warm-up fills.
 export const localOrigin = `http://localhost:${process.env["PORT"] ?? 3000}`;
@@ -32,6 +35,29 @@ export function coverUrls(src: string, index: number): string[] {
     .map((candidate) => candidate.slice(0, candidate.lastIndexOf(" ")));
 }
 
+// Every attempt shares one timeout, so retries never hold a card past it.
+async function fetchResize(
+  path: string,
+  signal = AbortSignal.timeout(INLINE_TIMEOUT_MS),
+  retries = INLINE_RETRY_MS,
+) {
+  try {
+    const res = await fetch(new URL(path, localOrigin), {
+      // Satori draws no WebP backgrounds, so this keeps the upload's own format.
+      headers: { accept: "image/jpeg,image/png" },
+      signal,
+    });
+    if (res.ok) return await res.blob();
+    await res.arrayBuffer();
+    throw new Error(`Cover responded ${res.status}`);
+  } catch (err) {
+    const [wait, ...rest] = retries;
+    if (wait === undefined || signal.aborted) throw err;
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    return fetchResize(path, signal, rest);
+  }
+}
+
 // Satori refuses to fetch from localhost, so a share card gets the resize inline.
 export async function inlineCover(
   src: string,
@@ -42,15 +68,7 @@ export async function inlineCover(
   // The 1x resize: a card is drawn at its own size.
   const [path] = coverUrls(src, index);
   try {
-    const res = await fetch(new URL(String(path), localOrigin), {
-      // Satori draws no WebP backgrounds, so this keeps the upload's own format.
-      headers: { accept: "image/jpeg,image/png" },
-      signal: AbortSignal.timeout(INLINE_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      throw new Error(`Cover responded ${res.status}`);
-    }
-    const image = await res.blob();
+    const image = await fetchResize(String(path));
     const data = Buffer.from(await image.arrayBuffer()).toString("base64");
     cacheLife("hours");
     return `data:${image.type};base64,${data}`;
