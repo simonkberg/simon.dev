@@ -155,6 +155,18 @@ describe("TimeTravel", () => {
     expect(screen.getByText("46 plays")).toBeInTheDocument();
   });
 
+  it("shows no era for a year without scrobbles", async () => {
+    await renderTape("2012-10-14", {
+      years: Promise.resolve(
+        years.map((year, index) =>
+          index === 5 ? { ...year, artist: undefined } : year,
+        ),
+      ),
+    });
+
+    expect(screen.queryByText(/^era ·/)).not.toBeInTheDocument();
+  });
+
   it("shows no era when the years failed to load", async () => {
     await renderTape("2012-10-14", { years: Promise.resolve(undefined) });
 
