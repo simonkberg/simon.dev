@@ -140,6 +140,27 @@ describe("TimeTravel", () => {
     });
   });
 
+  it("settles back on the day when a drag returns to its month", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+
+    const slider = screen.getByRole("slider", { name: "Month" });
+    fireEvent.change(slider, { target: { value: "10" } });
+    fireEvent.change(slider, { target: { value: String(5 * 12 + 9) } });
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText("46 plays")).toBeInTheDocument();
+  });
+
+  it("shows no era when the years failed to load", async () => {
+    await renderTape("2012-10-14", { years: Promise.resolve(undefined) });
+
+    expect(screen.queryByText(/^era ·/)).not.toBeInTheDocument();
+  });
+
   it("says the days are unavailable when they failed to load", async () => {
     await renderTape("2012-10-14", { days: Promise.resolve(undefined) });
 

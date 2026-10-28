@@ -17,7 +17,7 @@ import {
   type GetTopTracksResult,
 } from "@/actions/listening";
 
-import TimeTravelPage, { generateMetadata } from "./page";
+import TimeTravelPage, { generateMetadata, generateStaticParams } from "./page";
 
 vi.mock(import("next/navigation"), () => ({
   notFound: vi.fn(() => {
@@ -61,6 +61,12 @@ vi.mock(import("@/actions/listening"), () => ({
 const params = (date: string) => Promise.resolve({ date });
 const searchParams = Promise.resolve({});
 
+describe("generateStaticParams", () => {
+  it("prerenders the first day scrobbled", () => {
+    expect(generateStaticParams()).toEqual([{ date: "2007-12-18" }]);
+  });
+});
+
 describe("generateMetadata", () => {
   it("names the day", async () => {
     expect(
@@ -91,5 +97,26 @@ describe("TimeTravelPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
     expect(screen.getByText("Old Fools")).toBeInTheDocument();
     expect(screen.getAllByText("(Oct 2012)")).toHaveLength(3);
+  });
+
+  it("says what failed to load", async () => {
+    const error = { status: "error", error: "Failed" } as const;
+    vi.mocked(getScrobbleMonths).mockResolvedValue(error);
+    vi.mocked(getTopArtistByBucket).mockResolvedValue(error);
+    vi.mocked(getDailyScrobbles).mockResolvedValue(error);
+    vi.mocked(getDayPlays).mockResolvedValue(error);
+
+    await act(async () =>
+      render(
+        await TimeTravelPage({ params: params("2012-10-14"), searchParams }),
+      ),
+    );
+
+    expect(
+      screen.getByText("Time travel is temporarily unavailable :("),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The day’s plays are temporarily unavailable :("),
+    ).toBeInTheDocument();
   });
 });

@@ -109,10 +109,12 @@ export const TimeTravel = ({
   const scrub = (index: number) => {
     setScrubbed(index);
     clearTimeout(timer.current);
-    timer.current = setTimeout(
-      () => router.replace(href(travelTo(index)), { scroll: false }),
-      SCRUB_MS,
-    );
+    timer.current = setTimeout(() => {
+      const next = travelTo(index);
+      // The same day never remounts this, so let go of the drag here.
+      if (next === day) setScrubbed(undefined);
+      else router.replace(href(next), { scroll: false });
+    }, SCRUB_MS);
   };
 
   return (
