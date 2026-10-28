@@ -233,6 +233,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   mirror too, after what the sync last saw playing (`now_playing`), dropped once a sync could
   no longer have renewed it. Previews fork testing's copy and
   sync only the gap; to refresh it, deploy `testing` until "Backfilled every scrobble" logs, then stop it.
+  simon-bot's listening tools query it too (`app/lib/listeningQuery.ts`), only for Simon,
+  bucketing by Stockholm time in SQL with the EU summer-time rule, as SQLite has no time zones.
 - **Readiness:** `/health` answers 503 with the pending stages until `instrumentation.ts`
   has marked both in `app/lib/readiness.ts`: migrations applied and the bot on the gateway.
   Railway polls it at deploy time, so a replica that cannot reach Turso or Discord never

@@ -6,8 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import md from "string-dedent";
 import { z } from "zod";
 
-import { config } from "@/config";
-import { clockTime, dayRange, todayLabel } from "@/lib/dates";
+import { clockTime, dayStart, todayLabel } from "@/lib/dates";
 import {
   getChannelMessages,
   type Message as ChannelMessage,
@@ -15,16 +14,7 @@ import {
   searchChannelMessages,
 } from "@/lib/discord/api";
 import { env } from "@/lib/env";
-import {
-  getUserPlays,
-  chartKinds,
-  userGetChartInRange,
-  userGetRecentTracks,
-  userGetScrobbles,
-  userGetTopAlbums,
-  userGetTopArtists,
-  userGetTopTracks,
-} from "@/lib/lastfm";
+import { type Filters, playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
@@ -37,13 +27,13 @@ import {
   recall,
   remember,
 } from "@/lib/memory";
-import { periods as lastfmPeriods } from "@/lib/periods";
 import {
   addReaction,
   EmojiSchema,
   MessageIdSchema,
   withSiteReactions,
 } from "@/lib/reactions";
+import { recentPlays } from "@/lib/scrobbles";
 import type { Username } from "@/lib/session";
 import { getStats, periods as wakatimePeriods } from "@/lib/wakaTime";
 
@@ -168,47 +158,66 @@ const wakatimeInputSchema = z.object({
     .describe("Time period"),
   limit: z.number().min(1).max(15).default(10).describe("Number of languages"),
 });
-const lastfmUsernameSchema = z
-  .string()
-  .default(config.lastfmUsername)
-  .describe("Last.fm username (defaults to Simon's account)");
 const recentTracksInputSchema = z.object({
-  username: lastfmUsernameSchema,
   limit: z.number().min(1).max(50).default(5).describe("Number of tracks"),
 });
-const topItemsInputSchema = z.object({
-  username: lastfmUsernameSchema,
-  period: z.enum(lastfmPeriods).default("1month").describe("Time period"),
-  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
+const day = z.iso.date();
+const filtersSchema = z.object({
+  from: day.optional().describe("First day, as YYYY-MM-DD in Stockholm time"),
+  to: day.optional().describe("Last day, included, as YYYY-MM-DD"),
+  artist: z.string().min(1).optional().describe("Artist name contains this"),
+  track: z.string().min(1).optional().describe("Track title contains this"),
+  album: z.string().min(1).optional().describe("Album title contains this"),
+  loved: z.boolean().optional().describe("Only loved tracks"),
 });
-const playCountInputSchema = z.object({
-  username: lastfmUsernameSchema,
-  artist: z.string().min(1).describe("Artist name"),
-  track: z
-    .string()
-    .min(1)
-    .optional()
-    .describe("A track by the artist, to count that instead"),
-  album: z
-    .string()
-    .min(1)
-    .optional()
-    .describe("An album by the artist, to count that instead (if no track)"),
-});
-const dateRangeInputSchema = z.object({
-  username: lastfmUsernameSchema,
-  from: z.iso.date().describe("First day, as YYYY-MM-DD in Stockholm time"),
-  to: z.iso.date().describe("Last day, included, as YYYY-MM-DD"),
-  limit: z.number().min(1).max(50).default(10).describe("Number of items"),
+const toFilters = ({
+  from,
+  to,
+  ...names
+}: z.infer<typeof filtersSchema>): Filters => ({
+  ...names,
+  from: from === undefined ? undefined : dayStart(from),
+  to: to === undefined ? undefined : dayStart(to, 1),
 });
 const ordered = [
-  ({ from, to }: { from: string; to: string }) => from <= to,
+  ({ from, to }: { from?: string; to?: string }) =>
+    from === undefined || to === undefined || from <= to,
   "from must be on or before to",
 ] as const;
-const topInRangeInputSchema = dateRangeInputSchema
-  .extend({ kind: z.enum(chartKinds).describe("What to rank") })
+const limitSchema = z
+  .number()
+  .min(1)
+  .max(50)
+  .default(10)
+  .describe("Number of results");
+const playsInputSchema = filtersSchema
+  .extend({
+    order: z
+      .enum(["newest", "oldest"])
+      .default("newest")
+      .describe("Newest or oldest plays first"),
+    limit: limitSchema,
+  })
   .refine(...ordered);
-const scrobblesInRangeInputSchema = dateRangeInputSchema.refine(...ordered);
+const topInputSchema = filtersSchema
+  .extend({
+    group_by: z.enum(["artist", "track", "album"]).describe("What to rank"),
+    limit: limitSchema,
+  })
+  .refine(...ordered);
+const playCountsInputSchema = filtersSchema
+  .extend({
+    per: z
+      .enum(["hour", "weekday", "day", "week", "month", "year"])
+      .optional()
+      .describe("Count per Stockholm hour, weekday, day, week, month or year"),
+    order: z
+      .enum(["time", "plays"])
+      .default("time")
+      .describe("In time order, or busiest first"),
+    limit: z.number().min(1).max(100).default(50).describe("Number of periods"),
+  })
+  .refine(...ordered);
 const searchMessagesInputSchema = z.object({
   content: z.string().describe("Search query text"),
   limit: z.number().min(1).max(25).default(25).describe("Max results"),
@@ -300,44 +309,26 @@ const LOOKUP_TOOLS = [
   {
     name: "get_recent_tracks",
     description:
-      "Get recently played tracks from Last.fm. Defaults to Simon's account. Includes now-playing status.",
+      "Get Simon's latest plays, and what he's playing now if anything, newest first, with loved tracks marked.",
     input_schema: toolSchema(recentTracksInputSchema),
   },
   {
-    name: "get_top_tracks",
+    name: "get_plays",
     description:
-      "Get most played tracks from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: toolSchema(topItemsInputSchema),
+      "Find Simon's individual plays (scrobbles) and how many match. Every filter is optional: a Stockholm date range, artist, track or album names containing some text (case-insensitive), or loved tracks only. For example: what he played on a day, or the first time he played something (order oldest, limit 1).",
+    input_schema: toolSchema(playsInputSchema),
   },
   {
-    name: "get_top_artists",
+    name: "get_top",
     description:
-      "Get most played artists from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: toolSchema(topItemsInputSchema),
+      "Rank Simon's most played artists, tracks or albums among plays matching the same filters as get_plays, with play counts and first and last plays. For example: his top albums of 2019, or his most played tracks by an artist.",
+    input_schema: toolSchema(topInputSchema),
   },
   {
-    name: "get_top_albums",
+    name: "get_play_counts",
     description:
-      "Get most played albums from Last.fm for a time period. Defaults to Simon's account.",
-    input_schema: toolSchema(topItemsInputSchema),
-  },
-  {
-    name: "get_play_count",
-    description:
-      "Count all-time plays of an artist, or of one of their tracks or albums, on Last.fm. Defaults to Simon's account. Misspelled names are corrected, and the result spells them as Last.fm does. plays is missing when Last.fm has no count, as for an unknown username.",
-    input_schema: toolSchema(playCountInputSchema),
-  },
-  {
-    name: "get_top_in_range",
-    description:
-      "Get the most played artists, tracks or albums on Last.fm between two dates, like a given year or month. Defaults to Simon's account.",
-    input_schema: toolSchema(topInRangeInputSchema),
-  },
-  {
-    name: "get_scrobbles_in_range",
-    description:
-      "Get the total scrobbles on Last.fm between two dates and the tracks played, newest first. Defaults to Simon's account.",
-    input_schema: toolSchema(scrobblesInRangeInputSchema),
+      "Count Simon's plays matching the same filters as get_plays, in all or per Stockholm hour, weekday, day, week, month or year. For example: how often he's played an artist, which month he played it most (order plays), or whether he listens more on weekends.",
+    input_schema: toolSchema(playCountsInputSchema),
   },
   {
     name: "search_messages",
@@ -411,52 +402,23 @@ async function executeTool(
         return toolResult(await getStats(period, limit));
       }
       case "get_recent_tracks": {
-        const { username, ...params } = recentTracksInputSchema.parse(input);
-        return toolResult(await userGetRecentTracks(username, params));
+        const { limit } = recentTracksInputSchema.parse(input);
+        return toolResult(await recentPlays(limit));
       }
-      case "get_top_tracks": {
-        const { username, ...params } = topItemsInputSchema.parse(input);
-        return toolResult(await userGetTopTracks(username, params));
+      case "get_plays": {
+        const { order, limit, ...filters } = playsInputSchema.parse(input);
+        return toolResult(await plays(toFilters(filters), order, limit));
       }
-      case "get_top_artists": {
-        const { username, ...params } = topItemsInputSchema.parse(input);
-        return toolResult(await userGetTopArtists(username, params));
+      case "get_top": {
+        const { group_by, limit, ...filters } = topInputSchema.parse(input);
+        return toolResult(await top(toFilters(filters), group_by, limit));
       }
-      case "get_top_albums": {
-        const { username, ...params } = topItemsInputSchema.parse(input);
-        const albums = await userGetTopAlbums(username, params);
-        // The cover URL is for the site's collage; the model has no use for it.
-        return toolResult(albums.map(({ cover, ...album }) => album));
-      }
-      case "get_play_count": {
-        const { username, ...params } = playCountInputSchema.parse(input);
-        return toolResult(await getUserPlays(username, params));
-      }
-      case "get_top_in_range": {
-        const { username, kind, from, to, ...params } =
-          topInRangeInputSchema.parse(input);
+      case "get_play_counts": {
+        const { per, order, limit, ...filters } =
+          playCountsInputSchema.parse(input);
         return toolResult(
-          await userGetChartInRange(username, kind, {
-            ...dayRange(from, to),
-            ...params,
-          }),
+          await playCounts(toFilters(filters), per, order, limit),
         );
-      }
-      case "get_scrobbles_in_range": {
-        const { username, from, to, ...params } =
-          scrobblesInRangeInputSchema.parse(input);
-        const { total, tracks } = await userGetScrobbles(username, {
-          ...dayRange(from, to),
-          ...params,
-        });
-        // Not requested as extended, so loved is always false.
-        const played = tracks.map(({ name, artist, album, playedAt }) => ({
-          name,
-          artist,
-          album,
-          playedAt,
-        }));
-        return toolResult({ total, tracks: played });
       }
       case "search_messages": {
         const params = searchMessagesInputSchema.parse(input);

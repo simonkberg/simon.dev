@@ -4,21 +4,12 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { config } from "@/config";
 import {
   getChannelMessages,
   type Message,
   searchChannelMessages,
 } from "@/lib/discord/api";
-import {
-  getUserPlays,
-  userGetChartInRange,
-  userGetRecentTracks,
-  userGetScrobbles,
-  userGetTopAlbums,
-  userGetTopArtists,
-  userGetTopTracks,
-} from "@/lib/lastfm";
+import { playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
@@ -31,9 +22,9 @@ import {
 } from "@/lib/memory";
 import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
+import { recentPlays } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
-import { topAlbum } from "@/mocks/listening";
 import { server } from "@/mocks/node";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
@@ -75,19 +66,13 @@ vi.mock(import("@/lib/wakaTime"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, getStats: vi.fn() };
 });
-vi.mock(import("@/lib/lastfm"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    userGetRecentTracks: vi.fn(),
-    userGetTopTracks: vi.fn(),
-    userGetTopArtists: vi.fn(),
-    userGetTopAlbums: vi.fn(),
-    getUserPlays: vi.fn(),
-    userGetChartInRange: vi.fn(),
-    userGetScrobbles: vi.fn(),
-  };
-});
+vi.mock(import("@/lib/listeningQuery"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  plays: vi.fn(),
+  top: vi.fn(),
+  playCounts: vi.fn(),
+}));
+vi.mock(import("@/lib/scrobbles"), () => ({ recentPlays: vi.fn() }));
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1/messages";
 const TEST_USERNAME = "test-user";
@@ -117,10 +102,7 @@ beforeEach(() => {
   headers = [];
   vi.mocked(getStats).mockResolvedValue([]);
   vi.mocked(getChannelMessages).mockResolvedValue([]);
-  vi.mocked(userGetRecentTracks).mockResolvedValue([]);
-  vi.mocked(userGetTopTracks).mockResolvedValue([]);
-  vi.mocked(userGetTopArtists).mockResolvedValue([]);
-  vi.mocked(userGetTopAlbums).mockResolvedValue([]);
+  vi.mocked(recentPlays).mockResolvedValue([]);
 });
 
 function conversation(author: string, text: string): string {
@@ -209,12 +191,9 @@ describe("createMessage", () => {
         { name: "get_chat_history" },
         { name: "get_wakatime_stats" },
         { name: "get_recent_tracks" },
-        { name: "get_top_tracks" },
-        { name: "get_top_artists" },
-        { name: "get_top_albums" },
-        { name: "get_play_count" },
-        { name: "get_top_in_range" },
-        { name: "get_scrobbles_in_range" },
+        { name: "get_plays" },
+        { name: "get_top" },
+        { name: "get_play_counts" },
         { name: "search_messages" },
         { name: "react" },
         { name: "remember" },
@@ -705,10 +684,7 @@ describe("createMessage", () => {
     },
     {
       case: "a range that ends before it starts",
-      use: toolUse("get_scrobbles_in_range", {
-        from: "2016-01-01",
-        to: "2015-01-01",
-      }),
+      use: toolUse("get_plays", { from: "2016-01-01", to: "2015-01-01" }),
       rejection: undefined,
       result: expect.stringContaining("from must be on or before to"),
     },
@@ -758,7 +734,7 @@ describe("createMessage", () => {
       },
     ];
     vi.mocked(getStats).mockResolvedValue(mockStats);
-    vi.mocked(userGetRecentTracks).mockResolvedValue(mockTracks);
+    vi.mocked(recentPlays).mockResolvedValue(mockTracks);
     respond(
       () =>
         reply(
@@ -819,52 +795,34 @@ describe("createMessage", () => {
         "last_30_days",
         10,
       ),
+      wiring("get_recent_tracks", { limit: 10 }, recentPlays, 10),
       wiring(
-        "get_recent_tracks",
-        { limit: 10 },
-        userGetRecentTracks,
-        config.lastfmUsername,
-        { limit: 10 },
+        "get_plays",
+        { artist: "Radiohead", loved: true, order: "oldest", limit: 1 },
+        plays,
+        { artist: "Radiohead", loved: true },
+        "oldest",
+        1,
       ),
       wiring(
-        "get_top_tracks",
-        { period: "3month", limit: 10 },
-        userGetTopTracks,
-        config.lastfmUsername,
-        { period: "3month", limit: 10 },
-      ),
-      wiring(
-        "get_top_artists",
-        { period: "6month", limit: 3 },
-        userGetTopArtists,
-        config.lastfmUsername,
-        { period: "6month", limit: 3 },
-      ),
-      wiring(
-        "get_top_albums",
-        { period: "12month", limit: 7 },
-        userGetTopAlbums,
-        config.lastfmUsername,
-        { period: "12month", limit: 7 },
-      ),
-      wiring(
-        "get_play_count",
-        { artist: "Radiohead", track: "Idioteque" },
-        getUserPlays,
-        config.lastfmUsername,
-        { artist: "Radiohead", track: "Idioteque" },
-      ),
-      wiring(
-        "get_top_in_range",
-        { kind: "album", from: "2015-01-01", to: "2015-12-31", limit: 5 },
-        userGetChartInRange,
-        config.lastfmUsername,
-        "album",
+        "get_top",
+        { from: "2015-01-01", to: "2015-12-31", group_by: "album", limit: 5 },
+        top,
         {
           from: new Date("2014-12-31T23:00:00Z"),
           to: new Date("2015-12-31T23:00:00Z"),
-          limit: 5,
         },
+        "album",
+        5,
+      ),
+      wiring(
+        "get_play_counts",
+        { track: "Idioteque", per: "month", order: "plays", limit: 3 },
+        playCounts,
+        { track: "Idioteque" },
+        "month",
+        "plays",
+        3,
       ),
       wiring(
         "search_messages",
@@ -918,7 +876,7 @@ describe("createMessage", () => {
     });
 
     it("should give an invalid time as null rather than fail the tool", async () => {
-      vi.mocked(userGetRecentTracks).mockResolvedValue([
+      vi.mocked(recentPlays).mockResolvedValue([
         {
           name: "Idioteque",
           artist: "Radiohead",
@@ -934,43 +892,22 @@ describe("createMessage", () => {
       ]);
     });
 
-    it("should give scrobbles in range as Stockholm times", async () => {
-      vi.mocked(userGetScrobbles).mockResolvedValue({
+    it("should give plays as Stockholm times", async () => {
+      vi.mocked(plays).mockResolvedValue({
         total: 1,
-        tracks: [
+        plays: [
           {
             name: "Idioteque",
             artist: "Radiohead",
             album: "Kid A",
             playedAt: new Date("2015-12-30T23:30:00Z"),
-            nowPlaying: false,
             loved: false,
           },
         ],
       });
 
-      expect(
-        JSON.parse(
-          await runTool("get_scrobbles_in_range", {
-            from: "2015-12-31",
-            to: "2015-12-31",
-          }),
-        ),
-      ).toEqual({
-        total: 1,
-        tracks: [
-          {
-            name: "Idioteque",
-            artist: "Radiohead",
-            album: "Kid A",
-            playedAt: "2015-12-31 00:30",
-          },
-        ],
-      });
-      expect(userGetScrobbles).toHaveBeenCalledWith(config.lastfmUsername, {
-        from: new Date("2015-12-30T23:00:00Z"),
-        to: new Date("2015-12-31T23:00:00Z"),
-        limit: 10,
+      expect(JSON.parse(await runTool("get_plays", {}))).toMatchObject({
+        plays: [{ playedAt: "2015-12-31 00:30" }],
       });
     });
 
@@ -982,22 +919,10 @@ describe("createMessage", () => {
         name: string;
         input_schema: { required?: string[]; $schema?: string };
       }>;
-      const range = tools.find(({ name }) => name === "get_top_in_range");
-      expect(range?.input_schema.required).toEqual(["from", "to", "kind"]);
+      const range = tools.find(({ name }) => name === "get_top");
+      expect(range?.input_schema.required).toEqual(["group_by"]);
       expect(range?.input_schema).not.toHaveProperty("$schema");
       expect(JSON.stringify(range)).not.toContain("pattern");
-    });
-
-    it("should leave album covers out of the top albums result", async () => {
-      const { cover, ...album } = topAlbum(
-        "Knock Knock",
-        "Smog",
-        1,
-        `${config.lastfmCoverCdn}a.jpg`,
-      );
-      vi.mocked(userGetTopAlbums).mockResolvedValue([{ ...album, cover }]);
-
-      expect(await runTool("get_top_albums", {})).toBe(JSON.stringify([album]));
     });
 
     it("should use default values when tool inputs are empty", async () => {
@@ -1005,9 +930,8 @@ describe("createMessage", () => {
         "get_chat_history",
         "get_wakatime_stats",
         "get_recent_tracks",
-        "get_top_tracks",
-        "get_top_artists",
-        "get_top_albums",
+        "get_plays",
+        "get_play_counts",
       ];
       respond(
         () =>
@@ -1020,70 +944,11 @@ describe("createMessage", () => {
 
       await ask();
 
-      const defaults = { period: "1month", limit: 10 };
       expect(getChannelMessages).toHaveBeenCalledWith(50);
       expect(getStats).toHaveBeenCalledWith("last_30_days", 10);
-      expect(userGetRecentTracks).toHaveBeenCalledWith(config.lastfmUsername, {
-        limit: 5,
-      });
-      expect(userGetTopTracks).toHaveBeenCalledWith(
-        config.lastfmUsername,
-        defaults,
-      );
-      expect(userGetTopArtists).toHaveBeenCalledWith(
-        config.lastfmUsername,
-        defaults,
-      );
-      expect(userGetTopAlbums).toHaveBeenCalledWith(
-        config.lastfmUsername,
-        defaults,
-      );
-    });
-
-    it("should pass custom username to Last.fm tools", async () => {
-      respond(
-        () =>
-          reply(
-            [
-              toolUse(
-                "get_recent_tracks",
-                { username: "customuser", limit: 3 },
-                "tool_1",
-              ),
-              toolUse(
-                "get_top_tracks",
-                { username: "customuser", period: "7day", limit: 5 },
-                "tool_2",
-              ),
-              toolUse(
-                "get_top_artists",
-                { username: "customuser", period: "overall" },
-                "tool_3",
-              ),
-              toolUse("get_top_albums", { username: "anotheruser" }, "tool_4"),
-            ],
-            "tool_use",
-          ),
-        () => reply([]),
-      );
-
-      await ask();
-
-      expect(userGetRecentTracks).toHaveBeenCalledWith("customuser", {
-        limit: 3,
-      });
-      expect(userGetTopTracks).toHaveBeenCalledWith("customuser", {
-        period: "7day",
-        limit: 5,
-      });
-      expect(userGetTopArtists).toHaveBeenCalledWith("customuser", {
-        period: "overall",
-        limit: 10,
-      });
-      expect(userGetTopAlbums).toHaveBeenCalledWith("anotheruser", {
-        period: "1month",
-        limit: 10,
-      });
+      expect(recentPlays).toHaveBeenCalledWith(5);
+      expect(plays).toHaveBeenCalledWith({}, "newest", 10);
+      expect(playCounts).toHaveBeenCalledWith({}, undefined, "time", 50);
     });
   });
 });

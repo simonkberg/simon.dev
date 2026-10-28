@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { log } from "@/lib/log";
+import { likeContains } from "@/lib/sql";
 import { batch, query, type Row, type Value } from "@/lib/turso";
 
 export const CORE_CATEGORIES = {
@@ -101,10 +102,6 @@ export async function remember(input: {
     : { status: "ok", memory: toMemory(row) };
 }
 
-function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, "\\$&");
-}
-
 export async function recall(input: {
   category?: string | undefined;
   search?: string | undefined;
@@ -119,7 +116,7 @@ export async function recall(input: {
   }
   if (input.search !== undefined) {
     conditions.push("content LIKE ? ESCAPE '\\'");
-    args.push(`%${escapeLike(input.search)}%`);
+    args.push(likeContains(input.search));
   }
 
   const where =

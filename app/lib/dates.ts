@@ -63,15 +63,13 @@ export function nextMidnight(now: Date): Date {
   );
 }
 
+/** The Stockholm midnight starting a "YYYY-MM-DD" date, or `offset` days after it. */
+export function dayStart(date: string, offset = 0): Date {
+  const d = new Date(date);
+  return midnight(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + offset);
+}
+
 /** Stockholm's days from `from` through `to`, each a "YYYY-MM-DD" date. */
 export function dayRange(from: string, to: string): { from: Date; to: Date } {
-  const day = (date: string, offset = 0) => {
-    const d = new Date(date);
-    return midnight(
-      d.getUTCFullYear(),
-      d.getUTCMonth(),
-      d.getUTCDate() + offset,
-    );
-  };
-  return { from: day(from), to: day(to, 1) };
+  return { from: dayStart(from), to: dayStart(to, 1) };
 }

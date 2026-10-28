@@ -3,12 +3,11 @@ import { config } from "@/config";
 import { getGlobal } from "@/lib/global";
 import {
   bulk,
-  type ChartItem,
-  type ChartKind,
+  type RecentTrack,
   userGetLovedTracks,
-  type UserGetRecentTracksResponse,
   userGetScrobbles,
 } from "@/lib/lastfm";
+import { type Group, top } from "@/lib/listeningQuery";
 import { tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { batch, query, type Statement, type Value } from "@/lib/turso";
@@ -225,8 +224,7 @@ export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   }));
 }
 
-export type { ChartItem };
-export type RecentTrack = UserGetRecentTracksResponse[number];
+export type { RecentTrack };
 
 /** What plays now, if a sync saw it lately, then the latest plays: `limit` in all, newest first. */
 export async function recentPlays(limit: number): Promise<RecentTrack[]> {
@@ -257,34 +255,23 @@ export async function recentPlays(limit: number): Promise<RecentTrack[]> {
   }));
 }
 
-export type Played = { name: string; artist: string; playcount: number };
+export type ChartItem = { name: string; playcount: number };
 
-// What each kind groups by; an artist is its own name.
-const groups = {
-  artist: { name: "artist", by: "artist", where: "" },
-  track: { name: "track", by: "artist, track", where: "" },
-  // Last.fm leaves a play's album empty when it has none, and ranks no such album.
-  album: { name: "album", by: "artist, album", where: "AND album != ''" },
-} as const satisfies Record<ChartKind, unknown>;
+export type Played = { name: string; artist: string; playcount: number };
 
 /** The most played of a kind from `from` until `to`, ties by artist, then title. */
 export async function topPlayed(
-  kind: ChartKind,
+  kind: Group,
   from: Date,
   to: Date,
   limit: number,
 ): Promise<Played[]> {
-  const { name, by, where } = groups[kind];
-  const { rows } = await query(
-    `SELECT artist, ${name} AS name, COUNT(*) AS plays FROM scrobbles
-     WHERE played_at >= ? AND played_at < ? ${where}
-     GROUP BY ${by} ORDER BY plays DESC, ${by} LIMIT ?`,
-    [from.getTime(), to.getTime(), limit],
-  );
-  return rows.map((row) => ({
-    name: String(row["name"]),
-    artist: String(row["artist"]),
-    playcount: Number(row["plays"]),
+  const played = await top({ from, to }, kind, limit);
+  return played.map(({ artist, track, album, plays }) => ({
+    // An artist is its own name.
+    name: track ?? album ?? artist,
+    artist,
+    playcount: plays,
   }));
 }
 

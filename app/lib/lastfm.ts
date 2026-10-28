@@ -4,7 +4,6 @@ import { z } from "zod";
 import { config } from "@/config";
 import { env } from "@/lib/env";
 import { getGlobal } from "@/lib/global";
-import { type Period } from "@/lib/periods";
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
@@ -97,99 +96,7 @@ const recentTrackSchema = z
     loved: data.loved,
   }));
 
-const userGetRecentTracksResponseSchema = z
-  .object({ recenttracks: z.object({ track: z.array(recentTrackSchema) }) })
-  .transform((data) => data.recenttracks.track);
-
-export type UserGetRecentTracksResponse = z.infer<
-  typeof userGetRecentTracksResponseSchema
->;
-
-export async function userGetRecentTracks(
-  user: string,
-  params?: { limit?: number; page?: number },
-): Promise<UserGetRecentTracksResponse> {
-  const tracks = await call(
-    "user.getrecenttracks",
-    userGetRecentTracksResponseSchema,
-    { user, extended: 1, ...params },
-  );
-
-  // Last.fm doesn't count "now playing" track toward the limit, so enforce it
-  if (params?.limit !== undefined && tracks.length > params.limit) {
-    return tracks.slice(0, params.limit);
-  }
-
-  return tracks;
-}
-
-const userGetTopTracksResponseSchema = z
-  .object({
-    toptracks: z.object({
-      track: z.array(
-        z
-          .object({
-            name: z.string(),
-            playcount: z.string().transform(Number),
-            artist: z.object({ name: z.string() }),
-            "@attr": z.object({ rank: z.string().transform(Number) }),
-          })
-          .transform((data) => ({
-            name: data.name,
-            artist: data.artist.name,
-            playcount: data.playcount,
-            rank: data["@attr"].rank,
-          })),
-      ),
-    }),
-  })
-  .transform((data) => data.toptracks.track);
-
-type UserGetTopTracksResponse = z.infer<typeof userGetTopTracksResponseSchema>;
-
-export async function userGetTopTracks(
-  user: string,
-  params: { period: Period; limit: number },
-): Promise<UserGetTopTracksResponse> {
-  return call("user.gettoptracks", userGetTopTracksResponseSchema, {
-    user,
-    ...params,
-  });
-}
-
-const userGetTopArtistsResponseSchema = z
-  .object({
-    topartists: z.object({
-      artist: z.array(
-        z
-          .object({
-            name: z.string(),
-            playcount: z.string().transform(Number),
-            "@attr": z.object({ rank: z.string().transform(Number) }),
-          })
-          .transform((data) => ({
-            name: data.name,
-            playcount: data.playcount,
-            rank: data["@attr"].rank,
-          })),
-      ),
-    }),
-  })
-  .transform((data) => data.topartists.artist);
-
-type UserGetTopArtistsResponse = z.infer<
-  typeof userGetTopArtistsResponseSchema
->;
-
-export async function userGetTopArtists(
-  user: string,
-  params: { period: Period; limit: number },
-): Promise<UserGetTopArtistsResponse> {
-  return call("user.gettopartists", userGetTopArtistsResponseSchema, {
-    user,
-    ...params,
-  });
-}
+export type RecentTrack = z.infer<typeof recentTrackSchema>;
 
 // Last.fm serves this grey star for albums without art.
 const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
@@ -208,45 +115,6 @@ const coverSchema = z
 const lastfmUrlSchema = z
   .url({ protocol: /^https$/, hostname: /^www\.last\.fm$/ })
   .pipe(z.templateLiteral(["https://", z.string()]));
-
-const userGetTopAlbumsResponseSchema = z
-  .object({
-    topalbums: z.object({
-      album: z.array(
-        z
-          .object({
-            name: z.string(),
-            playcount: z.string().transform(Number),
-            url: lastfmUrlSchema,
-            artist: z.object({ name: z.string() }),
-            // A cover is decoration: a malformed one leaves the tile empty, not the list unavailable.
-            image: coverSchema.catch(undefined),
-            "@attr": z.object({ rank: z.string().transform(Number) }),
-          })
-          .transform((data) => ({
-            name: data.name,
-            artist: data.artist.name,
-            playcount: data.playcount,
-            rank: data["@attr"].rank,
-            url: data.url,
-            cover: data.image,
-          })),
-      ),
-    }),
-  })
-  .transform((data) => data.topalbums.album);
-
-type UserGetTopAlbumsResponse = z.infer<typeof userGetTopAlbumsResponseSchema>;
-
-export async function userGetTopAlbums(
-  user: string,
-  params: { period: Period; limit: number },
-): Promise<UserGetTopAlbumsResponse> {
-  return call("user.gettopalbums", userGetTopAlbumsResponseSchema, {
-    user,
-    ...params,
-  });
-}
 
 const albumPageResponseSchema = z
   .object({
@@ -352,113 +220,4 @@ export async function userGetLovedTracks(
     user,
     ...params,
   });
-}
-
-const chartItemSchema = z
-  .object({
-    name: z.string(),
-    playcount: z.string().transform(Number),
-    // Tracks and albums only.
-    artist: z.object({ "#text": z.string() }).optional(),
-  })
-  .transform(({ name, playcount, artist }) => ({
-    name,
-    ...(artist && { artist: artist["#text"] }),
-    playcount,
-  }));
-
-export type ChartItem = z.infer<typeof chartItemSchema>;
-
-const chartListSchema = oneOrMany(z.looseObject({}))
-  // In case an empty range leaves the list out rather than sending [].
-  .default([]);
-
-export const chartKinds = ["artist", "track", "album"] as const;
-
-export type ChartKind = (typeof chartKinds)[number];
-
-const chartSchemas = {
-  artist: z
-    .object({ weeklyartistchart: z.object({ artist: chartListSchema }) })
-    .transform((data) => data.weeklyartistchart.artist),
-  track: z
-    .object({ weeklytrackchart: z.object({ track: chartListSchema }) })
-    .transform((data) => data.weeklytrackchart.track),
-  album: z
-    .object({ weeklyalbumchart: z.object({ album: chartListSchema }) })
-    .transform((data) => data.weeklyalbumchart.album),
-} satisfies Record<ChartKind, z.ZodType<unknown[]>>;
-
-// The weekly charts take any range, not only the weeks Last.fm lists, ranked by plays.
-export async function userGetChartInRange(
-  user: string,
-  kind: ChartKind,
-  params: { from: Date; to: Date; limit: number },
-): Promise<ChartItem[]> {
-  const schema = chartSchemas[kind]
-    // A year's chart lists thousands of items, so only those asked for are parsed.
-    .transform((items) => items.slice(0, params.limit))
-    .pipe(z.array(chartItemSchema));
-  return call(`user.getweekly${kind}chart`, schema, {
-    user,
-    ...rangeParams(params),
-  });
-}
-
-// Last.fm leaves the count out for an unknown user rather than failing.
-const userPlaysSchema = z.coerce.number().optional();
-
-const artistGetInfoResponseSchema = z
-  .object({
-    artist: z.object({
-      name: z.string(),
-      stats: z.object({ userplaycount: userPlaysSchema }),
-    }),
-  })
-  .transform(({ artist }) => ({
-    artist: artist.name,
-    plays: artist.stats.userplaycount,
-  }));
-
-const trackGetInfoResponseSchema = z
-  .object({
-    track: z.object({
-      name: z.string(),
-      artist: z.object({ name: z.string() }),
-      userplaycount: userPlaysSchema,
-    }),
-  })
-  .transform(({ track }) => ({
-    artist: track.artist.name,
-    track: track.name,
-    plays: track.userplaycount,
-  }));
-
-const albumGetInfoResponseSchema = z
-  .object({
-    album: z.object({
-      name: z.string(),
-      artist: z.string(),
-      userplaycount: userPlaysSchema,
-    }),
-  })
-  .transform(({ album }) => ({
-    artist: album.artist,
-    album: album.name,
-    plays: album.userplaycount,
-  }));
-
-/** The user's plays of an artist, or of one of its tracks or albums, named as Last.fm spells them. */
-export async function getUserPlays(
-  user: string,
-  params: { artist: string; track?: string; album?: string },
-) {
-  const query = { username: user, autocorrect: 1, ...params };
-  if (params.track !== undefined) {
-    return call("track.getinfo", trackGetInfoResponseSchema, query);
-  }
-  if (params.album !== undefined) {
-    return call("album.getinfo", albumGetInfoResponseSchema, query);
-  }
-  return call("artist.getinfo", artistGetInfoResponseSchema, query);
 }
