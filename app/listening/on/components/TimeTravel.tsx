@@ -23,7 +23,7 @@ import {
 } from "@/lib/dates";
 import { lanes } from "@/lib/scrobbleChart";
 
-import { href, isPlainClick, TravelContext } from "./Travel";
+import { href, TravelContext } from "./Travel";
 
 export interface TimeTravelProps extends PropsWithChildren {
   today: Promise<Day>;
@@ -67,7 +67,7 @@ const Step = ({ to, label, glyph }: StepProps) => {
       replace
       scroll={false}
       aria-label={label}
-      onClick={(event) => isPlainClick(event) && travel(to)}
+      onNavigate={(event) => travel(event, to)}
     >
       {glyph}
     </Link>

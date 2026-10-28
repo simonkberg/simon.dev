@@ -7,7 +7,7 @@ import type { ScrobbleCount } from "@/actions/listening";
 import { type Day, type Month, monthOf } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
-import { href, isPlainClick, TravelContext, TravelPending } from "./Travel";
+import { href, TravelContext, TravelPending } from "./Travel";
 
 export interface MonthDaysProps {
   month: Month;
@@ -54,7 +54,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
                 replace
                 scroll={false}
                 aria-current={current ? "date" : undefined}
-                onClick={(event) => isPlainClick(event) && travel(day)}
+                onNavigate={(event) => travel(event, day)}
               >
                 <span className="visually-hidden">{`${label}: ${formatPlays(count)}`}</span>
               </Link>

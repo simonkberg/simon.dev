@@ -1,16 +1,17 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
 import type { Day } from "@/lib/dates";
 import { monthBuckets } from "@/lib/scrobbleBuckets";
+import { mockRouter } from "@/mocks/router";
 
 import { MonthDays } from "./MonthDays";
 import { TimeTravel, type TimeTravelProps } from "./TimeTravel";
 import { TravelProvider } from "./Travel";
 
-const replace = vi.fn();
+let navigation: ReturnType<typeof mockRouter>;
 
 // The date in the URL, as the router gives it.
 const at = (date: string) =>
@@ -18,17 +19,17 @@ const at = (date: string) =>
     .mocked(useParams)
     .mockReturnValue({ month: date.slice(0, 7), day: date.slice(8) });
 
-vi.mock(import("next/navigation"), () => ({
+vi.mock(import("next/navigation"), async (importOriginal) => ({
+  ...(await importOriginal()),
   useParams: vi.fn(),
-  useRouter: vi.fn(),
 }));
 
 beforeEach(() => {
   at("2012-10-14");
-  vi.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<
-    typeof useRouter
-  >);
+  navigation = mockRouter();
 });
+
+const replace = () => navigation.navigate;
 
 // January 2007 to October 2026, as the tape shows them.
 const months: ScrobbleCount[] = monthBuckets(
@@ -50,17 +51,19 @@ const october: ScrobbleCount[] = Array.from({ length: 31 }, (_, index) => ({
 
 // The tape with the day's month under it, as the layout and its slot render them.
 const tape = (day: Day, props: Partial<TimeTravelProps> = {}) => (
-  <TravelProvider>
-    <TimeTravel
-      today={Promise.resolve("2026-10-28")}
-      months={Promise.resolve(months)}
-      years={Promise.resolve(years)}
-      {...props}
-    >
-      {/* Keyed as each month's layout is its own. */}
-      <MonthDays key={day.slice(0, 7)} month="2012-10" days={october} />
-    </TimeTravel>
-  </TravelProvider>
+  <navigation.Router>
+    <TravelProvider>
+      <TimeTravel
+        today={Promise.resolve("2026-10-28")}
+        months={Promise.resolve(months)}
+        years={Promise.resolve(years)}
+        {...props}
+      >
+        {/* Keyed as each month's layout is its own. */}
+        <MonthDays key={day.slice(0, 7)} month="2012-10" days={october} />
+      </TimeTravel>
+    </TravelProvider>
+  </navigation.Router>
 );
 
 const renderTape = (props: Partial<TimeTravelProps> = {}) =>
@@ -69,12 +72,23 @@ const renderTape = (props: Partial<TimeTravelProps> = {}) =>
 // The router moving to another day's page.
 const arrive = async (rerender: (ui: React.ReactNode) => void, day: Day) => {
   at(day);
-  await act(async () => rerender(tape(day)));
+  await act(async () => {
+    navigation.arrive();
+    rerender(tape(day));
+  });
 };
 
+// A followed link starts a navigation, which suspends until its page arrives.
+const click = (element: HTMLElement, init?: MouseEventInit) =>
+  act(async () => {
+    fireEvent.click(element, init);
+  });
+
 const drag = (month: number) =>
-  fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
-    target: { value: String(month) },
+  act(async () => {
+    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+      target: { value: String(month) },
+    });
   });
 
 // The month's days, which dim while the page travels to another month.
@@ -129,18 +143,18 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    drag(10);
-    drag(13);
+    await drag(10);
+    await drag(13);
 
     expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
     expect(pending()).toHaveAttribute("data-pending");
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
 
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace).toHaveBeenCalledExactlyOnceWith(
+    expect(replace()).toHaveBeenCalledExactlyOnceWith(
       "/listening/on/2008-02-14",
       { scroll: false },
     );
@@ -151,29 +165,38 @@ describe("TimeTravel", () => {
     await renderTape();
     fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
 
-    drag(13);
+    await drag(13);
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
 
-    fireEvent.pointerUp(window);
-    expect(replace).toHaveBeenCalledExactlyOnceWith(
+    await act(async () => fireEvent.pointerUp(window));
+    expect(replace()).toHaveBeenCalledExactlyOnceWith(
       "/listening/on/2008-02-14",
       { scroll: false },
     );
+  });
+
+  it("goes nowhere when a press is let go without a drag", async () => {
+    await renderTape();
+    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
+
+    fireEvent.pointerUp(window);
+
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("forgets a held drag when the tape goes away", async () => {
     vi.useFakeTimers();
     const { unmount } = await renderTape();
     fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
-    drag(13);
+    await drag(13);
 
     unmount();
     fireEvent.pointerUp(window);
 
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("doesn't wait for a press other than the main button", async () => {
@@ -183,19 +206,19 @@ describe("TimeTravel", () => {
       button: 2,
     });
 
-    drag(13);
+    await drag(13);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace).toHaveBeenCalledOnce();
+    expect(replace()).toHaveBeenCalledOnce();
   });
 
   it("keeps the slider focused as the drag's page arrives", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
     screen.getByRole("slider", { name: "Month" }).focus();
-    drag(13);
+    await drag(13);
 
     await arrive(rerender, "2008-02-14");
 
@@ -208,24 +231,27 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    drag(13);
+    await drag(13);
     const after = screen.getByRole("link", { name: "Day after" });
     expect(after).toHaveAttribute("href", "/listening/on/2008-02-15");
-    fireEvent.click(after);
+    await click(after);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
     expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).toHaveBeenCalledExactlyOnceWith(
+      "/listening/on/2008-02-15",
+      { scroll: false },
+    );
   });
 
   it("moves to a clicked day before its page arrives, over a drag", async () => {
     vi.useFakeTimers();
     await renderTape();
 
-    drag(13);
-    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
+    await drag(13);
+    await click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -234,16 +260,19 @@ describe("TimeTravel", () => {
     expect(
       screen.getByRole("link", { name: "Oct 1: 10 plays" }),
     ).toHaveAttribute("aria-current", "date");
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).toHaveBeenCalledExactlyOnceWith(
+      "/listening/on/2012-10-01",
+      { scroll: false },
+    );
   });
 
   it("stays put when a day opens in a new tab", async () => {
     await renderTape();
 
-    fireEvent.click(screen.getByRole("link", { name: "Day after" }), {
+    await click(screen.getByRole("link", { name: "Day after" }), {
       metaKey: true,
     });
-    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }), {
+    await click(screen.getByRole("link", { name: "Oct 1: 10 plays" }), {
       ctrlKey: true,
     });
 
@@ -255,55 +284,32 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    drag(13);
-    fireEvent.click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
+    await drag(13);
+    await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
     expect(pending()).not.toHaveAttribute("data-pending");
   });
 
-  it("focuses a followed day's link on its new page", async () => {
+  it("keeps a followed day's link focused as its page arrives", async () => {
     const { rerender } = await renderTape();
     const link = screen.getByRole("link", { name: "Oct 1: 10 plays" });
     link.focus();
-    fireEvent.click(link);
+    await click(link);
 
     await arrive(rerender, "2012-10-01");
 
     expect(screen.getByRole("link", { name: "Oct 1: 10 plays" })).toHaveFocus();
   });
 
-  it("leaves focus alone when a drag overtakes a followed link", async () => {
-    vi.useFakeTimers();
-    const { rerender } = await renderTape();
-    const link = screen.getByRole("link", { name: "Oct 1: 10 plays" });
-    link.focus();
-    fireEvent.click(link);
-    drag(13);
-    link.blur();
-
-    await arrive(rerender, "2012-10-01");
-
-    expect(document.body).toHaveFocus();
-  });
-
-  it("leaves focus alone when a day's link is clicked unfocused", async () => {
-    const { rerender } = await renderTape();
-    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
-
-    await arrive(rerender, "2012-10-01");
-
-    expect(document.body).toHaveFocus();
-  });
-
   it("keeps a drag begun while the last one's day loads", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    drag(13);
+    await drag(13);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
-    drag(20);
+    await drag(20);
 
     await arrive(rerender, "2008-02-14");
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Sep 14, 2008");
@@ -311,7 +317,7 @@ describe("TimeTravel", () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace).toHaveBeenLastCalledWith("/listening/on/2008-09-14", {
+    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2008-09-14", {
       scroll: false,
     });
   });
@@ -319,14 +325,17 @@ describe("TimeTravel", () => {
   it("stays on the day when a drag returns while another loads", async () => {
     vi.useFakeTimers();
     await renderTape();
-    drag(13);
+    await drag(13);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    drag(5 * 12 + 9);
+    await drag(5 * 12 + 9);
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
 
-    expect(replace).toHaveBeenLastCalledWith("/listening/on/2012-10-14", {
+    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2012-10-14", {
       scroll: false,
     });
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
@@ -335,24 +344,24 @@ describe("TimeTravel", () => {
   it("asks for nothing when a drag returns after a link to the shown day", async () => {
     vi.useFakeTimers();
     await renderTape();
-    fireEvent.click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
+    await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
-    drag(13);
-    drag(5 * 12 + 9);
+    await drag(13);
+    await drag(5 * 12 + 9);
     await act(async () => vi.runAllTimers());
 
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    drag(13);
+    await drag(13);
 
     await arrive(rerender, "2012-10-13");
     await act(async () => vi.runAllTimers());
 
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("stops a drag into this month at today", async () => {
@@ -360,12 +369,12 @@ describe("TimeTravel", () => {
     at("2025-10-30");
     await act(async () => render(tape("2025-10-30")));
 
-    drag(months.length - 1);
+    await drag(months.length - 1);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace).toHaveBeenCalledWith("/listening/on/2026-10-28", {
+    expect(replace()).toHaveBeenCalledWith("/listening/on/2026-10-28", {
       scroll: false,
     });
   });
@@ -374,14 +383,14 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    drag(10);
-    drag(5 * 12 + 9);
+    await drag(10);
+    await drag(5 * 12 + 9);
 
     expect(pending()).not.toHaveAttribute("data-pending");
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("shows no era for a year without scrobbles", async () => {
