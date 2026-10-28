@@ -281,9 +281,9 @@ export async function topArtists(
   to: Date,
   limit: number,
 ): Promise<ChartItem[]> {
-  const top = await topPlayed("artist", from, to, limit);
+  const artists = await topPlayed("artist", from, to, limit);
   // An artist is its own name.
-  return top.map(({ name, playcount }) => ({ name, playcount }));
+  return artists.map(({ name, playcount }) => ({ name, playcount }));
 }
 
 export async function topArtist(
