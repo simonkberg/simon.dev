@@ -9,14 +9,14 @@ import { Subtitle } from "@/components/Subtitle";
 import { fullDayLabel } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
-import { toDay } from "../../toDay";
+import { toDay } from "../../../toDay";
 import { DayPlays } from "./components/DayPlays";
 
 export const prefetch = "partial";
 // Blocks on the day, so the day before stays on screen until this one is ready.
 export const instant = false;
 
-type TimeTravelPageProps = PageProps<"/listening/on/[month]/[day]">;
+type TimeTravelPageProps = PageProps<"/listening/on/[year]/[month]/[day]">;
 
 // Cache Components needs one day to prerender: the first scrobbles.
 export function generateStaticParams() {

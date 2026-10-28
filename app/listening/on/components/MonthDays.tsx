@@ -7,7 +7,8 @@ import type { ScrobbleCount } from "@/actions/listening";
 import { type Day, type Month, monthOf } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 
-import { href, TravelContext, TravelPending } from "./Travel";
+import { href } from "../href";
+import { TravelContext, TravelPending } from "./Travel";
 
 export interface MonthDaysProps {
   month: Month;

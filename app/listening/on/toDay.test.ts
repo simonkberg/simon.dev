@@ -15,7 +15,8 @@ vi.mock(import("@/lib/today"), () => ({
 }));
 
 const params = (date: string) => ({
-  month: date.slice(0, 7),
+  year: date.slice(0, 4),
+  month: date.slice(5, 7),
   day: date.slice(8),
 });
 
@@ -32,7 +33,7 @@ describe("toDay", () => {
   );
 
   it("doesn't read today for a date that isn't one", async () => {
-    await expect(toDay({ month: "today", day: "" })).rejects.toThrow(
+    await expect(toDay({ year: "to", month: "day", day: "" })).rejects.toThrow(
       "NEXT_NOT_FOUND",
     );
 
@@ -42,10 +43,12 @@ describe("toDay", () => {
 
 describe("toMonth", () => {
   it("takes a month time travel reaches", async () => {
-    expect(await toMonth("2026-10")).toBe("2026-10");
+    expect(await toMonth({ year: "2026", month: "10" })).toBe("2026-10");
   });
 
   it("calls notFound for a month past today", async () => {
-    await expect(toMonth("2026-11")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(toMonth({ year: "2026", month: "11" })).rejects.toThrow(
+      "NEXT_NOT_FOUND",
+    );
   });
 });

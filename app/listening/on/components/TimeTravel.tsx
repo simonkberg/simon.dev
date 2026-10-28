@@ -23,7 +23,8 @@ import {
 } from "@/lib/dates";
 import { lanes } from "@/lib/scrobbleChart";
 
-import { href, TravelContext } from "./Travel";
+import { href } from "../href";
+import { TravelContext } from "./Travel";
 
 export interface TimeTravelProps extends PropsWithChildren {
   today: Promise<Day>;

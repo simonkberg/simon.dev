@@ -41,7 +41,7 @@ describe("MonthDays", () => {
     expect(screen.getAllByRole("link")).toHaveLength(31);
     expect(
       screen.getByRole("link", { name: "Oct 1: 10 plays" }),
-    ).toHaveAttribute("href", "/listening/on/2012-10-01");
+    ).toHaveAttribute("href", "/listening/on/2012/10/01");
     expect(
       screen.getByRole("link", { name: "Oct 14: 46 plays" }),
     ).toHaveAttribute("aria-current", "date");

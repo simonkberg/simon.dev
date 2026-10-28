@@ -9,19 +9,22 @@ import {
 } from "@/lib/dates";
 import { getToday } from "@/lib/today";
 
+interface MonthParams {
+  year: string;
+  month: string;
+}
+
 /** The day's params, if time travel reaches it. */
 export async function toDay({
+  year,
   month,
   day,
-}: {
-  month: string;
-  day: string;
-}): Promise<Day> {
-  const date = `${month}-${day}`;
+}: MonthParams & { day: string }): Promise<Day> {
+  const date = `${year}-${month}-${day}`;
   if (parseDay(date) === undefined) notFound();
   return inHistory(date, await getToday()) ?? notFound();
 }
 
-/** The month param, if time travel reaches its first day. */
-export const toMonth = async (param: string): Promise<Month> =>
-  monthOf(await toDay({ month: param, day: "01" }));
+/** The month's params, if time travel reaches its first day. */
+export const toMonth = async (params: MonthParams): Promise<Month> =>
+  monthOf(await toDay({ ...params, day: "01" }));

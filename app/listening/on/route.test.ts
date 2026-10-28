@@ -13,6 +13,6 @@ describe("GET /listening/on", () => {
     const response = await GET();
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/listening/on/2025-10-28");
+    expect(response.headers.get("location")).toBe("/listening/on/2025/10/28");
   });
 });

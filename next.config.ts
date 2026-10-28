@@ -13,21 +13,6 @@ const nextConfig: NextConfig = {
   experimental: { turbopackRustReactCompiler: true },
   // Last.fm's CDN 404s some resized covers in some regions, so Next resizes the original.
   images: { remotePatterns: [new URL(`${config.lastfmCoverCdn}**`)] },
-  // The folders' own path would show each day twice.
-  redirects: async () => [
-    {
-      source: "/listening/on/:month(\\d{4}-\\d{2})/:day(\\d{2})",
-      destination: "/listening/on/:month-:day",
-      permanent: true,
-    },
-  ],
-  // A day's month is its own segment, so moving between its days keeps the month's charts.
-  rewrites: async () => [
-    {
-      source: "/listening/on/:month(\\d{4}-\\d{2})-:day(\\d{2})",
-      destination: "/listening/on/:month/:day",
-    },
-  ],
 };
 
 export default nextConfig;

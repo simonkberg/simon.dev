@@ -36,7 +36,7 @@ vi.mock(import("@/actions/listening"), () => ({
 
 describe("generateStaticParams", () => {
   it("prerenders the first month scrobbled", () => {
-    expect(generateStaticParams()).toEqual([{ month: "2007-12" }]);
+    expect(generateStaticParams()).toEqual([{ year: "2007", month: "12" }]);
   });
 });
 
@@ -45,7 +45,7 @@ describe("MonthLayout", () => {
     await act(async () =>
       render(
         await MonthLayout({
-          params: Promise.resolve({ month: "2012-10" }),
+          params: Promise.resolve({ year: "2012", month: "10" }),
           children: <p>The day</p>,
         }),
       ),
@@ -61,7 +61,7 @@ describe("MonthLayout", () => {
   it("turns away a month time travel doesn't reach", async () => {
     await expect(
       MonthLayout({
-        params: Promise.resolve({ month: "2026-11" }),
+        params: Promise.resolve({ year: "2026", month: "11" }),
         children: null,
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Route } from "next";
 import { useParams, useRouter } from "next/navigation";
 import {
   createContext,
@@ -15,8 +14,7 @@ import {
 
 import { type Day, monthOf } from "@/lib/dates";
 
-// Served by the rewrite in next.config.ts, which typed routes don't read.
-export const href = (day: Day) => `/listening/on/${day}` as Route;
+import { href } from "../href";
 
 interface Travel {
   /** The day in the URL, unchecked. */
@@ -46,8 +44,12 @@ const SCRUB_MS = 300;
 
 /** Where the page is travelling, shared by the tape and what dims while it moves. */
 export const TravelProvider = ({ children }: PropsWithChildren) => {
-  const { month, day } = useParams<{ month?: string; day?: string }>();
-  const date = month && day ? `${month}-${day}` : undefined;
+  const { year, month, day } = useParams<{
+    year?: string;
+    month?: string;
+    day?: string;
+  }>();
+  const date = year && month && day ? `${year}-${month}-${day}` : undefined;
   const router = useRouter();
   // The day being loaded, for as long as its navigation is.
   const [going, setGoing] = useOptimistic<Day | undefined>(undefined);

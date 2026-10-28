@@ -17,7 +17,11 @@ let navigation: ReturnType<typeof mockRouter>;
 const at = (date: string) =>
   vi
     .mocked(useParams)
-    .mockReturnValue({ month: date.slice(0, 7), day: date.slice(8) });
+    .mockReturnValue({
+      year: date.slice(0, 4),
+      month: date.slice(5, 7),
+      day: date.slice(8),
+    });
 
 vi.mock(import("next/navigation"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -111,11 +115,11 @@ describe("TimeTravel", () => {
 
     expect(screen.getByRole("link", { name: "Day before" })).toHaveAttribute(
       "href",
-      "/listening/on/2012-10-13",
+      "/listening/on/2012/10/13",
     );
     expect(screen.getByRole("link", { name: "Day after" })).toHaveAttribute(
       "href",
-      "/listening/on/2012-10-15",
+      "/listening/on/2012/10/15",
     );
   });
 
@@ -130,7 +134,10 @@ describe("TimeTravel", () => {
   });
 
   it.each([
-    ["a date the day's page turns away", { month: "2026-10", day: "29" }],
+    [
+      "a date the day's page turns away",
+      { year: "2026", month: "10", day: "29" },
+    ],
     ["no day's page", {}],
   ])("shows nothing for %s", async (_, params) => {
     vi.mocked(useParams).mockReturnValue(params);
@@ -155,7 +162,7 @@ describe("TimeTravel", () => {
     });
 
     expect(replace()).toHaveBeenCalledExactlyOnceWith(
-      "/listening/on/2008-02-14",
+      "/listening/on/2008/02/14",
       { scroll: false },
     );
   });
@@ -173,7 +180,7 @@ describe("TimeTravel", () => {
 
     await act(async () => fireEvent.pointerUp(window));
     expect(replace()).toHaveBeenCalledExactlyOnceWith(
-      "/listening/on/2008-02-14",
+      "/listening/on/2008/02/14",
       { scroll: false },
     );
   });
@@ -233,7 +240,7 @@ describe("TimeTravel", () => {
 
     await drag(13);
     const after = screen.getByRole("link", { name: "Day after" });
-    expect(after).toHaveAttribute("href", "/listening/on/2008-02-15");
+    expect(after).toHaveAttribute("href", "/listening/on/2008/02/15");
     await click(after);
     await act(async () => {
       vi.advanceTimersByTime(300);
@@ -241,7 +248,7 @@ describe("TimeTravel", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
     expect(replace()).toHaveBeenCalledExactlyOnceWith(
-      "/listening/on/2008-02-15",
+      "/listening/on/2008/02/15",
       { scroll: false },
     );
   });
@@ -261,7 +268,7 @@ describe("TimeTravel", () => {
       screen.getByRole("link", { name: "Oct 1: 10 plays" }),
     ).toHaveAttribute("aria-current", "date");
     expect(replace()).toHaveBeenCalledExactlyOnceWith(
-      "/listening/on/2012-10-01",
+      "/listening/on/2012/10/01",
       { scroll: false },
     );
   });
@@ -317,7 +324,7 @@ describe("TimeTravel", () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2008-09-14", {
+    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2008/09/14", {
       scroll: false,
     });
   });
@@ -335,7 +342,7 @@ describe("TimeTravel", () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2012-10-14", {
+    expect(replace()).toHaveBeenLastCalledWith("/listening/on/2012/10/14", {
       scroll: false,
     });
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
@@ -397,7 +404,7 @@ describe("TimeTravel", () => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(replace()).toHaveBeenCalledWith("/listening/on/2026-10-28", {
+    expect(replace()).toHaveBeenCalledWith("/listening/on/2026/10/28", {
       scroll: false,
     });
   });

@@ -27,7 +27,11 @@ vi.mock(import("@/actions/listening"), () => ({
 }));
 
 const params = (date: string) =>
-  Promise.resolve({ month: date.slice(0, 7), day: date.slice(8) });
+  Promise.resolve({
+    year: date.slice(0, 4),
+    month: date.slice(5, 7),
+    day: date.slice(8),
+  });
 const searchParams = Promise.resolve({});
 
 describe("generateStaticParams", () => {

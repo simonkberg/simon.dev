@@ -28,13 +28,13 @@ vi.mock(import("@/actions/listening"), () => ({
 }));
 
 const props = {
-  params: Promise.resolve({ month: "2012-10" }),
+  params: Promise.resolve({ year: "2012", month: "10" }),
   children: <p>The day</p>,
 };
 
 describe("generateStaticParams", () => {
   it("prerenders the first month scrobbled, as the day's layout does", () => {
-    expect(generateStaticParams()).toEqual([{ month: "2007-12" }]);
+    expect(generateStaticParams()).toEqual([{ year: "2007", month: "12" }]);
   });
 });
 
@@ -45,7 +45,7 @@ describe("MonthDaysLayout", () => {
     expect(getDailyScrobbles).toHaveBeenCalledWith("2012-10");
     expect(
       screen.getByRole("link", { name: "Oct 1: 46 plays" }),
-    ).toHaveAttribute("href", "/listening/on/2012-10-01");
+    ).toHaveAttribute("href", "/listening/on/2012/10/01");
     expect(screen.getByText("The day")).toBeInTheDocument();
   });
 
