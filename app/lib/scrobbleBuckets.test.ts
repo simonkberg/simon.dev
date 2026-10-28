@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  periodStart,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -73,6 +74,14 @@ describe("scrobbleBuckets", () => {
       from: new Date("2025-11-30T23:00:00Z"),
       to: new Date("2025-12-31T23:00:00Z"),
     });
+  });
+});
+
+describe("periodStart", () => {
+  it("should start where the period's first bucket does", () => {
+    expect(periodStart("3month", now)).toEqual(
+      scrobbleBuckets("3month", now)[0]?.from,
+    );
   });
 });
 

@@ -20,6 +20,7 @@ import {
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
+  periodStart,
   sameDayBuckets,
   scrobbleBuckets,
   yearBuckets,
@@ -71,9 +72,8 @@ const TOP = 10;
 
 /** What a period's top lists count: the chart's span, until now. */
 function periodRange(period: Period, now: Date) {
-  const from =
-    period === "overall" ? new Date(0) : scrobbleBuckets(period, now)[0]?.from;
-  return { from: from ?? now, to: now };
+  const from = period === "overall" ? new Date(0) : periodStart(period, now);
+  return { from, to: now };
 }
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
@@ -139,7 +139,10 @@ export type GetTopAlbumsResult =
   | { status: "error"; error: string };
 
 // Last.fm alone knows an album's cover and page, and they rarely change.
-async function getAlbumInfo(artist: string, album: string): Promise<AlbumInfo> {
+async function getAlbumInfo(
+  artist: string,
+  album: string,
+): Promise<AlbumInfo | undefined> {
   "use cache";
 
   try {
@@ -149,7 +152,7 @@ async function getAlbumInfo(artist: string, album: string): Promise<AlbumInfo> {
   } catch (err) {
     cacheLife("minutes");
     log.warn({ err, artist, album }, "Error fetching album info");
-    return { url: albumUrl(artist, album), cover: undefined };
+    return undefined;
   }
 }
 
@@ -162,13 +165,19 @@ export async function getTopAlbums(
     const now = new Date();
     const { from, to } = periodRange(period, now);
     const top = await topPlayed("album", from, to, TOP_ALBUMS);
-    const albums = await Promise.all(
-      ranked(top).map(async (album) => ({
-        ...album,
-        ...(await getAlbumInfo(album.artist, album.name)),
-      })),
+    const infos = await Promise.all(
+      top.map(({ artist, name }) => getAlbumInfo(artist, name)),
     );
-    cacheTopList(period, now);
+    const albums = ranked(top).map((album, index) => ({
+      ...album,
+      ...(infos[index] ?? {
+        url: albumUrl(album.artist, album.name),
+        cover: undefined,
+      }),
+    }));
+    // A missing cover retries soon, rather than for as long as the list lasts.
+    if (infos.includes(undefined)) cacheLife("minutes");
+    else cacheTopList(period, now);
     return { status: "ok", albums };
   } catch (err) {
     cacheLife("seconds");

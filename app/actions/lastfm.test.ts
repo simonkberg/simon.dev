@@ -227,7 +227,7 @@ describe("top lists", () => {
       });
     });
 
-    it("should link an album Last.fm can't describe, without a cover", async () => {
+    it("should link an album Last.fm can't describe, and retry it soon", async () => {
       const mockError = new Error("Album not found");
       vi.mocked(topPlayed).mockResolvedValue([
         played("Bloom", "Beach House", 40),
@@ -250,6 +250,7 @@ describe("top lists", () => {
         { err: mockError, artist: "Beach House", album: "Bloom" },
         "Error fetching album info",
       );
+      expect(cacheLife).toHaveBeenLastCalledWith("minutes");
     });
 
     it("should return error status when the query fails", async () => {
