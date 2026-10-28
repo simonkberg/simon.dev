@@ -5,13 +5,15 @@ import {
   bulk,
   type ChartItem,
   type ChartKind,
+  userGetLovedTracks,
   userGetScrobbles,
 } from "@/lib/lastfm";
 import { tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
-import { query } from "@/lib/turso";
+import { batch, query, type Statement, type Value } from "@/lib/turso";
 
 const PAGE = 200;
+const LOVED_PAGE = 1000;
 const SYNC_MS = 60_000;
 // Outlasts a sync, so the replica holding it keeps it from one to the next.
 const LOCK_TTL_MS = 3 * 60_000;
@@ -44,18 +46,26 @@ function fetchPage(params: {
   );
 }
 
+function insertRows(into: string, rows: Value[][]): Statement {
+  return {
+    sql: `INSERT OR IGNORE INTO ${into}
+          VALUES ${rows.map((row) => `(${row.map(() => "?").join(", ")})`).join(", ")}`,
+    args: rows.flat(),
+  };
+}
+
 async function store(tracks: Tracks): Promise<void> {
   if (tracks.length === 0) return;
-  await query(
-    `INSERT OR IGNORE INTO scrobbles (played_at, artist, track, album)
-     VALUES ${tracks.map(() => "(?, ?, ?, ?)").join(", ")}`,
-    tracks.flatMap(({ playedAt, artist, name, album }) => [
+  const { sql, args } = insertRows(
+    "scrobbles (played_at, artist, track, album)",
+    tracks.map(({ playedAt, artist, name, album }) => [
       playedAt.getTime(),
       artist,
       name,
       album,
     ]),
   );
+  await query(sql, args);
 }
 
 async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
@@ -96,6 +106,64 @@ async function catchUp(current: State): Promise<void> {
   await refetch(window);
   // What a refetch can't settle, like a same-second repeat or a deletion, so it isn't refetched each minute.
   current.drift = total - (await countStored());
+}
+
+function fetchLovedPage(page: number) {
+  return bulk(() =>
+    userGetLovedTracks(config.lastfmUsername, { limit: LOVED_PAGE, page }),
+  );
+}
+
+async function lovedTracks() {
+  const { totalPages, tracks } = await fetchLovedPage(1);
+  for (let page = 2; page <= totalPages; page++) {
+    tracks.push(...(await fetchLovedPage(page)).tracks);
+  }
+  return tracks;
+}
+
+type Love = { artist: string; track: string; lovedAt: number };
+
+const loveKey = ({ artist, track, lovedAt }: Love) =>
+  JSON.stringify([artist, track, lovedAt]);
+
+function missingFrom(loves: Love[], others: Love[]): Love[] {
+  const keys = new Set(others.map(loveKey));
+  return loves.filter((love) => !keys.has(loveKey(love)));
+}
+
+// Last.fm lists every loved track, so an unloved one goes too; only what changed is written.
+async function syncLoved(): Promise<void> {
+  const [tracks, { rows }] = await Promise.all([
+    lovedTracks(),
+    query("SELECT artist, track, loved_at FROM loved"),
+  ]);
+  const listed = tracks.map(({ artist, name, lovedAt }) => ({
+    artist,
+    track: name,
+    lovedAt: lovedAt.getTime(),
+  }));
+  const stored = rows.map((row) => ({
+    artist: String(row["artist"]),
+    track: String(row["track"]),
+    lovedAt: Number(row["loved_at"]),
+  }));
+  const writes: Statement[] = missingFrom(stored, listed).map(
+    ({ artist, track }) => ({
+      sql: "DELETE FROM loved WHERE artist = ? AND track = ?",
+      args: [artist, track],
+    }),
+  );
+  const added = missingFrom(listed, stored);
+  if (added.length > 0) {
+    writes.push(
+      insertRows(
+        "loved (artist, track, loved_at)",
+        added.map(({ artist, track, lovedAt }) => [artist, track, lovedAt]),
+      ),
+    );
+  }
+  if (writes.length > 0) await batch(writes);
 }
 
 /** Stores the page before `oldest`, and returns the oldest stored after it. */
@@ -190,7 +258,13 @@ export async function syncScrobbles(): Promise<boolean> {
   if (!(await tryLock(LOCK_NAME, current.owner, LOCK_TTL_MS))) return false;
 
   await catchUp(current);
-  if (current.backfilled) return false;
+  if (current.backfilled) {
+    // Once a minute, not between backfill pages; a failure leaves the scrobbles synced.
+    await syncLoved().catch((err: unknown) => {
+      log.warn({ err }, "Failed to sync loved tracks");
+    });
+    return false;
+  }
 
   const deadline = Date.now() + BACKFILL_SLICE_MS;
   let oldest = await storedEdge("MIN");

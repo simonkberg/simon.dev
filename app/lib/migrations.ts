@@ -52,6 +52,12 @@ export const MIGRATIONS: readonly string[] = [
     album TEXT NOT NULL,
     PRIMARY KEY (played_at, artist, track)
   )`,
+  `CREATE TABLE IF NOT EXISTS loved (
+    artist TEXT NOT NULL,
+    track TEXT NOT NULL,
+    loved_at INTEGER NOT NULL,
+    PRIMARY KEY (artist, track)
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

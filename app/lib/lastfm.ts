@@ -86,6 +86,10 @@ async function call<T extends z.ZodType>(
   return schema.parse(json);
 }
 
+const utsDateSchema = z
+  .object({ uts: z.string() })
+  .transform(({ uts }) => new Date(Number(uts) * 1000));
+
 const recentTrackSchema = z
   .object({
     name: z.string(),
@@ -100,12 +104,7 @@ const recentTrackSchema = z
     album: z
       .object({ "#text": z.string() })
       .transform((album) => album["#text"]),
-    date: z
-      .object({ uts: z.string() })
-      .optional()
-      .transform((data) =>
-        data ? new Date(Number(data.uts) * 1000) : undefined,
-      ),
+    date: utsDateSchema.optional(),
     loved: z
       .union([z.literal("0"), z.literal("1")])
       .optional()
@@ -342,6 +341,40 @@ export async function userGetScrobbles(
     limit: params.limit,
     page: params.page ?? 1,
     ...rangeParams(params),
+  });
+}
+
+const userGetLovedTracksResponseSchema = z
+  .object({
+    lovedtracks: z.object({
+      track: oneOrMany(
+        z
+          .object({
+            name: z.string(),
+            artist: z.object({ name: z.string() }),
+            date: utsDateSchema,
+          })
+          .transform(({ name, artist, date }) => ({
+            name,
+            artist: artist.name,
+            lovedAt: date,
+          })),
+      ),
+      "@attr": z.object({ totalPages: z.string().transform(Number) }),
+    }),
+  })
+  .transform(({ lovedtracks }) => ({
+    totalPages: lovedtracks["@attr"].totalPages,
+    tracks: lovedtracks.track,
+  }));
+
+export async function userGetLovedTracks(
+  user: string,
+  params: { limit: number; page: number },
+) {
+  return call("user.getlovedtracks", userGetLovedTracksResponseSchema, {
+    user,
+    ...params,
   });
 }
 
