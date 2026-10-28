@@ -378,6 +378,15 @@ describe("TimeTravel", () => {
     expect(replace()).toHaveBeenCalledOnce();
   });
 
+  it("keeps the date of a followed link's day while it loads", async () => {
+    await renderTape();
+    await click(screen.getByRole("link", { name: "Day after" }));
+
+    await drag(13);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
+  });
+
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
     at("2025-10-30");

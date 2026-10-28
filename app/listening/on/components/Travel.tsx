@@ -23,6 +23,8 @@ interface Travel {
   date: string | undefined;
   /** Where a drag or link is taking the page, until that day's page arrives. */
   target: Day | undefined;
+  /** The day a followed link or let-go drag is loading, which a new drag keeps the date of. */
+  going: Day | undefined;
   /** Follows a day's link, in place of Link's own navigation. */
   travel: (event: { preventDefault: () => void }, to: Day) => void;
   /** Moves to a day the tape is on; `held` waits for `release` to go there. */
@@ -33,6 +35,7 @@ interface Travel {
 export const TravelContext = createContext<Travel>({
   date: undefined,
   target: undefined,
+  going: undefined,
   travel: () => {},
   scrub: () => {},
   release: () => {},
@@ -99,6 +102,7 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
       value={{
         date,
         target: shown === date ? undefined : shown,
+        going,
         travel,
         scrub,
         release,

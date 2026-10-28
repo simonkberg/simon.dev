@@ -86,7 +86,7 @@ export const TimeTravel = ({
   const today = use(todayPromise);
   const counts = use(months);
   const tops = use(years);
-  const { date, target, scrub, release } = use(TravelContext);
+  const { date, target, going, scrub, release } = use(TravelContext);
   // While a drag is held, the listeners waiting for it to be let go.
   const held = useRef<AbortController>(undefined);
   useEffect(() => () => held.current?.abort(), []);
@@ -103,7 +103,7 @@ export const TimeTravel = ({
   const at = monthIndex(shown);
   // The last month is today's, which ends today.
   const travelTo = (index: number) => {
-    const next = dayInMonth(index, day);
+    const next = dayInMonth(index, going ?? day);
     return next > today ? today : next;
   };
   const max = Math.max(1, ...counts.map(({ count }) => count));
