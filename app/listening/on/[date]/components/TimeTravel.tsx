@@ -48,17 +48,22 @@ function eras(years: readonly BucketTopArtist[], months: number): Era[] {
 
 const href = (day: Day) => `/listening/on/${day}` as const;
 
-const Step = ({
-  to,
-  label,
-  glyph,
-}: {
-  to?: Day;
+interface StepProps {
+  to: Day | undefined;
   label: string;
   glyph: string;
-}) =>
+  onClick: () => void;
+}
+
+const Step = ({ to, label, glyph, onClick }: StepProps) =>
   to ? (
-    <Link href={href(to)} replace scroll={false} aria-label={label}>
+    <Link
+      href={href(to)}
+      replace
+      scroll={false}
+      aria-label={label}
+      onClick={onClick}
+    >
       {glyph}
     </Link>
   ) : (
@@ -103,8 +108,10 @@ export const TimeTravel = ({
   const plays = dayCounts?.[dayOfMonth - 1]?.count;
   const runs = tops ? eras(tops, counts.length) : [];
   const era = runs.find(({ first, last }) => at >= first && at <= last);
-  const before = addDays(day, -1);
-  const after = addDays(day, 1);
+  const before = addDays(shown, -1);
+  const after = addDays(shown, 1);
+  // A step during a drag goes from the day dragged to, instead of the drag.
+  const cancelScrub = () => clearTimeout(timer.current);
 
   const scrub = (index: number) => {
     setScrubbed(index);
@@ -134,12 +141,14 @@ export const TimeTravel = ({
           to={before >= firstDay ? before : undefined}
           label="Day before"
           glyph="‹"
+          onClick={cancelScrub}
         />
         <output>{fullDayLabel(shown)}</output>
         <Step
           to={after <= today ? after : undefined}
           label="Day after"
           glyph="›"
+          onClick={cancelScrub}
         />
         {scrubbed === undefined && plays !== undefined && (
           <span className="time-travel-plays">{formatPlays(plays)}</span>

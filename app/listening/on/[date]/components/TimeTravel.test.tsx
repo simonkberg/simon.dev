@@ -124,6 +124,23 @@ describe("TimeTravel", () => {
     );
   });
 
+  it("steps from the day a drag is on, instead of the drag", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+      target: { value: "13" },
+    });
+    const after = screen.getByRole("link", { name: "Day after" });
+    fireEvent.click(after);
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(after).toHaveAttribute("href", "/listening/on/2008-02-15");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
     await renderTape("2025-10-30");
