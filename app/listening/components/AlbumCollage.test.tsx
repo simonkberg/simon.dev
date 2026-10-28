@@ -34,13 +34,16 @@ describe("AlbumCollage", () => {
     }
   });
 
-  it("leaves a cover's tile empty when the album has no art", async () => {
+  it("gives an album without art a sleeve of its name", async () => {
     await renderCollage(albums);
 
     const link = screen.getByRole("link", {
       name: "Stuff Like That There by Yo La Tengo on Last.fm",
     });
     expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
+    expect(link.querySelector(".cover-sleeve")).toHaveTextContent(
+      "Stuff Like That ThereYo La Tengo",
+    );
   });
 
   it("pads a short list with empty tiles to fill the grid", async () => {

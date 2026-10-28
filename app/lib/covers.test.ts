@@ -122,6 +122,10 @@ describe("warmCovers", () => {
 describe("inlineCover", () => {
   const cover = `${config.lastfmCoverCdn}first.png`;
 
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+  });
+
   it("inlines the 1x resize in the upload's own format", async () => {
     server.use(
       http.get(`${origin}/_next/image`, ({ request }) => {
@@ -142,15 +146,37 @@ describe("inlineCover", () => {
     expect(cacheLife).toHaveBeenCalledWith("hours");
   });
 
-  it("caches a failed resize briefly", async () => {
+  it("asks for a failed resize again", async () => {
+    let failures = 1;
     server.use(
-      http.get(
-        `${origin}/_next/image`,
-        () => new HttpResponse(null, { status: 504 }),
+      http.get(`${origin}/_next/image`, () =>
+        failures-- > 0
+          ? new HttpResponse(null, { status: 504 })
+          : HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
+              headers: { "content-type": "image/jpeg" },
+            }),
       ),
     );
 
-    await expect(inlineCover(cover, 0)).resolves.toBeUndefined();
+    const inlined = inlineCover(cover, 0);
+    await vi.runAllTimersAsync();
+
+    await expect(inlined).resolves.toBe("data:image/jpeg;base64,AQ==");
+  });
+
+  it("caches a resize briefly once its retries fail", async () => {
+    server.use(
+      http.get(`${origin}/_next/image`, () => {
+        requests.push(new Request(origin));
+        return new HttpResponse(null, { status: 504 });
+      }),
+    );
+
+    const inlined = inlineCover(cover, 0);
+    await vi.runAllTimersAsync();
+
+    await expect(inlined).resolves.toBeUndefined();
+    expect(requests).toHaveLength(3);
     expect(cacheLife).toHaveBeenCalledWith("seconds");
     expect(log.warn).toHaveBeenCalledWith(
       { err: new Error("Cover responded 504"), path: coverUrls(cover, 0)[0] },

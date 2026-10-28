@@ -116,6 +116,8 @@ describe("listeningCard", () => {
       "",
       `url("data:${cover("fourth")}")`,
     ]);
+    expect(screen.getByText("Coverless")).toBeInTheDocument();
+    expect(screen.getByText("Torquil")).toBeInTheDocument();
   });
 
   it("cuts a top artist's name that would run into the covers", async () => {

@@ -191,12 +191,29 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => (
       height: size,
       flexShrink: 0,
       border: `1px solid ${color.rule}`,
-      ...(album.image && {
-        backgroundImage: `url(${album.image})`,
-        backgroundSize: "100% 100%",
-      }),
+      ...(album.image
+        ? {
+            backgroundImage: `url(${album.image})`,
+            backgroundSize: "100% 100%",
+          }
+        : {
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: size / 16,
+            fontSize: size >= coverSize ? 24 : 11,
+            lineHeight: 1.25,
+            backgroundColor: color.wash,
+          }),
     }}
   >
+    {!album.image && (
+      <>
+        <span style={{ fontWeight: 700, color: color.ink, lineClamp: 3 }}>
+          {album.name}
+        </span>
+        <span style={{ color: color.muted, lineClamp: 2 }}>{album.artist}</span>
+      </>
+    )}
     <span
       style={{
         position: "absolute",

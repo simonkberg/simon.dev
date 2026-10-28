@@ -135,6 +135,8 @@
   --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
+  --sleeve-padding: 0.5lh 1ch;
+  --sleeve-name: inherit;
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -2827,6 +2829,7 @@ tbody tr:hover {
   --cover-threshold-ease: cubic-bezier(1, 0, 1, 0);
   position: relative;
   display: block;
+  container-type: inline-size;
   aspect-ratio: 1;
   overflow: hidden;
   background: var(--cover-bg);
@@ -2843,7 +2846,7 @@ tbody tr:hover {
     transition: filter 0.2s linear;
   }
 
-  &:has(img)::after {
+  &:has(.cover-art:not([data-failed]))::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -2902,6 +2905,40 @@ tbody tr:hover {
     mix-blend-mode: var(--cover-grain-blend);
     transition: opacity 0.2s var(--cover-grain-ease);
   }
+}
+
+.cover-art[data-failed] {
+  visibility: hidden;
+}
+
+/* Stands in for a cover that is missing or failed to load, sized to its tile. */
+.cover-sleeve {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--sleeve-padding);
+  font-size: clamp(0.75rem, 7cqi, 1.25rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.sleeve-name {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  font-weight: bold;
+  color: var(--sleeve-name);
+}
+
+.sleeve-artist {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
 }
 
 .cover-rank {
