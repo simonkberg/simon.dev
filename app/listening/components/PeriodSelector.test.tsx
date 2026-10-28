@@ -9,7 +9,11 @@ describe("PeriodSelector", () => {
   it("should render all period options", () => {
     render(<PeriodSelector current="overall" />);
 
-    for (const label of [...Object.values(periodLabels), "on this day"]) {
+    for (const label of [
+      ...Object.values(periodLabels),
+      "on this day",
+      "time travel",
+    ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });
@@ -28,6 +32,7 @@ describe("PeriodSelector", () => {
     ["7day", "all time", "/listening"],
     ["overall", "on this day", "/listening/on-this-day"],
     ["on-this-day", "1 year", "/listening/12month"],
+    ["overall", "time travel", "/listening/on"],
   ] as const)("on %s, should link %s to %s", (current, label, href) => {
     render(<PeriodSelector current={current} />);
 

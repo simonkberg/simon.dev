@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  monthBuckets,
+  monthDayBuckets,
   periodStart,
   sameDayBuckets,
   scrobbleBuckets,
@@ -106,6 +108,41 @@ describe("yearBuckets", () => {
         to: new Date("2026-12-31T23:00:00Z"),
       },
     ]);
+  });
+});
+
+describe("monthBuckets", () => {
+  it("should run from January of the first year to this month", () => {
+    const buckets = monthBuckets(now);
+
+    expect(buckets).toHaveLength((2026 - 2007) * 12 + 10);
+    expect(buckets.at(0)).toEqual({
+      label: "Jan 2007",
+      from: new Date("2006-12-31T23:00:00Z"),
+      to: new Date("2007-01-31T23:00:00Z"),
+    });
+    expect(buckets.at(-1)?.label).toBe("Oct 2026");
+  });
+});
+
+describe("monthDayBuckets", () => {
+  it("should cover every day of a past month", () => {
+    const buckets = monthDayBuckets("2012-02", now);
+
+    expect(buckets).toHaveLength(29);
+    expect(buckets.at(0)).toEqual({
+      label: "Feb 1",
+      from: new Date("2012-01-31T23:00:00Z"),
+      to: new Date("2012-02-01T23:00:00Z"),
+    });
+    expect(buckets.at(-1)?.label).toBe("Feb 29");
+  });
+
+  it("should end today in the current month", () => {
+    const buckets = monthDayBuckets("2026-10", now);
+
+    expect(buckets).toHaveLength(23);
+    expect(buckets.at(-1)?.label).toBe("Oct 23");
   });
 });
 

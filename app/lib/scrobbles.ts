@@ -21,7 +21,7 @@ const LOCK_NAME = "scrobbles";
 // Long enough to backfill in bulk, short enough that new scrobbles still arrive each minute.
 const BACKFILL_SLICE_MS = 50_000;
 // Last.fm takes scrobbles up to two weeks old, so an offline player's arrive late.
-const LATE_MS = 14 * 24 * 60 * 60_000;
+export const LATE_MS = 14 * 24 * 60 * 60_000;
 
 type Page = Awaited<ReturnType<typeof userGetScrobbles>>;
 type Tracks = Page["tracks"];
@@ -210,15 +210,16 @@ export async function countScrobbles(from: Date, to: Date): Promise<number> {
   return Number(rows[0]?.["count"]);
 }
 
-export type Play = { artist: string; track: string };
+export type Play = { playedAt: Date; artist: string; track: string };
 
 /** What played from `from` until `to`, oldest first. */
 export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   const { rows } = await query(
-    "SELECT artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
+    "SELECT played_at, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
     [from.getTime(), to.getTime()],
   );
   return rows.map((row) => ({
+    playedAt: new Date(Number(row["played_at"])),
     artist: String(row["artist"]),
     track: String(row["track"]),
   }));

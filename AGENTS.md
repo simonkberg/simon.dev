@@ -203,8 +203,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Scrobble charts:** the listening page counts each Stockholm calendar day, week, month or
   year in the scrobble mirror, and lanes under it follow each bar's top artist: a query per bar,
   lanes cached apart so a failure only drops them. Turso bills rows read, so a bar an hour past
-  its end is cached on its own for a day: the hourly chart rereads only recent bars, and it
-  regenerates as its current bar ends. A nested cache returns its error rather than throwing,
+  its end is cached on its own for a day, and for good once no late scrobble can reach it
+  (`LATE_MS`): the hourly chart rereads only recent bars, and it regenerates as its current bar ends. A nested cache returns its error rather than throwing,
   since a throw fails the prerender. The top tracks, artists and albums count the chart's span
   until now, cached hourly for the two shortest periods and until midnight for the rest. Only
   Last.fm knows an album's cover and page: album.getInfo, cached per album for a day. Last.fm
@@ -223,6 +223,15 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **On this day:** `/listening/on-this-day`, a tab beside the periods, reads today's Stockholm
   date in each past year from the scrobble mirror; the home page teases the busiest year
   through the same cached call.
+- **Time travel:** `/listening/on/YYYY/MM/DD`, the tab after it, draws a tape of every month
+  (the range input scrubs it, navigating once a drag is let go) zoomed to the day's month, its
+  plays and that month's tops. A month is a layout that its days keep: the month's tops and its
+  days (the `@days` slot) stay mounted as the day changes. The tape lives in the top layout,
+  reading the date with `useParams`; `TravelProvider` holds where a drag or link is going, and
+  `TravelPending` dims what still shows the old day or month. The segments block
+  (`instant = false`) rather than suspend, so the day before stays until the next is ready.
+  Build day links with `href()`. `/listening/on` is a route handler, so it answers a real 307
+  to a year back: a page's `redirect()` after `connection()` streams in a 200.
 - **Scrobble mirror:** `app/lib/scrobbles.ts` copies every Last.fm scrobble into Turso's
   `scrobbles`, keyed by second, artist and track since Last.fm gives them no id. One replica,
   holding the `scrobbles` lock, syncs each minute: when Last.fm's count for the last two
@@ -365,7 +374,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, top albums in `mocks/listening.ts`, the mocked gateway's listener in `mocks/gateway.ts`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, top albums in `mocks/listening.ts`, the mocked gateway's listener in `mocks/gateway.ts`, a router for Link and `useRouter` whose navigations stay pending until `arrive()` in `mocks/router.tsx`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.

@@ -3,12 +3,27 @@
 import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
+import { cacheUntil } from "@/lib/cacheUntil";
 import { TOP_ALBUMS } from "@/lib/covers";
-import { dayLabel, nextMidnight } from "@/lib/dates";
+import {
+  clockTime,
+  type Day,
+  type Month,
+  dayLabel,
+  dayStart,
+  inHistory,
+  localDay,
+  midnight,
+  monthOf,
+  nextMidnight,
+} from "@/lib/dates";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { type Period } from "@/lib/periods";
+import { isValidPeriod, type Period } from "@/lib/periods";
 import {
+  type ScrobbleBucket,
+  monthBuckets,
+  monthDayBuckets,
   periodStart,
   sameDayBuckets,
   scrobbleBuckets,
@@ -17,6 +32,7 @@ import {
 import {
   type ChartItem,
   countScrobbles,
+  LATE_MS,
   type Play,
   type Played,
   playsIn,
@@ -63,30 +79,56 @@ export type GetTopTracksResult =
 
 const TOP = 10;
 
-/** Where a period's top lists start counting: the chart's span, until now. */
-const periodFrom = (period: Period, now: Date) =>
-  period === "overall" ? new Date(0) : periodStart(period, now);
+function historyDay(value: string, now: Date): Day {
+  const day = inHistory(value, localDay(now));
+  if (day === undefined) throw new Error(`Not a day of the history: ${value}`);
+  return day;
+}
+
+/** A period until now, or a calendar month as "YYYY-MM". */
+export type Span = Period | Month;
+
+/** What a span's top lists count: a period's chart until now, or the whole month. */
+function spanRange(span: Span, now: Date) {
+  if (isValidPeriod(span)) {
+    const from = span === "overall" ? new Date(0) : periodStart(span, now);
+    return { from, to: now };
+  }
+  // Server actions take any string, and each one is its own cache entry.
+  const first = new Date(historyDay(`${span}-01`, now));
+  const [year, month] = [first.getUTCFullYear(), first.getUTCMonth()];
+  return { from: midnight(year, month, 1), to: midnight(year, month + 1, 1) };
+}
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
-function cacheTopList(period: Period, now: Date) {
-  if (period === "7day" || period === "1month") cacheLife("hours");
-  else cacheUntil(nextMidnight(now).getTime(), now);
+function cacheTopList(span: Span, to: Date, now: Date) {
+  if (cacheSettled(to.getTime(), now)) return;
+  if (!isValidPeriod(span) || span === "7day" || span === "1month") {
+    cacheLife("hours");
+  } else cacheUntil(nextMidnight(now).getTime(), now);
+}
+
+async function topIn<T>(
+  span: Span,
+  top: (from: Date, to: Date) => Promise<T>,
+): Promise<T> {
+  const now = new Date();
+  const { from, to } = spanRange(span, now);
+  const result = await top(from, to);
+  cacheTopList(span, to, now);
+  return result;
 }
 
 const ranked = <T>(items: readonly T[]): Ranked<T>[] =>
   items.map((item, index) => ({ ...item, rank: index + 1 }));
 
-export async function getTopTracks(
-  period: Period,
-): Promise<GetTopTracksResult> {
+export async function getTopTracks(span: Span): Promise<GetTopTracksResult> {
   "use cache";
 
   try {
-    const now = new Date();
     const tracks = ranked(
-      await topPlayed("track", periodFrom(period, now), now, TOP),
+      await topIn(span, (from, to) => topPlayed("track", from, to, TOP)),
     );
-    cacheTopList(period, now);
     return { status: "ok", tracks };
   } catch (err) {
     cacheLife("seconds");
@@ -101,15 +143,13 @@ export type GetTopArtistsResult =
   | { status: "ok"; artists: TopArtist[] }
   | { status: "error"; error: string };
 
-export async function getTopArtists(
-  period: Period,
-): Promise<GetTopArtistsResult> {
+export async function getTopArtists(span: Span): Promise<GetTopArtistsResult> {
   "use cache";
 
   try {
-    const now = new Date();
-    const artists = ranked(await topArtists(periodFrom(period, now), now, TOP));
-    cacheTopList(period, now);
+    const artists = ranked(
+      await topIn(span, (from, to) => topArtists(from, to, TOP)),
+    );
     return { status: "ok", artists };
   } catch (err) {
     cacheLife("seconds");
@@ -140,19 +180,13 @@ async function getAlbumInfo(artist: string, album: string): Promise<AlbumInfo> {
 }
 
 // Cached apart from the covers, so one Last.fm can't describe retries without rereading the plays.
-async function getTopAlbumPlays(period: Period): Promise<Played[] | undefined> {
+async function getTopAlbumPlays(span: Span): Promise<Played[] | undefined> {
   "use cache";
 
   try {
-    const now = new Date();
-    const top = await topPlayed(
-      "album",
-      periodFrom(period, now),
-      now,
-      TOP_ALBUMS,
+    return await topIn(span, (from, to) =>
+      topPlayed("album", from, to, TOP_ALBUMS),
     );
-    cacheTopList(period, now);
-    return top;
   } catch (err) {
     cacheLife("seconds");
     log.error({ err, action: "getTopAlbums" }, "Error fetching top albums");
@@ -160,12 +194,10 @@ async function getTopAlbumPlays(period: Period): Promise<Played[] | undefined> {
   }
 }
 
-export async function getTopAlbums(
-  period: Period,
-): Promise<GetTopAlbumsResult> {
+export async function getTopAlbums(span: Span): Promise<GetTopAlbumsResult> {
   "use cache";
 
-  const top = await getTopAlbumPlays(period);
+  const top = await getTopAlbumPlays(span);
   if (!top) {
     // Next refuses a nested short cache under an outer one without its own.
     cacheLife("seconds");
@@ -197,15 +229,6 @@ const periodBuckets = (period: Period, now: Date) =>
     ? yearBuckets(config.lastfmSince, now)
     : scrobbleBuckets(period, now);
 
-// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
-function cacheUntil(end: number, now: Date, maxSeconds = Infinity) {
-  const revalidate = Math.min(
-    maxSeconds,
-    Math.ceil((end - now.getTime()) / 1000),
-  );
-  cacheLife({ stale: 300, revalidate, expire: revalidate + 86_400 });
-}
-
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
@@ -213,12 +236,20 @@ type Settled<T> =
   | { status: "ok"; data: T }
   | { status: "error"; error: string };
 
+// An ended bar only changes by a late scrobble, and none arrive past LATE_MS.
+function cacheEnded(end: number, now: Date) {
+  if (end + LATE_MS <= now.getTime()) cacheLife("max");
+  else cacheLife("days");
+}
+
 // An error thrown in a nested cache fails the prerender, so it's returned for the chart to throw.
-async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
+async function settle<T>(
+  request: () => Promise<T>,
+  to: Date,
+): Promise<Settled<T>> {
   try {
     const data = await request();
-    // An ended bar only changes by a late scrobble.
-    cacheLife("days");
+    cacheEnded(to.getTime(), new Date());
     return { status: "ok", data };
   } catch (err) {
     cacheLife("seconds");
@@ -231,16 +262,25 @@ async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
 
 async function endedCount(from: Date, to: Date) {
   "use cache";
-  return settle(() => countScrobbles(from, to));
+  return settle(() => countScrobbles(from, to), to);
 }
 
 async function endedTopArtist(from: Date, to: Date) {
   "use cache";
-  return settle(() => topArtist(from, to));
+  return settle(() => topArtist(from, to), to);
 }
 
 // A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
 const SETTLE_MS = 60 * 60 * 1000;
+
+const hasSettled = (end: number, now: Date) => end + SETTLE_MS <= now.getTime();
+
+/** Caches what ended at `end` once it has settled, and says whether it had. */
+function cacheSettled(end: number, now: Date) {
+  const settled = hasSettled(end, now);
+  if (settled) cacheEnded(end, now);
+  return settled;
+}
 
 async function inBucket<T>(
   { from, to }: { from: Date; to: Date },
@@ -248,20 +288,26 @@ async function inBucket<T>(
   fresh: (from: Date, to: Date) => Promise<T>,
   ended: (from: Date, to: Date) => Promise<Settled<T>>,
 ): Promise<T> {
-  if (to.getTime() + SETTLE_MS > now.getTime()) return fresh(from, to);
+  if (!hasSettled(to.getTime(), now)) return fresh(from, to);
   const settled = await ended(from, to);
   if (settled.status === "error") throw new Error(settled.error);
   return settled.data;
 }
 
-export async function getScrobbles(
-  period: Period,
-): Promise<GetScrobblesResult> {
-  "use cache";
+// A chart that has settled only changes by a late scrobble; one still under way regenerates as a bar ends.
+function cacheChart(buckets: readonly { to: Date }[], now: Date) {
+  const end = chartEnd(buckets);
+  if (!cacheSettled(end, now))
+    cacheUntil(end > now.getTime() ? end : end + SETTLE_MS, now, 3600);
+}
 
+async function countBuckets(
+  bucketsAt: (now: Date) => readonly ScrobbleBucket[],
+  action: string,
+): Promise<GetScrobblesResult> {
   try {
     const now = new Date();
-    const buckets = periodBuckets(period, now);
+    const buckets = bucketsAt(now);
     const scrobbles = await Promise.all(
       buckets.map(async (bucket) => ({
         label: bucket.label,
@@ -269,13 +315,38 @@ export async function getScrobbles(
         current: bucket.to > now,
       })),
     );
-    cacheUntil(chartEnd(buckets), now, 3600);
+    cacheChart(buckets, now);
     return { status: "ok", scrobbles };
   } catch (err) {
     cacheLife("seconds");
-    log.error({ err, action: "getScrobbles" }, "Error fetching scrobbles");
+    log.error({ err, action }, "Error fetching scrobbles");
     return { status: "error", error: "Failed to fetch scrobbles" };
   }
+}
+
+export async function getScrobbles(
+  period: Period,
+): Promise<GetScrobblesResult> {
+  "use cache";
+  return countBuckets((now) => periodBuckets(period, now), "getScrobbles");
+}
+
+/** Every month's scrobbles since the first. */
+export async function getScrobbleMonths(): Promise<GetScrobblesResult> {
+  "use cache";
+  return countBuckets(monthBuckets, "getScrobbleMonths");
+}
+
+/** The scrobbles on each day of a "YYYY-MM" month, up to today. */
+export async function getDailyScrobbles(
+  month: Month,
+): Promise<GetScrobblesResult> {
+  "use cache";
+  return countBuckets(
+    // Server actions take any string, and each one is its own cache entry.
+    (now) => monthDayBuckets(monthOf(historyDay(`${month}-01`, now)), now),
+    "getDailyScrobbles",
+  );
 }
 
 export interface BucketTopArtist {
@@ -302,7 +373,7 @@ export async function getTopArtistByBucket(
         artist: await inBucket(bucket, now, topArtist, endedTopArtist),
       })),
     );
-    cacheUntil(chartEnd(buckets), now, 3600);
+    cacheChart(buckets, now);
     return { status: "ok", buckets: artists };
   } catch (err) {
     cacheLife("seconds");
@@ -315,7 +386,7 @@ export async function getTopArtistByBucket(
 }
 
 // The day's most played artist and their most played track, earliest first on ties.
-export type TopOfDay = Play;
+export type TopOfDay = Pick<Play, "artist" | "track">;
 
 export type PlayedYear = { year: string; count: number; top: TopOfDay };
 
@@ -370,5 +441,40 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
     cacheLife("seconds");
     log.error({ err, action: "getOnThisDay" }, "Error fetching on this day");
     return { status: "error", error: "Failed to fetch on this day" };
+  }
+}
+
+export type DayPlay = {
+  name: string;
+  artist: string;
+  // Stockholm's wall clock, like "16:27".
+  time: string;
+};
+
+export type GetDayPlaysResult =
+  | { status: "ok"; plays: DayPlay[] }
+  | { status: "error"; error: string };
+
+/** What played on a "YYYY-MM-DD" Stockholm date, oldest first. */
+export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
+  "use cache";
+
+  try {
+    const now = new Date();
+    const to = dayStart(historyDay(date, now), 1);
+    const played = await playsIn(dayStart(date), to);
+    if (!cacheSettled(to.getTime(), now)) cacheLife("minutes");
+    return {
+      status: "ok",
+      plays: played.map(({ track, artist, playedAt }) => ({
+        name: track,
+        artist,
+        time: clockTime(playedAt).slice(11),
+      })),
+    };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getDayPlays", date }, "Error fetching day plays");
+    return { status: "error", error: "Failed to fetch the day's plays" };
   }
 }

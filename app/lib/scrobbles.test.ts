@@ -363,8 +363,8 @@ describe("playsIn", () => {
     );
 
     await expect(playsIn(new Date(1000), new Date(2000))).resolves.toEqual([
-      { artist: "A", track: "T" },
-      { artist: "B", track: "U" },
+      { playedAt: new Date(1000), artist: "A", track: "T" },
+      { playedAt: new Date(1500), artist: "B", track: "U" },
     ]);
   });
 });

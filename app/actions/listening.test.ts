@@ -13,8 +13,11 @@ import {
 } from "@/lib/scrobbles";
 
 import {
+  getDayPlays,
+  getDailyScrobbles,
   getRecentTracks,
   getOnThisDay,
+  getScrobbleMonths,
   getScrobbles,
   getTopArtistByBucket,
   getTopAlbums,
@@ -31,6 +34,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
 
 vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
+  LATE_MS: 14 * 24 * 60 * 60_000,
   playsIn: vi.fn(),
   recentPlays: vi.fn(),
   topArtist: vi.fn(),
@@ -127,6 +131,33 @@ describe("top lists", () => {
           { name: "Track 2", artist: "Artist 2", playcount: 50, rank: 2 },
         ],
       });
+    });
+
+    it.each([
+      ["2012-10", "max", "2012-09-30T22:00:00Z", "2012-10-31T23:00:00Z"],
+      ["2026-10", "hours", "2026-09-30T22:00:00Z", "2026-10-31T23:00:00Z"],
+    ] as const)(
+      "should count all of %s's Stockholm month, cached for %s",
+      async (month, life, from, to) => {
+        vi.mocked(topPlayed).mockResolvedValue([]);
+
+        await getTopTracks(month);
+
+        expect(topPlayed).toHaveBeenCalledExactlyOnceWith(
+          "track",
+          new Date(from),
+          new Date(to),
+          10,
+        );
+        expect(cacheLife).toHaveBeenCalledExactlyOnceWith(life);
+      },
+    );
+
+    it("should refuse a month outside the history without querying", async () => {
+      const result = await getTopTracks("2026-11");
+
+      expect(result).toMatchObject({ status: "error" });
+      expect(topPlayed).not.toHaveBeenCalled();
     });
 
     it("should return error status when the query fails", async () => {
@@ -295,6 +326,15 @@ describe("getScrobbles", () => {
     });
   });
 
+  it("should keep a bucket for good once no late scrobble can reach it", async () => {
+    await getScrobbles("1month");
+
+    expect(vi.mocked(cacheLife).mock.calls.slice(0, 16)).toEqual([
+      ...Array.from({ length: 15 }, () => ["max"]),
+      ["days"],
+    ]);
+  });
+
   it("should regenerate when the current bucket ends", async () => {
     vi.setSystemTime(new Date("2026-10-23T21:30:00Z"));
 
@@ -363,6 +403,150 @@ describe("getScrobbles", () => {
   );
 });
 
+describe("getScrobbleMonths", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+    vi.mocked(countScrobbles).mockResolvedValue(42);
+  });
+
+  it("should count every month since the first year's January", async () => {
+    const result = await getScrobbleMonths();
+
+    expect(countScrobbles).toHaveBeenCalledTimes((2026 - 2007) * 12 + 10);
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Jan 2007", count: 42, current: false },
+        { label: "Oct 2026", count: 42, current: true },
+      ]),
+    });
+  });
+});
+
+describe("getDailyScrobbles", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+    vi.mocked(countScrobbles).mockResolvedValue(42);
+  });
+
+  it("should count a past month's days, kept for good", async () => {
+    const result = await getDailyScrobbles("2012-10");
+
+    expect(countScrobbles).toHaveBeenCalledTimes(31);
+    expect(cacheLife).toHaveBeenLastCalledWith("max");
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Oct 31", count: 42, current: false },
+      ]),
+    });
+  });
+
+  it("should regenerate a month that ended within the hour once it settles", async () => {
+    vi.setSystemTime(new Date("2026-10-31T23:30:00Z"));
+
+    await getDailyScrobbles("2026-10");
+
+    expect(cacheLife).toHaveBeenLastCalledWith({
+      stale: 300,
+      revalidate: 1800,
+      expire: 1800 + 86_400,
+    });
+  });
+
+  it("should refuse a month outside the history without querying", async () => {
+    const result = await getDailyScrobbles("2026-11");
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch scrobbles",
+    });
+    expect(countScrobbles).not.toHaveBeenCalled();
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+  });
+
+  it("should return error status when a count fails", async () => {
+    const mockError = new Error("Database error");
+    vi.mocked(countScrobbles).mockRejectedValue(mockError);
+
+    const result = await getDailyScrobbles("2026-10");
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch scrobbles",
+    });
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getDailyScrobbles" },
+      "Error fetching scrobbles",
+    );
+  });
+});
+
+describe("getDayPlays", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
+  });
+
+  it("should list the Stockholm day's plays with their wall-clock time", async () => {
+    vi.mocked(playsIn).mockResolvedValue([
+      {
+        playedAt: new Date("2012-10-14T14:27:43Z"),
+        artist: "The Magnetic Fields",
+        track: "Old Fools",
+      },
+    ]);
+
+    const result = await getDayPlays("2012-10-14");
+
+    expect(playsIn).toHaveBeenCalledExactlyOnceWith(
+      new Date("2012-10-13T22:00:00Z"),
+      new Date("2012-10-14T22:00:00Z"),
+    );
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("max");
+    expect(result).toEqual({
+      status: "ok",
+      plays: [
+        { name: "Old Fools", artist: "The Magnetic Fields", time: "16:27" },
+      ],
+    });
+  });
+
+  it("should reread today's plays every few minutes", async () => {
+    vi.mocked(playsIn).mockResolvedValue([]);
+
+    await getDayPlays("2026-10-23");
+
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+  });
+
+  it("should refuse a day outside the history without querying", async () => {
+    const result = await getDayPlays("2026-10-24");
+
+    expect(result).toMatchObject({ status: "error" });
+    expect(playsIn).not.toHaveBeenCalled();
+  });
+
+  it("should return error status when the query fails", async () => {
+    const mockError = new Error("Database error");
+    vi.mocked(playsIn).mockRejectedValue(mockError);
+
+    const result = await getDayPlays("2012-10-14");
+
+    expect(result).toEqual({
+      status: "error",
+      error: "Failed to fetch the day's plays",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err: mockError, action: "getDayPlays", date: "2012-10-14" },
+      "Error fetching day plays",
+    );
+  });
+});
+
 describe("getTopArtistByBucket", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -413,7 +597,11 @@ describe("getTopArtistByBucket", () => {
 });
 
 describe("getOnThisDay", () => {
-  const played = (artist: string, track: string) => ({ artist, track });
+  const played = (artist: string, track: string) => ({
+    playedAt: new Date(0),
+    artist,
+    track,
+  });
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
