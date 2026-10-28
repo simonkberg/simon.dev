@@ -235,6 +235,10 @@ describe("syncScrobbles loved tracks", () => {
     ]);
     expect(batch).toHaveBeenCalledOnce();
     expect(vi.mocked(batch).mock.calls[0]?.[0]).toHaveLength(3);
+    expect(log.info).toHaveBeenCalledWith(
+      { added: 2, removed: 2 },
+      "Synced loved tracks",
+    );
   });
 
   it("should remove what was unloved on Last.fm", async () => {
@@ -260,6 +264,10 @@ describe("syncScrobbles loved tracks", () => {
     await syncScrobbles();
 
     expect(batch).not.toHaveBeenCalled();
+    expect(log.info).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "Synced loved tracks",
+    );
   });
 
   it("should still sync scrobbles when the loved tracks fail", async () => {
