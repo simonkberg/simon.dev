@@ -85,8 +85,15 @@ export const TimeTravel = ({
   const dayCounts = use(days);
   const router = useRouter();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // The month dragged to, until its page arrives and remounts this.
+  // The month dragged to, until its page arrives.
   const [scrubbed, setScrubbed] = useState<number>();
+  // Reset here rather than by remounting, which would drop the slider's focus.
+  const [shownDay, setShownDay] = useState(day);
+
+  if (day !== shownDay) {
+    setShownDay(day);
+    setScrubbed(undefined);
+  }
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -222,7 +229,12 @@ export const TimeTravel = ({
                     <span className="visually-hidden">{text}</span>
                   </span>
                 ) : (
-                  <Link href={href(date)} replace scroll={false}>
+                  <Link
+                    href={href(date)}
+                    replace
+                    scroll={false}
+                    onClick={cancelScrub}
+                  >
                     <span className="visually-hidden">{text}</span>
                   </Link>
                 )}

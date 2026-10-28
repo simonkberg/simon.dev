@@ -87,7 +87,6 @@ export default async function TimeTravelPage({ params }: TimeTravelPageProps) {
         </Heading>
         <Suspense fallback={<TimeTravelSkeleton />}>
           <TimeTravel
-            key={day}
             day={day}
             today={today}
             months={months}

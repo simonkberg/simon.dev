@@ -141,6 +141,45 @@ describe("TimeTravel", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("lets a clicked day win over a drag", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+      target: { value: "13" },
+    });
+    fireEvent.click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("keeps the slider focused as the drag's page arrives", async () => {
+    vi.useFakeTimers();
+    const props = {
+      today: "2026-10-28",
+      months: Promise.resolve(months),
+      years: Promise.resolve(years),
+      days: Promise.resolve(october),
+    } as const;
+    const { rerender } = await act(async () =>
+      render(<TimeTravel day="2012-10-14" {...props} />),
+    );
+    const slider = screen.getByRole("slider", { name: "Month" });
+    slider.focus();
+    fireEvent.change(slider, { target: { value: "13" } });
+
+    await act(async () => rerender(<TimeTravel day="2008-02-14" {...props} />));
+
+    expect(screen.getByRole("slider", { name: "Month" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
+    expect(
+      screen.getByRole("slider", { name: "Month" }).closest(".time-travel"),
+    ).not.toHaveAttribute("data-scrubbing");
+  });
+
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
     await renderTape("2025-10-30");
