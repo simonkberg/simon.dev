@@ -2917,8 +2917,11 @@ tbody tr:hover {
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  /* Safe, so a name too long for a small tile runs off its foot rather than under the rank. */
+  justify-content: safe flex-end;
+  overflow: hidden;
   padding: var(--sleeve-padding);
+  padding-top: 2lh;
   font-size: clamp(0.75rem, 7cqi, 1.25rem);
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -2939,6 +2942,16 @@ tbody tr:hover {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   color: var(--muted);
+}
+
+@container (width < 12rem) {
+  .sleeve-name {
+    -webkit-line-clamp: 2;
+  }
+
+  .sleeve-artist {
+    -webkit-line-clamp: 1;
+  }
 }
 
 .cover-rank {
