@@ -1760,10 +1760,6 @@ ul {
   span {
     color: var(--muted);
   }
-
-  time {
-    margin-inline-end: 1ch;
-  }
 }
 
 /* Lists */
