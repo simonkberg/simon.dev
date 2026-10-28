@@ -3,11 +3,12 @@ import { objectEntries } from "ts-extras";
 
 import { type Period, periodLabels } from "@/lib/periods";
 
-type Tab = Period | "on-this-day";
+type Tab = Period | "on-this-day" | "on";
 
 const tabs: readonly (readonly [Tab, string])[] = [
   ...objectEntries(periodLabels),
   ["on-this-day", "on this day"],
+  ["on", "time travel"],
 ];
 
 export interface PeriodSelectorProps {

@@ -120,6 +120,9 @@
   --lane-weight: 4px;
   --lane-hover-bg: var(--heat);
   --lane-hover-color: var(--accent);
+  --tape-bar: color-mix(in oklch, var(--muted) 55%, transparent);
+  --tape-hover: color-mix(in oklch, var(--accent) 60%, transparent);
+  --tape-era: var(--rule);
 
   --collage-gap: 0.75rem;
   --collage-bg: transparent;
@@ -497,6 +500,7 @@
   --cover-overlay: var(--cover-bg);
   --cover-blend: multiply;
   --lane-weight: 2px;
+  --tape-bar: color-mix(in oklch, var(--accent) 45%, transparent);
   --timeline-origin: "◇";
   --timeline-bar: "─";
   --flashback-rule: 1px solid var(--accent);
@@ -648,6 +652,8 @@
   --cover-frame: 1px solid var(--ink);
   --lane-hover-bg: var(--ink);
   --lane-hover-color: var(--ground);
+  --tape-bar: color-mix(in oklch, var(--muted) 60%, var(--ground));
+  --tape-era: var(--tape-bar);
   --timeline-bar: "█";
   --timeline-bar-color: var(--ink);
   --flashback-rule: 0.5ch solid var(--ink);
@@ -1505,6 +1511,257 @@ ul {
 
   &.placeholder .timeline-plays::before {
     content: none;
+  }
+}
+
+/* Time travel */
+
+.time-travel {
+  --tape-slot: calc(100% / var(--months));
+  container-type: inline-size;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-travel-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1ch;
+  margin-block-end: 1rem;
+
+  > a,
+  > span[aria-hidden] {
+    padding-inline: 0.5ch;
+    text-decoration: none;
+  }
+
+  > a {
+    color: var(--accent);
+  }
+
+  > span[aria-hidden] {
+    color: var(--rule);
+  }
+
+  > output {
+    font-weight: bold;
+  }
+}
+
+.time-travel-tape {
+  position: relative;
+  height: 4.5rem;
+  border-block-end: 1px solid var(--rule);
+
+  > ol {
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    flex: 1;
+    height: calc(var(--value) * 100%);
+    margin-inline: 0.5px;
+    background: var(--tape-bar);
+
+    &[data-active] {
+      background: var(--accent);
+    }
+  }
+
+  /* The whole tape is the slider; its thumb is the playhead drawn below. */
+  > input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+  }
+
+  &:has(> input:focus-visible) {
+    outline: var(--focus);
+    outline-offset: 0.4rem;
+  }
+}
+
+.time-travel-head {
+  position: absolute;
+  inset-block: -0.4rem 0;
+  left: calc(var(--tape-slot) * (var(--at) + 0.5));
+  border-inline-start: 1px solid var(--accent);
+  pointer-events: none;
+
+  &::before {
+    content: var(--stems-marker);
+    position: absolute;
+    top: -0.55em;
+    left: 0;
+    translate: -50% 0;
+    color: var(--accent);
+    font-size: 0.8em;
+  }
+}
+
+.time-travel-years {
+  position: relative;
+  height: 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--meta-size);
+
+  li {
+    position: absolute;
+    top: 0.35rem;
+    left: calc(var(--tape-slot) * var(--index));
+    translate: -50% 0;
+  }
+
+  /* The first year's label would hang past the tape's start. */
+  li:first-child {
+    translate: 0 0;
+  }
+
+  @container (width < 34rem) {
+    li[data-odd] {
+      display: none;
+    }
+  }
+}
+
+.time-travel-days {
+  display: grid;
+  grid-template-columns: repeat(var(--days), minmax(0, 1fr));
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    display: grid;
+    grid-template-rows: 3.5rem auto;
+  }
+
+  /* The day's bar, a link to it. */
+  > li > :first-child {
+    position: relative;
+    border-block-end: 1px solid var(--rule);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: auto 1px 0;
+      height: max(1px, calc(var(--value) * 100%));
+      background: var(--tape-bar);
+    }
+  }
+
+  > li > a:is(:hover, :focus-visible)::before {
+    background: var(--tape-hover);
+  }
+
+  > li[data-active] > :first-child::before {
+    background: var(--accent);
+  }
+}
+
+.time-travel-tick {
+  visibility: hidden;
+  padding-block-start: 0.35rem;
+  color: var(--muted);
+  font-size: var(--meta-size);
+  text-align: center;
+
+  [data-tick] > & {
+    visibility: visible;
+  }
+
+  [data-active] > & {
+    color: var(--accent);
+  }
+}
+
+/* While a drag or link waits for its day, what it wraps still shows the old one. */
+.time-travel-pending {
+  display: contents;
+
+  /* Its children take the place it gives up in the page's layout. */
+  > * {
+    grid-column: 1 / -1;
+    transition: opacity 0.15s;
+  }
+
+  &[data-pending] > * {
+    opacity: 0.4;
+  }
+}
+
+.time-travel-eras {
+  position: relative;
+  height: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: absolute;
+    inset-block: 0.15rem;
+    left: calc(var(--tape-slot) * var(--first) + 1px);
+    width: calc(var(--tape-slot) * (var(--last) - var(--first) + 1) - 2px);
+    background: var(--tape-era);
+
+    &[data-active] {
+      background: var(--accent);
+    }
+  }
+}
+
+/* Starts under its era, sliding left to fit on one line, and truncates past that. */
+.time-travel-era {
+  display: flex;
+  margin: 0.4rem 0 0;
+  color: var(--accent);
+  font-size: var(--meta-size);
+  white-space: nowrap;
+
+  &::before {
+    content: "";
+    flex: 0 1 calc(var(--tape-slot) * var(--first));
+    min-width: 0;
+  }
+
+  > span {
+    flex: none;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.day-plays {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 2 30ch;
+  column-gap: 4ch;
+  font-variant-numeric: tabular-nums;
+
+  > li {
+    break-inside: avoid;
+    padding-inline-start: 6ch;
+    text-indent: -6ch;
+  }
+
+  time,
+  span {
+    color: var(--muted);
   }
 }
 

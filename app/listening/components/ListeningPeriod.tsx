@@ -1,13 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  getScrobbles,
-  getTopArtistByBucket,
-  getTopAlbums,
-  getTopArtists,
-  getTopTracks,
-} from "@/actions/listening";
+import { getScrobbles, getTopArtistByBucket } from "@/actions/listening";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
@@ -17,15 +11,8 @@ import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
-import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
 import { ScrobbleChart, ScrobbleChartSkeleton } from "./ScrobbleChart";
-import { TopTable, TopTableSkeleton } from "./TopTable";
-
-const trackColumns = [
-  { label: "Track", key: "name" },
-  { label: "Artist", key: "artist" },
-] as const;
-const artistColumns = [{ label: "Artist", key: "name" }] as const;
+import { TopLists } from "./TopLists";
 
 export const periodMetadata = (period: Period): Metadata => ({
   title: `Listening - ${periodLabels[period]}`,
@@ -38,15 +25,6 @@ export function ListeningPeriod({ period }: { period: Period }) {
   );
   const topArtistByBucket = getTopArtistByBucket(period).then((result) =>
     result.status === "ok" ? result.buckets : undefined,
-  );
-  const topTracks = getTopTracks(period).then((result) =>
-    result.status === "ok" ? result.tracks : undefined,
-  );
-  const topArtists = getTopArtists(period).then((result) =>
-    result.status === "ok" ? result.artists : undefined,
-  );
-  const topAlbums = getTopAlbums(period).then((result) =>
-    result.status === "ok" ? result.albums : undefined,
   );
 
   return (
@@ -79,32 +57,7 @@ export function ListeningPeriod({ period }: { period: Period }) {
         </Suspense>
       </section>
 
-      <section>
-        <Heading level={2}>
-          Top Tracks <Subtitle>(Top 10)</Subtitle>
-        </Heading>
-        <Suspense fallback={<TopTableSkeleton columns={trackColumns} />}>
-          <TopTable rows={topTracks} noun="tracks" columns={trackColumns} />
-        </Suspense>
-      </section>
-
-      <section>
-        <Heading level={2}>
-          Top Artists <Subtitle>(Top 10)</Subtitle>
-        </Heading>
-        <Suspense fallback={<TopTableSkeleton columns={artistColumns} />}>
-          <TopTable rows={topArtists} noun="artists" columns={artistColumns} />
-        </Suspense>
-      </section>
-
-      <section>
-        <Heading level={2}>
-          Top Albums <Subtitle>(Top 10)</Subtitle>
-        </Heading>
-        <Suspense fallback={<AlbumCollageSkeleton />}>
-          <AlbumCollage albums={topAlbums} />
-        </Suspense>
-      </section>
+      <TopLists span={period} subtitle="Top 10" />
     </Page>
   );
 }
