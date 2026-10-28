@@ -173,6 +173,19 @@ describe("TimeTravel", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("lets go of a drag when a link to the shown day is clicked", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+
+    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+      target: { value: "13" },
+    });
+    fireEvent.click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
+    expect(screen.getByText("46 plays")).toBeInTheDocument();
+  });
+
   it("keeps the slider focused as the drag's page arrives", async () => {
     vi.useFakeTimers();
     const props = {

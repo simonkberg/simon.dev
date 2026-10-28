@@ -54,7 +54,7 @@ interface StepProps {
   to: Day | undefined;
   label: string;
   glyph: string;
-  onClick: () => void;
+  onClick: (to: Day) => void;
 }
 
 const Step = ({ to, label, glyph, onClick }: StepProps) =>
@@ -64,7 +64,7 @@ const Step = ({ to, label, glyph, onClick }: StepProps) =>
       replace
       scroll={false}
       aria-label={label}
-      onClick={onClick}
+      onClick={() => onClick(to)}
     >
       {glyph}
     </Link>
@@ -121,7 +121,11 @@ export const TimeTravel = ({
   const before = addDays(shown, -1);
   const after = addDays(shown, 1);
   // A step during a drag goes from the day dragged to, instead of the drag.
-  const cancelScrub = () => clearTimeout(timer.current);
+  const cancelScrub = (to: Day) => {
+    clearTimeout(timer.current);
+    // Following a link to the shown day changes no `day`, so let go of the drag here.
+    if (to === day) setScrubbed(undefined);
+  };
 
   const scrub = (index: number) => {
     setScrubbed(index);
@@ -233,7 +237,7 @@ export const TimeTravel = ({
                   replace
                   scroll={false}
                   aria-current={current ? "date" : undefined}
-                  onClick={cancelScrub}
+                  onClick={() => cancelScrub(date)}
                 >
                   <span className="visually-hidden">{text}</span>
                 </Link>
