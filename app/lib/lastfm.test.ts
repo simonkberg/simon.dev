@@ -10,6 +10,7 @@ import {
   bulk,
   getUserPlays,
   userGetChartInRange,
+  userGetLovedTracks,
   userGetRecentTracks,
   userGetScrobbles,
   userGetTopAlbums,
@@ -411,6 +412,45 @@ describe("bulk", () => {
     await Promise.all(calls);
 
     expect(most).toBe(4);
+  });
+});
+
+describe("userGetLovedTracks", () => {
+  it("should read a page of loved tracks and how many pages there are", async () => {
+    const params = lastfmReturns({
+      lovedtracks: {
+        track: [
+          {
+            name: "Test",
+            artist: { name: "Artist" },
+            date: { uts: "1609459200" },
+          },
+        ],
+        "@attr": { totalPages: "3" },
+      },
+    });
+
+    const loved = await userGetLovedTracks("testuser", {
+      limit: 1000,
+      page: 2,
+    });
+
+    expect(params()).toMatchObject({
+      method: "user.getlovedtracks",
+      user: "testuser",
+      limit: "1000",
+      page: "2",
+    });
+    expect(loved).toEqual({
+      totalPages: 3,
+      tracks: [
+        {
+          name: "Test",
+          artist: "Artist",
+          lovedAt: new Date("2021-01-01T00:00:00Z"),
+        },
+      ],
+    });
   });
 });
 

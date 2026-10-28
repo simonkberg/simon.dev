@@ -2,10 +2,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { userGetScrobbles } from "@/lib/lastfm";
+import { userGetLovedTracks, userGetScrobbles } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
-import { query } from "@/lib/turso";
+import { batch, query } from "@/lib/turso";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
@@ -23,6 +23,7 @@ vi.mock(import("@/lib/turso"), async () =>
 
 vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   ...(await importOriginal()),
+  userGetLovedTracks: vi.fn(async () => ({ totalPages: 1, tracks: [] })),
   userGetScrobbles: vi.fn(),
 }));
 
@@ -185,6 +186,92 @@ describe("syncScrobbles", () => {
     await expect(syncScrobbles()).resolves.toBe(false);
 
     expect(userGetScrobbles).not.toHaveBeenCalled();
+  });
+});
+
+describe("syncScrobbles loved tracks", () => {
+  const loved = (name: string, lovedAt = NOW) => ({
+    name,
+    artist: "Artist",
+    lovedAt: new Date(lovedAt),
+  });
+
+  async function storedLoved() {
+    const { rows } = await query(
+      "SELECT track, loved_at FROM loved ORDER BY track",
+    );
+    return rows.map((row) => [row["track"], row["loved_at"]]);
+  }
+
+  beforeEach(async () => {
+    lastfm = played(1);
+    vi.mocked(userGetScrobbles).mockImplementation(fakeLastfm);
+    // The backfill is done, so the loved tracks sync from here.
+    await syncScrobbles();
+    await query(
+      "INSERT INTO loved VALUES ('Artist', 'Kept', ?), ('Artist', 'Unloved', ?), ('Artist', 'Loved again', ?)",
+      [NOW, NOW, NOW],
+    );
+    vi.mocked(batch).mockClear();
+  });
+
+  it("should write only what changed in Last.fm's list, every page of it", async () => {
+    vi.mocked(userGetLovedTracks).mockImplementation(
+      async (_user, { page }) => ({
+        totalPages: 2,
+        tracks:
+          page === 1
+            ? [loved("Kept"), loved("Loved again", NOW + 1000)]
+            : [loved("New")],
+      }),
+    );
+
+    await syncScrobbles();
+
+    expect(await storedLoved()).toEqual([
+      ["Kept", NOW],
+      ["Loved again", NOW + 1000],
+      ["New", NOW],
+    ]);
+    expect(batch).toHaveBeenCalledOnce();
+    expect(vi.mocked(batch).mock.calls[0]?.[0]).toHaveLength(3);
+  });
+
+  it("should remove what was unloved on Last.fm", async () => {
+    vi.mocked(userGetLovedTracks).mockResolvedValue({
+      totalPages: 1,
+      tracks: [loved("Kept"), loved("Loved again")],
+    });
+
+    await syncScrobbles();
+
+    expect(await storedLoved()).toEqual([
+      ["Kept", NOW],
+      ["Loved again", NOW],
+    ]);
+  });
+
+  it("should write nothing while Last.fm lists the same", async () => {
+    vi.mocked(userGetLovedTracks).mockResolvedValue({
+      totalPages: 1,
+      tracks: [loved("Kept"), loved("Unloved"), loved("Loved again")],
+    });
+
+    await syncScrobbles();
+
+    expect(batch).not.toHaveBeenCalled();
+  });
+
+  it("should still sync scrobbles when the loved tracks fail", async () => {
+    const err = new Error("boom");
+    vi.mocked(userGetLovedTracks).mockRejectedValue(err);
+
+    await expect(syncScrobbles()).resolves.toBe(false);
+
+    expect(log.warn).toHaveBeenCalledWith(
+      { err },
+      "Failed to sync loved tracks",
+    );
   });
 });
 
