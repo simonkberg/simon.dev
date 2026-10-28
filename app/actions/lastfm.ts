@@ -14,9 +14,6 @@ import {
   TOP_ALBUMS,
   userGetRecentTracks,
   type UserGetRecentTracksResponse,
-  type UserGetTopAlbumsResponse,
-  type UserGetTopArtistsResponse,
-  type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import {
@@ -28,8 +25,10 @@ import {
 import {
   countScrobbles,
   type Play,
+  type Played,
   playsIn,
   topArtist,
+  topArtists,
   topPlayed,
 } from "@/lib/scrobbles";
 
@@ -62,7 +61,9 @@ export async function refreshRecentTracks(): Promise<void> {
   refresh();
 }
 
-export type TopTrack = UserGetTopTracksResponse[number];
+type Ranked<T> = T & { rank: number };
+
+export type TopTrack = Ranked<Played>;
 
 export type GetTopTracksResult =
   | { status: "ok"; tracks: TopTrack[] }
@@ -70,11 +71,9 @@ export type GetTopTracksResult =
 
 const TOP = 10;
 
-/** What a period's top lists count: the chart's span, until now. */
-function periodRange(period: Period, now: Date) {
-  const from = period === "overall" ? new Date(0) : periodStart(period, now);
-  return { from, to: now };
-}
+/** Where a period's top lists start counting: the chart's span, until now. */
+const periodFrom = (period: Period, now: Date) =>
+  period === "overall" ? new Date(0) : periodStart(period, now);
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
 function cacheTopList(period: Period, now: Date) {
@@ -82,7 +81,7 @@ function cacheTopList(period: Period, now: Date) {
   else cacheUntil(nextMidnight(now).getTime(), now);
 }
 
-const ranked = <T>(items: readonly T[]) =>
+const ranked = <T>(items: readonly T[]): Ranked<T>[] =>
   items.map((item, index) => ({ ...item, rank: index + 1 }));
 
 export async function getTopTracks(
@@ -92,8 +91,9 @@ export async function getTopTracks(
 
   try {
     const now = new Date();
-    const { from, to } = periodRange(period, now);
-    const tracks = ranked(await topPlayed("track", from, to, TOP));
+    const tracks = ranked(
+      await topPlayed("track", periodFrom(period, now), now, TOP),
+    );
     cacheTopList(period, now);
     return { status: "ok", tracks };
   } catch (err) {
@@ -103,7 +103,7 @@ export async function getTopTracks(
   }
 }
 
-export type TopArtist = UserGetTopArtistsResponse[number];
+export type TopArtist = Ranked<ChartItem>;
 
 export type GetTopArtistsResult =
   | { status: "ok"; artists: TopArtist[] }
@@ -116,13 +116,7 @@ export async function getTopArtists(
 
   try {
     const now = new Date();
-    const { from, to } = periodRange(period, now);
-    const artists = ranked(
-      (await topPlayed("artist", from, to, TOP)).map(({ name, playcount }) => ({
-        name,
-        playcount,
-      })),
-    );
+    const artists = ranked(await topArtists(periodFrom(period, now), now, TOP));
     cacheTopList(period, now);
     return { status: "ok", artists };
   } catch (err) {
@@ -132,17 +126,14 @@ export async function getTopArtists(
   }
 }
 
-export type TopAlbum = UserGetTopAlbumsResponse[number];
+export type TopAlbum = Ranked<Played> & AlbumInfo;
 
 export type GetTopAlbumsResult =
   | { status: "ok"; albums: TopAlbum[] }
   | { status: "error"; error: string };
 
 // Last.fm alone knows an album's cover and page, and they rarely change.
-async function getAlbumInfo(
-  artist: string,
-  album: string,
-): Promise<AlbumInfo | undefined> {
+async function getAlbumInfo(artist: string, album: string): Promise<AlbumInfo> {
   "use cache";
 
   try {
@@ -152,6 +143,27 @@ async function getAlbumInfo(
   } catch (err) {
     cacheLife("minutes");
     log.warn({ err, artist, album }, "Error fetching album info");
+    return { url: albumUrl(artist, album), cover: undefined };
+  }
+}
+
+// Cached apart from the covers, so one Last.fm can't describe retries without rereading the plays.
+async function getTopAlbumPlays(period: Period): Promise<Played[] | undefined> {
+  "use cache";
+
+  try {
+    const now = new Date();
+    const top = await topPlayed(
+      "album",
+      periodFrom(period, now),
+      now,
+      TOP_ALBUMS,
+    );
+    cacheTopList(period, now);
+    return top;
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getTopAlbums" }, "Error fetching top albums");
     return undefined;
   }
 }
@@ -161,29 +173,16 @@ export async function getTopAlbums(
 ): Promise<GetTopAlbumsResult> {
   "use cache";
 
-  try {
-    const now = new Date();
-    const { from, to } = periodRange(period, now);
-    const top = await topPlayed("album", from, to, TOP_ALBUMS);
-    const infos = await Promise.all(
-      top.map(({ artist, name }) => getAlbumInfo(artist, name)),
-    );
-    const albums = ranked(top).map((album, index) => ({
+  const top = await getTopAlbumPlays(period);
+  if (!top) return { status: "error", error: "Failed to fetch top albums" };
+  // Lasts as long as the list and its covers do.
+  const albums = await Promise.all(
+    ranked(top).map(async (album) => ({
       ...album,
-      ...(infos[index] ?? {
-        url: albumUrl(album.artist, album.name),
-        cover: undefined,
-      }),
-    }));
-    // A missing cover retries soon, rather than for as long as the list lasts.
-    if (infos.includes(undefined)) cacheLife("minutes");
-    else cacheTopList(period, now);
-    return { status: "ok", albums };
-  } catch (err) {
-    cacheLife("seconds");
-    log.error({ err, action: "getTopAlbums" }, "Error fetching top albums");
-    return { status: "error", error: "Failed to fetch top albums" };
-  }
+      ...(await getAlbumInfo(album.artist, album.name)),
+    })),
+  );
+  return { status: "ok", albums };
 }
 
 export interface ScrobbleCount {

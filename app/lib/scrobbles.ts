@@ -165,13 +165,23 @@ export async function topPlayed(
   }));
 }
 
-/** The most played artist from `from` until `to`, first by name on a tie. */
+/** The most played artists from `from` until `to`, first by name on a tie. */
+export async function topArtists(
+  from: Date,
+  to: Date,
+  limit: number,
+): Promise<ChartItem[]> {
+  const top = await topPlayed("artist", from, to, limit);
+  // An artist is its own name.
+  return top.map(({ name, playcount }) => ({ name, playcount }));
+}
+
 export async function topArtist(
   from: Date,
   to: Date,
 ): Promise<ChartItem | undefined> {
-  const [top] = await topPlayed("artist", from, to, 1);
-  return top && { name: top.name, playcount: top.playcount };
+  const [top] = await topArtists(from, to, 1);
+  return top;
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */

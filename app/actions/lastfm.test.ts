@@ -7,7 +7,13 @@ import {
   type UserGetRecentTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { countScrobbles, playsIn, topArtist, topPlayed } from "@/lib/scrobbles";
+import {
+  countScrobbles,
+  playsIn,
+  topArtist,
+  topArtists,
+  topPlayed,
+} from "@/lib/scrobbles";
 
 import {
   getRecentTracks,
@@ -31,6 +37,7 @@ vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
   playsIn: vi.fn(),
   topArtist: vi.fn(),
+  topArtists: vi.fn(),
   topPlayed: vi.fn(),
 }));
 
@@ -151,12 +158,11 @@ describe("top lists", () => {
 
   describe("getTopArtists", () => {
     it("should rank every artist ever, reread once a day", async () => {
-      vi.mocked(topPlayed).mockResolvedValue([played("A", "A", 500)]);
+      vi.mocked(topArtists).mockResolvedValue([{ name: "A", playcount: 500 }]);
 
       const result = await getTopArtists("overall");
 
-      expect(topPlayed).toHaveBeenCalledExactlyOnceWith(
-        "artist",
+      expect(topArtists).toHaveBeenCalledExactlyOnceWith(
         new Date(0),
         new Date("2026-10-23T09:15:00Z"),
         10,
@@ -175,7 +181,7 @@ describe("top lists", () => {
 
     it("should return error status when the query fails", async () => {
       const mockError = new Error("Database error");
-      vi.mocked(topPlayed).mockRejectedValue(mockError);
+      vi.mocked(topArtists).mockRejectedValue(mockError);
 
       const result = await getTopArtists("overall");
 
@@ -250,7 +256,7 @@ describe("top lists", () => {
         { err: mockError, artist: "Beach House", album: "Bloom" },
         "Error fetching album info",
       );
-      expect(cacheLife).toHaveBeenLastCalledWith("minutes");
+      expect(cacheLife).toHaveBeenCalledWith("minutes");
     });
 
     it("should return error status when the query fails", async () => {
