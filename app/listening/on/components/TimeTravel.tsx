@@ -115,6 +115,7 @@ export const TimeTravel = ({
   // A drag goes to its month once let go, wherever the pointer is then.
   const hold = (event: PointerEvent) => {
     if (event.button !== 0) return;
+    held.current?.abort();
     const listening = new AbortController();
     held.current = listening;
     const letGo = () => {
@@ -122,8 +123,9 @@ export const TimeTravel = ({
       held.current = undefined;
       release();
     };
-    addEventListener("pointerup", letGo, listening);
-    addEventListener("pointercancel", letGo, listening);
+    const { signal } = listening;
+    addEventListener("pointerup", letGo, { signal });
+    addEventListener("pointercancel", letGo, { signal });
   };
 
   return (
