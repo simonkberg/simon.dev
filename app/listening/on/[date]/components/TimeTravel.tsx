@@ -95,7 +95,8 @@ export const TimeTravel = ({
     setScrubbed(undefined);
   }
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  // A day reached another way (back, forward) wins over a pending drag.
+  useEffect(() => () => clearTimeout(timer.current), [day]);
 
   if (counts === undefined) {
     return <p>Time travel is temporarily unavailable :(</p>;
@@ -125,7 +126,7 @@ export const TimeTravel = ({
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       const next = travelTo(index);
-      // The same day never remounts this, so let go of the drag here.
+      // Landing on the shown day changes no `day`, so let go of the drag here.
       if (next === day) setScrubbed(undefined);
       else router.replace(href(next), { scroll: false });
     }, SCRUB_MS);

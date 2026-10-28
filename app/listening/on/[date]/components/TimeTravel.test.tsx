@@ -197,6 +197,27 @@ describe("TimeTravel", () => {
     ).not.toHaveAttribute("data-scrubbing");
   });
 
+  it("lets a day reached another way win over a drag", async () => {
+    vi.useFakeTimers();
+    const props = {
+      today: "2026-10-28",
+      months: Promise.resolve(months),
+      years: Promise.resolve(years),
+      days: Promise.resolve(october),
+    } as const;
+    const { rerender } = await act(async () =>
+      render(<TimeTravel day="2012-10-14" {...props} />),
+    );
+    fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
+      target: { value: "13" },
+    });
+
+    await act(async () => rerender(<TimeTravel day="2012-10-13" {...props} />));
+    await act(async () => vi.runAllTimers());
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("stops a drag into this month at today", async () => {
     vi.useFakeTimers();
     await renderTape("2025-10-30");
