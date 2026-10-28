@@ -20,6 +20,12 @@ export function parseDay(value: string): Day | undefined {
     : undefined;
 }
 
+/** The date as typed, when it is a day of the history: from `firstDay` until today. */
+export function inHistory(value: string, today: Day): Day | undefined {
+  const day = parseDay(value);
+  return day !== undefined && day >= firstDay && day <= today ? day : undefined;
+}
+
 export const addDays = (day: Day, days: number): Day => {
   const date = utc(day);
   return toDay(

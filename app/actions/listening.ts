@@ -13,6 +13,7 @@ import {
   midnight,
   nextMidnight,
 } from "@/lib/dates";
+import { inHistory } from "@/lib/days";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
 import { plays } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
@@ -75,6 +76,14 @@ export type GetTopTracksResult =
 
 const TOP = 10;
 
+const localDay = (now: Date) => clockTime(now).slice(0, 10) as Day;
+
+function historyDay(value: string, now: Date): Day {
+  const day = inHistory(value, localDay(now));
+  if (day === undefined) throw new Error(`Not a day of the history: ${value}`);
+  return day;
+}
+
 /** A period until now, or a calendar month as "YYYY-MM". */
 export type Span = Period | Month;
 
@@ -84,7 +93,8 @@ function spanRange(span: Span, now: Date) {
     const from = span === "overall" ? new Date(0) : periodStart(span, now);
     return { from, to: now };
   }
-  const first = new Date(`${span}-01`);
+  // Server actions take any string, and each one is its own cache entry.
+  const first = new Date(historyDay(`${span}-01`, now));
   const [year, month] = [first.getUTCFullYear(), first.getUTCMonth()];
   return { from: midnight(year, month, 1), to: midnight(year, month + 1, 1) };
 }
@@ -329,7 +339,12 @@ export async function getDailyScrobbles(
   month: Month,
 ): Promise<GetScrobblesResult> {
   "use cache";
-  return countBuckets(monthDayBuckets(month, new Date()), "getDailyScrobbles");
+  const now = new Date();
+  if (inHistory(`${month}-01`, localDay(now)) === undefined) {
+    cacheLife("seconds");
+    return { status: "error", error: "Not a month of the history" };
+  }
+  return countBuckets(monthDayBuckets(month, now), "getDailyScrobbles");
 }
 
 export interface BucketTopArtist {
@@ -447,7 +462,7 @@ export async function getDayPlays(date: Day): Promise<GetDayPlaysResult> {
 
   try {
     const now = new Date();
-    const to = dayStart(date, 1);
+    const to = dayStart(historyDay(date, now), 1);
     const played = await plays(
       { from: dayStart(date), to },
       "oldest",
@@ -475,5 +490,5 @@ export async function getToday(): Promise<Day> {
   "use cache";
   const now = new Date();
   cacheUntil(nextMidnight(now).getTime(), now);
-  return clockTime(now).slice(0, 10) as Day;
+  return localDay(now);
 }

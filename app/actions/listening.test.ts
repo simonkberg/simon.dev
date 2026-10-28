@@ -156,6 +156,13 @@ describe("top lists", () => {
       },
     );
 
+    it("should refuse a month outside the history without querying", async () => {
+      const result = await getTopTracks("2026-11");
+
+      expect(result).toMatchObject({ status: "error" });
+      expect(topPlayed).not.toHaveBeenCalled();
+    });
+
     it("should return error status when the query fails", async () => {
       const mockError = new Error("Database error");
       vi.mocked(topPlayed).mockRejectedValue(mockError);
@@ -443,6 +450,20 @@ describe("getDailyScrobbles", () => {
     });
   });
 
+  it.each(["2026-11", "2006-12", "2024-99"])(
+    "should refuse %s, outside the history, without querying",
+    async (month) => {
+      const result = await getDailyScrobbles(month as `${number}-${number}`);
+
+      expect(result).toEqual({
+        status: "error",
+        error: "Not a month of the history",
+      });
+      expect(countScrobbles).not.toHaveBeenCalled();
+      expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    },
+  );
+
   it("should return error status when a count fails", async () => {
     const mockError = new Error("Database error");
     vi.mocked(countScrobbles).mockRejectedValue(mockError);
@@ -505,6 +526,13 @@ describe("getDayPlays", () => {
     await getDayPlays("2026-10-23");
 
     expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+  });
+
+  it("should refuse a day outside the history without querying", async () => {
+    const result = await getDayPlays("2026-10-24");
+
+    expect(result).toMatchObject({ status: "error" });
+    expect(plays).not.toHaveBeenCalled();
   });
 
   it("should return error status when the query fails", async () => {
