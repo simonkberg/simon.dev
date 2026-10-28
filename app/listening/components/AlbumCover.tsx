@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-// The image optimiser serves a failed cover for 5s, so each retry waits that out.
+// The browser keeps a failed cover for 5s (its max-age), so each retry waits that out.
 const RETRY_MS = [6_000, 15_000];
 
 export interface AlbumCoverProps {

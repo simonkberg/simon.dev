@@ -146,15 +146,12 @@ describe("inlineCover", () => {
     expect(cacheLife).toHaveBeenCalledWith("hours");
   });
 
-  it.each([
-    ["responds with an error", () => new HttpResponse(null, { status: 504 })],
-    ["can't be reached", () => HttpResponse.error()],
-  ])("asks again for a resize that %s", async (_, failure) => {
+  it("asks again for a resize that can't be reached", async () => {
     let failures = 1;
     server.use(
       http.get(`${origin}/_next/image`, () =>
         failures-- > 0
-          ? failure()
+          ? HttpResponse.error()
           : HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
               headers: { "content-type": "image/jpeg" },
             }),
@@ -167,10 +164,19 @@ describe("inlineCover", () => {
     await expect(inlined).resolves.toBe("data:image/jpeg;base64,AQ==");
   });
 
+  it("doesn't retry a resize once its time runs out", async () => {
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(
+      AbortSignal.abort(new DOMException("Timed out", "TimeoutError")),
+    );
+
+    await expect(inlineCover(cover, 0)).resolves.toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("caches a resize briefly once its retries fail", async () => {
     server.use(
-      http.get(`${origin}/_next/image`, () => {
-        requests.push(new Request(origin));
+      http.get(`${origin}/_next/image`, ({ request }) => {
+        requests.push(request);
         return new HttpResponse(null, { status: 504 });
       }),
     );

@@ -135,7 +135,6 @@
   --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
-  --sleeve-padding: 0.5lh 1ch;
   --sleeve-artist: var(--muted);
   --timeline-origin: "┬";
   --timeline-bar: "━";
@@ -2907,10 +2906,10 @@ tbody tr:hover {
     mix-blend-mode: var(--cover-grain-blend);
     transition: opacity 0.2s var(--cover-grain-ease);
   }
-}
 
-.cover-art[data-failed] {
-  visibility: hidden;
+  &[data-failed] {
+    visibility: hidden;
+  }
 }
 
 /* Stands in for a cover that is missing or failed to load, sized to its tile. */
@@ -2922,25 +2921,24 @@ tbody tr:hover {
   /* Safe, so a name too long for a small tile runs off its foot rather than under the rank. */
   justify-content: safe flex-end;
   overflow: hidden;
-  padding: var(--sleeve-padding);
-  padding-top: 2lh;
+  padding: 2lh 1ch 0.5lh;
   font-size: clamp(0.75rem, 7cqi, 1.25rem);
   line-height: 1.25;
   overflow-wrap: anywhere;
+
+  > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
 }
 
 .sleeve-name {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   font-weight: bold;
 }
 
 .sleeve-artist {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   color: var(--sleeve-artist);
 }

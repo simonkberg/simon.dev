@@ -213,13 +213,7 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => {
     >
       {!album.image && (
         <>
-          <span
-            style={{
-              fontWeight: 700,
-              color: color.ink,
-              lineClamp: large ? 3 : 2,
-            }}
-          >
+          <span style={{ fontWeight: 700, lineClamp: large ? 3 : 2 }}>
             {album.name}
           </span>
           <span style={{ color: color.muted, lineClamp: large ? 2 : 1 }}>
