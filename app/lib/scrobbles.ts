@@ -148,12 +148,11 @@ async function syncLoved(): Promise<void> {
     track: String(row["track"]),
     lovedAt: Number(row["loved_at"]),
   }));
-  const writes: Statement[] = missingFrom(stored, listed).map(
-    ({ artist, track }) => ({
-      sql: "DELETE FROM loved WHERE artist = ? AND track = ?",
-      args: [artist, track],
-    }),
-  );
+  const removed = missingFrom(stored, listed);
+  const writes: Statement[] = removed.map(({ artist, track }) => ({
+    sql: "DELETE FROM loved WHERE artist = ? AND track = ?",
+    args: [artist, track],
+  }));
   const added = missingFrom(listed, stored);
   if (added.length > 0) {
     writes.push(
@@ -163,7 +162,12 @@ async function syncLoved(): Promise<void> {
       ),
     );
   }
-  if (writes.length > 0) await batch(writes);
+  if (writes.length === 0) return;
+  await batch(writes);
+  log.info(
+    { added: added.length, removed: removed.length },
+    "Synced loved tracks",
+  );
 }
 
 /** Stores the page before `oldest`, and returns the oldest stored after it. */

@@ -235,6 +235,11 @@ describe("syncScrobbles loved tracks", () => {
     ]);
     expect(batch).toHaveBeenCalledOnce();
     expect(vi.mocked(batch).mock.calls[0]?.[0]).toHaveLength(3);
+    // A re-loved track is removed and added again.
+    expect(log.info).toHaveBeenCalledWith(
+      { added: 2, removed: 2 },
+      "Synced loved tracks",
+    );
   });
 
   it("should remove what was unloved on Last.fm", async () => {
