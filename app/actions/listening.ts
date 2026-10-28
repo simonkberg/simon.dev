@@ -31,6 +31,7 @@ import {
 import {
   type ChartItem,
   countScrobbles,
+  LATE_MS,
   type Play,
   type Played,
   playsIn,
@@ -237,12 +238,20 @@ type Settled<T> =
   | { status: "ok"; data: T }
   | { status: "error"; error: string };
 
+// An ended bar only changes by a late scrobble, and none arrive past LATE_MS.
+function cacheEnded(end: number, now: Date) {
+  if (end + LATE_MS <= now.getTime()) cacheLife("max");
+  else cacheLife("days");
+}
+
 // An error thrown in a nested cache fails the prerender, so it's returned for the chart to throw.
-async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
+async function settle<T>(
+  request: () => Promise<T>,
+  to: Date,
+): Promise<Settled<T>> {
   try {
     const data = await request();
-    // An ended bar only changes by a late scrobble.
-    cacheLife("days");
+    cacheEnded(to.getTime(), new Date());
     return { status: "ok", data };
   } catch (err) {
     cacheLife("seconds");
@@ -255,12 +264,12 @@ async function settle<T>(request: () => Promise<T>): Promise<Settled<T>> {
 
 async function endedCount(from: Date, to: Date) {
   "use cache";
-  return settle(() => countScrobbles(from, to));
+  return settle(() => countScrobbles(from, to), to);
 }
 
 async function endedTopArtist(from: Date, to: Date) {
   "use cache";
-  return settle(() => topArtist(from, to));
+  return settle(() => topArtist(from, to), to);
 }
 
 // A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
@@ -284,7 +293,7 @@ async function inBucket<T>(
 // Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
 function cacheChart(buckets: readonly { to: Date }[], now: Date) {
   const end = chartEnd(buckets);
-  if (hasSettled(end, now)) cacheLife("days");
+  if (hasSettled(end, now)) cacheEnded(end, now);
   else cacheUntil(end > now.getTime() ? end : end + SETTLE_MS, now, 3600);
 }
 

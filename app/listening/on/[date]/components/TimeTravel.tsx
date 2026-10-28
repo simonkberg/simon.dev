@@ -16,6 +16,7 @@ import {
   monthIndex,
 } from "@/lib/days";
 import { formatPlays } from "@/lib/formatNumber";
+import { lanes } from "@/lib/scrobbleChart";
 
 export interface TimeTravelProps {
   day: Day;
@@ -32,19 +33,20 @@ interface Era {
   last: number;
 }
 
-// Runs of years with the same top artist, in months.
-function eras(years: readonly BucketTopArtist[], months: number): Era[] {
-  const runs: Era[] = [];
-  years.forEach(({ artist }, year) => {
-    if (!artist) return;
-    const first = year * 12;
-    const last = Math.min(first + 11, months - 1);
-    const run = runs.at(-1);
-    if (run?.name === artist.name && run.last === first - 1) run.last = last;
-    else runs.push({ name: artist.name, first, last });
-  });
-  return runs;
-}
+// Each year's top artist, as runs of months.
+const eras = (years: readonly BucketTopArtist[], months: number): Era[] =>
+  lanes(
+    years.map(({ label }) => ({ label, count: 0, current: false })),
+    years,
+  )
+    .flatMap(({ name, runs }) =>
+      runs.map(({ first, last }) => ({
+        name,
+        first: first * 12,
+        last: Math.min(last * 12 + 11, months - 1),
+      })),
+    )
+    .toSorted((a, b) => a.first - b.first);
 
 const href = (day: Day) => `/listening/on/${day}` as const;
 

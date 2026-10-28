@@ -35,6 +35,7 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
 
 vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
+  LATE_MS: 14 * 24 * 60 * 60_000,
   playsIn: vi.fn(),
   recentPlays: vi.fn(),
   topArtist: vi.fn(),
@@ -328,6 +329,15 @@ describe("getScrobbles", () => {
     });
   });
 
+  it("should keep a bucket for good once no late scrobble can reach it", async () => {
+    await getScrobbles("1month");
+
+    expect(vi.mocked(cacheLife).mock.calls.slice(0, 16)).toEqual([
+      ...Array.from({ length: 15 }, () => ["max"]),
+      ["days"],
+    ]);
+  });
+
   it("should regenerate when the current bucket ends", async () => {
     vi.setSystemTime(new Date("2026-10-23T21:30:00Z"));
 
@@ -424,11 +434,11 @@ describe("getDailyScrobbles", () => {
     vi.mocked(countScrobbles).mockResolvedValue(42);
   });
 
-  it("should count a past month's days, kept for days", async () => {
+  it("should count a past month's days, kept for good", async () => {
     const result = await getDailyScrobbles("2012-10");
 
     expect(countScrobbles).toHaveBeenCalledTimes(31);
-    expect(cacheLife).toHaveBeenLastCalledWith("days");
+    expect(cacheLife).toHaveBeenLastCalledWith("max");
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([

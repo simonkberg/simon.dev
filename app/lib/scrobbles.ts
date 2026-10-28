@@ -21,7 +21,7 @@ const LOCK_NAME = "scrobbles";
 // Long enough to backfill in bulk, short enough that new scrobbles still arrive each minute.
 const BACKFILL_SLICE_MS = 50_000;
 // Last.fm takes scrobbles up to two weeks old, so an offline player's arrive late.
-const LATE_MS = 14 * 24 * 60 * 60_000;
+export const LATE_MS = 14 * 24 * 60 * 60_000;
 
 type Page = Awaited<ReturnType<typeof userGetScrobbles>>;
 type Tracks = Page["tracks"];
