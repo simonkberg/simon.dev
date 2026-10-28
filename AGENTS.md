@@ -225,7 +225,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   through the same cached call.
 - **Time travel:** `/listening/on/YYYY-MM-DD`, the tab after it, draws a tape of every month
   (the range input scrubs it, navigating once a drag is let go) zoomed to the day's month, its
-  plays and that month's tops. `next.config.ts` rewrites it to `/listening/on/[month]/[day]`, so
+  plays and that month's tops. `next.config.ts` rewrites it to `/listening/on/[month]/[day]` (and redirects that path back), so
   a month is a layout that its days keep: the month's tops and its days (the `@days` slot) stay
   mounted as the day changes. The tape lives in the top layout, reading the date with
   `useParams`; `TravelProvider` holds where a drag or link is going, and `TravelPending` dims
