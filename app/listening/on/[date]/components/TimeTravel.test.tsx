@@ -89,8 +89,25 @@ describe("TimeTravel", () => {
       screen.getByRole("link", { name: "Oct 1: 10 plays" }),
     ).toHaveAttribute("href", "/listening/on/2012-10-01");
     expect(
-      screen.queryByRole("link", { name: "Oct 14: 46 plays" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("link", { name: "Oct 14: 46 plays" }),
+    ).toHaveAttribute("aria-current", "date");
+  });
+
+  it("keeps a followed day focused as its page arrives", async () => {
+    const props = {
+      today: "2026-10-28",
+      months: Promise.resolve(months),
+      years: Promise.resolve(years),
+      days: Promise.resolve(october),
+    } as const;
+    const { rerender } = await act(async () =>
+      render(<TimeTravel day="2012-10-14" {...props} />),
+    );
+    screen.getByRole("link", { name: "Oct 1: 10 plays" }).focus();
+
+    await act(async () => rerender(<TimeTravel day="2012-10-01" {...props} />));
+
+    expect(screen.getByRole("link", { name: "Oct 1: 10 plays" })).toHaveFocus();
   });
 
   it.each([

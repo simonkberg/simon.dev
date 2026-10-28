@@ -224,20 +224,16 @@ export const TimeTravel = ({
                 data-active={current || undefined}
                 data-tick={tick || undefined}
               >
-                {current ? (
-                  <span aria-current="date">
-                    <span className="visually-hidden">{text}</span>
-                  </span>
-                ) : (
-                  <Link
-                    href={href(date)}
-                    replace
-                    scroll={false}
-                    onClick={cancelScrub}
-                  >
-                    <span className="visually-hidden">{text}</span>
-                  </Link>
-                )}
+                {/* A link even when current, so the one followed keeps focus. */}
+                <Link
+                  href={href(date)}
+                  replace
+                  scroll={false}
+                  aria-current={current ? "date" : undefined}
+                  onClick={cancelScrub}
+                >
+                  <span className="visually-hidden">{text}</span>
+                </Link>
                 <span className="time-travel-tick" aria-hidden="true">
                   {index + 1}
                 </span>

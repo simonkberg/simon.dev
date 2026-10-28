@@ -230,7 +230,6 @@ const periodBuckets = (period: Period, now: Date) =>
     ? yearBuckets(config.lastfmSince, now)
     : scrobbleBuckets(period, now);
 
-// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
 
@@ -282,6 +281,7 @@ async function inBucket<T>(
 }
 
 // A chart that has settled only changes by a late scrobble; one still under way regenerates as a bar ends.
+// Regenerates once `end` passes, so a bar or day that has ended isn't shown as current.
 function cacheChart(buckets: readonly { to: Date }[], now: Date) {
   const end = chartEnd(buckets);
   if (hasSettled(end, now)) cacheLife("days");
