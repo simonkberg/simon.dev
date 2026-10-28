@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { getOnThisDay } from "@/actions/lastfm";
+import { getOnThisDay } from "@/actions/listening";
 import { shareCard } from "@/lib/shareCard";
 
 import openGraphImage from "./opengraph-image";
@@ -11,7 +11,7 @@ vi.mock(import("@/lib/shareCard"), async (importOriginal) => ({
   shareCard: vi.fn(),
 }));
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getOnThisDay: vi.fn(() =>
     Promise.resolve({
       status: "ok" as const,

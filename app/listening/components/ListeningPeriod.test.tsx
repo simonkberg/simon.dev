@@ -12,12 +12,12 @@ import {
   type GetTopArtistsResult,
   getTopTracks,
   type GetTopTracksResult,
-} from "@/actions/lastfm";
-import type { Period } from "@/lib/lastfm";
+} from "@/actions/listening";
+import type { Period } from "@/lib/periods";
 
 import { ListeningPeriod, periodMetadata } from "./ListeningPeriod";
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getScrobbles: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({ status: "ok", scrobbles: [] }),
   ),

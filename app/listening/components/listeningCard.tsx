@@ -8,10 +8,10 @@ import {
   type ScrobbleCount,
   type TopAlbum,
   type TopArtist,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { inlineCover } from "@/lib/covers";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
-import { type Period, periodLabels } from "@/lib/lastfm";
+import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { type Lane, lanes } from "@/lib/scrobbleChart";
 import { color, Pane, shareCard, Stems } from "@/lib/shareCard";

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
+import type { ScrobbleCount, BucketTopArtist } from "@/actions/listening";
 
 import { ScrobbleChart } from "./ScrobbleChart";
 

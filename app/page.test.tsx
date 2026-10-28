@@ -7,7 +7,7 @@ import {
   type GetOnThisDayResult,
   getRecentTracks,
   type GetRecentTracksResult,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { getWakaTimeStats, type WakaTimeStatsResult } from "@/actions/wakaTime";
 import type { ChatProps } from "@/components/chat/Chat";
 import type { RecentTracksListProps } from "@/components/RecentTracksList";
@@ -39,7 +39,7 @@ vi.mock(import("@/lib/session"), () => ({
   ),
 }));
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getRecentTracks: vi.fn(() =>
     Promise.resolve<GetRecentTracksResult>({ status: "ok", tracks: [] }),
   ),

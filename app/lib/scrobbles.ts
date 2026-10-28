@@ -225,7 +225,8 @@ export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   }));
 }
 
-type RecentTrack = UserGetRecentTracksResponse[number];
+export type { ChartItem };
+export type RecentTrack = UserGetRecentTracksResponse[number];
 
 /** What plays now, if a sync saw it lately, then the latest plays: `limit` in all, newest first. */
 export async function recentPlays(limit: number): Promise<RecentTrack[]> {

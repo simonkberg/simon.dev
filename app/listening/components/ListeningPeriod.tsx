@@ -7,13 +7,13 @@ import {
   getTopAlbums,
   getTopArtists,
   getTopTracks,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { config } from "@/config";
-import { type Period, periodLabels } from "@/lib/lastfm";
+import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 

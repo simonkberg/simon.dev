@@ -2,7 +2,7 @@
 
 import { type CSSProperties, use, useState } from "react";
 
-import type { ScrobbleCount, BucketTopArtist } from "@/actions/lastfm";
+import type { ScrobbleCount, BucketTopArtist } from "@/actions/listening";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { SkeletonStatus } from "@/components/Skeleton";
 import { TooltipText } from "@/components/Tooltip";

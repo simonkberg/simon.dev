@@ -1,11 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { getOnThisDay, type GetOnThisDayResult } from "@/actions/lastfm";
+import { getOnThisDay, type GetOnThisDayResult } from "@/actions/listening";
 
 import OnThisDayPage from "./page";
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getOnThisDay: vi.fn(() =>
     Promise.resolve<GetOnThisDayResult>({
       status: "ok",

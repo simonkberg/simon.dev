@@ -3,8 +3,11 @@ import { cacheLife } from "next/cache";
 import { getImageProps } from "next/image";
 
 import { getGlobal } from "@/lib/global";
-import { periods } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import { periods } from "@/lib/periods";
+
+// The listening page shows this many, as a #1 tile beside a 3×3 grid.
+export const TOP_ALBUMS = 10;
 
 const WARM_MS = 60 * 60 * 1000;
 const WARM_CONCURRENCY = 2;

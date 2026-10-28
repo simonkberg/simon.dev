@@ -8,7 +8,7 @@ import { cacheLife } from "next/cache";
 import { ImageResponse } from "next/og";
 import { type CSSProperties, Fragment, type ReactNode } from "react";
 
-import type { ScrobbleCount } from "@/actions/lastfm";
+import type { ScrobbleCount } from "@/actions/listening";
 import { config } from "@/config";
 import { formatNumber } from "@/lib/formatNumber";
 import { labelTick, stemStats } from "@/lib/scrobbleChart";

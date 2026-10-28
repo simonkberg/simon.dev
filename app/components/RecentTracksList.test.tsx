@@ -1,13 +1,16 @@
 import { act, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { GetRecentTracksResult, RecentTrack } from "@/actions/lastfm";
-import { refreshRecentTracks } from "@/actions/lastfm";
+import type { GetRecentTracksResult } from "@/actions/listening";
+import { refreshRecentTracks } from "@/actions/listening";
+import type { RecentTrack } from "@/lib/scrobbles";
 
 import { RecentTracksList } from "./RecentTracksList";
 import { RelativeTime } from "./RelativeTime";
 
-vi.mock(import("@/actions/lastfm"), () => ({ refreshRecentTracks: vi.fn() }));
+vi.mock(import("@/actions/listening"), () => ({
+  refreshRecentTracks: vi.fn(),
+}));
 
 const createMockTrack = (
   overrides: Partial<RecentTrack> = {},

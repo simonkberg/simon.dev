@@ -1,4 +1,4 @@
-import type { DayInYear, PlayedYear } from "@/actions/lastfm";
+import type { DayInYear, PlayedYear } from "@/actions/listening";
 
 export const busiestYear = (years: readonly DayInYear[]) =>
   years.reduce<PlayedYear | undefined>(

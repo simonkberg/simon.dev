@@ -6,8 +6,8 @@ import {
   getRecentTracks,
   type GetScrobblesResult,
   getScrobbles,
-  type RecentTrack,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
+import type { RecentTrack } from "@/lib/scrobbles";
 import { shareCard } from "@/lib/shareCard";
 
 import openGraphImage from "./opengraph-image";
@@ -26,7 +26,7 @@ const track: RecentTrack = {
   loved: false,
 };
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getRecentTracks: vi.fn(() =>
     Promise.resolve<GetRecentTracksResult>({ status: "ok", tracks: [track] }),
   ),
@@ -70,7 +70,7 @@ describe("opengraph-image", () => {
     expect(screen.getByText("NOW PLAYING")).toBeInTheDocument();
   });
 
-  it("leaves out what Last.fm fails to load", async () => {
+  it("leaves out what fails to load", async () => {
     vi.mocked(getRecentTracks).mockResolvedValue({
       status: "error",
       error: "Failed",

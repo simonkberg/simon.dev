@@ -1,12 +1,11 @@
 import Image from "next/image";
 import { use } from "react";
 
-import type { TopAlbum } from "@/actions/lastfm";
+import type { TopAlbum } from "@/actions/listening";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
-import { coverWidth } from "@/lib/covers";
-import { TOP_ALBUMS } from "@/lib/lastfm";
+import { coverWidth, TOP_ALBUMS } from "@/lib/covers";
 
 export interface AlbumCollageProps {
   // Undefined when the list failed to load.

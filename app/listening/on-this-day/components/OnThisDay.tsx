@@ -6,7 +6,7 @@ import type {
   DayInYear,
   OnThisDay as OnThisDayData,
   PlayedYear,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";

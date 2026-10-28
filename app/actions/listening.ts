@@ -3,18 +3,11 @@
 import { cacheLife, refresh } from "next/cache";
 
 import { config } from "@/config";
+import { TOP_ALBUMS } from "@/lib/covers";
 import { dayLabel, nextMidnight } from "@/lib/dates";
-import {
-  albumGetInfo,
-  type AlbumInfo,
-  albumUrl,
-  bulk,
-  type ChartItem,
-  type Period,
-  TOP_ALBUMS,
-  type UserGetRecentTracksResponse,
-} from "@/lib/lastfm";
+import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
 import { log } from "@/lib/log";
+import { type Period } from "@/lib/periods";
 import {
   periodStart,
   sameDayBuckets,
@@ -22,17 +15,17 @@ import {
   yearBuckets,
 } from "@/lib/scrobbleBuckets";
 import {
+  type ChartItem,
   countScrobbles,
   type Play,
   type Played,
   playsIn,
   recentPlays,
+  type RecentTrack,
   topArtist,
   topArtists,
   topPlayed,
 } from "@/lib/scrobbles";
-
-export type RecentTrack = UserGetRecentTracksResponse[number];
 
 export type GetRecentTracksResult =
   | { status: "ok"; tracks: RecentTrack[] }

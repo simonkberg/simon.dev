@@ -1,4 +1,4 @@
-import { getRecentTracks, getScrobbles } from "@/actions/lastfm";
+import { getRecentTracks, getScrobbles } from "@/actions/listening";
 import { config } from "@/config";
 import { formatNumber } from "@/lib/formatNumber";
 import { color, shareCard, Stems } from "@/lib/shareCard";

@@ -5,7 +5,7 @@ import { Suspense, use, useEffect } from "react";
 import {
   type GetRecentTracksResult,
   refreshRecentTracks,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { RelativeTime } from "@/components/RelativeTime";
 import { Subtitle } from "@/components/Subtitle";
 

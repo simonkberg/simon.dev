@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { getOnThisDay } from "@/actions/lastfm";
+import { getOnThisDay } from "@/actions/listening";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
