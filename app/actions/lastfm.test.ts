@@ -2,17 +2,12 @@ import { cacheLife, refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  albumGetInfo,
   userGetRecentTracks,
   type UserGetRecentTracksResponse,
-  userGetTopAlbums,
-  userGetTopArtists,
-  type UserGetTopArtistsResponse,
-  userGetTopTracks,
-  type UserGetTopTracksResponse,
 } from "@/lib/lastfm";
 import { log } from "@/lib/log";
-import { countScrobbles, playsIn, topArtist } from "@/lib/scrobbles";
-import { topAlbum } from "@/mocks/lastfm";
+import { countScrobbles, playsIn, topArtist, topPlayed } from "@/lib/scrobbles";
 
 import {
   getRecentTracks,
@@ -25,18 +20,18 @@ import {
   refreshRecentTracks,
 } from "./lastfm";
 
-vi.mock(import("@/lib/lastfm"), () => ({
+vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  bulk: (request) => request(),
+  albumGetInfo: vi.fn(),
   userGetRecentTracks: vi.fn(),
-  userGetTopTracks: vi.fn(),
-  userGetTopArtists: vi.fn(),
-  userGetTopAlbums: vi.fn(),
-  TOP_ALBUMS: 10 as const,
 }));
 
 vi.mock(import("@/lib/scrobbles"), () => ({
   countScrobbles: vi.fn(),
   playsIn: vi.fn(),
   topArtist: vi.fn(),
+  topPlayed: vi.fn(),
 }));
 
 vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn(), refresh: vi.fn() }));
@@ -98,114 +93,180 @@ describe("refreshRecentTracks", () => {
   });
 });
 
-describe("getTopTracks", () => {
-  it("should return success status with tracks", async () => {
-    const mockTracks: UserGetTopTracksResponse = [
-      { name: "Track 1", artist: "Artist 1", playcount: 100, rank: 1 },
-      { name: "Track 2", artist: "Artist 2", playcount: 50, rank: 2 },
-    ];
-
-    vi.mocked(userGetTopTracks).mockResolvedValue(mockTracks);
-
-    const result = await getTopTracks("7day");
-
-    expect(userGetTopTracks).toHaveBeenCalledWith("magijo", {
-      period: "7day",
-      limit: 10,
-    });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
-    expect(result).toEqual({ status: "ok", tracks: mockTracks });
+describe("top lists", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-23T09:15:00Z"));
   });
 
-  it("should return error status when fetch fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetTopTracks).mockRejectedValue(mockError);
-
-    const result = await getTopTracks("7day");
-
-    expect(result).toEqual({
-      status: "error",
-      error: "Failed to fetch top tracks",
-    });
-
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
-    expect(log.error).toHaveBeenCalledWith(
-      { err: mockError, action: "getTopTracks" },
-      "Error fetching top tracks",
-    );
-  });
-});
-
-describe("getTopArtists", () => {
-  it("should return success status with artists", async () => {
-    const mockArtists: UserGetTopArtistsResponse = [
-      { name: "Artist 1", playcount: 500, rank: 1 },
-      { name: "Artist 2", playcount: 300, rank: 2 },
-    ];
-
-    vi.mocked(userGetTopArtists).mockResolvedValue(mockArtists);
-
-    const result = await getTopArtists("1month");
-
-    expect(userGetTopArtists).toHaveBeenCalledWith("magijo", {
-      period: "1month",
-      limit: 10,
-    });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
-    expect(result).toEqual({ status: "ok", artists: mockArtists });
+  const played = (name: string, artist: string, playcount: number) => ({
+    name,
+    artist,
+    playcount,
   });
 
-  it("should return error status when fetch fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetTopArtists).mockRejectedValue(mockError);
+  describe("getTopTracks", () => {
+    it("should rank the period's tracks, rereading short periods hourly", async () => {
+      vi.mocked(topPlayed).mockResolvedValue([
+        played("Track 1", "Artist 1", 100),
+        played("Track 2", "Artist 2", 50),
+      ]);
 
-    const result = await getTopArtists("1month");
+      const result = await getTopTracks("7day");
 
-    expect(result).toEqual({
-      status: "error",
-      error: "Failed to fetch top artists",
+      // The chart's seven Stockholm days.
+      expect(topPlayed).toHaveBeenCalledExactlyOnceWith(
+        "track",
+        new Date("2026-10-16T22:00:00Z"),
+        new Date("2026-10-23T09:15:00Z"),
+        10,
+      );
+      expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
+      expect(result).toEqual({
+        status: "ok",
+        tracks: [
+          { name: "Track 1", artist: "Artist 1", playcount: 100, rank: 1 },
+          { name: "Track 2", artist: "Artist 2", playcount: 50, rank: 2 },
+        ],
+      });
     });
 
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
-    expect(log.error).toHaveBeenCalledWith(
-      { err: mockError, action: "getTopArtists" },
-      "Error fetching top artists",
-    );
+    it("should return error status when the query fails", async () => {
+      const mockError = new Error("Database error");
+      vi.mocked(topPlayed).mockRejectedValue(mockError);
+
+      const result = await getTopTracks("7day");
+
+      expect(result).toEqual({
+        status: "error",
+        error: "Failed to fetch top tracks",
+      });
+      expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+      expect(log.error).toHaveBeenCalledWith(
+        { err: mockError, action: "getTopTracks" },
+        "Error fetching top tracks",
+      );
+    });
   });
-});
 
-describe("getTopAlbums", () => {
-  it("should return success status with albums", async () => {
-    const mockAlbums = [topAlbum("Album 1", "Artist 1", 1)];
+  describe("getTopArtists", () => {
+    it("should rank every artist ever, reread once a day", async () => {
+      vi.mocked(topPlayed).mockResolvedValue([played("A", "A", 500)]);
 
-    vi.mocked(userGetTopAlbums).mockResolvedValue(mockAlbums);
+      const result = await getTopArtists("overall");
 
-    const result = await getTopAlbums("3month");
-
-    expect(userGetTopAlbums).toHaveBeenCalledWith("magijo", {
-      period: "3month",
-      limit: 10,
+      expect(topPlayed).toHaveBeenCalledExactlyOnceWith(
+        "artist",
+        new Date(0),
+        new Date("2026-10-23T09:15:00Z"),
+        10,
+      );
+      // Until Stockholm's midnight.
+      expect(cacheLife).toHaveBeenCalledExactlyOnceWith({
+        stale: 300,
+        revalidate: 45_900,
+        expire: 45_900 + 86_400,
+      });
+      expect(result).toEqual({
+        status: "ok",
+        artists: [{ name: "A", playcount: 500, rank: 1 }],
+      });
     });
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
-    expect(result).toEqual({ status: "ok", albums: mockAlbums });
+
+    it("should return error status when the query fails", async () => {
+      const mockError = new Error("Database error");
+      vi.mocked(topPlayed).mockRejectedValue(mockError);
+
+      const result = await getTopArtists("overall");
+
+      expect(result).toEqual({
+        status: "error",
+        error: "Failed to fetch top artists",
+      });
+      expect(log.error).toHaveBeenCalledWith(
+        { err: mockError, action: "getTopArtists" },
+        "Error fetching top artists",
+      );
+    });
   });
 
-  it("should return error status when fetch fails", async () => {
-    const mockError = new Error("API error");
-    vi.mocked(userGetTopAlbums).mockRejectedValue(mockError);
+  describe("getTopAlbums", () => {
+    it("should rank the period's albums with Last.fm's page and cover", async () => {
+      vi.mocked(topPlayed).mockResolvedValue([
+        played("Bloom", "Beach House", 40),
+      ]);
+      vi.mocked(albumGetInfo).mockResolvedValue({
+        url: "https://www.last.fm/music/Beach+House/Bloom",
+        cover: "https://lastfm.freetls.fastly.net/i/u/bloom.png",
+      });
 
-    const result = await getTopAlbums("3month");
+      const result = await getTopAlbums("3month");
 
-    expect(result).toEqual({
-      status: "error",
-      error: "Failed to fetch top albums",
+      expect(topPlayed).toHaveBeenCalledWith(
+        "album",
+        expect.any(Date),
+        new Date("2026-10-23T09:15:00Z"),
+        10,
+      );
+      expect(albumGetInfo).toHaveBeenCalledExactlyOnceWith(
+        "Beach House",
+        "Bloom",
+      );
+      expect(result).toEqual({
+        status: "ok",
+        albums: [
+          {
+            name: "Bloom",
+            artist: "Beach House",
+            playcount: 40,
+            rank: 1,
+            url: "https://www.last.fm/music/Beach+House/Bloom",
+            cover: "https://lastfm.freetls.fastly.net/i/u/bloom.png",
+          },
+        ],
+      });
     });
 
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
-    expect(log.error).toHaveBeenCalledWith(
-      { err: mockError, action: "getTopAlbums" },
-      "Error fetching top albums",
-    );
+    it("should link an album Last.fm can't describe, without a cover", async () => {
+      const mockError = new Error("Album not found");
+      vi.mocked(topPlayed).mockResolvedValue([
+        played("Bloom", "Beach House", 40),
+      ]);
+      vi.mocked(albumGetInfo).mockRejectedValue(mockError);
+
+      const result = await getTopAlbums("3month");
+
+      expect(result).toMatchObject({
+        status: "ok",
+        albums: [
+          {
+            name: "Bloom",
+            url: "https://www.last.fm/music/Beach+House/Bloom",
+            cover: undefined,
+          },
+        ],
+      });
+      expect(log.warn).toHaveBeenCalledWith(
+        { err: mockError, artist: "Beach House", album: "Bloom" },
+        "Error fetching album info",
+      );
+    });
+
+    it("should return error status when the query fails", async () => {
+      const mockError = new Error("Database error");
+      vi.mocked(topPlayed).mockRejectedValue(mockError);
+
+      const result = await getTopAlbums("3month");
+
+      expect(result).toEqual({
+        status: "error",
+        error: "Failed to fetch top albums",
+      });
+      expect(log.error).toHaveBeenCalledWith(
+        { err: mockError, action: "getTopAlbums" },
+        "Error fetching top albums",
+      );
+    });
   });
 });
 

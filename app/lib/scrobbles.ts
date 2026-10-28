@@ -1,7 +1,12 @@
 import "server-only";
 import { config } from "@/config";
 import { getGlobal } from "@/lib/global";
-import { bulk, type ChartItem, userGetScrobbles } from "@/lib/lastfm";
+import {
+  bulk,
+  type ChartItem,
+  type ChartKind,
+  userGetScrobbles,
+} from "@/lib/lastfm";
 import { tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
@@ -129,21 +134,44 @@ export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   }));
 }
 
+export type Played = { name: string; artist: string; playcount: number };
+
+// What each kind groups by; an artist is its own name.
+const groups = {
+  artist: { name: "artist", by: "artist", where: "" },
+  track: { name: "track", by: "artist, track", where: "" },
+  // Last.fm leaves a play's album empty when it has none, and ranks no such album.
+  album: { name: "album", by: "artist, album", where: "AND album != ''" },
+} as const satisfies Record<ChartKind, unknown>;
+
+/** The most played of a kind from `from` until `to`, first by name on a tie. */
+export async function topPlayed(
+  kind: ChartKind,
+  from: Date,
+  to: Date,
+  limit: number,
+): Promise<Played[]> {
+  const { name, by, where } = groups[kind];
+  const { rows } = await query(
+    `SELECT artist, ${name} AS name, COUNT(*) AS plays FROM scrobbles
+     WHERE played_at >= ? AND played_at < ? ${where}
+     GROUP BY ${by} ORDER BY plays DESC, ${by} LIMIT ?`,
+    [from.getTime(), to.getTime(), limit],
+  );
+  return rows.map((row) => ({
+    name: String(row["name"]),
+    artist: String(row["artist"]),
+    playcount: Number(row["plays"]),
+  }));
+}
+
 /** The most played artist from `from` until `to`, first by name on a tie. */
 export async function topArtist(
   from: Date,
   to: Date,
 ): Promise<ChartItem | undefined> {
-  const { rows } = await query(
-    `SELECT artist, COUNT(*) AS plays FROM scrobbles
-     WHERE played_at >= ? AND played_at < ?
-     GROUP BY artist ORDER BY plays DESC, artist LIMIT 1`,
-    [from.getTime(), to.getTime()],
-  );
-  const [top] = rows;
-  return (
-    top && { name: String(top["artist"]), playcount: Number(top["plays"]) }
-  );
+  const [top] = await topPlayed("artist", from, to, 1);
+  return top && { name: top.name, playcount: top.playcount };
 }
 
 /** Brings the mirror up to date and backfills for a while; resolves whether history remains. */

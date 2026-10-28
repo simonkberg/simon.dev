@@ -14,6 +14,7 @@ import {
   startScrobbleSync,
   syncScrobbles,
   topArtist,
+  topPlayed,
 } from "./scrobbles";
 
 vi.mock(import("@/lib/turso"), async () =>
@@ -247,6 +248,48 @@ describe("playsIn", () => {
       { artist: "B", track: "U" },
     ]);
   });
+});
+
+describe("topPlayed", () => {
+  beforeEach(async () => {
+    await query(
+      `INSERT INTO scrobbles VALUES
+       (1, 'B', 'X', 'Two'), (2, 'B', 'Y', 'Two'), (3, 'A', 'X', 'One'),
+       (4, 'A', 'X', 'One'), (5, 'A', 'Y', ''), (6, 'A', 'Y', ''), (7, 'C', 'Z', 'Late')`,
+    );
+  });
+
+  it.each([
+    [
+      "artist",
+      [
+        { name: "A", artist: "A", playcount: 4 },
+        { name: "B", artist: "B", playcount: 2 },
+      ],
+    ],
+    [
+      "track",
+      [
+        { name: "X", artist: "A", playcount: 2 },
+        { name: "Y", artist: "A", playcount: 2 },
+      ],
+    ],
+    // A play without an album counts toward no album.
+    [
+      "album",
+      [
+        { name: "One", artist: "A", playcount: 2 },
+        { name: "Two", artist: "B", playcount: 2 },
+      ],
+    ],
+  ] as const)(
+    "should rank each %s from `from` until `to`, first by name on a tie",
+    async (kind, top) => {
+      await expect(
+        topPlayed(kind, new Date(0), new Date(7), 2),
+      ).resolves.toEqual(top);
+    },
+  );
 });
 
 describe("topArtist", () => {

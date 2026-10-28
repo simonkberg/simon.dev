@@ -234,6 +234,10 @@ const coverSchema = z
       : undefined;
   });
 
+const lastfmUrlSchema = z
+  .url({ protocol: /^https$/, hostname: /^www\.last\.fm$/ })
+  .pipe(z.templateLiteral(["https://", z.string()]));
+
 const userGetTopAlbumsResponseSchema = z
   .object({
     topalbums: z.object({
@@ -242,9 +246,7 @@ const userGetTopAlbumsResponseSchema = z
           .object({
             name: z.string(),
             playcount: z.string().transform(Number),
-            url: z
-              .url({ protocol: /^https$/, hostname: /^www\.last\.fm$/ })
-              .pipe(z.templateLiteral(["https://", z.string()])),
+            url: lastfmUrlSchema,
             artist: z.object({ name: z.string() }),
             // A cover is decoration: a malformed one leaves the tile empty, not the list unavailable.
             image: coverSchema.catch(undefined),
@@ -276,6 +278,32 @@ export async function userGetTopAlbums(
     ...params,
   });
 }
+
+const albumPageResponseSchema = z
+  .object({
+    album: z.object({
+      url: lastfmUrlSchema,
+      image: coverSchema.catch(undefined),
+    }),
+  })
+  .transform(({ album }) => ({ url: album.url, cover: album.image }));
+
+export type AlbumInfo = z.infer<typeof albumPageResponseSchema>;
+
+export async function albumGetInfo(
+  artist: string,
+  album: string,
+): Promise<AlbumInfo> {
+  return call("album.getinfo", albumPageResponseSchema, { artist, album });
+}
+
+// Last.fm writes a space as +, and takes any other encoding of a name.
+const urlencode = (part: string) =>
+  encodeURIComponent(part).replaceAll("%20", "+");
+
+/** An album's page, for when Last.fm can't be asked for its own link. */
+export const albumUrl = (artist: string, album: string) =>
+  `https://www.last.fm/music/${urlencode(artist)}/${urlencode(album)}` as const;
 
 const toUnixTime = (date: Date) => Math.floor(date.getTime() / 1000);
 
