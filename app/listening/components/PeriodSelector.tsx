@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { objectEntries } from "ts-extras";
 
-import { type Period, periodLabels } from "@/lib/lastfm";
+import { type Period, periodLabels } from "@/lib/periods";
 
 type Tab = Period | "on-this-day";
 

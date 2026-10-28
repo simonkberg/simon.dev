@@ -1,7 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { TopTrack } from "@/actions/lastfm";
+import type { TopTrack } from "@/actions/listening";
 
 import { TopTable, TopTableSkeleton } from "./TopTable";
 

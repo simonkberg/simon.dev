@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { periodLabels } from "@/lib/lastfm";
+import { periodLabels } from "@/lib/periods";
 
 import { PeriodSelector } from "./PeriodSelector";
 

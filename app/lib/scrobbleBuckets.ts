@@ -1,5 +1,5 @@
 import { dayLabel, localDate, midnight, timeZone } from "@/lib/dates";
-import type { Period } from "@/lib/lastfm";
+import type { Period } from "@/lib/periods";
 
 interface ScrobbleBucket {
   label: string;

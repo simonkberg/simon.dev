@@ -1,4 +1,4 @@
-import type { BucketTopArtist, ScrobbleCount } from "@/actions/lastfm";
+import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
 
 // Labels count back from the current bucket. Narrow charts show every other one.
 const labelStep = (count: number) => (count <= 8 ? 1 : Math.ceil(count / 6));

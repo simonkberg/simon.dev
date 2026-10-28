@@ -21,7 +21,7 @@ import {
   getTopArtists,
   getTopTracks,
   refreshRecentTracks,
-} from "./lastfm";
+} from "./listening";
 
 vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   ...(await importOriginal()),

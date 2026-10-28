@@ -8,11 +8,11 @@ import {
   getTopArtistByBucket,
   getTopArtists,
   type ScrobbleCount,
-} from "@/actions/lastfm";
+} from "@/actions/listening";
 import { config } from "@/config";
 import { inlineCover } from "@/lib/covers";
 import { shareCard } from "@/lib/shareCard";
-import { topAlbum } from "@/mocks/lastfm";
+import { topAlbum } from "@/mocks/listening";
 
 import { listeningCard } from "./listeningCard";
 
@@ -46,7 +46,7 @@ const albums = [
   topAlbum("Fifth", "Fifth", 5, cover("fifth")),
 ];
 
-vi.mock(import("@/actions/lastfm"), () => ({
+vi.mock(import("@/actions/listening"), () => ({
   getTopAlbums: vi.fn(() => Promise.resolve({ status: "ok" as const, albums })),
   getScrobbles: vi.fn(() =>
     Promise.resolve({ status: "ok" as const, scrobbles }),

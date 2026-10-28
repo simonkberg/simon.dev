@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { use } from "react";
 
-import type { GetOnThisDayResult } from "@/actions/lastfm";
+import type { GetOnThisDayResult } from "@/actions/listening";
 import { Skeleton } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
 import { busiestYear } from "@/lib/onThisDay";

@@ -17,7 +17,6 @@ import {
 import { env } from "@/lib/env";
 import {
   getUserPlays,
-  periods as lastfmPeriods,
   chartKinds,
   userGetChartInRange,
   userGetRecentTracks,
@@ -38,6 +37,7 @@ import {
   recall,
   remember,
 } from "@/lib/memory";
+import { periods as lastfmPeriods } from "@/lib/periods";
 import {
   addReaction,
   EmojiSchema,

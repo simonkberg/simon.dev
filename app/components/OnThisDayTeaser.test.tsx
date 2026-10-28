@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { DayInYear, GetOnThisDayResult } from "@/actions/lastfm";
+import type { DayInYear, GetOnThisDayResult } from "@/actions/listening";
 
 import { OnThisDayTeaser } from "./OnThisDayTeaser";
 

@@ -4,30 +4,7 @@ import { z } from "zod";
 import { config } from "@/config";
 import { env } from "@/lib/env";
 import { getGlobal } from "@/lib/global";
-
-export const periods = [
-  "7day",
-  "1month",
-  "3month",
-  "6month",
-  "12month",
-  "overall",
-] as const;
-
-export type Period = (typeof periods)[number];
-
-export const periodLabels = {
-  "7day": "7 days",
-  "1month": "1 month",
-  "3month": "3 months",
-  "6month": "6 months",
-  "12month": "1 year",
-  overall: "all time",
-} as const satisfies Record<Period, string>;
-
-export function isValidPeriod(value: unknown): value is Period {
-  return periods.includes(value as Period);
-}
+import { type Period } from "@/lib/periods";
 
 const BASE_URL = "https://ws.audioscrobbler.com/2.0/";
 
@@ -168,9 +145,7 @@ const userGetTopTracksResponseSchema = z
   })
   .transform((data) => data.toptracks.track);
 
-export type UserGetTopTracksResponse = z.infer<
-  typeof userGetTopTracksResponseSchema
->;
+type UserGetTopTracksResponse = z.infer<typeof userGetTopTracksResponseSchema>;
 
 export async function userGetTopTracks(
   user: string,
@@ -202,7 +177,7 @@ const userGetTopArtistsResponseSchema = z
   })
   .transform((data) => data.topartists.artist);
 
-export type UserGetTopArtistsResponse = z.infer<
+type UserGetTopArtistsResponse = z.infer<
   typeof userGetTopArtistsResponseSchema
 >;
 
@@ -215,9 +190,6 @@ export async function userGetTopArtists(
     ...params,
   });
 }
-
-// The listening page shows this many, as a #1 tile beside a 3×3 grid.
-export const TOP_ALBUMS = 10;
 
 // Last.fm serves this grey star for albums without art.
 const PLACEHOLDER_COVER = "2a96cbd8b46e442fc41c2b86b821562f";
@@ -264,9 +236,7 @@ const userGetTopAlbumsResponseSchema = z
   })
   .transform((data) => data.topalbums.album);
 
-export type UserGetTopAlbumsResponse = z.infer<
-  typeof userGetTopAlbumsResponseSchema
->;
+type UserGetTopAlbumsResponse = z.infer<typeof userGetTopAlbumsResponseSchema>;
 
 export async function userGetTopAlbums(
   user: string,

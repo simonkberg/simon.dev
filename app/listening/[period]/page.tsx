@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { use } from "react";
 
-import { periods } from "@/lib/lastfm";
+import { periods } from "@/lib/periods";
 import {
   ListeningPeriod,
   periodMetadata,

@@ -1,9 +1,9 @@
 import { act, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { TopAlbum } from "@/actions/lastfm";
+import type { TopAlbum } from "@/actions/listening";
 import { config } from "@/config";
-import { topAlbum } from "@/mocks/lastfm";
+import { topAlbum } from "@/mocks/listening";
 
 import { AlbumCollage, AlbumCollageSkeleton } from "./AlbumCollage";
 

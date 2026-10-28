@@ -1,4 +1,4 @@
-import type { TopAlbum } from "@/actions/lastfm";
+import type { TopAlbum } from "@/actions/listening";
 
 export const topAlbum = (
   name: string,

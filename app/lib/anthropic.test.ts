@@ -33,7 +33,7 @@ import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
-import { topAlbum } from "@/mocks/lastfm";
+import { topAlbum } from "@/mocks/listening";
 import { server } from "@/mocks/node";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 

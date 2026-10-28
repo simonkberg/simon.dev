@@ -1,6 +1,6 @@
 "use no memo";
 
-import { type DayInYear, getOnThisDay } from "@/actions/lastfm";
+import { type DayInYear, getOnThisDay } from "@/actions/listening";
 import { formatPlays } from "@/lib/formatNumber";
 import { busiestYear } from "@/lib/onThisDay";
 import { color, Pane, shareCard } from "@/lib/shareCard";
