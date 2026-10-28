@@ -136,7 +136,7 @@
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
   --sleeve-padding: 0.5lh 1ch;
-  --sleeve-name: inherit;
+  --sleeve-artist: var(--muted);
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -501,6 +501,8 @@
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-overlay: var(--cover-bg);
   --cover-blend: multiply;
+  /* Muted is too faint on the accent wash. */
+  --sleeve-artist: color-mix(in oklch, currentColor 75%, transparent);
   --lane-weight: 2px;
   --tape-bar: color-mix(in oklch, var(--accent) 45%, transparent);
   --timeline-origin: "◇";
@@ -2933,7 +2935,6 @@ tbody tr:hover {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   font-weight: bold;
-  color: var(--sleeve-name);
 }
 
 .sleeve-artist {
@@ -2941,7 +2942,7 @@ tbody tr:hover {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: var(--muted);
+  color: var(--sleeve-artist);
 }
 
 @container (width < 12rem) {
