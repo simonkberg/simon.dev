@@ -173,6 +173,18 @@ describe("TimeTravel", () => {
     );
   });
 
+  it("forgets a held drag when the tape goes away", async () => {
+    vi.useFakeTimers();
+    const { unmount } = await renderTape();
+    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
+    drag(13);
+
+    unmount();
+    fireEvent.pointerUp(window);
+
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("doesn't wait for a press other than the main button", async () => {
     vi.useFakeTimers();
     await renderTape();

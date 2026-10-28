@@ -15,7 +15,7 @@ export interface MonthDaysProps {
   days: readonly ScrobbleCount[] | undefined;
 }
 
-/** The day's month under the tape's lens, a link to each of its days. */
+/** The day's month under the tape, a link to each of its days. */
 export const MonthDays = ({ month, days }: MonthDaysProps) => {
   const { date, target, travel, takeFocus } = use(TravelContext);
 
@@ -30,7 +30,6 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
 
   return (
     <TravelPending of="month">
-      <div className="time-travel-lens" aria-hidden="true" />
       <ol
         className="time-travel-days"
         style={{ "--days": days.length } as CSSProperties}

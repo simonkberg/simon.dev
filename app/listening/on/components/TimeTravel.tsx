@@ -6,6 +6,7 @@ import {
   type PropsWithChildren,
   type PointerEvent,
   use,
+  useEffect,
   useRef,
 } from "react";
 
@@ -86,7 +87,9 @@ export const TimeTravel = ({
   const counts = use(months);
   const tops = use(years);
   const { date, target, scrub, release } = use(TravelContext);
-  const held = useRef(false);
+  // While a drag is held, the listeners waiting for it to be let go.
+  const held = useRef<AbortController>(undefined);
+  useEffect(() => () => held.current?.abort(), []);
 
   // The day's page answers 404 for anything else, so there's nothing to show.
   const day = date === undefined ? undefined : inHistory(date, today);
@@ -112,15 +115,15 @@ export const TimeTravel = ({
   // A drag goes to its month once let go, wherever the pointer is then.
   const hold = (event: PointerEvent) => {
     if (event.button !== 0) return;
-    held.current = true;
+    const listening = new AbortController();
+    held.current = listening;
     const letGo = () => {
-      held.current = false;
-      removeEventListener("pointerup", letGo);
-      removeEventListener("pointercancel", letGo);
+      listening.abort();
+      held.current = undefined;
       release();
     };
-    addEventListener("pointerup", letGo);
-    addEventListener("pointercancel", letGo);
+    addEventListener("pointerup", letGo, listening);
+    addEventListener("pointercancel", letGo, listening);
   };
 
   return (
@@ -163,7 +166,10 @@ export const TimeTravel = ({
           aria-valuetext={counts[at]?.label}
           onPointerDown={hold}
           onChange={(event) =>
-            scrub(travelTo(Number(event.target.value)), held.current)
+            scrub(
+              travelTo(Number(event.target.value)),
+              held.current !== undefined,
+            )
           }
         />
       </div>

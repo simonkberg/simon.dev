@@ -122,7 +122,6 @@
   --lane-hover-color: var(--accent);
   --tape-bar: color-mix(in oklch, var(--muted) 55%, transparent);
   --tape-hover: color-mix(in oklch, var(--accent) 60%, transparent);
-  --tape-lens: color-mix(in oklch, var(--accent) 14%, transparent);
   --tape-era: var(--rule);
 
   --collage-gap: 0.75rem;
@@ -1589,10 +1588,9 @@ ul {
   }
 }
 
-/* Runs down through the years to the lens. */
 .time-travel-head {
   position: absolute;
-  inset-block: -0.4rem -1.7rem;
+  inset-block: -0.4rem 0;
   left: calc(var(--tape-slot) * (var(--at) + 0.5));
   border-inline-start: 1px solid var(--accent);
   pointer-events: none;
@@ -1636,22 +1634,10 @@ ul {
   }
 }
 
-/* Widens from the month on the tape to its days below. */
-.time-travel-lens {
-  height: 1.6rem;
-  background: var(--tape-lens);
-  clip-path: polygon(
-    calc(var(--tape-slot) * var(--at)) 0,
-    calc(var(--tape-slot) * (var(--at) + 1)) 0,
-    100% 100%,
-    0 100%
-  );
-}
-
 .time-travel-days {
   display: grid;
   grid-template-columns: repeat(var(--days), minmax(0, 1fr));
-  margin: 0;
+  margin: 1.25rem 0 0;
   padding: 0;
   list-style: none;
 
