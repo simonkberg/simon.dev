@@ -70,3 +70,13 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
     </TravelPending>
   );
 };
+
+// One day: its bar and hidden tick give the strip its height.
+export const MonthDaysSkeleton = () => (
+  <ol className="time-travel-days" style={{ "--days": 1 } as CSSProperties}>
+    <li>
+      <span />
+      <span className="time-travel-tick">1</span>
+    </li>
+  </ol>
+);

@@ -11,7 +11,7 @@ import {
 } from "react";
 
 import type { BucketTopArtist, ScrobbleCount } from "@/actions/listening";
-import { SkeletonStatus } from "@/components/Skeleton";
+import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import {
   addDays,
   type Day,
@@ -24,6 +24,7 @@ import {
 import { barHeights, lanes } from "@/lib/scrobbleChart";
 
 import { href } from "../href";
+import { MonthDaysSkeleton } from "./MonthDays";
 import { TravelContext } from "./Travel";
 
 export interface TimeTravelProps extends PropsWithChildren {
@@ -153,7 +154,9 @@ export const TimeTravel = ({
           {counts.map(({ label }, index) => (
             <li
               key={label}
-              style={{ "--value": heights[index] } as CSSProperties}
+              style={
+                { "--value": heights[index], "--index": index } as CSSProperties
+              }
               data-active={index === at || undefined}
             />
           ))}
@@ -219,10 +222,26 @@ export const TimeTravel = ({
   );
 };
 
+// Laid out like the tape, so it keeps its size as the tape arrives.
 export const TimeTravelSkeleton = () => (
   <SkeletonStatus>
     <div className="time-travel" aria-hidden="true">
+      <div className="time-travel-readout">
+        <Step to={undefined} label="Day before" glyph="‹" />
+        <output>
+          <Skeleton width={16} />
+        </output>
+        <Step to={undefined} label="Day after" glyph="›" />
+      </div>
       <div className="time-travel-tape" />
+      <ol className="time-travel-years" />
+      <MonthDaysSkeleton />
+      <ol className="time-travel-eras" />
+      <p className="time-travel-era">
+        <span>
+          <Skeleton width={24} />
+        </span>
+      </p>
     </div>
   </SkeletonStatus>
 );
