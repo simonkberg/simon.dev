@@ -8,6 +8,7 @@ import {
   getRecentTracks,
   type GetRecentTracksResult,
 } from "@/actions/listening";
+import type { GetDiaryResult } from "@/actions/simonBot";
 import { getWakaTimeStats, type WakaTimeStatsResult } from "@/actions/wakaTime";
 import type { ChatProps } from "@/components/chat/Chat";
 import type { RecentTracksListProps } from "@/components/RecentTracksList";
@@ -50,6 +51,15 @@ vi.mock(import("@/actions/listening"), () => ({
         date: "Oct 24",
         years: [{ year: "2012", count: 62, top: { artist: "A", track: "T" } }],
       },
+    }),
+  ),
+}));
+
+vi.mock(import("@/actions/simonBot"), () => ({
+  getDiary: vi.fn(() =>
+    Promise.resolve<GetDiaryResult>({
+      status: "ok",
+      data: [{ day: "2026-10-27", entry: "smog again" }],
     }),
   ),
 }));
@@ -188,6 +198,16 @@ describe("RootPage", () => {
       expect(
         within(section).getByRole("link", { name: "every\u00a0year" }),
       ).toHaveAttribute("href", "/listening/on-this-day");
+    });
+
+    it("should link simon-bot's latest diary entry to the diary", async () => {
+      await renderPage();
+
+      const section = region(/Currently listening to/);
+      expect(within(section).getByText(/smog again/)).toBeVisible();
+      expect(
+        within(section).getByRole("link", { name: "every\u00a0entry" }),
+      ).toHaveAttribute("href", "/simon-bot#diary");
     });
 
     it("should show loader while tracks are loading", async () => {

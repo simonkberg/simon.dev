@@ -1,11 +1,14 @@
 import { cacheLife } from "next/cache";
 import { describe, expect, it, vi } from "vitest";
 
+import { readEntries } from "@/lib/diary";
 import { log } from "@/lib/log";
 import { forgetPerson, readPersonNotes, readPublicNotes } from "@/lib/memory";
 import type { Username } from "@/lib/session";
 
-import { forgetMe, getBotNotes, getNotesOnMe } from "./simonBot";
+import { forgetMe, getBotNotes, getDiary, getNotesOnMe } from "./simonBot";
+
+vi.mock(import("@/lib/diary"), () => ({ readEntries: vi.fn() }));
 
 vi.mock(import("@/lib/memory"), () => ({
   forgetPerson: vi.fn(),
@@ -20,6 +23,32 @@ vi.mock(import("@/lib/session"), () => ({
     Promise.resolve({ username: "brave-otter" as Username }),
   ),
 }));
+
+describe("getDiary", () => {
+  it("should return the latest entries and cache them for minutes", async () => {
+    const entries = [{ day: "2026-10-27" as const, entry: "smog again" }];
+    vi.mocked(readEntries).mockResolvedValue(entries);
+
+    await expect(getDiary()).resolves.toEqual({ status: "ok", data: entries });
+    expect(readEntries).toHaveBeenCalledWith(30);
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+  });
+
+  it("should return an error and cache it briefly when the read fails", async () => {
+    const err = new Error("boom");
+    vi.mocked(readEntries).mockRejectedValue(err);
+
+    await expect(getDiary()).resolves.toEqual({
+      status: "error",
+      error: "Failed to fetch the diary",
+    });
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("seconds");
+    expect(log.error).toHaveBeenCalledWith(
+      { err, action: "getDiary" },
+      "Error fetching the diary",
+    );
+  });
+});
 
 describe("getBotNotes", () => {
   it("should return the notes and cache them for minutes", async () => {

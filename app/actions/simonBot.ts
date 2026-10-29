@@ -2,6 +2,7 @@
 
 import { cacheLife } from "next/cache";
 
+import { type DiaryEntry, readEntries } from "@/lib/diary";
 import { log } from "@/lib/log";
 import {
   forgetPerson,
@@ -27,6 +28,27 @@ export async function getBotNotes(): Promise<GetBotNotesResult> {
     cacheLife("seconds");
     log.error({ err, action: "getBotNotes" }, "Error fetching bot notes");
     return { status: "error", error: "Failed to fetch bot notes" };
+  }
+}
+
+const DIARY_ENTRIES = 30;
+
+export type GetDiaryResult =
+  | { status: "ok"; data: DiaryEntry[] }
+  | { status: "error"; error: string };
+
+/** simon-bot's latest diary entries, newest first. */
+export async function getDiary(): Promise<GetDiaryResult> {
+  "use cache";
+
+  try {
+    const data = await readEntries(DIARY_ENTRIES);
+    cacheLife("minutes");
+    return { status: "ok", data };
+  } catch (err) {
+    cacheLife("seconds");
+    log.error({ err, action: "getDiary" }, "Error fetching the diary");
+    return { status: "error", error: "Failed to fetch the diary" };
   }
 }
 

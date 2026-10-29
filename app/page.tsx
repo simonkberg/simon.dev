@@ -4,9 +4,11 @@ import { Suspense } from "react";
 
 import { getChatHistory } from "@/actions/chat";
 import { getOnThisDay, getRecentTracks } from "@/actions/listening";
+import { getDiary } from "@/actions/simonBot";
 import { getWakaTimeStats } from "@/actions/wakaTime";
 import { Chat } from "@/components/chat/Chat";
 import { ChatStream } from "@/components/chat/ChatStream";
+import { DiaryTeaser, DiaryTeaserSkeleton } from "@/components/DiaryTeaser";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Loader } from "@/components/Loader";
@@ -40,6 +42,7 @@ export default function RootPage() {
   const recentTracks = request.then(getRecentTracks);
   // Called bare, so it shares its cache entry with /listening/on-this-day.
   const onThisDay = request.then(() => getOnThisDay());
+  const diary = request.then(getDiary);
   const tipDismissed = getChatTipDismissed();
 
   return (
@@ -95,6 +98,9 @@ export default function RootPage() {
         </p>
         <Suspense fallback={<OnThisDayTeaserSkeleton />}>
           <OnThisDayTeaser onThisDay={onThisDay} />
+        </Suspense>
+        <Suspense fallback={<DiaryTeaserSkeleton />}>
+          <DiaryTeaser diary={diary} />
         </Suspense>
       </section>
 

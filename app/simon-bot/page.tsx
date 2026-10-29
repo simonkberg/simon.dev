@@ -3,12 +3,13 @@ import { io } from "next/cache";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { getBotNotes } from "@/actions/simonBot";
+import { getBotNotes, getDiary } from "@/actions/simonBot";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
 
+import { DiaryList } from "./components/DiaryList";
 import { headings } from "./components/headings";
 import { NoteList, NoteListSkeleton } from "./components/NoteList";
 
@@ -19,7 +20,9 @@ export const metadata: Metadata = {
 
 export default function SimonBotPage() {
   // Keeps the cached notes out of the static shell, so their relative times render per request.
-  const result = io().then(getBotNotes);
+  const request = io();
+  const result = request.then(getBotNotes);
+  const diary = request.then(getDiary);
 
   return (
     <Page section="simon-bot">
@@ -27,8 +30,22 @@ export default function SimonBotPage() {
         <p>
           simon-bot lives in the <Link href="/">chat</Link>. After every
           conversation it&apos;s mentioned in, it looks back and decides who it
-          wants to be, rewriting these notes itself.
+          wants to be, rewriting these notes itself. Each night it also writes
+          in its diary about what Simon listened to the day before.
         </p>
+      </section>
+
+      <section id="diary">
+        <Heading level={2}>
+          Diary <Subtitle>(what it makes of Simon&apos;s listening)</Subtitle>
+        </Heading>
+        <Suspense fallback={<NoteListSkeleton />}>
+          <DiaryList
+            entries={diary.then((result) =>
+              result.status === "ok" ? result.data : undefined,
+            )}
+          />
+        </Suspense>
       </section>
 
       {PUBLIC_CATEGORIES.map((category) => (
