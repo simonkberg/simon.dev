@@ -263,16 +263,18 @@ function renderCategory(category: string, memories: Memory[]): string {
   ].join("\n");
 }
 
-/** The notes shown in full: `core`, and people/* for the participants. */
+/** The core categories and the participants' people/* in full and the rest by name, or only the categories in `only`. */
 export async function buildMemoryContext(
   participants: string[],
-  core: readonly string[] = Object.keys(CORE_CATEGORIES),
+  only?: readonly string[],
 ): Promise<string> {
   try {
     const people = participants
       .map(peopleCategory)
       .filter((category) => category !== undefined);
-    const shown = [...new Set([...core, ...people])];
+    const shown = only ?? [
+      ...new Set([...Object.keys(CORE_CATEGORIES), ...people]),
+    ];
 
     const [{ rows: memoryRows }, { rows: countRows }] = await batch([
       notesIn(shown),
@@ -286,7 +288,7 @@ export async function buildMemoryContext(
       renderCategory(category, notes.get(category) ?? []),
     );
 
-    const others = countRows
+    const others = (only ? [] : countRows)
       .filter((row) => !shown.includes(String(row["category"])))
       .map((row) => `${row["category"]} (${row["count"]})`);
     if (others.length > 0) {

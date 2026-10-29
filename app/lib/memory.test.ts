@@ -531,21 +531,15 @@ describe("buildMemoryContext", () => {
     );
   });
 
-  it("should show only the core categories asked for", async () => {
+  it("should show only the categories asked for, and no others by name", async () => {
     await seed(1, "self", "hi");
     await seed(2, "context", "secret");
+    await seed(3, "people/alice", "likes cats");
 
-    const context = await buildMemoryContext([], ["self"]);
+    const context = await buildMemoryContext(["alice"], ["self"]);
 
     expect(context).toBe(
-      [
-        "<memory>",
-        "## self",
-        "- #1 hi",
-        "",
-        "Other categories, use recall to read them: context (1)",
-        "</memory>",
-      ].join("\n"),
+      ["<memory>", "## self", "- #1 hi", "</memory>"].join("\n"),
     );
   });
 

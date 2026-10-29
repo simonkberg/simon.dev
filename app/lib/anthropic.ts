@@ -599,9 +599,9 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 export async function buildSystem(
   prompt: string,
   participants: string[],
-  core?: readonly string[],
+  only?: readonly string[],
 ): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(participants, core);
+  const memoryContext = await buildMemoryContext(participants, only);
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
     ...(memoryContext === ""
