@@ -134,6 +134,20 @@ describe("CaretBuddy", () => {
 
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
+    it("keeps the success wait when the status leaves ok", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(700);
+      });
+      rerender(<CaretBuddy {...defaultProps} />);
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+
+      expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
+    });
+
     it("restarts the success wait on another ok", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);

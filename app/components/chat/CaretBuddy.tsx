@@ -76,6 +76,8 @@ interface CaretBuddyInputs {
 interface Moods {
   typing: boolean;
   success: boolean;
+  // Counts each new ok, to restart the success wait.
+  oks: number;
   // The inputs as last seen, to notice their changes.
   inputValue: string;
   resultStatus: CaretBuddyInputs["resultStatus"];
@@ -87,15 +89,16 @@ type MoodsAction =
 
 function moods(state: Moods, action: MoodsAction): Moods {
   switch (action.type) {
-    case "see":
+    case "see": {
+      const ok = action.resultStatus === "ok" && state.resultStatus !== "ok";
       return {
         inputValue: action.inputValue,
         resultStatus: action.resultStatus,
         typing: state.typing || action.inputValue !== state.inputValue,
-        success:
-          state.success ||
-          (action.resultStatus === "ok" && state.resultStatus !== "ok"),
+        success: state.success || ok,
+        oks: ok ? state.oks + 1 : state.oks,
       };
+    }
     case "expire":
       return { ...state, [action.mood]: false };
   }
@@ -121,11 +124,12 @@ function useCaretBuddyState({
   isPending,
   resultStatus,
 }: CaretBuddyInputs): BuddyState {
-  const [{ typing, success, ...seen }, dispatch] = useReducer(moods, {
+  const [{ typing, success, oks, ...seen }, dispatch] = useReducer(moods, {
     inputValue,
     resultStatus,
     typing: false,
     success: false,
+    oks: 0,
   });
 
   if (inputValue !== seen.inputValue || resultStatus !== seen.resultStatus) {
@@ -133,13 +137,7 @@ function useCaretBuddyState({
   }
 
   useExpiry(dispatch, "typing", typing, TYPING_TIMEOUT_MS, seen.inputValue);
-  useExpiry(
-    dispatch,
-    "success",
-    success,
-    SUCCESS_DURATION_MS,
-    seen.resultStatus,
-  );
+  useExpiry(dispatch, "success", success, SUCCESS_DURATION_MS, oks);
 
   if (resultStatus === "error") return "error";
   if (success) return "success";
