@@ -1060,9 +1060,16 @@ describe("ban tool", () => {
     });
   });
 
-  it("says so when the post can't be banned", async () => {
-    expect(JSON.parse(await runTool("ban", { message_id: "7" }, chat))).toEqual(
-      { error: "No site post from the last 30 days to ban for" },
-    );
+  it.each([
+    ["a post without an IP", { message_id: "7" }, chat],
+    [
+      "no message",
+      {},
+      [{ role: "user", username: TEST_USERNAME, content: "hi" }] as const,
+    ],
+  ])("says so for %s", async (_, input, messages) => {
+    expect(JSON.parse(await runTool("ban", input, [...messages]))).toEqual({
+      error: "No site post from the last 30 days to ban for",
+    });
   });
 });
