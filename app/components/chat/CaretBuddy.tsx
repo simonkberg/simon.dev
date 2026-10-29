@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useReducer } from "react";
+
+import { useTimeout } from "@/components/useTimeout";
 
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
 type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
@@ -104,21 +106,6 @@ function moods(state: Moods, action: MoodsAction): Moods {
   }
 }
 
-function useExpiry(
-  dispatch: (action: MoodsAction) => void,
-  mood: "typing" | "success",
-  active: boolean,
-  ms: number,
-  // Restarts the wait when it changes.
-  restart?: unknown,
-) {
-  useEffect(() => {
-    if (!active) return;
-    const timer = setTimeout(() => dispatch({ type: "expire", mood }), ms);
-    return () => clearTimeout(timer);
-  }, [dispatch, mood, active, ms, restart]);
-}
-
 function useCaretBuddyState({
   inputValue,
   isPending,
@@ -136,8 +123,16 @@ function useCaretBuddyState({
     dispatch({ type: "see", inputValue, resultStatus });
   }
 
-  useExpiry(dispatch, "typing", typing, TYPING_TIMEOUT_MS, seen.inputValue);
-  useExpiry(dispatch, "success", success, SUCCESS_DURATION_MS, oks);
+  useTimeout(
+    () => dispatch({ type: "expire", mood: "typing" }),
+    typing ? TYPING_TIMEOUT_MS : undefined,
+    seen.inputValue,
+  );
+  useTimeout(
+    () => dispatch({ type: "expire", mood: "success" }),
+    success ? SUCCESS_DURATION_MS : undefined,
+    oks,
+  );
 
   if (resultStatus === "error") return "error";
   if (success) return "success";
@@ -182,13 +177,7 @@ function useFrameAnimation(frames: AnimationFrames): string {
   if (frames !== state.frames) dispatch({ type: "play", frames });
   const [duration, expression] = state.frame;
 
-  useEffect(() => {
-    const timer = setTimeout(
-      () => dispatch({ type: "advance" }),
-      duration * 1000,
-    );
-    return () => clearTimeout(timer);
-  }, [state, duration]);
+  useTimeout(() => dispatch({ type: "advance" }), duration * 1000, state);
 
   return expression;
 }
