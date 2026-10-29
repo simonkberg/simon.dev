@@ -36,6 +36,20 @@ describe("ban", () => {
     expect(await isBanned("2605:7380:8000:1000::1")).toBe(true);
     expect(await isBanned("2605:7380:8000:1001::1")).toBe(false);
   });
+
+  it("fails open", async () => {
+    const error = new Error("boom");
+    vi.mocked(query).mockImplementation(
+      failQuery(sqlite(), "INSERT", { error }),
+    );
+
+    await ban("192.0.2.1");
+
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: error, ip: "192.0.2.1", network: "192.0.2.1" },
+      "Failed to ban a network",
+    );
+  });
 });
 
 describe("isBanned", () => {

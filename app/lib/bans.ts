@@ -10,16 +10,20 @@ export function isSpam(text: string): boolean {
   return SPAM.test(text);
 }
 
+// Both fail open, like the rate limiter: the spam itself is turned away regardless.
 export async function ban(ip: string): Promise<void> {
   const network = networkOf(ip);
-  await query(
-    "INSERT INTO banned_networks (network, banned_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
-    [network, Date.now()],
-  );
-  log.info({ ip, network }, "Banned a network");
+  try {
+    await query(
+      "INSERT INTO banned_networks (network, banned_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
+      [network, Date.now()],
+    );
+    log.info({ ip, network }, "Banned a network");
+  } catch (err) {
+    log.warn({ err, ip, network }, "Failed to ban a network");
+  }
 }
 
-// Fails open, like the rate limiter.
 export async function isBanned(ip: string): Promise<boolean> {
   try {
     const { rows } = await query(
