@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type CSSProperties, use } from "react";
 
 import type { ScrobbleCount } from "@/actions/listening";
-import { addDays, type Month, monthOf } from "@/lib/dates";
+import { addDays, firstOfMonth, type Month, monthOf } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
 import { barHeights } from "@/lib/scrobbleChart";
 
@@ -29,6 +29,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
   const shown = target && monthOf(target) === month ? target : date;
   const dayOfMonth = Number(shown?.slice(8));
   const heights = barHeights(days);
+  const first = firstOfMonth(month);
 
   return (
     <TravelPending of="month">
@@ -38,12 +39,14 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
         aria-label="Days"
       >
         {days.map(({ label, count }, index) => {
-          const day = addDays(`${month}-01`, index);
+          const day = addDays(first, index);
+          const number = Number(day.slice(8));
           const current = day === shown;
-          // Every week's first day, unless it would crowd the current one's.
+          // The first day and every week's, unless it would crowd the current one's.
           const tick =
             current ||
-            (index % 7 === 0 && Math.abs(index + 1 - dayOfMonth) > 1);
+            ((index === 0 || (number - 1) % 7 === 0) &&
+              Math.abs(number - dayOfMonth) > 1);
           return (
             <li
               key={label}
@@ -63,7 +66,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
                 <span className="visually-hidden">{`${label}: ${formatPlays(count)}`}</span>
               </Link>
               <span className="time-travel-tick" aria-hidden="true">
-                {index + 1}
+                {number}
               </span>
             </li>
           );

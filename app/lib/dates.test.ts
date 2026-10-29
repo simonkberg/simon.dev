@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   clockTime,
+  dayIndex,
   dayInMonth,
+  firstOfMonth,
   dayStart,
   fullDayLabel,
   monthIndex,
@@ -82,21 +84,35 @@ describe("yearBefore", () => {
 });
 
 describe("monthIndex", () => {
-  it("should count months since January of the first year", () => {
-    expect(monthIndex("2007-01-01")).toBe(0);
-    expect(monthIndex("2012-10-14")).toBe(5 * 12 + 9);
+  it("should count months since the first scrobble's", () => {
+    expect(monthIndex("2007-12-31")).toBe(0);
+    expect(monthIndex("2012-10-14")).toBe(4 * 12 + 10);
   });
 });
 
 describe("dayInMonth", () => {
   it("should keep the date in the month at an index", () => {
-    expect(dayInMonth(0, "2012-10-14")).toBe("2007-01-14");
+    expect(dayInMonth(0, "2012-10-14")).toBe("2007-12-14");
   });
 
   it("should end a shorter month at its last day", () => {
     expect(dayInMonth(monthIndex("2012-02-01"), "2012-10-31")).toBe(
       "2012-02-29",
     );
+  });
+});
+
+describe("firstOfMonth", () => {
+  it("should start the first scrobble's month on its day", () => {
+    expect(firstOfMonth("2007-12")).toBe("2007-12-18");
+    expect(firstOfMonth("2012-10")).toBe("2012-10-01");
+  });
+});
+
+describe("dayIndex", () => {
+  it("should count from the month's first day of the history", () => {
+    expect(dayIndex("2007-12-20")).toBe(2);
+    expect(dayIndex("2012-10-02")).toBe(1);
   });
 });
 

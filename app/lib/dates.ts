@@ -78,11 +78,13 @@ export function dayStart(date: string, offset = 0): Date {
   return midnight(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + offset);
 }
 
-/** The first day time travel reaches, the year Last.fm's history starts. */
-export const firstDay: Day = `${config.lastfmSince}-01-01`;
-
 // A Day read as UTC midnight, so the UTC getters give its calendar date.
 const utc = (day: Day) => new Date(`${day}T00:00:00Z`);
+
+/** The first day of the history, the day of the first scrobble. */
+export const firstDay: Day = config.firstScrobble;
+
+export const firstYear = utc(firstDay).getUTCFullYear();
 
 const toDay = (instant: number) =>
   new Date(instant).toISOString().slice(0, 10) as Day;
@@ -122,16 +124,23 @@ export const yearBefore = (day: Day): Day => {
   );
 };
 
-/** Months since January of the first year: the tape's index of the day's month. */
-export const monthIndex = (day: Day) => {
+const months = (day: Day) => {
   const date = utc(day);
-  return (date.getUTCFullYear() - config.lastfmSince) * 12 + date.getUTCMonth();
+  return date.getUTCFullYear() * 12 + date.getUTCMonth();
 };
+
+const firstMonth = months(firstDay);
+
+/** Months since the first day's: the tape's index of the day's month. */
+export const monthIndex = (day: Day) => months(day) - firstMonth;
+
+/** The tape's index of the year's January, negative for the first year's. */
+export const january = (year: number) => year * 12 - firstMonth;
 
 /** The day of the month at `index` nearest `day`'s date in its own month. */
 export function dayInMonth(index: number, day: Day): Day {
-  const year = config.lastfmSince + Math.floor(index / 12);
-  const month = index % 12;
+  const year = Math.floor((firstMonth + index) / 12);
+  const month = (firstMonth + index) % 12;
   const length = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   return toDay(Date.UTC(year, month, Math.min(utc(day).getUTCDate(), length)));
 }
@@ -158,3 +167,11 @@ export const monthLabel = (month: Month) => monthFormat.format(new Date(month));
 
 /** The "YYYY-MM" month the day falls in. */
 export const monthOf = (day: Day) => day.slice(0, 7) as Month;
+
+/** The month's first day of the history: the first scrobble's month starts on that day. */
+export const firstOfMonth = (month: Month): Day =>
+  month === monthOf(firstDay) ? firstDay : `${month}-01`;
+
+/** The day's place among its month's days of the history, from 0. */
+export const dayIndex = (day: Day) =>
+  Number(day.slice(8)) - Number(firstOfMonth(monthOf(day)).slice(8));

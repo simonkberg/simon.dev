@@ -6,6 +6,7 @@ import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { config } from "@/config";
+import { firstYear } from "@/lib/dates";
 import { getToday } from "@/lib/today";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
@@ -28,7 +29,7 @@ export default function TimeTravelLayout({
     <Page section="Listening">
       <section>
         <p>
-          My listening on any day since {config.lastfmSince}, from{" "}
+          My listening on any day since {firstYear}, from{" "}
           <ExternalLink
             href={`https://www.last.fm/user/${config.lastfmUsername}`}
           >

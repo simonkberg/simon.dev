@@ -1,5 +1,6 @@
 import { getRecentTracks, getScrobbles } from "@/actions/listening";
 import { config } from "@/config";
+import { firstYear } from "@/lib/dates";
 import { formatNumber } from "@/lib/formatNumber";
 import { color, shareCard, Stems } from "@/lib/shareCard";
 
@@ -85,7 +86,7 @@ export default async function openGraphImage() {
           >
             <Stems counts={counts} width={360} height={120} />
             <span style={{ fontSize: 15, color: color.muted }}>
-              {`${formatNumber(counts.reduce((sum, { count }) => sum + count, 0))} scrobbles since ${config.lastfmSince}`}
+              {`${formatNumber(counts.reduce((sum, { count }) => sum + count, 0))} scrobbles since ${firstYear}`}
             </span>
           </div>
         )}

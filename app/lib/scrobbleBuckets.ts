@@ -1,6 +1,9 @@
 import {
-  type Month,
+  type Day,
   dayLabel,
+  dayStart,
+  firstYear,
+  inHistory,
   localDate,
   localDay,
   midnight,
@@ -97,33 +100,27 @@ export function periodStart(
   return start(bucketUnits[period], localDate(now), bucketCounts[period] - 1);
 }
 
-/** Calendar years in Stockholm, from `since` to the current one. */
-export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
+/** Calendar years in Stockholm, from the first scrobble's to the current one. */
+export function yearBuckets(now: Date): ScrobbleBucket[] {
   const today = localDate(now);
-  const count = today.getUTCFullYear() - since + 1;
+  const count = today.getUTCFullYear() - firstYear + 1;
   return buckets("year", count, today);
 }
 
-/** Today's Stockholm date in each year from `since` to the last, newest first. */
-export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
-  const today = localDate(now);
-  const month = today.getUTCMonth();
-  const day = today.getUTCDate();
-  return (
-    Array.from(
-      { length: today.getUTCFullYear() - since },
-      (_, index) => today.getUTCFullYear() - 1 - index,
-    )
-      // February 29 only comes around in leap years.
-      .filter(
-        (year) => new Date(Date.UTC(year, month, day)).getUTCDate() === day,
-      )
-      .map((year) => ({
-        label: String(year),
-        from: midnight(year, month, day),
-        to: midnight(year, month, day + 1),
-      }))
-  );
+/** Today's Stockholm date in each past year of the history, newest first. */
+export function sameDayBuckets(now: Date): ScrobbleBucket[] {
+  const today = localDay(now);
+  const year = Number(today.slice(0, 4));
+  return Array.from(
+    { length: year - firstYear },
+    (_, index) => `${year - 1 - index}${today.slice(4)}`,
+  ).flatMap((date) => {
+    // February 29 only comes around in leap years.
+    const day = inHistory(date, today);
+    return day === undefined
+      ? []
+      : [{ label: day.slice(0, 4), from: dayStart(day), to: dayStart(day, 1) }];
+  });
 }
 
 /** Calendar months in Stockholm, one per tape index, up to the current one. */
@@ -131,13 +128,13 @@ export function monthBuckets(now: Date): ScrobbleBucket[] {
   return buckets("month", monthIndex(localDay(now)) + 1, localDate(now));
 }
 
-/** The Stockholm days of a "YYYY-MM" month, up to today in the current one. */
-export function monthDayBuckets(month: Month, now: Date): ScrobbleBucket[] {
-  const first = new Date(month);
+/** The Stockholm days from `first` to its month's end, or today in the current month. */
+export function monthDayBuckets(first: Day, now: Date): ScrobbleBucket[] {
+  const start = new Date(first);
   const monthEnd = new Date(
-    Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0),
   );
   const today = localDate(now);
   const last = monthEnd < today ? monthEnd : today;
-  return buckets("day", last.getUTCDate(), last);
+  return buckets("day", last.getUTCDate() - start.getUTCDate() + 1, last);
 }

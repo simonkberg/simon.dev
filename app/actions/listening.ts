@@ -2,7 +2,6 @@
 
 import { cacheLife, refresh } from "next/cache";
 
-import { config } from "@/config";
 import { cacheUntil } from "@/lib/cacheUntil";
 import { TOP_ALBUMS } from "@/lib/covers";
 import {
@@ -11,10 +10,10 @@ import {
   type Month,
   dayLabel,
   dayStart,
+  firstOfMonth,
   inHistory,
   localDay,
   midnight,
-  monthOf,
   nextMidnight,
 } from "@/lib/dates";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
@@ -88,16 +87,17 @@ function historyDay(value: string, now: Date): Day {
 /** A period until now, or a calendar month as "YYYY-MM". */
 export type Span = Period | Month;
 
-/** What a span's top lists count: a period's chart until now, or the whole month. */
+/** What a span's top lists count: a period's chart until now, or the month from its first day of the history. */
 function spanRange(span: Span, now: Date) {
   if (isValidPeriod(span)) {
     const from = span === "overall" ? new Date(0) : periodStart(span, now);
     return { from, to: now };
   }
   // Server actions take any string, and each one is its own cache entry.
-  const first = new Date(historyDay(`${span}-01`, now));
+  const day = historyDay(firstOfMonth(span), now);
+  const first = new Date(day);
   const [year, month] = [first.getUTCFullYear(), first.getUTCMonth()];
-  return { from: midnight(year, month, 1), to: midnight(year, month + 1, 1) };
+  return { from: dayStart(day), to: midnight(year, month + 1, 1) };
 }
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
@@ -225,9 +225,7 @@ export type GetScrobblesResult =
   | { status: "error"; error: string };
 
 const periodBuckets = (period: Period, now: Date) =>
-  period === "overall"
-    ? yearBuckets(config.lastfmSince, now)
-    : scrobbleBuckets(period, now);
+  period === "overall" ? yearBuckets(now) : scrobbleBuckets(period, now);
 
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));
@@ -344,7 +342,7 @@ export async function getDailyScrobbles(
   "use cache";
   return countBuckets(
     // Server actions take any string, and each one is its own cache entry.
-    (now) => monthDayBuckets(monthOf(historyDay(`${month}-01`, now)), now),
+    (now) => monthDayBuckets(historyDay(firstOfMonth(month), now), now),
     "getDailyScrobbles",
   );
 }
@@ -428,17 +426,15 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
   try {
     const now = new Date();
     const years = await Promise.all(
-      sameDayBuckets(config.lastfmSince, now).map(
-        async ({ label, from, to }) => {
-          const played = await playsIn(from, to);
-          return {
-            year: label,
-            day: localDay(from),
-            count: played.length,
-            top: topOfDay(played),
-          };
-        },
-      ),
+      sameDayBuckets(now).map(async ({ label, from, to }) => {
+        const played = await playsIn(from, to);
+        return {
+          year: label,
+          day: localDay(from),
+          count: played.length,
+          top: topOfDay(played),
+        };
+      }),
     );
     // Every year shown has ended, so only the date changing can change them.
     cacheUntil(nextMidnight(now).getTime(), now);

@@ -35,7 +35,7 @@ beforeEach(() => {
 
 const replace = () => navigation.navigate;
 
-// January 2007 to October 2026, as the tape shows them.
+// December 2007 to October 2026, as the tape shows them.
 const months: ScrobbleCount[] = monthBuckets(
   new Date("2026-10-28T12:00:00Z"),
 ).map(({ label }, index) => ({ label, count: index, current: false }));
@@ -105,7 +105,7 @@ describe("TimeTravel", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
     expect(screen.getByText("era · The Magnetic Fields")).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Month" })).toHaveValue(
-      String(5 * 12 + 9),
+      String(4 * 12 + 10),
     );
   });
 
@@ -123,7 +123,7 @@ describe("TimeTravel", () => {
   });
 
   it.each([
-    ["2007-01-01", "Day before"],
+    ["2007-12-18", "Day before"],
     ["2026-10-28", "Day after"],
   ] as const)("on %s, has no %s", async (day, name) => {
     at(day);
@@ -150,7 +150,7 @@ describe("TimeTravel", () => {
     await renderTape();
 
     await drag(10);
-    await drag(13);
+    await drag(2);
 
     expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
     expect(pending()).toHaveAttribute("data-pending");
@@ -166,12 +166,29 @@ describe("TimeTravel", () => {
     );
   });
 
+  it("travels no earlier than the first scrobble", async () => {
+    vi.useFakeTimers();
+    await renderTape();
+
+    await drag(0);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Tue, Dec 18, 2007");
+  });
+
+  it("marks each year at its January", async () => {
+    const { container } = await renderTape();
+
+    const years = container.querySelectorAll(".time-travel-years li");
+    expect(years[0]).toHaveTextContent("08");
+    expect(years[0]).toHaveStyle({ "--index": "1" });
+  });
+
   it("waits for a held drag to be let go, wherever that is", async () => {
     vi.useFakeTimers();
     await renderTape();
     fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
 
-    await drag(13);
+    await drag(2);
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
@@ -197,7 +214,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     const { unmount } = await renderTape();
     fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
-    await drag(13);
+    await drag(2);
 
     unmount();
     fireEvent.pointerUp(window);
@@ -212,7 +229,7 @@ describe("TimeTravel", () => {
       button: 2,
     });
 
-    await drag(13);
+    await drag(2);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -224,7 +241,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
     screen.getByRole("slider", { name: "Month" }).focus();
-    await drag(13);
+    await drag(2);
 
     await arrive(rerender, "2008-02-14");
 
@@ -237,7 +254,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(13);
+    await drag(2);
     const after = screen.getByRole("link", { name: "Day after" });
     expect(after).toHaveAttribute("href", "/listening/on/2008/02/15");
     await click(after);
@@ -256,7 +273,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(13);
+    await drag(2);
     await click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
     await act(async () => {
       vi.advanceTimersByTime(300);
@@ -290,7 +307,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(13);
+    await drag(2);
     await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
@@ -311,11 +328,11 @@ describe("TimeTravel", () => {
   it("keeps a drag begun while the last one's day loads", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    await drag(13);
+    await drag(2);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
-    await drag(20);
+    await drag(9);
 
     await arrive(rerender, "2008-02-14");
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Sep 14, 2008");
@@ -331,12 +348,12 @@ describe("TimeTravel", () => {
   it("stays on the day when a drag returns while another loads", async () => {
     vi.useFakeTimers();
     await renderTape();
-    await drag(13);
+    await drag(2);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    await drag(5 * 12 + 9);
+    await drag(4 * 12 + 10);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -352,8 +369,8 @@ describe("TimeTravel", () => {
     await renderTape();
     await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
-    await drag(13);
-    await drag(5 * 12 + 9);
+    await drag(2);
+    await drag(4 * 12 + 10);
     await act(async () => vi.runAllTimers());
 
     expect(replace()).not.toHaveBeenCalled();
@@ -362,7 +379,7 @@ describe("TimeTravel", () => {
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    await drag(13);
+    await drag(2);
 
     await arrive(rerender, "2012-10-13");
     await act(async () => vi.runAllTimers());
@@ -377,7 +394,7 @@ describe("TimeTravel", () => {
     await arrive(rerender, "2012-10-01");
     await arrive(rerender, "2012-10-14");
 
-    await drag(13);
+    await drag(2);
     await arrive(rerender, "2012-10-01");
     await act(async () => vi.runAllTimers());
 
@@ -388,7 +405,7 @@ describe("TimeTravel", () => {
     await renderTape();
     await click(screen.getByRole("link", { name: "Day after" }));
 
-    await drag(13);
+    await drag(2);
 
     expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
   });
@@ -413,13 +430,20 @@ describe("TimeTravel", () => {
     await renderTape();
 
     await drag(10);
-    await drag(5 * 12 + 9);
+    await drag(4 * 12 + 10);
 
     expect(pending()).not.toHaveAttribute("data-pending");
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
     expect(replace()).not.toHaveBeenCalled();
+  });
+
+  it("shows the first year's era from the tape's start", async () => {
+    at("2007-12-20");
+    await act(async () => render(tape("2007-12-20")));
+
+    expect(screen.getByText("era · Stars")).toBeInTheDocument();
   });
 
   it("shows no era for a year without scrobbles", async () => {
