@@ -42,13 +42,11 @@ describe("toDay", () => {
 });
 
 describe("toMonth", () => {
-  it("takes a month time travel reaches", async () => {
-    expect(await toMonth({ year: "2026", month: "10" })).toBe("2026-10");
+  it.each(["2007-12", "2026-10"])("takes %s", async (month) => {
+    expect(await toMonth(params(month))).toBe(month);
   });
 
-  it("calls notFound for a month past today", async () => {
-    await expect(toMonth({ year: "2026", month: "11" })).rejects.toThrow(
-      "NEXT_NOT_FOUND",
-    );
+  it.each(["2007-11", "2026-11"])("calls notFound for %s", async (month) => {
+    await expect(toMonth(params(month))).rejects.toThrow("NEXT_NOT_FOUND");
   });
 });

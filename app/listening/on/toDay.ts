@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import {
   type Day,
+  firstDay,
   inHistory,
   type Month,
   monthOf,
@@ -26,5 +27,11 @@ export async function toDay({
 }
 
 /** The month's params, if time travel reaches its first day. */
-export const toMonth = async (params: MonthParams): Promise<Month> =>
-  monthOf(await toDay({ ...params, day: "01" }));
+export async function toMonth(params: MonthParams): Promise<Month> {
+  // The history starts mid-month.
+  const first =
+    `${params.year}-${params.month}` === monthOf(firstDay)
+      ? firstDay.slice(8)
+      : "01";
+  return monthOf(await toDay({ ...params, day: first }));
+}
