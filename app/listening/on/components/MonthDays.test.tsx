@@ -65,13 +65,18 @@ describe("MonthDays", () => {
       count: 1,
       current: false,
     }));
-    renderDays(december, "2007-12-18", undefined, "2007-12");
+    renderDays(december, "2007-12-25", undefined, "2007-12");
 
     expect(screen.getAllByRole("link")).toHaveLength(14);
     expect(
       screen.getByRole("link", { name: "Dec 18: 1 play" }),
     ).toHaveAttribute("href", "/listening/on/2007/12/18");
-    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("18");
+    const ticked = screen
+      .getAllByRole("listitem")
+      .flatMap((item, index) =>
+        item.hasAttribute("data-tick") ? [index + 18] : [],
+      );
+    expect(ticked).toEqual([18, 22, 25, 29]);
   });
 
   it("marks a day of the month being travelled to, without dimming", () => {

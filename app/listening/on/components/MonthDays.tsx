@@ -42,10 +42,11 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
           const day = addDays(first, index);
           const number = Number(day.slice(8));
           const current = day === shown;
-          // Every week's first day, unless it would crowd the current one's.
+          // The first day and every week's, unless it would crowd the current one's.
           const tick =
             current ||
-            ((number - 1) % 7 === 0 && Math.abs(number - dayOfMonth) > 1);
+            ((index === 0 || (number - 1) % 7 === 0) &&
+              Math.abs(number - dayOfMonth) > 1);
           return (
             <li
               key={label}

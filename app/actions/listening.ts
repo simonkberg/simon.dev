@@ -87,16 +87,17 @@ function historyDay(value: string, now: Date): Day {
 /** A period until now, or a calendar month as "YYYY-MM". */
 export type Span = Period | Month;
 
-/** What a span's top lists count: a period's chart until now, or the whole month. */
+/** What a span's top lists count: a period's chart until now, or the month from its first day of the history. */
 function spanRange(span: Span, now: Date) {
   if (isValidPeriod(span)) {
     const from = span === "overall" ? new Date(0) : periodStart(span, now);
     return { from, to: now };
   }
   // Server actions take any string, and each one is its own cache entry.
-  const first = new Date(historyDay(firstOfMonth(span), now));
+  const day = historyDay(firstOfMonth(span), now);
+  const first = new Date(day);
   const [year, month] = [first.getUTCFullYear(), first.getUTCMonth()];
-  return { from: midnight(year, month, 1), to: midnight(year, month + 1, 1) };
+  return { from: dayStart(day), to: midnight(year, month + 1, 1) };
 }
 
 // A list reads every play in its span, and Turso bills rows read, so the longer ones are read once a day.
