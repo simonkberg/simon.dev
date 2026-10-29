@@ -6,7 +6,6 @@ import {
   type PropsWithChildren,
   type PointerEvent,
   use,
-  useEffect,
   useRef,
 } from "react";
 
@@ -90,10 +89,8 @@ export const TimeTravel = ({
   const today = use(todayPromise);
   const counts = use(months);
   const tops = use(years);
-  const { date, target, going, scrub, release } = use(TravelContext);
-  // While a drag is held, the listeners waiting for it to be let go.
-  const held = useRef<AbortController>(undefined);
-  useEffect(() => () => held.current?.abort(), []);
+  const { date, target, going, scrub, release, cancel } = use(TravelContext);
+  const slider = useRef<HTMLInputElement>(null);
 
   // The day's page answers 404 for anything else, so there's nothing to show.
   const day = date === undefined ? undefined : inHistory(date, today);
@@ -117,20 +114,18 @@ export const TimeTravel = ({
   const before = addDays(shown, -1);
   const after = addDays(shown, 1);
 
-  // A drag goes to its month once let go, wherever the pointer is then.
-  const hold = (event: PointerEvent) => {
-    if (event.button !== 0) return;
-    held.current?.abort();
-    const listening = new AbortController();
-    held.current = listening;
-    const letGo = () => {
-      listening.abort();
-      held.current = undefined;
-      release();
+  // Only the press the tape captured moves or ends the scrub.
+  const whileHeld =
+    (handle: (event: PointerEvent<HTMLElement>) => void) =>
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) handle(event);
     };
-    const { signal } = listening;
-    addEventListener("pointerup", letGo, { signal });
-    addEventListener("pointercancel", letGo, { signal });
+  // The month under the pointer, wherever it has dragged to.
+  const scrubTo = (event: PointerEvent<HTMLElement>) => {
+    const { left, width } = event.currentTarget.getBoundingClientRect();
+    const index = Math.floor(((event.clientX - left) / width) * counts.length);
+    const month = Math.min(Math.max(index, 0), counts.length - 1);
+    if (month !== at) scrub(travelTo(month), true);
   };
 
   return (
@@ -152,7 +147,23 @@ export const TimeTravel = ({
         />
       </div>
 
-      <div className="time-travel-tape">
+      {/* Pointer Events rather than the range's own drag, which an iPad's touch didn't scrub. */}
+      <div
+        className="time-travel-tape"
+        onPointerDown={(event) => {
+          // A second finger joins no scrub of its own.
+          if (event.button !== 0 || !event.isPrimary) return;
+          // Else the press moves focus off the slider, and keys stop working.
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          slider.current?.focus({ preventScroll: true });
+          scrubTo(event);
+        }}
+        onPointerMove={whileHeld(scrubTo)}
+        onPointerUp={whileHeld(release)}
+        // The browser took the touch to scroll the page.
+        onPointerCancel={whileHeld(cancel)}
+      >
         <ol aria-hidden="true">
           {counts.map(({ label }, index) => (
             <li
@@ -166,18 +177,15 @@ export const TimeTravel = ({
         </ol>
         <span className="time-travel-head" aria-hidden="true" />
         <input
+          ref={slider}
           type="range"
           min={0}
           max={counts.length - 1}
           value={at}
           aria-label="Month"
           aria-valuetext={counts[at]?.label}
-          onPointerDown={hold}
           onChange={(event) =>
-            scrub(
-              travelTo(Number(event.target.value)),
-              held.current !== undefined,
-            )
+            scrub(travelTo(Number(event.target.value)), false)
           }
         />
       </div>

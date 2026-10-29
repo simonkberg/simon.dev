@@ -28,6 +28,8 @@ interface Travel {
   /** Moves to a day the tape is on; `held` waits for `release` to go there. */
   scrub: (to: Day, held: boolean) => void;
   release: () => void;
+  /** Drops a held scrub without going anywhere. */
+  cancel: () => void;
 }
 
 export const TravelContext = createContext<Travel>({
@@ -37,6 +39,7 @@ export const TravelContext = createContext<Travel>({
   travel: () => {},
   scrub: () => {},
   release: () => {},
+  cancel: () => {},
 });
 
 type Scrub = { type: "scrub"; to: Day } | { type: "settle" };
@@ -114,6 +117,7 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
         travel,
         scrub,
         release,
+        cancel: settle,
       }}
     >
       {children}

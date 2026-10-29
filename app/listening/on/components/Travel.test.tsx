@@ -19,6 +19,7 @@ const renderPending = (of: TravelPendingProps["of"], target: Day) =>
         travel: vi.fn(),
         scrub: vi.fn(),
         release: vi.fn(),
+        cancel: vi.fn(),
         going: undefined,
       }}
     >

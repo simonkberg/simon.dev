@@ -31,6 +31,9 @@ vi.mock(import("next/navigation"), async (importOriginal) => ({
 beforeEach(() => {
   at("2012-10-14");
   navigation = mockRouter();
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, months.length * 10, 72),
+  );
 });
 
 const replace = () => navigation.navigate;
@@ -87,12 +90,28 @@ const click = (element: HTMLElement, init?: MouseEventInit) =>
     fireEvent.click(element, init);
   });
 
-const drag = (month: number) =>
+// The slider moved by keys or assistive tech.
+const slide = (month: number) =>
   act(async () => {
     fireEvent.change(screen.getByRole("slider", { name: "Month" }), {
       target: { value: String(month) },
     });
   });
+
+// A pointer over a month on a tape ten pixels a month wide.
+const press = (
+  type: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel",
+  month: number,
+  { button = 0, isPrimary = true, pointerId = 1 } = {},
+) => {
+  const tape = screen.getByRole("slider", { name: "Month" }).parentElement!;
+  fireEvent[type](tape, {
+    pointerId,
+    isPrimary,
+    button,
+    clientX: month * 10 + 5,
+  });
+};
 
 // The month's days, which dim while the page travels to another month.
 const pending = () =>
@@ -149,8 +168,8 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(10);
-    await drag(2);
+    await slide(10);
+    await slide(2);
 
     expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
     expect(pending()).toHaveAttribute("data-pending");
@@ -170,7 +189,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(0);
+    await slide(0);
 
     expect(screen.getByRole("status")).toHaveTextContent("Tue, Dec 18, 2007");
   });
@@ -183,65 +202,72 @@ describe("TimeTravel", () => {
     expect(years[0]).toHaveStyle({ "--index": "1" });
   });
 
-  it("waits for a held drag to be let go, wherever that is", async () => {
+  it("scrubs as a press drags along the tape, and goes once let go", async () => {
     vi.useFakeTimers();
     await renderTape();
-    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
 
-    await drag(2);
+    press("pointerDown", 10);
+    expect(screen.getByRole("slider", { name: "Month" })).toHaveFocus();
+    press("pointerMove", 2);
+    expect(screen.getByRole("status")).toHaveTextContent("Thu, Feb 14, 2008");
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });
     expect(replace()).not.toHaveBeenCalled();
 
-    await act(async () => fireEvent.pointerUp(window));
+    await act(async () => press("pointerUp", 2));
     expect(replace()).toHaveBeenCalledExactlyOnceWith(
       "/listening/on/2008/02/14",
       { scroll: false },
     );
   });
 
-  it("goes nowhere when a press is let go without a drag", async () => {
+  it("goes nowhere when a press is let go on the day's month", async () => {
     await renderTape();
-    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
 
-    fireEvent.pointerUp(window);
+    press("pointerDown", 4 * 12 + 10);
+    press("pointerUp", 4 * 12 + 10);
 
     expect(replace()).not.toHaveBeenCalled();
   });
 
-  it("forgets a held drag when the tape goes away", async () => {
-    vi.useFakeTimers();
-    const { unmount } = await renderTape();
-    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }));
-    await drag(2);
+  it("drops the scrub when the page takes the touch to scroll", async () => {
+    await renderTape();
+    press("pointerDown", 2);
 
-    unmount();
-    fireEvent.pointerUp(window);
+    press("pointerCancel", 2);
+    press("pointerUp", 2);
 
+    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
     expect(replace()).not.toHaveBeenCalled();
   });
 
-  it("doesn't wait for a press other than the main button", async () => {
-    vi.useFakeTimers();
+  it("ignores a second finger on the tape", async () => {
     await renderTape();
-    fireEvent.pointerDown(screen.getByRole("slider", { name: "Month" }), {
-      button: 2,
-    });
+    press("pointerDown", 10);
 
-    await drag(2);
-    await act(async () => {
-      vi.advanceTimersByTime(300);
-    });
+    press("pointerDown", 2, { isPrimary: false, pointerId: 2 });
+    press("pointerUp", 2, { isPrimary: false, pointerId: 2 });
+    press("pointerCancel", 2, { isPrimary: false, pointerId: 2 });
 
-    expect(replace()).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status")).toHaveTextContent("Tue, Oct 14, 2008");
+    expect(replace()).not.toHaveBeenCalled();
+  });
+
+  it("ignores a press other than the main button", async () => {
+    await renderTape();
+
+    press("pointerDown", 2, { button: 2 });
+    press("pointerMove", 2);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
   });
 
   it("keeps the slider focused as the drag's page arrives", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
     screen.getByRole("slider", { name: "Month" }).focus();
-    await drag(2);
+    await slide(2);
 
     await arrive(rerender, "2008-02-14");
 
@@ -254,7 +280,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(2);
+    await slide(2);
     const after = screen.getByRole("link", { name: "Day after" });
     expect(after).toHaveAttribute("href", "/listening/on/2008/02/15");
     await click(after);
@@ -273,7 +299,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(2);
+    await slide(2);
     await click(screen.getByRole("link", { name: "Oct 1: 10 plays" }));
     await act(async () => {
       vi.advanceTimersByTime(300);
@@ -307,7 +333,7 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(2);
+    await slide(2);
     await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
@@ -328,11 +354,11 @@ describe("TimeTravel", () => {
   it("keeps a drag begun while the last one's day loads", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    await drag(2);
+    await slide(2);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
-    await drag(9);
+    await slide(9);
 
     await arrive(rerender, "2008-02-14");
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Sep 14, 2008");
@@ -348,12 +374,12 @@ describe("TimeTravel", () => {
   it("stays on the day when a drag returns while another loads", async () => {
     vi.useFakeTimers();
     await renderTape();
-    await drag(2);
+    await slide(2);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
 
-    await drag(4 * 12 + 10);
+    await slide(4 * 12 + 10);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -369,8 +395,8 @@ describe("TimeTravel", () => {
     await renderTape();
     await click(screen.getByRole("link", { name: "Oct 14: 46 plays" }));
 
-    await drag(2);
-    await drag(4 * 12 + 10);
+    await slide(2);
+    await slide(4 * 12 + 10);
     await act(async () => vi.runAllTimers());
 
     expect(replace()).not.toHaveBeenCalled();
@@ -379,7 +405,7 @@ describe("TimeTravel", () => {
   it("lets a day reached another way win over a drag", async () => {
     vi.useFakeTimers();
     const { rerender } = await renderTape();
-    await drag(2);
+    await slide(2);
 
     await arrive(rerender, "2012-10-13");
     await act(async () => vi.runAllTimers());
@@ -394,7 +420,7 @@ describe("TimeTravel", () => {
     await arrive(rerender, "2012-10-01");
     await arrive(rerender, "2012-10-14");
 
-    await drag(2);
+    await slide(2);
     await arrive(rerender, "2012-10-01");
     await act(async () => vi.runAllTimers());
 
@@ -405,7 +431,7 @@ describe("TimeTravel", () => {
     await renderTape();
     await click(screen.getByRole("link", { name: "Day after" }));
 
-    await drag(2);
+    await slide(2);
 
     expect(screen.getByRole("status")).toHaveTextContent("Fri, Feb 15, 2008");
   });
@@ -415,7 +441,7 @@ describe("TimeTravel", () => {
     at("2025-10-30");
     await act(async () => render(tape("2025-10-30")));
 
-    await drag(months.length - 1);
+    await slide(months.length - 1);
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -429,8 +455,8 @@ describe("TimeTravel", () => {
     vi.useFakeTimers();
     await renderTape();
 
-    await drag(10);
-    await drag(4 * 12 + 10);
+    await slide(10);
+    await slide(4 * 12 + 10);
 
     expect(pending()).not.toHaveAttribute("data-pending");
     await act(async () => {
