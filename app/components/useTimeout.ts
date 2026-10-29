@@ -1,6 +1,3 @@
-// useEffectEvent returns a new function each render, so the compiler's memo of the effect would never hit.
-"use no memo";
-
 import { useEffect, useEffectEvent } from "react";
 
 /** Calls `callback` once `ms` passes, waiting again whenever `ms` or `restart` changes; no `ms`, no wait. */
@@ -9,6 +6,8 @@ export function useTimeout(
   ms: number | undefined,
   restart?: unknown,
 ) {
+  // useEffectEvent returns a new function each render, so the compiler's memo of the effect would never hit.
+  "use no memo";
   const fire = useEffectEvent(callback);
 
   useEffect(() => {
