@@ -5,7 +5,6 @@ import { useEffect, useReducer } from "react";
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
 type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
 
-const STATE_TICK_MS = 100;
 const SUCCESS_DURATION_MS = 1500;
 const TYPING_TIMEOUT_MS = 3000;
 const LONG_MESSAGE_THRESHOLD = 100;
@@ -74,36 +73,50 @@ interface CaretBuddyInputs {
   resultStatus: "initial" | "ok" | "error";
 }
 
-interface Clock {
-  now: number;
-  typedAt: number;
-  successUntil: number;
-  // The inputs as last seen, to time their changes.
+interface Moods {
+  typing: boolean;
+  success: boolean;
+  // Counts each new ok, to restart the success wait.
+  oks: number;
+  // The inputs as last seen, to notice their changes.
   inputValue: string;
   resultStatus: CaretBuddyInputs["resultStatus"];
 }
 
-type ClockAction =
-  | { type: "tick"; now: number }
-  | ({ type: "see" } & Omit<CaretBuddyInputs, "isPending">);
+type MoodsAction =
+  | ({ type: "see" } & Omit<CaretBuddyInputs, "isPending">)
+  | { type: "expire"; mood: "typing" | "success" };
 
-function clock(state: Clock, action: ClockAction): Clock {
+function moods(state: Moods, action: MoodsAction): Moods {
   switch (action.type) {
-    case "tick":
-      return { ...state, now: action.now };
-    case "see":
+    case "see": {
+      const ok = action.resultStatus === "ok" && state.resultStatus !== "ok";
       return {
-        ...state,
         inputValue: action.inputValue,
         resultStatus: action.resultStatus,
-        typedAt:
-          action.inputValue === state.inputValue ? state.typedAt : state.now,
-        successUntil:
-          action.resultStatus === "ok" && state.resultStatus !== "ok"
-            ? state.now + SUCCESS_DURATION_MS
-            : state.successUntil,
+        typing: state.typing || action.inputValue !== state.inputValue,
+        success: state.success || ok,
+        oks: ok ? state.oks + 1 : state.oks,
       };
+    }
+    case "expire":
+      return { ...state, [action.mood]: false };
   }
+}
+
+function useExpiry(
+  dispatch: (action: MoodsAction) => void,
+  mood: "typing" | "success",
+  active: boolean,
+  ms: number,
+  // Restarts the wait when it changes.
+  restart?: unknown,
+) {
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => dispatch({ type: "expire", mood }), ms);
+    return () => clearTimeout(timer);
+  }, [dispatch, mood, active, ms, restart]);
 }
 
 function useCaretBuddyState({
@@ -111,36 +124,28 @@ function useCaretBuddyState({
   isPending,
   resultStatus,
 }: CaretBuddyInputs): BuddyState {
-  const [{ now, typedAt, successUntil, ...seen }, dispatch] = useReducer(
-    clock,
-    { inputValue, resultStatus },
-    (inputs): Clock => ({
-      ...inputs,
-      now: Date.now(),
-      typedAt: 0,
-      successUntil: 0,
-    }),
-  );
-
-  useEffect(() => {
-    const id = setInterval(
-      () => dispatch({ type: "tick", now: Date.now() }),
-      STATE_TICK_MS,
-    );
-    return () => clearInterval(id);
-  }, []);
+  const [{ typing, success, oks, ...seen }, dispatch] = useReducer(moods, {
+    inputValue,
+    resultStatus,
+    typing: false,
+    success: false,
+    oks: 0,
+  });
 
   if (inputValue !== seen.inputValue || resultStatus !== seen.resultStatus) {
     dispatch({ type: "see", inputValue, resultStatus });
   }
 
+  useExpiry(dispatch, "typing", typing, TYPING_TIMEOUT_MS, seen.inputValue);
+  useExpiry(dispatch, "success", success, SUCCESS_DURATION_MS, oks);
+
   if (resultStatus === "error") return "error";
-  if (now < successUntil) return "success";
+  if (success) return "success";
   if (isPending) return "thinking";
   if (inputValue.includes("`")) return "code";
   if (/\blove\b/i.test(inputValue)) return "love";
   if (inputValue.length > LONG_MESSAGE_THRESHOLD) return "long";
-  if (typedAt > 0 && now - typedAt < TYPING_TIMEOUT_MS) return "typing";
+  if (typing) return "typing";
   return "idle";
 }
 

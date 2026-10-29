@@ -108,6 +108,21 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
 
+    it("waits 3 seconds from the last keystroke", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      rerender(<CaretBuddy {...defaultProps} inputValue="hi" />);
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+    });
+
     it("transitions from success to idle after 1.5 seconds", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
@@ -118,6 +133,34 @@ describe("CaretBuddy", () => {
       });
 
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
+    });
+    it("keeps the success wait when the status leaves ok", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(700);
+      });
+      rerender(<CaretBuddy {...defaultProps} />);
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+
+      expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
+    });
+
+    it("restarts the success wait on another ok", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(700);
+      });
+      rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(900);
+      });
+
+      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
     });
   });
 
