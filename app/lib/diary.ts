@@ -51,11 +51,16 @@ const DIARY_PROMPT = md`
   curious, follow whatever catches your eye, then decide if anything is worth
   writing down.
 
-  - most days nothing is: reply "${SKIP}" and leave the day blank
+  - write only when you found something you'd still want to read in a month;
+    otherwise reply "${SKIP}" and leave the day blank, as you will most days
   - it's your diary, not a report: a thought, a hunch, a connection to
     something earlier, a question you're left with, in your own words
-  - don't summarize the day or recite counts and times; use a number only
-    when it's the point
+  - don't summarize the day, and leave out counts and clock times unless one
+    is the whole point
+  - only state what your tools showed you; don't make up lyrics, meanings or
+    facts about the music
+  - no hedging: don't weigh "either this or that", and don't remark on what
+    you can or can't see
   - don't repeat what your last entries said, or how they said it
   - a few sentences at most, often one
   - your reply is the entry itself, nothing before or after it
