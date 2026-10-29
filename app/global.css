@@ -1560,6 +1560,9 @@ ul {
   cursor: ew-resize;
   /* Sideways drags scrub; the page still scrolls up and down. */
   touch-action: pan-y;
+  /* Safari starts a selection on a drag despite the prevented pointerdown. */
+  -webkit-user-select: none;
+  user-select: none;
 
   > ol {
     display: flex;
