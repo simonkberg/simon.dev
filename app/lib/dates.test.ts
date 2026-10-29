@@ -4,6 +4,7 @@ import {
   addDays,
   clockTime,
   dayInMonth,
+  firstOfMonth,
   dayStart,
   fullDayLabel,
   monthIndex,
@@ -101,6 +102,13 @@ describe("dayInMonth", () => {
     expect(dayInMonth(monthIndex("2012-02-01"), "2012-10-31")).toBe(
       "2012-02-29",
     );
+  });
+});
+
+describe("firstOfMonth", () => {
+  it("should start the first scrobble's month on its day", () => {
+    expect(firstOfMonth("2007-12")).toBe("2007-12-18");
+    expect(firstOfMonth("2012-10")).toBe("2012-10-01");
   });
 });
 

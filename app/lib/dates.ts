@@ -167,3 +167,7 @@ export const monthLabel = (month: Month) => monthFormat.format(new Date(month));
 
 /** The "YYYY-MM" month the day falls in. */
 export const monthOf = (day: Day) => day.slice(0, 7) as Month;
+
+/** The month's first day of the history: the first scrobble's month starts on that day. */
+export const firstOfMonth = (month: Month): Day =>
+  month === monthOf(firstDay) ? firstDay : `${month}-01`;

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ScrobbleCount } from "@/actions/listening";
-import type { Day } from "@/lib/dates";
+import type { Day, Month } from "@/lib/dates";
 
 import { MonthDays } from "./MonthDays";
 import { TravelContext } from "./Travel";
@@ -18,6 +18,7 @@ const renderDays = (
   days: ScrobbleCount[] | undefined,
   date: Day,
   target?: Day,
+  month: Month = "2012-10",
 ) =>
   render(
     <TravelContext
@@ -30,7 +31,7 @@ const renderDays = (
         going: undefined,
       }}
     >
-      <MonthDays month="2012-10" days={days} />
+      <MonthDays month={month} days={days} />
     </TravelContext>,
   );
 
@@ -56,6 +57,21 @@ describe("MonthDays", () => {
         item.hasAttribute("data-tick") ? [index + 1] : [],
       );
     expect(ticked).toEqual([1, 9, 15, 22, 29]);
+  });
+
+  it("starts the first month at the first scrobble", () => {
+    const december = Array.from({ length: 14 }, (_, index) => ({
+      label: `Dec ${index + 18}`,
+      count: 1,
+      current: false,
+    }));
+    renderDays(december, "2007-12-18", undefined, "2007-12");
+
+    expect(screen.getAllByRole("link")).toHaveLength(14);
+    expect(
+      screen.getByRole("link", { name: "Dec 18: 1 play" }),
+    ).toHaveAttribute("href", "/listening/on/2007/12/18");
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("18");
   });
 
   it("marks a day of the month being travelled to, without dimming", () => {

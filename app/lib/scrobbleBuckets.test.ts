@@ -127,7 +127,7 @@ describe("monthBuckets", () => {
 
 describe("monthDayBuckets", () => {
   it("should cover every day of a past month", () => {
-    const buckets = monthDayBuckets("2012-02", now);
+    const buckets = monthDayBuckets("2012-02-01", now);
 
     expect(buckets).toHaveLength(29);
     expect(buckets.at(0)).toEqual({
@@ -138,8 +138,15 @@ describe("monthDayBuckets", () => {
     expect(buckets.at(-1)?.label).toBe("Feb 29");
   });
 
+  it("should start at the given day", () => {
+    const buckets = monthDayBuckets("2007-12-18", now);
+
+    expect(buckets).toHaveLength(14);
+    expect(buckets.at(0)?.label).toBe("Dec 18");
+  });
+
   it("should end today in the current month", () => {
-    const buckets = monthDayBuckets("2026-10", now);
+    const buckets = monthDayBuckets("2026-10-01", now);
 
     expect(buckets).toHaveLength(23);
     expect(buckets.at(-1)?.label).toBe("Oct 23");

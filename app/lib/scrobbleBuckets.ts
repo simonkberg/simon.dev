@@ -1,5 +1,5 @@
 import {
-  type Month,
+  type Day,
   dayLabel,
   dayStart,
   firstYear,
@@ -128,13 +128,13 @@ export function monthBuckets(now: Date): ScrobbleBucket[] {
   return buckets("month", monthIndex(localDay(now)) + 1, localDate(now));
 }
 
-/** The Stockholm days of a "YYYY-MM" month, up to today in the current one. */
-export function monthDayBuckets(month: Month, now: Date): ScrobbleBucket[] {
-  const first = new Date(month);
+/** The Stockholm days from `first` to its month's end, or today in the current month. */
+export function monthDayBuckets(first: Day, now: Date): ScrobbleBucket[] {
+  const start = new Date(first);
   const monthEnd = new Date(
-    Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0),
   );
   const today = localDate(now);
   const last = monthEnd < today ? monthEnd : today;
-  return buckets("day", last.getUTCDate(), last);
+  return buckets("day", last.getUTCDate() - start.getUTCDate() + 1, last);
 }

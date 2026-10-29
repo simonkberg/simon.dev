@@ -10,11 +10,11 @@ import {
   type Month,
   dayLabel,
   dayStart,
+  firstOfMonth,
   firstYear,
   inHistory,
   localDay,
   midnight,
-  monthOf,
   nextMidnight,
 } from "@/lib/dates";
 import { albumGetInfo, type AlbumInfo, albumUrl, bulk } from "@/lib/lastfm";
@@ -95,7 +95,7 @@ function spanRange(span: Span, now: Date) {
     return { from, to: now };
   }
   // Server actions take any string, and each one is its own cache entry.
-  const first = new Date(historyDay(`${span}-01`, now));
+  const first = new Date(historyDay(firstOfMonth(span), now));
   const [year, month] = [first.getUTCFullYear(), first.getUTCMonth()];
   return { from: midnight(year, month, 1), to: midnight(year, month + 1, 1) };
 }
@@ -344,7 +344,7 @@ export async function getDailyScrobbles(
   "use cache";
   return countBuckets(
     // Server actions take any string, and each one is its own cache entry.
-    (now) => monthDayBuckets(monthOf(historyDay(`${month}-01`, now)), now),
+    (now) => monthDayBuckets(historyDay(firstOfMonth(month), now), now),
     "getDailyScrobbles",
   );
 }

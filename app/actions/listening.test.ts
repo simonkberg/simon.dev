@@ -134,6 +134,7 @@ describe("top lists", () => {
     });
 
     it.each([
+      ["2007-12", "max", "2007-11-30T23:00:00Z", "2007-12-31T23:00:00Z"],
       ["2012-10", "max", "2012-09-30T22:00:00Z", "2012-10-31T23:00:00Z"],
       ["2026-10", "hours", "2026-09-30T22:00:00Z", "2026-10-31T23:00:00Z"],
     ] as const)(
@@ -440,6 +441,18 @@ describe("getDailyScrobbles", () => {
       status: "ok",
       scrobbles: expect.arrayContaining([
         { label: "Oct 31", count: 42, current: false },
+      ]),
+    });
+  });
+
+  it("should start the first month at the first scrobble", async () => {
+    const result = await getDailyScrobbles("2007-12");
+
+    expect(countScrobbles).toHaveBeenCalledTimes(14);
+    expect(result).toMatchObject({
+      status: "ok",
+      scrobbles: expect.arrayContaining([
+        { label: "Dec 18", count: 42, current: false },
       ]),
     });
   });
