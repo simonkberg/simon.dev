@@ -1,9 +1,4 @@
-import {
-  type CSSProperties,
-  type Dispatch,
-  type SetStateAction,
-  Suspense,
-} from "react";
+import { type CSSProperties, Suspense } from "react";
 
 import { RelativeTime } from "@/components/RelativeTime";
 import { TooltipButton } from "@/components/Tooltip";
@@ -14,7 +9,7 @@ import { ChatReactionList, ChatReactionPicker } from "./ChatReactions";
 
 export interface ChatMessageProps extends Message {
   replyToId: string | null;
-  setReplyToId: Dispatch<SetStateAction<string | null>>;
+  onReply: (id: string) => void;
   /** Shown above the input while replying: just the text, without controls or reactions. */
   preview?: boolean;
 }
@@ -27,7 +22,7 @@ export const ChatMessage = ({
   timestamp,
   reactions,
   replyToId,
-  setReplyToId,
+  onReply,
   preview = false,
 }: ChatMessageProps) => (
   <article
@@ -51,7 +46,7 @@ export const ChatMessage = ({
           <TooltipButton
             tooltip="Reply"
             className="reply"
-            onClick={() => setReplyToId(id)}
+            onClick={() => onReply(id)}
             disabled={replyToId === id}
           >
             ↩

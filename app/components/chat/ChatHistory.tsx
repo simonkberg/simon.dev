@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  type Dispatch,
-  type FocusEvent,
-  type KeyboardEvent,
-  type SetStateAction,
-  useState,
-} from "react";
+import { type FocusEvent, type KeyboardEvent, useReducer } from "react";
 
 import type { Message } from "@/lib/discord/api";
 
@@ -39,7 +33,7 @@ function setTabStop(root: Element, id: string | undefined) {
 interface ChatHistoryMessagesProps {
   messages: Message[];
   replyToId: string | null;
-  setReplyToId: Dispatch<SetStateAction<string | null>>;
+  onReply: (id: string) => void;
 }
 
 interface Shown {
@@ -69,6 +63,30 @@ function follow(shown: readonly Shown[], messages: readonly Message[]) {
   return next;
 }
 
+interface Showing {
+  messages: readonly Message[];
+  shown: readonly Shown[];
+}
+
+type ShowingAction =
+  | { type: "follow"; messages: readonly Message[] }
+  | { type: "slidOut"; id: string };
+
+function showing(state: Showing, action: ShowingAction): Showing {
+  switch (action.type) {
+    case "follow":
+      return {
+        messages: action.messages,
+        shown: follow(state.shown, action.messages),
+      };
+    case "slidOut":
+      return {
+        ...state,
+        shown: state.shown.filter(({ message }) => message.id !== action.id),
+      };
+  }
+}
+
 // Calls done once li's slide ends or is cancelled, unless cleaned up first.
 function whenSlidOut(li: HTMLLIElement, done: () => void) {
   let cleaned = false;
@@ -89,19 +107,17 @@ function whenSlidOut(li: HTMLLIElement, done: () => void) {
 const ChatHistoryMessages = ({
   messages,
   replyToId,
-  setReplyToId,
+  onReply,
 }: ChatHistoryMessagesProps) => {
-  const [shown, setShown] = useState(() =>
-    messages.map((message): Shown => ({ message })),
+  const [{ messages: followed, shown }, dispatch] = useReducer(
+    showing,
+    messages,
+    (messages): Showing => ({
+      messages,
+      shown: messages.map((message) => ({ message })),
+    }),
   );
-  const [followed, setFollowed] = useState(messages);
-  if (messages !== followed) {
-    setFollowed(messages);
-    setShown(follow(shown, messages));
-  }
-
-  const remove = (id: string) =>
-    setShown((current) => current.filter(({ message }) => message.id !== id));
+  if (messages !== followed) dispatch({ type: "follow", messages });
 
   return shown.map(({ message, motion }) => {
     const leaving = motion === "leave";
@@ -112,21 +128,20 @@ const ChatHistoryMessages = ({
         inert={leaving}
         ref={
           leaving
-            ? (li: HTMLLIElement) => whenSlidOut(li, () => remove(message.id))
+            ? (li: HTMLLIElement) =>
+                whenSlidOut(li, () =>
+                  dispatch({ type: "slidOut", id: message.id }),
+                )
             : undefined
         }
       >
-        <ChatMessage
-          {...message}
-          replyToId={replyToId}
-          setReplyToId={setReplyToId}
-        />
+        <ChatMessage {...message} replyToId={replyToId} onReply={onReply} />
         {/* Always mounted, so a first reply slides in and a last one slides out. */}
         <ul>
           <ChatHistoryMessages
             messages={message.replies}
             replyToId={replyToId}
-            setReplyToId={setReplyToId}
+            onReply={onReply}
           />
         </ul>
       </li>
@@ -137,15 +152,18 @@ const ChatHistoryMessages = ({
 export interface ChatHistoryProps {
   messages: Message[];
   replyToId: string | null;
-  setReplyToId: Dispatch<SetStateAction<string | null>>;
+  onReply: (id: string) => void;
 }
 
 export const ChatHistory = ({
   messages,
   replyToId,
-  setReplyToId,
+  onReply,
 }: ChatHistoryProps) => {
-  const [focusedId, setFocusedId] = useState<string>();
+  const [focusedId, focus] = useReducer(
+    (_: string | undefined, id: string | undefined) => id,
+    undefined,
+  );
   const ids = messageIds(messages);
   // The bottom message, beside the input, until another is focused.
   const tabStop =
@@ -160,9 +178,7 @@ export const ChatHistory = ({
   };
 
   const trackFocus = (event: FocusEvent<HTMLDivElement>) => {
-    setFocusedId(
-      event.target.closest<HTMLElement>(".chat-message")?.dataset["id"],
-    );
+    focus(event.target.closest<HTMLElement>(".chat-message")?.dataset["id"]);
   };
 
   const navigate = (event: KeyboardEvent<HTMLDivElement>) =>
@@ -181,7 +197,7 @@ export const ChatHistory = ({
           <ChatHistoryMessages
             messages={messages}
             replyToId={replyToId}
-            setReplyToId={setReplyToId}
+            onReply={onReply}
           />
         </ul>
       </div>

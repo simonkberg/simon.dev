@@ -1,25 +1,60 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
 
 import { nameList } from "./ChatReactions";
 
-type Status = "connecting" | "live" | "offline";
-
 const MAX_BACKOFF = 30_000;
 
-// One empty list, so clearing it on every disconnect doesn't re-render.
+// Who is here and typing arrive only on an open stream, and leave with it.
+type Stream =
+  | { status: "connecting" | "offline" }
+  | {
+      status: "open";
+      gateway: "live" | "connecting";
+      here: readonly string[];
+      typing: readonly string[];
+    };
+
+type StreamAction =
+  | { type: "connect" | "offline" | "open" }
+  | { type: "gateway"; live: boolean }
+  | { type: "presence" | "typing"; names: readonly string[] };
+
+// Shared, so a retry while already connecting doesn't re-render.
+const CONNECTING: Stream = { status: "connecting" };
+const OFFLINE: Stream = { status: "offline" };
 const NOBODY: readonly string[] = [];
+
+function stream(state: Stream, action: StreamAction): Stream {
+  switch (action.type) {
+    case "connect":
+      return CONNECTING;
+    case "offline":
+      return OFFLINE;
+    case "open":
+      return { status: "open", gateway: "live", here: NOBODY, typing: NOBODY };
+  }
+  if (state.status !== "open") return state;
+  switch (action.type) {
+    case "gateway": {
+      const gateway = action.live ? "live" : "connecting";
+      return gateway === state.gateway ? state : { ...state, gateway };
+    }
+    case "presence":
+      return { ...state, here: action.names };
+    case "typing":
+      return { ...state, typing: action.names };
+  }
+}
 
 /** Keeps the chat history live over SSE and shows the connection's state, who is here and who is typing. */
 export const ChatStream = () => {
   const router = useRouter();
-  const [status, setStatus] = useState<Status>("connecting");
-  const [here, setHere] = useState(NOBODY);
-  const [typing, setTyping] = useState(NOBODY);
+  const [state, dispatch] = useReducer(stream, CONNECTING);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -28,9 +63,6 @@ export const ChatStream = () => {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const disconnect = () => {
-      // The next stream sends who is here only if anyone is.
-      setHere(NOBODY);
-      setTyping(NOBODY);
       eventSource?.close();
       eventSource = null;
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -39,34 +71,38 @@ export const ChatStream = () => {
 
     const connect = () => {
       disconnect();
+      dispatch({ type: "connect" });
       // Every stream after the first missed what changed while none was open.
       const reconnecting = connected;
       connected = true;
       eventSource = new EventSource("/api/chat/sse");
       eventSource.onopen = () => {
         reconnectAttempts = 0;
-        setStatus("live");
+        dispatch({ type: "open" });
         if (reconnecting) router.refresh();
       };
       eventSource.onmessage = () => router.refresh();
       eventSource.addEventListener("presence", (event) => {
-        setHere(JSON.parse(event.data) as string[]);
+        dispatch({
+          type: "presence",
+          names: JSON.parse(event.data) as string[],
+        });
       });
       eventSource.addEventListener("typing", (event) => {
-        setTyping(JSON.parse(event.data) as string[]);
+        dispatch({ type: "typing", names: JSON.parse(event.data) as string[] });
       });
       eventSource.addEventListener("status", (event) => {
         // No refresh on recovery: the store notifies once it has caught up.
-        setStatus(event.data === "live" ? "live" : "connecting");
+        dispatch({ type: "gateway", live: event.data === "live" });
       });
       eventSource.onerror = () => {
         disconnect();
         // Retrying without a network only burns the backoff; `online` resumes.
         if (!navigator.onLine) {
-          setStatus("offline");
+          dispatch({ type: "offline" });
           return;
         }
-        setStatus("connecting");
+        dispatch({ type: "connect" });
         reconnectAttempts++;
         const backoff = Math.min(1000 * 2 ** reconnectAttempts, MAX_BACKOFF);
         reconnectTimer = setTimeout(connect, backoff);
@@ -75,13 +111,12 @@ export const ChatStream = () => {
 
     const goOnline = () => {
       reconnectAttempts = 0;
-      setStatus("connecting");
       connect();
     };
 
     const goOffline = () => {
       disconnect();
-      setStatus("offline");
+      dispatch({ type: "offline" });
     };
 
     window.addEventListener("online", goOnline);
@@ -94,6 +129,10 @@ export const ChatStream = () => {
       disconnect();
     };
   }, [router]);
+
+  const status = state.status === "open" ? state.gateway : state.status;
+  const here = state.status === "open" ? state.here : NOBODY;
+  const typing = state.status === "open" ? state.typing : NOBODY;
 
   return (
     <>

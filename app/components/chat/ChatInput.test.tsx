@@ -14,10 +14,10 @@ vi.mock(import("@/actions/simonBot"), () => ({
 }));
 
 function renderChatInput(replyToId: string | null = null) {
-  const setReplyToId = vi.fn();
+  const onCancelReply = vi.fn();
   const user = userEvent.setup({ delay: null });
   const element = (replyToId: string | null) => (
-    <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
+    <ChatInput replyToId={replyToId} onCancelReply={onCancelReply}>
       <button type="button">Next</button>
     </ChatInput>
   );
@@ -27,7 +27,7 @@ function renderChatInput(replyToId: string | null = null) {
   return {
     user,
     input,
-    setReplyToId,
+    onCancelReply,
     replyTo: (replyToId: string | null) => view.rerender(element(replyToId)),
     send: async (text: string) => {
       await user.type(input, text);
@@ -171,15 +171,15 @@ describe("ChatInput", () => {
     });
 
     it("clears replyToId when Escape key is pressed while replying", async () => {
-      const { user, setReplyToId } = renderChatInput("message-id");
+      const { user, onCancelReply } = renderChatInput("message-id");
 
       await user.keyboard("{Escape}");
 
-      expect(setReplyToId).toHaveBeenCalledWith(null);
+      expect(onCancelReply).toHaveBeenCalled();
     });
 
     it("leaves the reply when a tooltip takes the Escape", () => {
-      const { setReplyToId } = renderChatInput("message-id");
+      const { onCancelReply } = renderChatInput("message-id");
       const event = new KeyboardEvent("keydown", {
         key: "Escape",
         cancelable: true,
@@ -187,26 +187,26 @@ describe("ChatInput", () => {
       event.preventDefault();
       window.dispatchEvent(event);
 
-      expect(setReplyToId).not.toHaveBeenCalled();
+      expect(onCancelReply).not.toHaveBeenCalled();
     });
 
     it("leaves the reply when Escape closes the suggestions", async () => {
-      const { user, input, setReplyToId } = renderChatInput("message-id");
+      const { user, input, onCancelReply } = renderChatInput("message-id");
 
       await user.type(input, ":");
       await screen.findByRole("listbox");
       await user.keyboard("{Escape}");
 
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-      expect(setReplyToId).not.toHaveBeenCalled();
+      expect(onCancelReply).not.toHaveBeenCalled();
     });
 
-    it("does not call setReplyToId on Escape when not replying", async () => {
-      const { user, setReplyToId } = renderChatInput();
+    it("does not cancel a reply on Escape when not replying", async () => {
+      const { user, onCancelReply } = renderChatInput();
 
       await user.keyboard("{Escape}");
 
-      expect(setReplyToId).not.toHaveBeenCalled();
+      expect(onCancelReply).not.toHaveBeenCalled();
     });
 
     it("includes replyToId in form data when replying", async () => {
@@ -231,12 +231,12 @@ describe("ChatInput", () => {
     });
 
     it("clears replyToId on successful submission", async () => {
-      const { send, setReplyToId } = renderChatInput("message-id");
+      const { send, onCancelReply } = renderChatInput("message-id");
 
       await send("Reply");
 
       await waitFor(() => {
-        expect(setReplyToId).toHaveBeenCalledWith(null);
+        expect(onCancelReply).toHaveBeenCalled();
       });
     });
 
@@ -245,12 +245,12 @@ describe("ChatInput", () => {
         status: "error",
         error: "Failed",
       });
-      const { send, setReplyToId } = renderChatInput("message-id");
+      const { send, onCancelReply } = renderChatInput("message-id");
 
       await send("Reply");
       await screen.findByText("Failed");
 
-      expect(setReplyToId).not.toHaveBeenCalled();
+      expect(onCancelReply).not.toHaveBeenCalled();
     });
   });
 });

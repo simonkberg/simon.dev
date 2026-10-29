@@ -11,8 +11,8 @@ import {
   use,
   useEffect,
   useId,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 
 const LONG_PRESS_MS = 500;
@@ -23,7 +23,8 @@ function useTooltip(anchorId?: string) {
   const press = useRef<{ timer?: number; held?: boolean }>({});
   const dismiss = useRef<AbortController>(null);
   const dismissedBy = useRef<EventTarget>(null);
-  const [shown, setShown] = useState(false);
+  // Once shown, its content stays rendered.
+  const [shown, markShown] = useReducer(() => true, false);
   const anchor = () => (anchorId ? document.getElementById(anchorId) : null);
 
   useEffect(
@@ -47,7 +48,7 @@ function useTooltip(anchorId?: string) {
   };
 
   const show = (button: HTMLElement) => {
-    setShown(true);
+    markShown();
     dismiss.current?.abort();
     document.dispatchEvent(new Event("tooltipshow"));
     tip.current?.showPopover({ source: anchor() ?? button });

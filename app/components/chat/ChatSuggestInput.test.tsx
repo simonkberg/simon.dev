@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { useRef, useState } from "react";
+import { useReducer, useRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type EmojiShortcodes, REACTION_EMOJI } from "@/lib/emoji";
@@ -39,7 +39,7 @@ function renderSuggestInput() {
   const user = userEvent.setup({ delay: null });
   function Form() {
     const ref = useRef<HTMLInputElement>(null);
-    const [value, setValue] = useState("");
+    const [value, setValue] = useReducer((_: string, next: string) => next, "");
     return (
       <form
         onSubmit={(event) => {

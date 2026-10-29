@@ -6,8 +6,8 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 
 import {
@@ -41,6 +41,66 @@ function typedAt(input: HTMLInputElement) {
   return { kind: "emoji", query, start, end: caret } as const;
 }
 
+type Typed = NonNullable<ReturnType<typeof typedAt>>;
+
+interface Suggesting {
+  // Tagged with the value it was typed in, so a reset by the form forgets it.
+  typed: (Typed & { value: string; dismissed: boolean }) | null;
+  active: number | null;
+}
+
+type SuggestingAction =
+  | { type: "track"; typed: Typed | null; value: string }
+  | { type: "dismiss" | "forget" }
+  | { type: "choose"; index: number };
+
+// A short query may be an emoticon like ":D", and a command typed in full needs nothing
+// picked, so Enter only picks once one is chosen.
+function initialActive(typed: Typed) {
+  if (typed.kind === "emoji") return typed.query.length >= 2 ? 0 : null;
+  return typed.complete ? null : 0;
+}
+
+const shownOf = (typed: Suggesting["typed"]) =>
+  typed && !typed.dismissed ? typed : null;
+
+// With where it starts, so a picked command's options start over.
+const shownKey = (typed: Suggesting["typed"]) => {
+  const shown = shownOf(typed);
+  return shown && `${shown.kind}:${shown.start}:${shown.query}`;
+};
+
+function retype(state: Suggesting, typed: Suggesting["typed"]): Suggesting {
+  if (shownKey(typed) === shownKey(state.typed)) return { ...state, typed };
+  const shown = shownOf(typed);
+  return { typed, active: shown && initialActive(shown) };
+}
+
+// A dismissal holds only for the command or shortcode it closed on.
+function suggesting(state: Suggesting, action: SuggestingAction): Suggesting {
+  const { typed } = state;
+  switch (action.type) {
+    case "track": {
+      const next = action.typed;
+      if (!next) return typed ? retype(state, null) : state;
+      // Unchanged on a caret move, so React can skip the render.
+      if (
+        typed?.kind === next.kind &&
+        typed.query === next.query &&
+        typed.value === action.value
+      )
+        return state;
+      return retype(state, { ...next, value: action.value, dismissed: false });
+    }
+    case "dismiss":
+      return retype(state, typed && { ...typed, dismissed: true });
+    case "forget":
+      return retype(state, null);
+    case "choose":
+      return { ...state, active: action.index };
+  }
+}
+
 /** A text input that suggests commands after a leading slash, and emoji for the shortcode typed up to its caret. */
 export const ChatSuggestInput = ({
   ref,
@@ -57,17 +117,16 @@ export const ChatSuggestInput = ({
 }) => {
   const id = useId();
   const list = useRef<HTMLDivElement>(null);
-  const [emoji, setEmoji] = useState<EmojiShortcodes[] | null>(null);
-  // Tagged with the value it was typed in, so a reset by the form forgets it.
-  const [typed, setTyped] = useState<
-    | (NonNullable<ReturnType<typeof typedAt>> & {
-        value: string;
-        dismissed: boolean;
-      })
-    | null
-  >(null);
-  if (typed && typed.value !== value) setTyped(null);
-  const shown = typed && !typed.dismissed ? typed : null;
+  const [emoji, loaded] = useReducer(
+    (_: EmojiShortcodes[] | null, list: EmojiShortcodes[]) => list,
+    null,
+  );
+  const [{ typed, active }, dispatch] = useReducer(suggesting, {
+    typed: null,
+    active: null,
+  });
+  if (typed && typed.value !== value) dispatch({ type: "forget" });
+  const shown = shownOf(typed);
 
   const { modifier } = useSkinTone();
   const emojiMatches = (
@@ -83,22 +142,6 @@ export const ChatSuggestInput = ({
       ? commandMatches.map((match) => match.value)
       : emojiMatches.map((match) => match.emoji);
 
-  const [active, setActive] = useState<number | null>(null);
-  // With where it starts, so a picked command's options start over.
-  const key = shown && `${shown.kind}:${shown.start}:${shown.query}`;
-  const [previousKey, setPreviousKey] = useState(key);
-  if (key !== previousKey) {
-    setPreviousKey(key);
-    setActive(shown ? initialActive() : null);
-  }
-
-  // A short query may be an emoticon like ":D", and a command typed in full needs nothing
-  // picked, so Enter only picks once one is chosen.
-  function initialActive() {
-    if (shown?.kind === "emoji") return shown.query.length >= 2 ? 0 : null;
-    return shown?.complete ? null : 0;
-  }
-
   const open = picks.length > 0;
   const chosen = active === null ? undefined : picks[active];
   const chosenEmoji = active === null ? undefined : emojiMatches[active];
@@ -108,28 +151,14 @@ export const ChatSuggestInput = ({
     if (open && input) list.current?.showPopover({ source: input });
   }, [open, ref, shown?.kind]);
 
-  // A dismissal holds only for the command or shortcode it closed on.
   function track(input: HTMLInputElement) {
     const next = typedAt(input);
-    const current = input.value;
     // Focus can come before hydration, leaving onFocus unheard.
-    if (next?.kind === "emoji" && !emoji) void loadShortcodes().then(setEmoji);
-    setTyped((previous) => {
-      if (!next) return null;
-      // Unchanged on a caret move, so React can skip the render.
-      if (
-        previous?.kind === next.kind &&
-        previous.query === next.query &&
-        previous.value === current
-      )
-        return previous;
-      return { ...next, value: current, dismissed: false };
-    });
+    if (next?.kind === "emoji" && !emoji) void loadShortcodes().then(loaded);
+    dispatch({ type: "track", typed: next, value: input.value });
   }
 
-  function dismiss() {
-    setTyped((previous) => previous && { ...previous, dismissed: true });
-  }
+  const dismiss = () => dispatch({ type: "dismiss" });
 
   function pick(text: string) {
     const input = ref.current;
@@ -169,7 +198,7 @@ export const ChatSuggestInput = ({
     if (active === null) {
       if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
       event.preventDefault();
-      setActive(0);
+      dispatch({ type: "choose", index: 0 });
       return;
     }
     const columns =
@@ -179,7 +208,7 @@ export const ChatSuggestInput = ({
     const next = arrowIndex(event, active, picks.length - 1, columns);
     if (next === undefined) return;
     event.preventDefault();
-    if (picks[next] !== undefined) setActive(next);
+    if (picks[next] !== undefined) dispatch({ type: "choose", index: next });
   }
 
   return (
@@ -193,7 +222,7 @@ export const ChatSuggestInput = ({
           track(event.target);
         }}
         onSelect={(event) => track(event.currentTarget)}
-        onFocus={() => void reloadShortcodes().then(setEmoji)}
+        onFocus={() => void reloadShortcodes().then(loaded)}
         onKeyDown={onKeyDown}
         onBlur={(event) => {
           // Null when a tap on an emoji takes focus; its click picks it.

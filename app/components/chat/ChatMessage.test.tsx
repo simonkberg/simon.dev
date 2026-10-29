@@ -10,7 +10,7 @@ const renderMessage = (overrides?: Partial<ChatMessageProps>) => {
   const props: ChatMessageProps = {
     ...createMessage(),
     replyToId: null,
-    setReplyToId: vi.fn(),
+    onReply: vi.fn(),
     ...overrides,
   };
   render(<ChatMessage {...props} />);
@@ -69,13 +69,13 @@ describe("ChatMessage", () => {
       );
     });
 
-    it("calls setReplyToId with message id when clicked", async () => {
+    it("replies to the message when clicked", async () => {
       const user = userEvent.setup();
-      const { setReplyToId } = renderMessage({ id: "test-message-id" });
+      const { onReply } = renderMessage({ id: "test-message-id" });
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
 
-      expect(setReplyToId).toHaveBeenCalledWith("test-message-id");
+      expect(onReply).toHaveBeenCalledWith("test-message-id");
     });
 
     it("is disabled when this message is being replied to", () => {

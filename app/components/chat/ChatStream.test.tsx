@@ -187,6 +187,9 @@ describe("ChatStream", () => {
 
       act(() => instance().onerror());
       expect(screen.queryByText(/typing…/)).not.toBeInTheDocument();
+      // A closed stream's late event doesn't bring them back.
+      act(() => instance().sendTyping(["simon"]));
+      expect(screen.queryByText(/typing…/)).not.toBeInTheDocument();
     });
   });
 

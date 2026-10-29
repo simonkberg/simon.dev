@@ -8,8 +8,8 @@ import {
   use,
   useEffect,
   useOptimistic,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 
 import { type Day, monthOf } from "@/lib/dates";
@@ -39,6 +39,11 @@ export const TravelContext = createContext<Travel>({
   release: () => {},
 });
 
+type Scrub = { type: "scrub"; to: Day } | { type: "settle" };
+
+const scrubbingTo = (_: Day | undefined, action: Scrub) =>
+  action.type === "scrub" ? action.to : undefined;
+
 // Long enough that holding an arrow key navigates once, where it stops.
 const SCRUB_MS = 300;
 
@@ -54,28 +59,29 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   // The day being loaded, for as long as its navigation is.
   const [going, setGoing] = useOptimistic<Day | undefined>(undefined);
   // Where the tape is, until it is sent; the ref for the timer and drag to read.
-  const [scrubbing, setScrubbing] = useState<Day>();
+  const [scrubbing, dispatchScrub] = useReducer(scrubbingTo, undefined);
   const scrubbed = useRef<Day>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const sent = useRef<Day>(undefined);
   const heading = going ?? date;
   const shown = scrubbing ?? going;
 
-  const settle = (to: Day | undefined) => {
+  const place = (action: Scrub) => {
     clearTimeout(timer.current);
-    scrubbed.current = to;
-    setScrubbing(to);
+    scrubbed.current = scrubbingTo(scrubbed.current, action);
+    dispatchScrub(action);
   };
+  const settle = () => place({ type: "settle" });
 
   // A day reached another way (back, forward) wins over a scrub not yet sent.
   useEffect(() => {
-    if (date !== sent.current) settle(undefined);
+    if (date !== sent.current) settle();
     sent.current = undefined;
   }, [date]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const go = (to: Day) => {
-    settle(undefined);
+    settle();
     sent.current = to;
     startTransition(() => {
       setGoing(to);
@@ -88,14 +94,14 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   };
 
   const scrub = (to: Day, held: boolean) => {
-    if (to === heading) return settle(undefined);
-    settle(to);
+    if (to === heading) return settle();
+    place({ type: "scrub", to });
     if (!held) timer.current = setTimeout(release, SCRUB_MS);
   };
 
   const travel: Travel["travel"] = (event, to) => {
     event.preventDefault();
-    if (to === heading) settle(undefined);
+    if (to === heading) settle();
     else go(to);
   };
 

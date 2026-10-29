@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, use, useState } from "react";
+import { type CSSProperties, type Dispatch, use, useReducer } from "react";
 
 import type { ScrobbleCount, BucketTopArtist } from "@/actions/listening";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
@@ -94,18 +94,25 @@ const Stems = ({
   );
 };
 
+type Pointing = { type: "enter"; runs: readonly Run[] } | { type: "leave" };
+
+const NONE: readonly Run[] = [];
+
 const Lanes = ({
   items,
   rows,
-  onActive,
+  point,
 }: {
   items: readonly ScrobbleCount[];
   rows: readonly Lane[];
-  onActive: (runs: readonly Run[]) => void;
+  point: Dispatch<Pointing>;
 }) => (
   <div className="lanes" style={{ "--count": items.length } as CSSProperties}>
     {/* Cleared on leaving the lanes, not each row, so moving across re-renders once. */}
-    <ol aria-label="Top artists" onPointerLeave={() => onActive([])}>
+    <ol
+      aria-label="Top artists"
+      onPointerLeave={() => point({ type: "leave" })}
+    >
       {rows.map(({ name, runs, plays, first, last }) => {
         const end = first > items.length / 2;
         const span = runs
@@ -118,7 +125,7 @@ const Lanes = ({
           .join(", ");
         const text = `${name}: ${formatPlays(plays)} in ${span}`;
         return (
-          <li key={name} onPointerEnter={() => onActive(runs)}>
+          <li key={name} onPointerEnter={() => point({ type: "enter", runs })}>
             <div
               className="lane-label"
               style={
@@ -161,7 +168,12 @@ export const ScrobbleChart = ({
 }: ScrobbleChartProps) => {
   const items = use(scrobbles);
   const buckets = use(topArtistByBucket);
-  const [active, setActive] = useState<readonly Run[]>([]);
+  // The runs of the lane under the pointer.
+  const [active, point] = useReducer(
+    (_: readonly Run[], action: Pointing) =>
+      action.type === "enter" ? action.runs : NONE,
+    NONE,
+  );
 
   if (items === undefined) {
     return <p>Scrobbles are temporarily unavailable :(</p>;
@@ -172,9 +184,7 @@ export const ScrobbleChart = ({
   return (
     <>
       <Stems items={items} active={active} />
-      {rows.length > 0 && (
-        <Lanes items={items} rows={rows} onActive={setActive} />
-      )}
+      {rows.length > 0 && <Lanes items={items} rows={rows} point={point} />}
     </>
   );
 };
