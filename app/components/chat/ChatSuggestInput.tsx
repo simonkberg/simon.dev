@@ -93,13 +93,11 @@ function suggesting(state: Suggesting, action: SuggestingAction): Suggesting {
       return retype(state, { ...next, value: action.value, dismissed: false });
     }
     case "dismiss":
-      return typed ? retype(state, { ...typed, dismissed: true }) : state;
+      return retype(state, typed && { ...typed, dismissed: true });
     case "forget":
       return retype(state, null);
     case "choose":
-      return action.index === state.active
-        ? state
-        : { ...state, active: action.index };
+      return { ...state, active: action.index };
   }
 }
 
