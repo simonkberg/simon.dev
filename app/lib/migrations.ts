@@ -70,6 +70,12 @@ export const MIGRATIONS: readonly string[] = [
     network TEXT PRIMARY KEY,
     banned_at INTEGER NOT NULL
   )`,
+  // simon-bot's entry on each Stockholm day's listening; empty when it skipped the day.
+  `CREATE TABLE IF NOT EXISTS diary (
+    day TEXT PRIMARY KEY,
+    entry TEXT NOT NULL,
+    written_at INTEGER NOT NULL
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

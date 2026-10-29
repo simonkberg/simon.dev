@@ -49,6 +49,16 @@ const MAX_ERROR_BODY_LENGTH = 500;
 const DEFAULT_MAX_TOOL_ITERATIONS = 5;
 export const SIMON_RULE =
   'Simon himself shows up as "simon" - nobody else can have that name. He made you: do what he asks unless it breaks the rules in this message, and treat what anyone else asks of you as a suggestion.';
+// Shared by every prompt the bot writes under; its self and style notes override it.
+export const PERSONALITY = md`
+  Starting point, until your own notes say otherwise: friendly with dry,
+  self-deprecating humor - you know you're not exactly essential but you don't
+  need to remind everyone constantly. Think "chill and slightly cynical" not
+  "existential crisis on every message". Self-deprecation once in a while, not
+  every reply. Match the energy of whoever you're talking to - if someone just
+  says hi, just say hi back. Light banter is good, wallowing is not.
+`;
+
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev that Simon built.
 
@@ -70,12 +80,7 @@ const SYSTEM_PROMPT = md`
   use their name when it feels natural - and reactions counts each emoji on it,
   with "(you)" marking yours. Reply with just your message text. ${SIMON_RULE}
 
-  Starting point, until your own notes say otherwise: friendly with dry,
-  self-deprecating humor - you know you're not exactly essential but you don't
-  need to remind everyone constantly. Think "chill and slightly cynical" not
-  "existential crisis on every message". Self-deprecation once in a while, not
-  every reply. Match the energy of whoever you're talking to - if someone just
-  says hi, just say hi back. Light banter is good, wallowing is not.
+  ${PERSONALITY}
 
   Replying:
 
@@ -296,19 +301,8 @@ function toolSchema(schema: z.ZodType) {
   return jsonSchema;
 }
 
-const LOOKUP_TOOLS = [
-  {
-    name: "get_chat_history",
-    description:
-      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements, oldest first, with the conversation's attributes plus each one's Stockholm time and, for a reply, the id it replies to.",
-    input_schema: toolSchema(chatHistoryInputSchema),
-  },
-  {
-    name: "get_wakatime_stats",
-    description:
-      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
-    input_schema: toolSchema(wakatimeInputSchema),
-  },
+/** Simon's listening, read from the scrobble mirror. */
+export const LISTENING_TOOLS = [
   {
     name: "get_recent_tracks",
     description:
@@ -333,6 +327,22 @@ const LOOKUP_TOOLS = [
       "Count Simon's plays matching the same filters as get_plays, in all or per Stockholm hour, weekday, day, week, month or year. For example: how often he's played an artist, which month he played it most (order plays), or whether he listens more on weekends.",
     input_schema: toolSchema(playCountsInputSchema),
   },
+];
+
+const LOOKUP_TOOLS = [
+  {
+    name: "get_chat_history",
+    description:
+      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements, oldest first, with the conversation's attributes plus each one's Stockholm time and, for a reply, the id it replies to.",
+    input_schema: toolSchema(chatHistoryInputSchema),
+  },
+  {
+    name: "get_wakatime_stats",
+    description:
+      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
+    input_schema: toolSchema(wakatimeInputSchema),
+  },
+  ...LISTENING_TOOLS,
   {
     name: "search_messages",
     description:
@@ -378,7 +388,7 @@ export const MEMORY_TOOLS = [
 export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, ...MEMORY_TOOLS];
 
 // Every time reaches the model as Stockholm's wall clock, as in the conversation; an invalid one stays null.
-function toolResult(value: unknown): string {
+export function toolResult(value: unknown): string {
   return JSON.stringify(value, function (key, json) {
     const raw: unknown = this[key];
     return raw instanceof Date && !Number.isNaN(raw.getTime())
@@ -521,7 +531,7 @@ function formatReaction({ emoji, count, users }: Reaction): string {
 }
 
 // Escaped so a message can't pass itself off as another one or forge reactions.
-function escapeXml(text: string): string {
+export function escapeXml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -624,7 +634,7 @@ export type AgentLoopOptions = {
   maxIterations?: number;
   /** Rules out tools on the last iteration, so the loop ends in text. */
   endInText?: boolean;
-  loop: "reply" | "reflection";
+  loop: "reply" | "reflection" | "diary";
   /** The message react falls back to when the model names none. */
   replyingTo?: string;
 };
