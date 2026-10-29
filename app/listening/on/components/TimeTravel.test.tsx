@@ -248,6 +248,7 @@ describe("TimeTravel", () => {
 
     press("pointerDown", 2, { isPrimary: false, pointerId: 2 });
     press("pointerUp", 2, { isPrimary: false, pointerId: 2 });
+    press("pointerCancel", 2, { isPrimary: false, pointerId: 2 });
 
     expect(screen.getByRole("status")).toHaveTextContent("Tue, Oct 14, 2008");
     expect(replace()).not.toHaveBeenCalled();

@@ -162,7 +162,9 @@ export const TimeTravel = ({
           if (held(event)) release();
         }}
         // The browser took the touch to scroll the page.
-        onPointerCancel={cancel}
+        onPointerCancel={(event) => {
+          if (held(event)) cancel();
+        }}
       >
         <ol aria-hidden="true">
           {counts.map(({ label }, index) => (
