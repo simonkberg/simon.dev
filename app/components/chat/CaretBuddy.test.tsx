@@ -108,6 +108,21 @@ describe("CaretBuddy", () => {
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
 
+    it("waits 3 seconds from the last keystroke", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      rerender(<CaretBuddy {...defaultProps} inputValue="hi" />);
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+    });
+
     it("transitions from success to idle after 1.5 seconds", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
