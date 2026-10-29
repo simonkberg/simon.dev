@@ -61,7 +61,7 @@ const DIARY_PROMPT = md`
   - no hedging: don't weigh "either this or that", and don't remark on what
     you can or can't see, or on who did or didn't ask or skip
   - don't repeat what your last entries said, or how they said it
-  - a few sentences at most, often one
+  - one paragraph, a few sentences at most, often one
   - your reply is the entry itself, nothing before or after it
 `;
 
