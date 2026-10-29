@@ -24,10 +24,11 @@ jobs:
     steps:
       # A reopened PR whose fork survived gets 409, which is fine. The response is printed
       # only on failure, since the logs are public and Turso's has room for credentials.
+      # A fork takes seconds; a hung one is cut off and retried rather than left to Turso's 504.
       - run: |
           body=$(jq -n --arg name "$DATABASE" --arg group "$GROUP" --arg source "$SOURCE" \
             '{name: $name, group: $group, seed: {type: "database", name: $source}}')
-          status=$(curl -sS --retry 3 -o response.json -w '%{http_code}' -X POST "$DATABASES_URL" \
+          status=$(curl -sS --max-time 60 --retry 3 -o response.json -w '%{http_code}' -X POST "$DATABASES_URL" \
             -H "Authorization: Bearer $TURSO_API_TOKEN" -H "Content-Type: application/json" -d "$body")
           echo "HTTP $status"
           [[ $status == 200 || $status == 409 ]] || { cat response.json; exit 1; }
@@ -42,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          status=$(curl -sS --retry 3 -o response.json -w '%{http_code}' -X DELETE "$DATABASES_URL/$DATABASE" \
+          status=$(curl -sS --max-time 60 --retry 3 -o response.json -w '%{http_code}' -X DELETE "$DATABASES_URL/$DATABASE" \
             -H "Authorization: Bearer $TURSO_API_TOKEN")
           echo "HTTP $status"
           [[ $status == 200 || $status == 404 ]] || { cat response.json; exit 1; }
