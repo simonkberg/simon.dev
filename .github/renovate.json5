@@ -15,6 +15,11 @@
   packageRules: [
     { matchDepTypes: ["packageManager"], automerge: true },
     // The Dockerfile copies pnpm from its image, so it moves with packageManager.
-    { matchPackageNames: ["pnpm", "ghcr.io/pnpm/pnpm"], groupName: "pnpm" },
+    // GHCR has no release dates, so take the newest for both and let npm's age hold the merge.
+    {
+      matchPackageNames: ["pnpm", "ghcr.io/pnpm/pnpm"],
+      groupName: "pnpm",
+      internalChecksFilter: "none",
+    },
   ],
 }
