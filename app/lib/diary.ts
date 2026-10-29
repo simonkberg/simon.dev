@@ -26,8 +26,8 @@ import { query } from "@/lib/turso";
 const TICK_MS = 10 * 60_000;
 // The scrobble sync runs each minute, so by then it has the day's last plays.
 const SETTLE_MS = 10 * 60_000;
-// Outlasts writing an entry, so one replica writes it.
-const LOCK_TTL_MS = 5 * 60_000;
+// Outlasts the slowest entry: every round timing out and retrying.
+const LOCK_TTL_MS = 30 * 60_000;
 const LOCK_NAME = "diary";
 const MAX_TRIES = 3;
 const RECENT_ENTRIES = 5;
