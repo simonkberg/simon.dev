@@ -47,7 +47,9 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
           return (
             <li
               key={label}
-              style={{ "--value": heights[index] } as CSSProperties}
+              style={
+                { "--value": heights[index], "--index": index } as CSSProperties
+              }
               data-active={current || undefined}
               data-tick={tick || undefined}
             >

@@ -1519,11 +1519,9 @@ ul {
 
 /* Time travel */
 
-/* Grows once: the days, playhead and era's name follow it, so a later month's days arrive grown. */
 .time-travel {
   --tape-slot: calc(100% / var(--months));
   --tape-step: min(15ms, 450ms / var(--months));
-  --grow-delay: 450ms;
   container-type: inline-size;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1602,6 +1600,7 @@ ul {
   position: absolute;
   inset-block: -0.4rem 0;
   left: calc(var(--tape-slot) * (var(--at) + 0.5));
+  --grow-delay: 450ms;
   border-inline-start: 1px solid var(--accent);
   opacity: var(--grow);
   pointer-events: none;
@@ -1654,7 +1653,9 @@ ul {
   padding: 0;
   list-style: none;
 
+  /* Each month's days rise from the first, the last within 300ms. */
   > li {
+    --grow-delay: calc(var(--index) * min(15ms, 300ms / var(--days)));
     display: grid;
     grid-template-rows: 3.5rem auto;
   }
@@ -1737,6 +1738,7 @@ ul {
 
 /* Starts under its era, sliding left to fit on one line, and truncates past that. */
 .time-travel-era {
+  --grow-delay: 450ms;
   display: flex;
   margin: 0.4rem 0 0;
   opacity: var(--grow);
@@ -2067,10 +2069,12 @@ ul {
 .lane-run,
 .timeline > li,
 .timeline-plays,
-.time-travel,
 .time-travel-tape li,
 .time-travel-years li,
 .time-travel-eras li,
+.time-travel-head,
+.time-travel-days > li,
+.time-travel-era,
 .animated-number:not([data-follow]) {
   /* easeOutCubic; filled both ways so a count whose value changes can restart it. */
   animation: grow var(--grow-duration, 600ms)

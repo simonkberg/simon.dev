@@ -368,8 +368,7 @@ Charts, lanes and the timeline grow in with CSS: each animates a registered `--g
 `AnimatedNumber` on the page hasn't hydrated: it counts along by reading its computed `--grow`
 each frame and, with JS, shows its `data-from` 0 until it does; without JS or with reduced
 motion it shows its number. Long staggers divide a fixed budget by the inline `--count`,
-so many stops or columns animate faster rather than longer. The time travel tape grows its
-container too, once: the month's days, remounted per month, follow it and so arrive grown.
+so many stops or columns animate faster rather than longer.
 
 ### Server-Only Code
 
