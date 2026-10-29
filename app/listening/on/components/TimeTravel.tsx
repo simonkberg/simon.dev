@@ -114,8 +114,12 @@ export const TimeTravel = ({
   const before = addDays(shown, -1);
   const after = addDays(shown, 1);
 
-  const held = (event: PointerEvent<HTMLElement>) =>
-    event.currentTarget.hasPointerCapture(event.pointerId);
+  // Only the press the tape captured moves or ends the scrub.
+  const whileHeld =
+    (handle: (event: PointerEvent<HTMLElement>) => void) =>
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) handle(event);
+    };
   // The month under the pointer, wherever it has dragged to.
   const scrubTo = (event: PointerEvent<HTMLElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();
@@ -155,16 +159,10 @@ export const TimeTravel = ({
           slider.current?.focus({ preventScroll: true });
           scrubTo(event);
         }}
-        onPointerMove={(event) => {
-          if (held(event)) scrubTo(event);
-        }}
-        onPointerUp={(event) => {
-          if (held(event)) release();
-        }}
+        onPointerMove={whileHeld(scrubTo)}
+        onPointerUp={whileHeld(release)}
         // The browser took the touch to scroll the page.
-        onPointerCancel={(event) => {
-          if (held(event)) cancel();
-        }}
+        onPointerCancel={whileHeld(cancel)}
       >
         <ol aria-hidden="true">
           {counts.map(({ label }, index) => (

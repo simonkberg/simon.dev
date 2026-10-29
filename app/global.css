@@ -2884,7 +2884,7 @@ tbody tr:hover {
     transition: opacity 0.2s ease;
   }
 
-  /* Any, not the primary: an iPad's trackpad hovers though its touch screen can't. A tap leaves :hover stuck. */
+  /* Any, not the primary: an iPad's trackpad hovers though its touch screen can't. */
   @media (any-hover: hover) {
     &:hover {
       z-index: 1;
