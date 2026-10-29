@@ -28,6 +28,7 @@ const renderDays = (
         travel: vi.fn(),
         scrub: vi.fn(),
         release: vi.fn(),
+        cancel: vi.fn(),
         going: undefined,
       }}
     >

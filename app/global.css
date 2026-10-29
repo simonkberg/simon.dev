@@ -1557,6 +1557,9 @@ ul {
   position: relative;
   height: 4.5rem;
   border-block-end: 1px solid var(--rule);
+  cursor: ew-resize;
+  /* Sideways drags scrub; the page still scrolls up and down. */
+  touch-action: pan-y;
 
   > ol {
     display: flex;
@@ -1579,7 +1582,7 @@ ul {
     }
   }
 
-  /* The whole tape is the slider; its thumb is the playhead drawn below. */
+  /* The slider for keys and assistive tech; the tape takes the pointer. */
   > input {
     position: absolute;
     inset: 0;
@@ -1587,7 +1590,7 @@ ul {
     height: 100%;
     margin: 0;
     opacity: 0;
-    cursor: ew-resize;
+    pointer-events: none;
   }
 
   &:has(> input:focus-visible) {
@@ -2878,8 +2881,8 @@ tbody tr:hover {
     transition: opacity 0.2s ease;
   }
 
-  /* A tap leaves :hover stuck on touch, and the link opens in a new tab. */
-  @media (hover: hover) {
+  /* Any, not the primary: an iPad's trackpad hovers though its touch screen can't. A tap leaves :hover stuck. */
+  @media (any-hover: hover) {
     &:hover {
       z-index: 1;
       outline: var(--cover-frame-hover);
