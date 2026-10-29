@@ -152,6 +152,18 @@ describe("postChatMessage", () => {
     );
   });
 
+  it("records who posted from where, when it knows the IP", async () => {
+    await post();
+    fromIp(undefined);
+    await post();
+
+    expect(
+      (await query("SELECT message_id, username, ip FROM chat_posts")).rows,
+    ).toEqual([
+      { message_id: "msg-123", username: "test-user", ip: "0.0.0.0" },
+    ]);
+  });
+
   it("rejects the sixth post in 30 seconds with the wait time", async () => {
     await postUpToTheLimit();
     vi.advanceTimersByTime(10_000);

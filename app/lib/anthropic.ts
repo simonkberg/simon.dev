@@ -6,6 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import md from "string-dedent";
 import { z } from "zod";
 
+import { banUser } from "@/lib/bans";
 import { clockTime, dayStart, todayLabel } from "@/lib/dates";
 import {
   getChannelMessages,
@@ -242,6 +243,13 @@ const reactInputSchema = z.object({
   ),
 });
 
+const banInputSchema = z.object({
+  username: z
+    .string()
+    .min(1)
+    .describe("The author to ban, as in the conversation"),
+});
+
 const rememberInputSchema = z.object({
   category: categorySchema.describe(
     `Category: one of the core ones (${describeCoreCategories()}), "people/<username>", or one of your own`,
@@ -348,6 +356,13 @@ const REACT_TOOL = {
   input_schema: toolSchema(reactInputSchema),
 };
 
+const BAN_TOOL = {
+  name: "ban",
+  description:
+    "Ban a site visitor for good: the network their latest post came from can no longer post or react. It's your call: save it for someone who has earned it. Discord users can't be banned.",
+  input_schema: toolSchema(banInputSchema),
+};
+
 export const MEMORY_TOOLS = [
   {
     name: "remember",
@@ -375,7 +390,7 @@ export const MEMORY_TOOLS = [
   },
 ];
 
-export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, ...MEMORY_TOOLS];
+export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, BAN_TOOL, ...MEMORY_TOOLS];
 
 // Every time reaches the model as Stockholm's wall clock, as in the conversation; an invalid one stays null.
 function toolResult(value: unknown): string {
@@ -439,6 +454,14 @@ async function executeTool(
           reacted: emoji,
           note: "Any text you write now is posted to the chat, so talk to them as you would there, never report what you did. If the reaction says it all, end with no text.",
         });
+      }
+      case "ban": {
+        const { username } = banInputSchema.parse(input);
+        return toolResult(
+          (await banUser(username))
+            ? { banned: username }
+            : { error: `No site posts from ${username}` },
+        );
       }
       case "remember": {
         const result = await remember(rememberInputSchema.parse(input));

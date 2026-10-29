@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { recordPost } from "@/lib/bans";
 import {
   getChannelMessages,
   type Message,
@@ -23,6 +24,7 @@ import {
 import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { recentPlays } from "@/lib/scrobbles";
+import type { Username } from "@/lib/session";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
@@ -196,6 +198,7 @@ describe("createMessage", () => {
         { name: "get_play_counts" },
         { name: "search_messages" },
         { name: "react" },
+        { name: "ban" },
         { name: "remember" },
         { name: "recall" },
         { name: "edit" },
@@ -1041,5 +1044,23 @@ describe("react tool", () => {
       error: expect.any(String),
     });
     expect(addReaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("ban tool", () => {
+  async function runBan(username: string): Promise<unknown> {
+    return JSON.parse(await runTool("ban", { username }));
+  }
+
+  it("bans a user with site posts", async () => {
+    await recordPost("1", TEST_USERNAME as Username, "192.0.2.1");
+
+    expect(await runBan(TEST_USERNAME)).toEqual({ banned: TEST_USERNAME });
+  });
+
+  it("says so when the user has no site posts", async () => {
+    expect(await runBan("nobody")).toEqual({
+      error: "No site posts from nobody",
+    });
   });
 });

@@ -70,6 +70,13 @@ export const MIGRATIONS: readonly string[] = [
     network TEXT PRIMARY KEY,
     banned_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS chat_posts (
+    message_id TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    posted_at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS chat_posts_username_posted_at ON chat_posts (username, posted_at)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

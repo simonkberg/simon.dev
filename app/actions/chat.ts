@@ -3,7 +3,7 @@
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
-import { ban, isBanned, isSpam } from "@/lib/bans";
+import { ban, isBanned, isSpam, recordPost } from "@/lib/bans";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
@@ -124,6 +124,9 @@ export async function postChatMessage(
 
     const messageId = await postChannelMessage(text, username, replyToId);
     void stopTyping(username);
+    if (request.ip !== undefined) {
+      void recordPost(messageId, username, request.ip);
+    }
 
     await dismissChatTip();
 
