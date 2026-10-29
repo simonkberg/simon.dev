@@ -15,13 +15,14 @@
   packageRules: [
     { matchDepTypes: ["packageManager"], automerge: true },
     // The Dockerfile copies pnpm from its image, so it moves with packageManager.
-    // GHCR has no release dates, so take the newest for both and let npm's age hold the merge.
-    // GitHub's automerge would ignore that pending check, so Renovate merges these itself.
+    // GHCR has no release dates, so take the newest for both and let npm's age hold the PR back:
+    // branches carry no CI, so the age check alone has to count as passing.
     {
       matchPackageNames: ["pnpm", "ghcr.io/pnpm/pnpm"],
       groupName: "pnpm",
       internalChecksFilter: "none",
-      platformAutomerge: false,
+      prCreation: "not-pending",
+      internalChecksAsSuccess: true,
     },
   ],
 }
