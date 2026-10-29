@@ -133,7 +133,13 @@ function useCaretBuddyState({
   }
 
   useExpiry(dispatch, "typing", typing, TYPING_TIMEOUT_MS, seen.inputValue);
-  useExpiry(dispatch, "success", success, SUCCESS_DURATION_MS);
+  useExpiry(
+    dispatch,
+    "success",
+    success,
+    SUCCESS_DURATION_MS,
+    seen.resultStatus,
+  );
 
   if (resultStatus === "error") return "error";
   if (success) return "success";

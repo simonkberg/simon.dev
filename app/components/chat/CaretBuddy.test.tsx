@@ -134,6 +134,20 @@ describe("CaretBuddy", () => {
 
       expect(screen.getByText("(-_-)zzz")).toBeInTheDocument();
     });
+    it("restarts the success wait on another ok", () => {
+      const { rerender } = render(<CaretBuddy {...defaultProps} />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(700);
+      });
+      rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
+      rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
+      act(() => {
+        vi.advanceTimersByTime(900);
+      });
+
+      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+    });
   });
 
   describe("frame animation", () => {
