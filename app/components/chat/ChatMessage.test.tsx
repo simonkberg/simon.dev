@@ -10,7 +10,7 @@ const renderMessage = (overrides?: Partial<ChatMessageProps>) => {
   const props: ChatMessageProps = {
     ...createMessage(),
     replyToId: null,
-    dispatchReply: vi.fn(),
+    onReply: vi.fn(),
     ...overrides,
   };
   render(<ChatMessage {...props} />);
@@ -71,14 +71,11 @@ describe("ChatMessage", () => {
 
     it("replies to the message when clicked", async () => {
       const user = userEvent.setup();
-      const { dispatchReply } = renderMessage({ id: "test-message-id" });
+      const { onReply } = renderMessage({ id: "test-message-id" });
 
       await user.click(screen.getByRole("button", { name: "Reply" }));
 
-      expect(dispatchReply).toHaveBeenCalledWith({
-        type: "reply",
-        id: "test-message-id",
-      });
+      expect(onReply).toHaveBeenCalledWith("test-message-id");
     });
 
     it("is disabled when this message is being replied to", () => {

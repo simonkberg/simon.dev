@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  type Dispatch,
   FormEvent,
   type PropsWithChildren,
   useEffect,
@@ -14,7 +13,6 @@ import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 import { TooltipButton } from "@/components/Tooltip";
 
 import { CaretBuddy } from "./CaretBuddy";
-import type { ReplyAction } from "./ChatMessage";
 import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
 import { type CommandResult, messageText, runCommand } from "./commands";
@@ -103,12 +101,12 @@ function draft(state: Draft, action: DraftAction): Draft {
 
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
-  dispatchReply: Dispatch<ReplyAction>;
+  onCancelReply: () => void;
 }
 
 export const ChatInput = ({
   replyToId,
-  dispatchReply,
+  onCancelReply,
   children,
 }: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +156,7 @@ export const ChatInput = ({
       // Nested startTransition required: after await, we're outside the original transition context
       startTransition(() => {
         if (result.status === "ok") {
-          dispatchReply({ type: "cancel" });
+          onCancelReply();
           typing.posted();
         }
         dispatch({ type: "sent", result });
@@ -177,7 +175,7 @@ export const ChatInput = ({
     if (replyToId) inputRef.current?.focus();
   }, [replyToId]);
 
-  useEscape(!!replyToId, () => dispatchReply({ type: "cancel" }));
+  useEscape(!!replyToId, onCancelReply);
   useEscape(!!output, () => dispatch({ type: "closeOutput" }));
 
   return (

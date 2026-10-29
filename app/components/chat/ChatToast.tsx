@@ -9,12 +9,12 @@ export interface ChatToastProps {
 }
 
 interface Toast {
-  result: { error: string } | undefined;
+  result: ChatToastProps["result"];
   open: boolean;
 }
 
 type ToastAction =
-  | { type: "result"; result: { error: string } | undefined }
+  | { type: "result"; result: ChatToastProps["result"] }
   | { type: "close" };
 
 function toast(state: Toast, action: ToastAction): Toast {

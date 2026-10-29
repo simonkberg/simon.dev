@@ -1,4 +1,4 @@
-import { type CSSProperties, type Dispatch, Suspense } from "react";
+import { type CSSProperties, Suspense } from "react";
 
 import { RelativeTime } from "@/components/RelativeTime";
 import { TooltipButton } from "@/components/Tooltip";
@@ -7,11 +7,9 @@ import type { Message } from "@/lib/discord/api";
 import { ChatMarkdown } from "./ChatMarkdown";
 import { ChatReactionList, ChatReactionPicker } from "./ChatReactions";
 
-export type ReplyAction = { type: "reply"; id: string } | { type: "cancel" };
-
 export interface ChatMessageProps extends Message {
   replyToId: string | null;
-  dispatchReply: Dispatch<ReplyAction>;
+  onReply: (id: string) => void;
   /** Shown above the input while replying: just the text, without controls or reactions. */
   preview?: boolean;
 }
@@ -24,7 +22,7 @@ export const ChatMessage = ({
   timestamp,
   reactions,
   replyToId,
-  dispatchReply,
+  onReply,
   preview = false,
 }: ChatMessageProps) => (
   <article
@@ -48,7 +46,7 @@ export const ChatMessage = ({
           <TooltipButton
             tooltip="Reply"
             className="reply"
-            onClick={() => dispatchReply({ type: "reply", id })}
+            onClick={() => onReply(id)}
             disabled={replyToId === id}
           >
             ↩

@@ -7,7 +7,7 @@ import {
   reactToChatMessage,
   type ReactToChatMessageResult,
 } from "@/actions/chat";
-import ChatMessage, { type ReplyAction } from "@/components/chat/ChatMessage";
+import ChatMessage from "@/components/chat/ChatMessage";
 import { Subtitle } from "@/components/Subtitle";
 import { TooltipButton } from "@/components/Tooltip";
 import type { Message, Reaction } from "@/lib/discord/api";
@@ -81,6 +81,8 @@ function withReactionToggled(
   });
 }
 
+type ReplyAction = { type: "reply"; id: string } | { type: "cancel" };
+
 const replying = (_: string | null, action: ReplyAction) =>
   action.type === "reply" ? action.id : null;
 
@@ -102,6 +104,8 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
   const result = use(history);
   const dismissed = useChatTipDismissed(use(tipDismissed));
   const [replyToId, dispatchReply] = useReducer(replying, null);
+  const reply = (id: string) => dispatchReply({ type: "reply", id });
+  const cancelReply = () => dispatchReply({ type: "cancel" });
   const [, startReacting] = useTransition();
   // Per message, so a slow toggle (Discord's rate limit can hold it 30s) blocks only its own.
   const [reacting, markReacting] = useOptimistic(
@@ -141,35 +145,31 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
     ? findMessageById(messages, replyToId)
     : null;
   // Its banner holds the only way to clear it.
-  if (replyToId && !replyToMessage) dispatchReply({ type: "cancel" });
+  if (replyToId && !replyToMessage) cancelReply();
 
   return (
     <ChatReactionsContext value={{ reacting, react }}>
       <ChatToast result={reactionFailure} />
-      <ChatHistory
-        messages={messages}
-        replyToId={replyToId}
-        dispatchReply={dispatchReply}
-      />
+      <ChatHistory messages={messages} replyToId={replyToId} onReply={reply} />
       {replyToMessage && (
         <div className="chat-replying-to" role="status" aria-live="polite">
           <Subtitle>Replying to</Subtitle>
           <ChatMessage
             replyToId={replyToId}
-            dispatchReply={dispatchReply}
+            onReply={reply}
             {...replyToMessage}
             preview
           />
           <TooltipButton
             tooltip="Clear reply"
             className="clear"
-            onClick={() => dispatchReply({ type: "cancel" })}
+            onClick={cancelReply}
           >
             &times;
           </TooltipButton>
         </div>
       )}
-      <ChatInput replyToId={replyToId} dispatchReply={dispatchReply}>
+      <ChatInput replyToId={replyToId} onCancelReply={cancelReply}>
         {!dismissed && <ChatTip />}
       </ChatInput>
     </ChatReactionsContext>

@@ -1,16 +1,11 @@
 "use client";
 
-import {
-  type Dispatch,
-  type FocusEvent,
-  type KeyboardEvent,
-  useReducer,
-} from "react";
+import { type FocusEvent, type KeyboardEvent, useReducer } from "react";
 
 import type { Message } from "@/lib/discord/api";
 
 import { arrowFocus } from "./arrowFocus";
-import { ChatMessage, type ReplyAction } from "./ChatMessage";
+import { ChatMessage } from "./ChatMessage";
 
 const messageIds = (messages: Message[]): string[] =>
   messages.flatMap((message) => [message.id, ...messageIds(message.replies)]);
@@ -38,7 +33,7 @@ function setTabStop(root: Element, id: string | undefined) {
 interface ChatHistoryMessagesProps {
   messages: Message[];
   replyToId: string | null;
-  dispatchReply: Dispatch<ReplyAction>;
+  onReply: (id: string) => void;
 }
 
 interface Shown {
@@ -112,7 +107,7 @@ function whenSlidOut(li: HTMLLIElement, done: () => void) {
 const ChatHistoryMessages = ({
   messages,
   replyToId,
-  dispatchReply,
+  onReply,
 }: ChatHistoryMessagesProps) => {
   const [{ messages: followed, shown }, dispatch] = useReducer(
     showing,
@@ -140,17 +135,13 @@ const ChatHistoryMessages = ({
             : undefined
         }
       >
-        <ChatMessage
-          {...message}
-          replyToId={replyToId}
-          dispatchReply={dispatchReply}
-        />
+        <ChatMessage {...message} replyToId={replyToId} onReply={onReply} />
         {/* Always mounted, so a first reply slides in and a last one slides out. */}
         <ul>
           <ChatHistoryMessages
             messages={message.replies}
             replyToId={replyToId}
-            dispatchReply={dispatchReply}
+            onReply={onReply}
           />
         </ul>
       </li>
@@ -161,13 +152,13 @@ const ChatHistoryMessages = ({
 export interface ChatHistoryProps {
   messages: Message[];
   replyToId: string | null;
-  dispatchReply: Dispatch<ReplyAction>;
+  onReply: (id: string) => void;
 }
 
 export const ChatHistory = ({
   messages,
   replyToId,
-  dispatchReply,
+  onReply,
 }: ChatHistoryProps) => {
   const [focusedId, focus] = useReducer(
     (_: string | undefined, id: string | undefined) => id,
@@ -206,7 +197,7 @@ export const ChatHistory = ({
           <ChatHistoryMessages
             messages={messages}
             replyToId={replyToId}
-            dispatchReply={dispatchReply}
+            onReply={onReply}
           />
         </ul>
       </div>
