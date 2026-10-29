@@ -21,6 +21,8 @@ jobs:
     name: Fork the testing database
     if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    # A fork takes seconds; a hung one fails here rather than waiting out Turso's 504.
+    timeout-minutes: 2
     steps:
       # A reopened PR whose fork survived gets 409, which is fine. The response is printed
       # only on failure, since the logs are public and Turso's has room for credentials.
