@@ -1521,6 +1521,7 @@ ul {
 
 .time-travel {
   --tape-slot: calc(100% / var(--months));
+  --tape-step: min(15ms, 450ms / var(--months));
   container-type: inline-size;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1567,8 +1568,9 @@ ul {
   }
 
   li {
+    --grow-delay: calc(var(--index) * var(--tape-step));
     flex: 1;
-    height: calc(var(--value) * 100%);
+    height: calc(var(--value) * var(--grow) * 100%);
     margin-inline: 0.5px;
     background: var(--tape-bar);
 
@@ -1598,7 +1600,9 @@ ul {
   position: absolute;
   inset-block: -0.4rem 0;
   left: calc(var(--tape-slot) * (var(--at) + 0.5));
+  --grow-delay: 450ms;
   border-inline-start: 1px solid var(--accent);
+  opacity: var(--grow);
   pointer-events: none;
 
   &::before {
@@ -1622,9 +1626,11 @@ ul {
   font-size: var(--meta-size);
 
   li {
+    --grow-delay: calc(var(--index) * var(--tape-step));
     position: absolute;
     top: 0.35rem;
     left: calc(var(--tape-slot) * var(--index));
+    opacity: var(--grow);
     translate: -50% 0;
   }
 
@@ -1647,7 +1653,9 @@ ul {
   padding: 0;
   list-style: none;
 
+  /* Each month's days rise from the first, the last within 300ms. */
   > li {
+    --grow-delay: calc(var(--index) * min(15ms, 300ms / var(--days)));
     display: grid;
     grid-template-rows: 3.5rem auto;
   }
@@ -1661,7 +1669,7 @@ ul {
       content: "";
       position: absolute;
       inset: auto 1px 0;
-      height: max(1px, calc(var(--value) * 100%));
+      height: max(1px, calc(var(--value) * var(--grow) * 100%));
       background: var(--tape-bar);
     }
   }
@@ -1714,11 +1722,13 @@ ul {
   list-style: none;
 
   li {
+    --grow-delay: calc(150ms + var(--first) * var(--tape-step));
     position: absolute;
     inset-block: 0.15rem;
     left: calc(var(--tape-slot) * var(--first) + 1px);
     width: calc(var(--tape-slot) * (var(--last) - var(--first) + 1) - 2px);
     background: var(--tape-era);
+    clip-path: inset(0 calc((1 - var(--grow)) * 100%) 0 0);
 
     &[data-active] {
       background: var(--accent);
@@ -1728,8 +1738,10 @@ ul {
 
 /* Starts under its era, sliding left to fit on one line, and truncates past that. */
 .time-travel-era {
+  --grow-delay: 450ms;
   display: flex;
   margin: 0.4rem 0 0;
+  opacity: var(--grow);
   color: var(--accent);
   font-size: var(--meta-size);
   white-space: nowrap;
@@ -2031,9 +2043,13 @@ ul {
   initial-value: 1;
 }
 
+/* Ends at 1 rather than what it inherits, so it never multiplies an ancestor's grow. */
 @keyframes grow {
   from {
     --grow: 0;
+  }
+  to {
+    --grow: 1;
   }
 }
 
@@ -2053,6 +2069,12 @@ ul {
 .lane-run,
 .timeline > li,
 .timeline-plays,
+.time-travel-tape li,
+.time-travel-years li,
+.time-travel-eras li,
+.time-travel-head,
+.time-travel-days > li,
+.time-travel-era,
 .animated-number:not([data-follow]) {
   /* easeOutCubic; filled both ways so a count whose value changes can restart it. */
   animation: grow var(--grow-duration, 600ms)
