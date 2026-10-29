@@ -39,6 +39,7 @@ describe("OnThisDay", () => {
     expect(
       screen.getByRole("link", { name: "12 plays in 2025" }),
     ).toHaveAttribute("href", "/listening/on/2025/10/24");
+    expect(screen.getByText("12 plays in 2025")).toHaveClass("visually-hidden");
   });
 
   it("draws the timeline in from the origin, a stop at a time", async () => {
