@@ -27,6 +27,19 @@ describe("useTimeout", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it("stops waiting when the time goes", () => {
+    const callback = vi.fn();
+    const { rerender } = renderHook(({ ms }) => useTimeout(callback, ms), {
+      initialProps: { ms: 1000 as number | undefined },
+    });
+
+    vi.advanceTimersByTime(600);
+    rerender({ ms: undefined });
+    vi.runAllTimers();
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
   it("waits again when restarted", () => {
     const callback = vi.fn();
     const { rerender } = renderHook(
