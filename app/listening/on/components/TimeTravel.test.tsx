@@ -102,10 +102,15 @@ const slide = (month: number) =>
 const press = (
   type: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel",
   month: number,
-  button = 0,
+  { button = 0, isPrimary = true, pointerId = 1 } = {},
 ) => {
   const tape = screen.getByRole("slider", { name: "Month" }).parentElement!;
-  fireEvent[type](tape, { pointerId: 1, button, clientX: month * 10 + 5 });
+  fireEvent[type](tape, {
+    pointerId,
+    isPrimary,
+    button,
+    clientX: month * 10 + 5,
+  });
 };
 
 // The month's days, which dim while the page travels to another month.
@@ -237,11 +242,22 @@ describe("TimeTravel", () => {
     expect(replace()).not.toHaveBeenCalled();
   });
 
+  it("ignores a second finger on the tape", async () => {
+    await renderTape();
+    press("pointerDown", 10);
+
+    press("pointerDown", 2, { isPrimary: false, pointerId: 2 });
+    press("pointerUp", 2, { isPrimary: false, pointerId: 2 });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Tue, Oct 14, 2008");
+    expect(replace()).not.toHaveBeenCalled();
+  });
+
   it("ignores a press other than the main button", async () => {
     vi.useFakeTimers();
     await renderTape();
 
-    press("pointerDown", 2, 2);
+    press("pointerDown", 2, { button: 2 });
     press("pointerMove", 2);
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
 

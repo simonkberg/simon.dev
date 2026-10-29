@@ -147,7 +147,8 @@ export const TimeTravel = ({
       <div
         className="time-travel-tape"
         onPointerDown={(event) => {
-          if (event.button !== 0) return;
+          // A second finger joins no scrub of its own.
+          if (event.button !== 0 || !event.isPrimary) return;
           // Else the press moves focus off the slider, and keys stop working.
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
