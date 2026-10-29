@@ -147,6 +147,7 @@ function useCaretBuddyState({
 interface Animation {
   frames: AnimationFrames;
   index: number;
+  frame: AnimationFrame;
 }
 
 type AnimationAction =
@@ -156,16 +157,25 @@ type AnimationAction =
 function animation(state: Animation, action: AnimationAction): Animation {
   switch (action.type) {
     case "play":
-      return { frames: action.frames, index: 0 };
-    case "advance":
-      return { ...state, index: (state.index + 1) % state.frames.length };
+      return { frames: action.frames, index: 0, frame: action.frames[0] };
+    case "advance": {
+      const index = state.index + 1;
+      const frame = state.frames[index];
+      return frame
+        ? { ...state, index, frame }
+        : { ...state, index: 0, frame: state.frames[0] };
+    }
   }
 }
 
 function useFrameAnimation(frames: AnimationFrames): string {
-  const [state, dispatch] = useReducer(animation, { frames, index: 0 });
+  const [state, dispatch] = useReducer(animation, {
+    frames,
+    index: 0,
+    frame: frames[0],
+  });
   if (frames !== state.frames) dispatch({ type: "play", frames });
-  const [duration, expression] = state.frames[state.index] ?? state.frames[0];
+  const [duration, expression] = state.frame;
 
   useEffect(() => {
     const timer = setTimeout(

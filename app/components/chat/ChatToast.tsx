@@ -22,7 +22,7 @@ function toast(state: Toast, action: ToastAction): Toast {
     case "result":
       return { result: action.result, open: !!action.result };
     case "close":
-      return state.open ? { ...state, open: false } : state;
+      return { ...state, open: false };
   }
 }
 
