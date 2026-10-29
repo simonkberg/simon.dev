@@ -410,14 +410,14 @@ describe("getScrobbleMonths", () => {
     vi.mocked(countScrobbles).mockResolvedValue(42);
   });
 
-  it("should count every month since the first year's January", async () => {
+  it("should count every month since the first scrobble's", async () => {
     const result = await getScrobbleMonths();
 
-    expect(countScrobbles).toHaveBeenCalledTimes((2026 - 2007) * 12 + 10);
+    expect(countScrobbles).toHaveBeenCalledTimes((2026 - 2007) * 12 - 1);
     expect(result).toMatchObject({
       status: "ok",
       scrobbles: expect.arrayContaining([
-        { label: "Jan 2007", count: 42, current: false },
+        { label: "Dec 2007", count: 42, current: false },
         { label: "Oct 2026", count: 42, current: true },
       ]),
     });
@@ -620,7 +620,7 @@ describe("getOnThisDay", () => {
 
     const result = await getOnThisDay();
 
-    expect(playsIn).toHaveBeenCalledTimes(2026 - 2007);
+    expect(playsIn).toHaveBeenCalledTimes(2025 - 2007);
     expect(playsIn).toHaveBeenNthCalledWith(
       1,
       new Date("2025-10-22T22:00:00Z"),
@@ -643,7 +643,7 @@ describe("getOnThisDay", () => {
             count: 5,
             top: { artist: "Top", track: "First" },
           },
-          { year: "2007", day: "2007-10-23", count: 0, top: undefined },
+          { year: "2008", day: "2008-10-23", count: 0, top: undefined },
         ]),
       },
     });

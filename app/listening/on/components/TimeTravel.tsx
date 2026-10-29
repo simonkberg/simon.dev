@@ -17,8 +17,10 @@ import {
   type Day,
   dayInMonth,
   firstDay,
+  firstYear,
   fullDayLabel,
   inHistory,
+  january,
   monthIndex,
 } from "@/lib/dates";
 import { barHeights, lanes } from "@/lib/scrobbleChart";
@@ -49,8 +51,8 @@ const eras = (years: readonly BucketTopArtist[], months: number): Era[] =>
     .flatMap(({ name, runs }) =>
       runs.map(({ first, last }) => ({
         name,
-        first: first * 12,
-        last: Math.min(last * 12 + 11, months - 1),
+        first: Math.max(january(firstYear + first), 0),
+        last: Math.min(january(firstYear + last) + 11, months - 1),
       })),
     )
     .toSorted((a, b) => a.first - b.first);
@@ -103,9 +105,10 @@ export const TimeTravel = ({
 
   const shown = target ?? day;
   const at = monthIndex(shown);
-  // The last month is today's, which ends today.
+  // The first month starts at the first scrobble, the last ends today.
   const travelTo = (index: number) => {
     const next = dayInMonth(index, going ?? day);
+    if (next < firstDay) return firstDay;
     return next > today ? today : next;
   };
   const heights = barHeights(counts);
@@ -180,19 +183,20 @@ export const TimeTravel = ({
       </div>
 
       <ol className="time-travel-years" aria-hidden="true">
-        {counts.flatMap(({ label }, index) =>
-          index % 12 === 0 ? (
+        {counts.flatMap(({ label }, index) => {
+          const year = Number(label.slice(-4));
+          return index === january(year) ? (
             <li
               key={label}
               style={{ "--index": index } as CSSProperties}
-              data-odd={(index / 12) % 2 === 1 || undefined}
+              data-odd={year % 2 === 1 || undefined}
             >
               {label.slice(-2)}
             </li>
           ) : (
             []
-          ),
-        )}
+          );
+        })}
       </ol>
 
       {children}

@@ -2,7 +2,6 @@
 
 import { cacheLife, refresh } from "next/cache";
 
-import { config } from "@/config";
 import { cacheUntil } from "@/lib/cacheUntil";
 import { TOP_ALBUMS } from "@/lib/covers";
 import {
@@ -11,6 +10,7 @@ import {
   type Month,
   dayLabel,
   dayStart,
+  firstYear,
   inHistory,
   localDay,
   midnight,
@@ -226,7 +226,7 @@ export type GetScrobblesResult =
 
 const periodBuckets = (period: Period, now: Date) =>
   period === "overall"
-    ? yearBuckets(config.lastfmSince, now)
+    ? yearBuckets(firstYear, now)
     : scrobbleBuckets(period, now);
 
 const chartEnd = (buckets: readonly { to: Date }[]) =>
@@ -428,17 +428,15 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
   try {
     const now = new Date();
     const years = await Promise.all(
-      sameDayBuckets(config.lastfmSince, now).map(
-        async ({ label, from, to }) => {
-          const played = await playsIn(from, to);
-          return {
-            year: label,
-            day: localDay(from),
-            count: played.length,
-            top: topOfDay(played),
-          };
-        },
-      ),
+      sameDayBuckets(now).map(async ({ label, from, to }) => {
+        const played = await playsIn(from, to);
+        return {
+          year: label,
+          day: localDay(from),
+          count: played.length,
+          top: topOfDay(played),
+        };
+      }),
     );
     // Every year shown has ended, so only the date changing can change them.
     cacheUntil(nextMidnight(now).getTime(), now);

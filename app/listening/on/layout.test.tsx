@@ -32,7 +32,7 @@ vi.mock(import("@/actions/listening"), () => ({
   getScrobbleMonths: vi.fn(() =>
     Promise.resolve<GetScrobblesResult>({
       status: "ok",
-      scrobbles: [{ label: "Jan 2007", count: 811, current: false }],
+      scrobbles: [{ label: "Dec 2007", count: 811, current: false }],
     }),
   ),
   getTopArtistByBucket: vi.fn(() =>

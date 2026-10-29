@@ -112,14 +112,14 @@ describe("yearBuckets", () => {
 });
 
 describe("monthBuckets", () => {
-  it("should run from January of the first year to this month", () => {
+  it("should run from the first scrobble's month to this month", () => {
     const buckets = monthBuckets(now);
 
-    expect(buckets).toHaveLength((2026 - 2007) * 12 + 10);
+    expect(buckets).toHaveLength((2026 - 2007) * 12 - 1);
     expect(buckets.at(0)).toEqual({
-      label: "Jan 2007",
-      from: new Date("2006-12-31T23:00:00Z"),
-      to: new Date("2007-01-31T23:00:00Z"),
+      label: "Dec 2007",
+      from: new Date("2007-11-30T23:00:00Z"),
+      to: new Date("2007-12-31T23:00:00Z"),
     });
     expect(buckets.at(-1)?.label).toBe("Oct 2026");
   });
@@ -148,7 +148,7 @@ describe("monthDayBuckets", () => {
 
 describe("sameDayBuckets", () => {
   it("should cover today's Stockholm date in each past year, newest first", () => {
-    expect(sameDayBuckets(2024, now)).toEqual([
+    expect(sameDayBuckets(now).slice(0, 2)).toEqual([
       {
         label: "2025",
         from: new Date("2025-10-22T22:00:00Z"),
@@ -163,7 +163,7 @@ describe("sameDayBuckets", () => {
   });
 
   it("should end a month's last day on the next month's first", () => {
-    const [bucket] = sameDayBuckets(2025, new Date("2026-10-31T12:00:00Z"));
+    const [bucket] = sameDayBuckets(new Date("2026-10-31T12:00:00Z"));
 
     expect(bucket).toMatchObject({
       from: new Date("2025-10-30T23:00:00Z"),
@@ -171,9 +171,21 @@ describe("sameDayBuckets", () => {
     });
   });
 
-  it("should skip years without February 29", () => {
-    const buckets = sameDayBuckets(2019, new Date("2024-02-29T12:00:00Z"));
+  it.each([
+    ["2026-10-23T12:00:00Z", "2008"],
+    ["2026-12-18T12:00:00Z", "2007"],
+  ])("on %s, should start at the first scrobble", (date, first) => {
+    expect(sameDayBuckets(new Date(date)).at(-1)?.label).toBe(first);
+  });
 
-    expect(buckets.map(({ label }) => label)).toEqual(["2020"]);
+  it("should skip years without February 29", () => {
+    const buckets = sameDayBuckets(new Date("2024-02-29T12:00:00Z"));
+
+    expect(buckets.map(({ label }) => label)).toEqual([
+      "2020",
+      "2016",
+      "2012",
+      "2008",
+    ]);
   });
 });

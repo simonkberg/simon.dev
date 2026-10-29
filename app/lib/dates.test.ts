@@ -82,15 +82,19 @@ describe("yearBefore", () => {
 });
 
 describe("monthIndex", () => {
-  it("should count months since January of the first year", () => {
-    expect(monthIndex("2007-01-01")).toBe(0);
-    expect(monthIndex("2012-10-14")).toBe(5 * 12 + 9);
+  it("should count months since the first scrobble's", () => {
+    expect(monthIndex("2007-12-31")).toBe(0);
+    expect(monthIndex("2012-10-14")).toBe(4 * 12 + 10);
   });
 });
 
 describe("dayInMonth", () => {
   it("should keep the date in the month at an index", () => {
-    expect(dayInMonth(0, "2012-10-14")).toBe("2007-01-14");
+    expect(dayInMonth(1, "2012-10-14")).toBe("2008-01-14");
+  });
+
+  it("should count from the first scrobble's month", () => {
+    expect(dayInMonth(0, "2012-10-14")).toBe("2007-12-14");
   });
 
   it("should end a shorter month at its last day", () => {

@@ -21,11 +21,11 @@ const params = (date: string) => ({
 });
 
 describe("toDay", () => {
-  it.each(["2007-01-01", "2026-10-28"])("takes %s", async (param) => {
+  it.each(["2007-12-18", "2026-10-28"])("takes %s", async (param) => {
     expect(await toDay(params(param))).toBe(param);
   });
 
-  it.each(["2006-12-31", "2026-10-29", "2026-02-30"])(
+  it.each(["2007-12-17", "2026-10-29", "2026-02-30"])(
     "calls notFound for %s",
     async (param) => {
       await expect(toDay(params(param))).rejects.toThrow("NEXT_NOT_FOUND");

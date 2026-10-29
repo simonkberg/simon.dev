@@ -1,6 +1,9 @@
 import {
   type Month,
   dayLabel,
+  dayStart,
+  firstYear,
+  inHistory,
   localDate,
   localDay,
   midnight,
@@ -104,26 +107,20 @@ export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
   return buckets("year", count, today);
 }
 
-/** Today's Stockholm date in each year from `since` to the last, newest first. */
-export function sameDayBuckets(since: number, now: Date): ScrobbleBucket[] {
-  const today = localDate(now);
-  const month = today.getUTCMonth();
-  const day = today.getUTCDate();
-  return (
-    Array.from(
-      { length: today.getUTCFullYear() - since },
-      (_, index) => today.getUTCFullYear() - 1 - index,
-    )
-      // February 29 only comes around in leap years.
-      .filter(
-        (year) => new Date(Date.UTC(year, month, day)).getUTCDate() === day,
-      )
-      .map((year) => ({
-        label: String(year),
-        from: midnight(year, month, day),
-        to: midnight(year, month, day + 1),
-      }))
-  );
+/** Today's Stockholm date in each past year of the history, newest first. */
+export function sameDayBuckets(now: Date): ScrobbleBucket[] {
+  const today = localDay(now);
+  const year = Number(today.slice(0, 4));
+  return Array.from(
+    { length: year - firstYear },
+    (_, index) => `${year - 1 - index}${today.slice(4)}`,
+  ).flatMap((date) => {
+    // February 29 only comes around in leap years.
+    const day = inHistory(date, today);
+    return day === undefined
+      ? []
+      : [{ label: day.slice(0, 4), from: dayStart(day), to: dayStart(day, 1) }];
+  });
 }
 
 /** Calendar months in Stockholm, one per tape index, up to the current one. */
