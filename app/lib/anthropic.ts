@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import md from "string-dedent";
 import { z } from "zod";
 
-import { banUser } from "@/lib/bans";
+import { banPost } from "@/lib/bans";
 import { clockTime, dayStart, todayLabel } from "@/lib/dates";
 import {
   getChannelMessages,
@@ -244,10 +244,9 @@ const reactInputSchema = z.object({
 });
 
 const banInputSchema = z.object({
-  username: z
-    .string()
-    .min(1)
-    .describe("The author to ban, as in the conversation"),
+  message_id: MessageIdSchema.optional().describe(
+    "id of the post whose author to ban, from the conversation or a lookup tool; leave out for the message you're answering",
+  ),
 });
 
 const rememberInputSchema = z.object({
@@ -359,7 +358,7 @@ const REACT_TOOL = {
 const BAN_TOOL = {
   name: "ban",
   description:
-    "Ban a site visitor for good: the network their latest post came from can no longer post or react. It's your call: save it for someone who has earned it. Discord users can't be banned.",
+    "Ban whoever wrote a site post for good: the network it came from can no longer post or react. It's your call: save it for someone who has earned it. Discord users' messages and posts over 30 days old can't be banned.",
   input_schema: toolSchema(banInputSchema),
 };
 
@@ -456,11 +455,14 @@ async function executeTool(
         });
       }
       case "ban": {
-        const { username } = banInputSchema.parse(input);
+        const { message_id } = banInputSchema.parse(input);
+        const messageId = message_id ?? replyingTo;
+        const banned =
+          messageId === undefined ? undefined : await banPost(messageId);
         return toolResult(
-          (await banUser(username))
-            ? { banned: username }
-            : { error: `No site posts from ${username}` },
+          banned === undefined
+            ? { error: "No site post from the last 30 days to ban for" }
+            : { banned },
         );
       }
       case "remember": {

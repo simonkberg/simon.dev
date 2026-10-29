@@ -282,7 +282,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   turns away IPs on ipsum's `levels/6.txt`, an in-memory set loaded at boot, refreshed daily
   and retried from a minute up to hourly; until a list loads it denies nobody. A post with a
   known spammer's link bans its network (`app/lib/bans.ts`, a /64 for IPv6) from posting and reacting.
-  simon-bot's `ban` tool bans a username, by the IP of its latest post in `chat_posts`.
+  simon-bot's `ban` tool bans a post's network, from its IP in `chat_posts` (kept 30 days).
 - **simon-bot memory:** `app/lib/memory.ts` owns the `memories` table and renders the
   `<memory>` system-prompt block: `self`, `style`, `interests`, `context` and `people/<username>` for
   the current participants in full, every other category as a name and count the bot reads

@@ -2,7 +2,7 @@ import "server-only";
 import { networkOf } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
-import { query } from "@/lib/turso";
+import { batch, query } from "@/lib/turso";
 
 // A spammer that has posted the same Calendly link for months.
 const SPAM = /calendly\.com\/melottogroup/i;
@@ -44,19 +44,22 @@ export async function isBanned(ip: string): Promise<boolean> {
   }
 }
 
-/** Bans the network of `username`'s latest site post; false when they have none. */
-export async function banUser(username: string): Promise<boolean> {
+/** Bans the network a site post came from, returning its author; undefined for a post it has no IP for. */
+export async function banPost(messageId: string): Promise<string | undefined> {
   const { rows } = await query(
-    "SELECT ip FROM chat_posts WHERE username = ? ORDER BY posted_at DESC LIMIT 1",
-    [username],
+    "SELECT username, ip FROM chat_posts WHERE message_id = ?",
+    [messageId],
   );
+  const username = rows[0]?.["username"];
   const ip = rows[0]?.["ip"];
-  if (typeof ip !== "string") return false;
+  if (typeof username !== "string" || typeof ip !== "string") return undefined;
   const network = networkOf(ip);
   await insertBan(network);
-  log.info({ username, ip, network }, "Banned a user's network");
-  return true;
+  log.info({ messageId, username, ip, network }, "Banned a post's network");
+  return username;
 }
+
+const POST_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Never throws, since the post has already landed. */
 export async function recordPost(
@@ -64,11 +67,18 @@ export async function recordPost(
   username: Username,
   ip: string,
 ): Promise<void> {
+  const now = Date.now();
   try {
-    await query(
-      "INSERT INTO chat_posts (message_id, username, ip, posted_at) VALUES (?, ?, ?, ?)",
-      [messageId, username, ip, Date.now()],
-    );
+    await batch([
+      {
+        sql: "INSERT INTO chat_posts (message_id, username, ip, posted_at) VALUES (?, ?, ?, ?)",
+        args: [messageId, username, ip, now],
+      },
+      {
+        sql: "DELETE FROM chat_posts WHERE posted_at <= ?",
+        args: [now - POST_RETENTION_MS],
+      },
+    ]);
   } catch (err) {
     log.warn({ err, messageId }, "Failed to record a chat post");
   }

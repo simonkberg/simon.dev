@@ -1048,19 +1048,21 @@ describe("react tool", () => {
 });
 
 describe("ban tool", () => {
-  async function runBan(username: string): Promise<unknown> {
-    return JSON.parse(await runTool("ban", { username }));
-  }
+  const chat: [ChatMessage] = [
+    { role: "user", id: "42", username: TEST_USERNAME, content: "spam" },
+  ];
 
-  it("bans a user with site posts", async () => {
-    await recordPost("1", TEST_USERNAME as Username, "192.0.2.1");
+  it("bans the author of the message it is answering", async () => {
+    await recordPost("42", TEST_USERNAME as Username, "192.0.2.1");
 
-    expect(await runBan(TEST_USERNAME)).toEqual({ banned: TEST_USERNAME });
+    expect(JSON.parse(await runTool("ban", {}, chat))).toEqual({
+      banned: TEST_USERNAME,
+    });
   });
 
-  it("says so when the user has no site posts", async () => {
-    expect(await runBan("nobody")).toEqual({
-      error: "No site posts from nobody",
-    });
+  it("says so when the post can't be banned", async () => {
+    expect(JSON.parse(await runTool("ban", { message_id: "7" }, chat))).toEqual(
+      { error: "No site post from the last 30 days to ban for" },
+    );
   });
 });

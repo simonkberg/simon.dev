@@ -76,7 +76,7 @@ export const MIGRATIONS: readonly string[] = [
     ip TEXT NOT NULL,
     posted_at INTEGER NOT NULL
   )`,
-  `CREATE INDEX IF NOT EXISTS chat_posts_username_posted_at ON chat_posts (username, posted_at)`,
+  `CREATE INDEX IF NOT EXISTS chat_posts_posted_at ON chat_posts (posted_at)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.
