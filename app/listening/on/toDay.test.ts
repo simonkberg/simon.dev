@@ -46,7 +46,10 @@ describe("toMonth", () => {
     expect(await toMonth(params(month))).toBe(month);
   });
 
-  it.each(["2007-11", "2026-11"])("calls notFound for %s", async (month) => {
-    await expect(toMonth(params(month))).rejects.toThrow("NEXT_NOT_FOUND");
-  });
+  it.each(["2007-11", "2026-11", "2026-13"])(
+    "calls notFound for %s",
+    async (month) => {
+      await expect(toMonth(params(month))).rejects.toThrow("NEXT_NOT_FOUND");
+    },
+  );
 });
