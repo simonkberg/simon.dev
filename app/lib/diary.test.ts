@@ -90,12 +90,12 @@ describe("writeEntry", () => {
     vi.mocked(runAgentLoop).mockImplementation(async function* ({ messages }) {
       yield "let me check";
       messages.push({ role: "assistant", content: [] });
-      yield "smog, ";
-      yield "once";
+      yield "smog.";
+      yield "once.";
       return "end_turn";
     });
 
-    await expect(writeEntry("2026-10-27")).resolves.toBe("smog, once");
+    await expect(writeEntry("2026-10-27")).resolves.toBe("smog. once.");
   });
 
   it("should not take text from before a tool call as the entry", async () => {
