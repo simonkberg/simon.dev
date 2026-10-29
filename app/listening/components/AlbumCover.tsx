@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useReducer } from "react";
+import { useReducer } from "react";
+
+import { useTimeout } from "@/components/useTimeout";
 
 // The browser keeps a failed cover for 5s (its max-age), so each retry waits that out.
 const RETRY_MS = [6_000, 15_000];
@@ -41,11 +43,7 @@ export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
   const failed = status === "failed" || status === "retrying";
   const retry = status === "failed" ? RETRY_MS[attempt] : undefined;
 
-  useEffect(() => {
-    if (retry === undefined) return;
-    const timer = setTimeout(() => dispatch("retry"), retry);
-    return () => clearTimeout(timer);
-  }, [attempt, retry]);
+  useTimeout(() => dispatch("retry"), retry);
 
   return (
     <>

@@ -1,6 +1,8 @@
 "use client";
 
-import { useDeferredValue, useEffect, useReducer, ViewTransition } from "react";
+import { useDeferredValue, useReducer, ViewTransition } from "react";
+
+import { useTimeout } from "@/components/useTimeout";
 
 export interface ChatToastProps {
   // Compared by identity, so a repeated error shows again.
@@ -33,13 +35,11 @@ export const ChatToast = ({ result, duration = 5000 }: ChatToastProps) => {
   if (result !== state.result) dispatch({ type: "result", result });
 
   // Each result is a new state, so it restarts the timer.
-  useEffect(() => {
-    if (!state.open) return;
-
-    const timer = setTimeout(() => dispatch({ type: "close" }), duration);
-
-    return () => clearTimeout(timer);
-  }, [duration, state]);
+  useTimeout(
+    () => dispatch({ type: "close" }),
+    state.open ? duration : undefined,
+    state,
+  );
 
   if (!shown.open) return null;
 

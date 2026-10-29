@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useReducer, useSyncExternalStore } from "react";
+import { useReducer, useSyncExternalStore } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
+import { useTimeout } from "@/components/useTimeout";
 
 const second = 1000;
 const minute = 60 * second;
@@ -35,6 +36,13 @@ export interface RelativeTimeProps {
 
 const subscribe = () => () => {};
 
+function tickEvery(elapsed: number) {
+  if (elapsed > day) return undefined;
+  if (elapsed < 2 * minute) return second;
+  if (elapsed < hour) return minute;
+  return 5 * minute;
+}
+
 export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
   const [now, tick] = useReducer(
     (_: number, at: number) => at,
@@ -51,15 +59,7 @@ export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
   const sign = Math.sign(-relativeTime);
   const rtf = formats[style];
 
-  useEffect(() => {
-    if (elapsed > day) return;
-
-    const timer = setTimeout(
-      () => tick(Date.now()),
-      elapsed < 2 * minute ? second : elapsed < hour ? minute : 5 * minute,
-    );
-    return () => clearTimeout(timer);
-  }, [elapsed]);
+  useTimeout(() => tick(Date.now()), tickEvery(elapsed), elapsed);
 
   let string: string;
 
