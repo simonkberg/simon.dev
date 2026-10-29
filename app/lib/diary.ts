@@ -4,14 +4,19 @@ import md from "string-dedent";
 
 import {
   buildSystem,
+  CHAT_TOOLS,
   escapeXml,
   LISTENING_TOOLS,
   PERSONALITY,
   runAgentLoop,
-  toolResult,
 } from "@/lib/anthropic";
-import { addDays, type Day, dayStart, localDay } from "@/lib/dates";
-import { dayFacts, type DayFacts } from "@/lib/diaryFacts";
+import {
+  addDays,
+  type Day,
+  dayStart,
+  fullDayLabel,
+  localDay,
+} from "@/lib/dates";
 import { getGlobal, repeat } from "@/lib/global";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
@@ -29,7 +34,7 @@ const RECENT_ENTRIES = 5;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 30_000;
-const MAX_ITERATIONS = 6;
+const MAX_ITERATIONS = 10;
 const SKIP = "nothing";
 
 const DIARY_PROMPT = md`
@@ -39,18 +44,20 @@ const DIARY_PROMPT = md`
 
   ${PERSONALITY}
 
-  Once a day you write in your diary about what Simon listened to the day
-  before. It's public, on your page on simon.dev. You get facts about the day
-  from his scrobbles, all times in Stockholm, and your last few entries.
+  You keep a diary. It's public, on your page on simon.dev. Just after midnight
+  in Stockholm you get the chance to write about the day before. Nobody hands
+  you anything: your tools show what Simon played (his scrobbles, times in
+  Stockholm) and what was said in the chat. Look around as long as you're
+  curious, follow whatever catches your eye, then decide if anything is worth
+  writing down.
 
-  - write about what stands out to you - a first listen, a track on repeat, an
-    artist back after years, a long run, a late night, a day far busier or
-    quieter than usual - not everything
-  - the listening tools look further, like when he last played something or
-    how much he's played an artist over the years
+  - most days nothing is: reply "${SKIP}" and leave the day blank
+  - it's your diary, not a report: a thought, a hunch, a connection to
+    something earlier, a question you're left with, in your own words
+  - don't summarize the day or recite counts and times; use a number only
+    when it's the point
   - don't repeat what your last entries said, or how they said it
-  - a few sentences at most; an ordinary or quiet day gets one line, or reply
-    "${SKIP}" to skip it
+  - a few sentences at most, often one
   - your reply is the entry itself, nothing before or after it
 `;
 
@@ -68,7 +75,7 @@ export async function readEntries(limit: number): Promise<DiaryEntry[]> {
   }));
 }
 
-function formatInput(day: Day, facts: DayFacts, recent: DiaryEntry[]): string {
+function formatInput(day: Day, recent: DiaryEntry[]): string {
   const entries = recent
     .toReversed()
     .map(({ day, entry }) => `<entry day="${day}">${escapeXml(entry)}</entry>`);
@@ -76,24 +83,21 @@ function formatInput(day: Day, facts: DayFacts, recent: DiaryEntry[]): string {
     <recent_entries>
     ${entries.join("\n")}
     </recent_entries>
-    <day date="${day}">
-    ${toolResult(facts)}
-    </day>
+    <yesterday date="${day}">${fullDayLabel(day)}</yesterday>
   `;
 }
 
 /** What the bot writes about a day, or "" when it skips it. */
 export async function writeEntry(day: Day): Promise<string> {
-  const [facts, recent, system] = await Promise.all([
-    dayFacts(day),
+  const [recent, system] = await Promise.all([
     readEntries(RECENT_ENTRIES),
     // Only the notes /simon-bot already shows, since the diary is public too.
     buildSystem(DIARY_PROMPT, [], PUBLIC_CATEGORIES),
   ]);
   const loop = runAgentLoop({
     system,
-    messages: [{ role: "user", content: formatInput(day, facts, recent) }],
-    tools: LISTENING_TOOLS,
+    messages: [{ role: "user", content: formatInput(day, recent) }],
+    tools: [...LISTENING_TOOLS, ...CHAT_TOOLS],
     effort: "medium",
     maxTokens: MAX_TOKENS,
     timeoutMs: TIMEOUT_MS,

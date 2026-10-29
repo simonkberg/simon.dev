@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildSystem,
+  CHAT_TOOLS,
   LISTENING_TOOLS,
   type LoopEnd,
   runAgentLoop,
 } from "@/lib/anthropic";
-import type { DayFacts } from "@/lib/diaryFacts";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
@@ -24,19 +24,6 @@ vi.mock(import("@/lib/anthropic"), async (importOriginal) => ({
   ...(await importOriginal()),
   runAgentLoop: vi.fn(),
   buildSystem: vi.fn(async () => [{ type: "text" as const, text: "prompt" }]),
-}));
-
-vi.mock(import("@/lib/diaryFacts"), () => ({
-  dayFacts: vi.fn(async (): Promise<DayFacts> => ({
-    day: "Tue, Oct 27, 2026",
-    plays: 1,
-    typicalPlays: 40,
-    topArtists: [{ artist: "Smog", plays: 1 }],
-    repeats: [],
-    firstTimeArtists: [],
-    returningArtists: [],
-    hours: [{ hour: "23", plays: 1, typical: 2 }],
-  })),
 }));
 
 vi.mock(import("@/lib/locks"), async (importOriginal) => ({
@@ -61,7 +48,7 @@ const stored = async () =>
   (await query("SELECT day, entry FROM diary ORDER BY day")).rows;
 
 describe("writeEntry", () => {
-  it("should write from the day's facts and the latest entries", async () => {
+  it("should write from its tools and the latest entries", async () => {
     await entry("2026-10-25", "a <quiet> one");
     await entry("2026-10-26", "");
     replies(["let me check", "smog, once, at 23:00"]);
@@ -76,9 +63,12 @@ describe("writeEntry", () => {
       PUBLIC_CATEGORIES,
     );
     const [options] = vi.mocked(runAgentLoop).mock.calls[0] ?? [];
-    expect(options).toMatchObject({ tools: LISTENING_TOOLS, loop: "diary" });
+    expect(options).toMatchObject({
+      tools: [...LISTENING_TOOLS, ...CHAT_TOOLS],
+      loop: "diary",
+    });
     expect(options?.messages[0]?.content).toMatch(
-      /<entry day="2026-10-25">a &lt;quiet&gt; one<\/entry>\n<\/recent_entries>\n<day date="2026-10-27">\n\{"day":"Tue, Oct 27, 2026"/,
+      /<entry day="2026-10-25">a &lt;quiet&gt; one<\/entry>\n<\/recent_entries>\n<yesterday date="2026-10-27">Tue, Oct 27, 2026<\/yesterday>/,
     );
   });
 

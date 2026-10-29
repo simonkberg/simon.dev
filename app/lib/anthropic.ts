@@ -329,7 +329,8 @@ export const LISTENING_TOOLS = [
   },
 ];
 
-const LOOKUP_TOOLS = [
+/** The chat on simon.dev, mirrored from Discord. */
+export const CHAT_TOOLS = [
   {
     name: "get_chat_history",
     description:
@@ -337,18 +338,22 @@ const LOOKUP_TOOLS = [
     input_schema: toolSchema(chatHistoryInputSchema),
   },
   {
+    name: "search_messages",
+    description:
+      "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
+    input_schema: toolSchema(searchMessagesInputSchema),
+  },
+];
+
+const LOOKUP_TOOLS = [
+  ...CHAT_TOOLS,
+  {
     name: "get_wakatime_stats",
     description:
       "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
     input_schema: toolSchema(wakatimeInputSchema),
   },
   ...LISTENING_TOOLS,
-  {
-    name: "search_messages",
-    description:
-      "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
-    input_schema: toolSchema(searchMessagesInputSchema),
-  },
 ];
 
 const REACT_TOOL = {
