@@ -637,8 +637,13 @@ describe("getOnThisDay", () => {
       days: {
         date: "Oct 23",
         years: expect.arrayContaining([
-          { year: "2025", count: 5, top: { artist: "Top", track: "First" } },
-          { year: "2007", count: 0, top: undefined },
+          {
+            year: "2025",
+            day: "2025-10-23",
+            count: 5,
+            top: { artist: "Top", track: "First" },
+          },
+          { year: "2007", day: "2007-10-23", count: 0, top: undefined },
         ]),
       },
     });
