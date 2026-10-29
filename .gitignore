@@ -2,6 +2,7 @@
 .vscode
 .cursor
 .claude/settings.local.json
+.claude/worktrees
 node_modules
 .next
 next-env.d.ts
