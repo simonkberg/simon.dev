@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { use } from "react";
 
 import type { GetDiaryResult } from "@/actions/simonBot";
-import { Skeleton } from "@/components/Skeleton";
+import { Flashback, FlashbackSkeleton } from "@/components/Flashback";
 import { fullDayLabel } from "@/lib/dates";
 
 export interface DiaryTeaserProps {
@@ -16,26 +15,19 @@ export const DiaryTeaser = ({ diary }: DiaryTeaserProps) => {
   if (latest === undefined) return null;
 
   return (
-    <div className="flashback">
-      <strong className="flashback-title">
-        simon-bot&apos;s diary,{" "}
-        <time dateTime={latest.day}>{fullDayLabel(latest.day)}</time>
-      </strong>
-      <p>
-        {latest.entry} See&nbsp;
-        <Link href="/simon-bot#diary">every&nbsp;entry</Link>.
-      </p>
-    </div>
+    <Flashback
+      title={
+        <>
+          simon-bot&apos;s diary,{" "}
+          <time dateTime={latest.day}>{fullDayLabel(latest.day)}</time>
+        </>
+      }
+      href="/simon-bot#diary"
+      more={"every\u00a0entry"}
+    >
+      {latest.entry}
+    </Flashback>
   );
 };
 
-export const DiaryTeaserSkeleton = () => (
-  <div className="flashback" aria-hidden="true">
-    <span className="flashback-title">
-      <Skeleton width={24} />
-    </span>
-    <p>
-      <Skeleton width={36} />
-    </p>
-  </div>
-);
+export const DiaryTeaserSkeleton = () => <FlashbackSkeleton titleWidth={24} />;

@@ -290,9 +290,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
 - **simon-bot diary:** `app/lib/diary.ts` writes one entry a Stockholm day into `diary`, ten
   minutes after midnight so the sync has the day's last plays, on the replica that takes the
-  `diary` lock. It gets the day's facts (`app/lib/diaryFacts.ts`), its last entries, its
-  public notes only (the diary is public) and the listening tools; "nothing" stores an
-  empty entry, so the day isn't retried. Only yesterday is ever written: no backfill.
+  `diary` lock. It gets no stats, only the listening and chat tools to look for itself (a
+  facts sheet made it recite them), its last entries and its public notes only (the diary
+  is public); "nothing" stores an empty entry, so the day isn't retried. Only yesterday is
+  ever written: no backfill.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
   `app/lib/reflection.ts` runs after every mention, even one the bot chose not to answer,

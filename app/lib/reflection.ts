@@ -11,6 +11,7 @@ import {
   runAgentLoop,
   SIMON_RULE,
 } from "@/lib/anthropic";
+import { chatCategories } from "@/lib/memory";
 
 // Adaptive thinking at high effort shares this, so it needs room to still write notes.
 const MAX_TOKENS = 8192;
@@ -47,7 +48,10 @@ export async function reflect(transcript: ChatMessage[]): Promise<void> {
   // Nothing to post: the loop logs what the model said as it goes.
   await Array.fromAsync(
     runAgentLoop({
-      system: await buildSystem(REFLECTION_PROMPT, participantsOf(transcript)),
+      system: await buildSystem(
+        REFLECTION_PROMPT,
+        chatCategories(participantsOf(transcript)),
+      ),
       messages: [{ role: "user", content: formatConversation(transcript) }],
       tools: MEMORY_TOOLS,
       effort: "high",

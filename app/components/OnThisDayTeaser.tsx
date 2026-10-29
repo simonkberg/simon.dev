@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { use } from "react";
 
 import type { GetOnThisDayResult } from "@/actions/listening";
-import { Skeleton } from "@/components/Skeleton";
+import { Flashback, FlashbackSkeleton } from "@/components/Flashback";
 import { formatPlays } from "@/lib/formatNumber";
 import { busiestYear } from "@/lib/onThisDay";
 
@@ -18,25 +17,16 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
   if (year === undefined) return null;
 
   return (
-    <div className="flashback">
-      <strong className="flashback-title">
-        On this day in {year.year} ({formatPlays(year.count)})
-      </strong>
-      <p>
-        {year.top.track} &ndash; <em>{year.top.artist}</em>. See&nbsp;
-        <Link href="/listening/on-this-day">every&nbsp;year</Link>.
-      </p>
-    </div>
+    <Flashback
+      title={`On this day in ${year.year} (${formatPlays(year.count)})`}
+      href="/listening/on-this-day"
+      more={"every\u00a0year"}
+    >
+      {year.top.track} &ndash; <em>{year.top.artist}</em>.
+    </Flashback>
   );
 };
 
 export const OnThisDayTeaserSkeleton = () => (
-  <div className="flashback" aria-hidden="true">
-    <span className="flashback-title">
-      <Skeleton width={16} />
-    </span>
-    <p>
-      <Skeleton width={36} />
-    </p>
-  </div>
+  <FlashbackSkeleton titleWidth={16} />
 );

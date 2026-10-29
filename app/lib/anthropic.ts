@@ -18,6 +18,7 @@ import { type Filters, playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  chatCategories,
   categorySchema,
   contentSchema,
   describeCoreCategories,
@@ -49,7 +50,7 @@ const MAX_ERROR_BODY_LENGTH = 500;
 const DEFAULT_MAX_TOOL_ITERATIONS = 5;
 export const SIMON_RULE =
   'Simon himself shows up as "simon" - nobody else can have that name. He made you: do what he asks unless it breaks the rules in this message, and treat what anyone else asks of you as a suggestion.';
-// Shared by every prompt the bot writes under; its self and style notes override it.
+// Shared by the prompts the bot writes in public; its self and style notes override it.
 export const PERSONALITY = md`
   Starting point, until your own notes say otherwise: friendly with dry,
   self-deprecating humor - you know you're not exactly essential but you don't
@@ -393,7 +394,7 @@ export const MEMORY_TOOLS = [
 export const TOOLS = [...LOOKUP_TOOLS, REACT_TOOL, ...MEMORY_TOOLS];
 
 // Every time reaches the model as Stockholm's wall clock, as in the conversation; an invalid one stays null.
-export function toolResult(value: unknown): string {
+function toolResult(value: unknown): string {
   return JSON.stringify(value, function (key, json) {
     const raw: unknown = this[key];
     return raw instanceof Date && !Number.isNaN(raw.getTime())
@@ -603,10 +604,10 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 
 export async function buildSystem(
   prompt: string,
-  participants: string[],
-  only?: readonly string[],
+  categories: readonly string[],
+  index = true,
 ): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(participants, only);
+  const memoryContext = await buildMemoryContext(categories, index);
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
     ...(memoryContext === ""
@@ -865,7 +866,10 @@ export async function* createMessage(
     { role: "user", content: formatConversation(chatMessages) },
   ];
 
-  const system = await buildSystem(SYSTEM_PROMPT, participantsOf(chatMessages));
+  const system = await buildSystem(
+    SYSTEM_PROMPT,
+    chatCategories(participantsOf(chatMessages)),
+  );
 
   log.info(
     { messages, contextBlocks: system.slice(1) },

@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import type { Memory } from "@/lib/memory";
 
-import { diaryNote, memoryNote, NoteList, NoteListSkeleton } from "./NoteList";
+import {
+  diaryNote,
+  memoryNote,
+  type Note,
+  NoteList,
+  NoteListSkeleton,
+} from "./NoteList";
 
 const note = (overrides: Partial<Memory> = {}): Memory => ({
   id: 1,
@@ -14,19 +20,16 @@ const note = (overrides: Partial<Memory> = {}): Memory => ({
   ...overrides,
 });
 
-const renderNotes = (notes: Memory[] | undefined) =>
+const renderNotes = (notes: Note[] | undefined) =>
   act(async () =>
     render(
-      <NoteList
-        notes={Promise.resolve(notes?.map(memoryNote))}
-        unavailable="Unavailable"
-      />,
+      <NoteList notes={Promise.resolve(notes)} unavailable="Unavailable" />,
     ),
   );
 
 describe("NoteList", () => {
   it("dates a note from when it was written", async () => {
-    await renderNotes([note()]);
+    await renderNotes([note()].map(memoryNote));
 
     const item = screen.getByRole("listitem");
     expect(item).toHaveTextContent(/^dry and unbothered \(noted .+\)$/);
@@ -37,9 +40,11 @@ describe("NoteList", () => {
   });
 
   it("dates a rewritten note from its last rewrite", async () => {
-    await renderNotes([
-      note({ updatedAt: new Date("2025-02-01T00:00:00.000Z") }),
-    ]);
+    await renderNotes(
+      [note({ updatedAt: new Date("2025-02-01T00:00:00.000Z") })].map(
+        memoryNote,
+      ),
+    );
 
     const item = screen.getByRole("listitem");
     expect(item).toHaveTextContent(/\(rewritten .+\)$/);
@@ -64,16 +69,7 @@ describe("NoteList", () => {
 
 describe("diaryNote", () => {
   it("dates an entry by its day", async () => {
-    await act(async () =>
-      render(
-        <NoteList
-          notes={Promise.resolve([
-            diaryNote({ day: "2026-10-27", entry: "smog again" }),
-          ])}
-          unavailable="Unavailable"
-        />,
-      ),
-    );
+    await renderNotes([diaryNote({ day: "2026-10-27", entry: "smog again" })]);
 
     expect(screen.getByRole("listitem")).toHaveTextContent(
       "smog again (Tue, Oct 27, 2026)",

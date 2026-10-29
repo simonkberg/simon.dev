@@ -263,24 +263,29 @@ function renderCategory(category: string, memories: Memory[]): string {
   ].join("\n");
 }
 
-/** The core categories and the participants' people/* in full and the rest by name, or only the categories in `only`. */
+/** The core categories and the participants' people/* notes: what a chat shows in full. */
+export function chatCategories(participants: string[]): string[] {
+  const people = participants
+    .map(peopleCategory)
+    .filter((category) => category !== undefined);
+  return [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
+}
+
+/** The notes in `shown`, and with `index` the other categories by name, for a bot that can recall them. */
 export async function buildMemoryContext(
-  participants: string[],
-  only?: readonly string[],
+  shown: readonly string[],
+  index: boolean,
 ): Promise<string> {
   try {
-    const people = participants
-      .map(peopleCategory)
-      .filter((category) => category !== undefined);
-    const shown = only ?? [
-      ...new Set([...Object.keys(CORE_CATEGORIES), ...people]),
-    ];
-
-    const [{ rows: memoryRows }, { rows: countRows }] = await batch([
+    const [{ rows: memoryRows }, counts] = await batch([
       notesIn(shown),
-      {
-        sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
-      },
+      ...(index
+        ? [
+            {
+              sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
+            },
+          ]
+        : []),
     ]);
 
     const notes = byCategory(memoryRows);
@@ -288,7 +293,7 @@ export async function buildMemoryContext(
       renderCategory(category, notes.get(category) ?? []),
     );
 
-    const others = (only ? [] : countRows)
+    const others = (counts?.rows ?? [])
       .filter((row) => !shown.includes(String(row["category"])))
       .map((row) => `${row["category"]} (${row["count"]})`);
     if (others.length > 0) {

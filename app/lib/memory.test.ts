@@ -8,6 +8,7 @@ import { sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
+  chatCategories,
   describeMiss,
   edit,
   forget,
@@ -504,7 +505,10 @@ describe("buildMemoryContext", () => {
     await seed(6, "people/zed", "lives in a shoe");
     for (let i = 0; i < 7; i++) await seed(10 + i, "jokes", `joke ${i}`);
 
-    const context = await buildMemoryContext(["Alice", "Alice", "!!!"]);
+    const context = await buildMemoryContext(
+      chatCategories(["Alice", "Alice", "!!!"]),
+      true,
+    );
 
     expect(context).toBe(
       [
@@ -531,12 +535,11 @@ describe("buildMemoryContext", () => {
     );
   });
 
-  it("should show only the categories asked for, and no others by name", async () => {
+  it("should show no index of the rest without recall", async () => {
     await seed(1, "self", "hi");
     await seed(2, "context", "secret");
-    await seed(3, "people/alice", "likes cats");
 
-    const context = await buildMemoryContext(["alice"], ["self"]);
+    const context = await buildMemoryContext(["self"], false);
 
     expect(context).toBe(
       ["<memory>", "## self", "- #1 hi", "</memory>"].join("\n"),
@@ -546,7 +549,7 @@ describe("buildMemoryContext", () => {
   it("should omit the index when every category is shown", async () => {
     await seed(1, "self", "hi");
 
-    const context = await buildMemoryContext([]);
+    const context = await buildMemoryContext(chatCategories([]), true);
 
     expect(context).not.toContain("Other categories");
     expect(context).toContain("## style\n(nothing yet)");
@@ -555,7 +558,7 @@ describe("buildMemoryContext", () => {
   it("should return an empty string and log when the database fails", async () => {
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
-    await expect(buildMemoryContext(["Alice"])).resolves.toBe("");
+    await expect(buildMemoryContext(["self"], true)).resolves.toBe("");
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Failed to build memory context",

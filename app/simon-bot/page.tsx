@@ -35,13 +35,13 @@ export default function SimonBotPage() {
           simon-bot lives in the <Link href="/">chat</Link>. After every
           conversation it&apos;s mentioned in, it looks back and decides who it
           wants to be, rewriting these notes itself. Each night it also writes
-          in its diary about what Simon listened to the day before.
+          in its diary about the day before.
         </p>
       </section>
 
       <section id="diary">
         <Heading level={2}>
-          Diary <Subtitle>(what it makes of Simon&apos;s listening)</Subtitle>
+          Diary <Subtitle>(what it made of each day)</Subtitle>
         </Heading>
         <Suspense fallback={<NoteListSkeleton />}>
           <NoteList

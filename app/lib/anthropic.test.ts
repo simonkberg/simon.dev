@@ -13,6 +13,7 @@ import { playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  chatCategories,
   describeMiss,
   edit,
   forget,
@@ -221,8 +222,8 @@ describe("createMessage", () => {
       { role: "user", content: formatConversation(chat) },
     ]);
     expect(buildMemoryContext).toHaveBeenCalledWith(
-      ["Alice", "Bob"],
-      undefined,
+      chatCategories(["Alice", "Bob"]),
+      true,
     );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
