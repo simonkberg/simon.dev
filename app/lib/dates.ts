@@ -171,3 +171,7 @@ export const monthOf = (day: Day) => day.slice(0, 7) as Month;
 /** The month's first day of the history: the first scrobble's month starts on that day. */
 export const firstOfMonth = (month: Month): Day =>
   month === monthOf(firstDay) ? firstDay : `${month}-01`;
+
+/** The day's place among its month's days of the history, from 0. */
+export const dayIndex = (day: Day) =>
+  Number(day.slice(8)) - Number(firstOfMonth(monthOf(day)).slice(8));

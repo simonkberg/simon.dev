@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   clockTime,
+  dayIndex,
   dayInMonth,
   firstOfMonth,
   dayStart,
@@ -109,6 +110,13 @@ describe("firstOfMonth", () => {
   it("should start the first scrobble's month on its day", () => {
     expect(firstOfMonth("2007-12")).toBe("2007-12-18");
     expect(firstOfMonth("2012-10")).toBe("2012-10-01");
+  });
+});
+
+describe("dayIndex", () => {
+  it("should count from the month's first day of the history", () => {
+    expect(dayIndex("2007-12-20")).toBe(2);
+    expect(dayIndex("2012-10-02")).toBe(1);
   });
 });
 

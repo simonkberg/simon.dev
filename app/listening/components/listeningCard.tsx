@@ -14,7 +14,7 @@ import {
   type TopArtist,
 } from "@/actions/listening";
 import { inlineCover } from "@/lib/covers";
-import { type Day, fullDayLabel, monthOf } from "@/lib/dates";
+import { type Day, dayIndex, fullDayLabel, monthOf } from "@/lib/dates";
 import { formatNumber, formatPlays } from "@/lib/formatNumber";
 import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
@@ -310,7 +310,7 @@ export const dayCard = (day: Day) =>
     subtitle: `${fullDayLabel(day)} · per day`,
     span: monthOf(day),
     scrobbles: getDailyScrobbles(monthOf(day)),
-    scrobbled: (items) => items[Number(day.slice(8)) - 1]?.count,
+    scrobbled: (items) => items[dayIndex(day)]?.count,
     // The count is the day's, the tops its month's.
     labels: { scrobbled: "plays that day", top: "month's top" },
   });
