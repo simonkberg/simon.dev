@@ -100,10 +100,10 @@ export function periodStart(
   return start(bucketUnits[period], localDate(now), bucketCounts[period] - 1);
 }
 
-/** Calendar years in Stockholm, from `since` to the current one. */
-export function yearBuckets(since: number, now: Date): ScrobbleBucket[] {
+/** Calendar years in Stockholm, from the first scrobble's to the current one. */
+export function yearBuckets(now: Date): ScrobbleBucket[] {
   const today = localDate(now);
-  const count = today.getUTCFullYear() - since + 1;
+  const count = today.getUTCFullYear() - firstYear + 1;
   return buckets("year", count, today);
 }
 

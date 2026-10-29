@@ -29,6 +29,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
   const shown = target && monthOf(target) === month ? target : date;
   const dayOfMonth = Number(shown?.slice(8));
   const heights = barHeights(days);
+  const first = firstOfMonth(month);
 
   return (
     <TravelPending of="month">
@@ -38,7 +39,7 @@ export const MonthDays = ({ month, days }: MonthDaysProps) => {
         aria-label="Days"
       >
         {days.map(({ label, count }, index) => {
-          const day = addDays(firstOfMonth(month), index);
+          const day = addDays(first, index);
           const number = Number(day.slice(8));
           const current = day === shown;
           // Every week's first day, unless it would crowd the current one's.

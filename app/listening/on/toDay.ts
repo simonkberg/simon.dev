@@ -28,7 +28,6 @@ export async function toDay({
 
 /** The month's params, if time travel reaches its first day. */
 export async function toMonth({ year, month }: MonthParams): Promise<Month> {
-  const first = parseDay(`${year}-${month}-01`) ?? notFound();
-  const day = inHistory(firstOfMonth(monthOf(first)), await getToday());
-  return day === undefined ? notFound() : monthOf(day);
+  const first = firstOfMonth(`${year}-${month}` as Month);
+  return monthOf(await toDay({ year, month, day: first.slice(8) }));
 }

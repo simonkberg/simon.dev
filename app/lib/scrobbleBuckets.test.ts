@@ -88,26 +88,16 @@ describe("periodStart", () => {
 });
 
 describe("yearBuckets", () => {
-  it("should run from `since` to this year", () => {
-    const buckets = yearBuckets(2024, now);
+  it("should run from the first scrobble's year to this year", () => {
+    const buckets = yearBuckets(now);
 
-    expect(buckets).toEqual([
-      {
-        label: "2024",
-        from: new Date("2023-12-31T23:00:00Z"),
-        to: new Date("2024-12-31T23:00:00Z"),
-      },
-      {
-        label: "2025",
-        from: new Date("2024-12-31T23:00:00Z"),
-        to: new Date("2025-12-31T23:00:00Z"),
-      },
-      {
-        label: "2026",
-        from: new Date("2025-12-31T23:00:00Z"),
-        to: new Date("2026-12-31T23:00:00Z"),
-      },
-    ]);
+    expect(buckets).toHaveLength(2026 - 2007 + 1);
+    expect(buckets.at(0)).toEqual({
+      label: "2007",
+      from: new Date("2006-12-31T23:00:00Z"),
+      to: new Date("2007-12-31T23:00:00Z"),
+    });
+    expect(buckets.at(-1)?.label).toBe("2026");
   });
 });
 

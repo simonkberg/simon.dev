@@ -184,14 +184,15 @@ export const TimeTravel = ({
 
       <ol className="time-travel-years" aria-hidden="true">
         {counts.flatMap(({ label }, index) => {
-          const year = Number(label.slice(-4));
+          const year =
+            firstYear + Math.floor((index - january(firstYear)) / 12);
           return index === january(year) ? (
             <li
               key={label}
               style={{ "--index": index } as CSSProperties}
               data-odd={year % 2 === 1 || undefined}
             >
-              {label.slice(-2)}
+              {String(year).slice(-2)}
             </li>
           ) : (
             []

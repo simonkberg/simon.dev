@@ -11,7 +11,6 @@ import {
   dayLabel,
   dayStart,
   firstOfMonth,
-  firstYear,
   inHistory,
   localDay,
   midnight,
@@ -225,9 +224,7 @@ export type GetScrobblesResult =
   | { status: "error"; error: string };
 
 const periodBuckets = (period: Period, now: Date) =>
-  period === "overall"
-    ? yearBuckets(firstYear, now)
-    : scrobbleBuckets(period, now);
+  period === "overall" ? yearBuckets(now) : scrobbleBuckets(period, now);
 
 const chartEnd = (buckets: readonly { to: Date }[]) =>
   Math.max(...buckets.map(({ to }) => to.getTime()));

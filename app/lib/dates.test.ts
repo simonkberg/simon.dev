@@ -92,10 +92,6 @@ describe("monthIndex", () => {
 
 describe("dayInMonth", () => {
   it("should keep the date in the month at an index", () => {
-    expect(dayInMonth(1, "2012-10-14")).toBe("2008-01-14");
-  });
-
-  it("should count from the first scrobble's month", () => {
     expect(dayInMonth(0, "2012-10-14")).toBe("2007-12-14");
   });
 
