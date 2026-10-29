@@ -115,14 +115,16 @@ export async function writeEntry(day: Day): Promise<string> {
   });
   // Text before a tool call is the model thinking aloud, so the entry is the last
   // turn's text: the loop adds that turn's messages only when it calls a tool.
-  let entry = "";
+  let texts: string[] = [];
   let turn = messages.length;
   let next = await loop.next();
   for (; !next.done; next = await loop.next()) {
-    entry = next.value.trim();
+    if (messages.length !== turn) texts = [];
+    texts.push(next.value);
     turn = messages.length;
   }
-  if (messages.length !== turn) entry = "";
+  if (messages.length !== turn) texts = [];
+  const entry = texts.join("").trim();
   if (next.value !== "end_turn" || entry === "") {
     throw new Error(
       `Diary entry ended in ${next.value} with ${entry.length} characters`,

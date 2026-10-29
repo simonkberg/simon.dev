@@ -51,7 +51,7 @@ describe("writeEntry", () => {
   it("should write from its tools and the latest entries", async () => {
     await entry("2026-10-25", "a <quiet> one");
     await entry("2026-10-26", "");
-    replies(["let me check", "smog, once, at 23:00"]);
+    replies(["smog, once, at 23:00"]);
 
     await expect(writeEntry("2026-10-27")).resolves.toBe(
       "smog, once, at 23:00",
@@ -84,6 +84,18 @@ describe("writeEntry", () => {
     await expect(writeEntry("2026-10-27")).rejects.toThrow(
       "Diary entry ended in max_tokens with 8 characters",
     );
+  });
+
+  it("should keep every text block of the last turn", async () => {
+    vi.mocked(runAgentLoop).mockImplementation(async function* ({ messages }) {
+      yield "let me check";
+      messages.push({ role: "assistant", content: [] });
+      yield "smog, ";
+      yield "once";
+      return "end_turn";
+    });
+
+    await expect(writeEntry("2026-10-27")).resolves.toBe("smog, once");
   });
 
   it("should not take text from before a tool call as the entry", async () => {
