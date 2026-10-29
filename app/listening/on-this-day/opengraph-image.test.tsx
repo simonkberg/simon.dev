@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { getOnThisDay } from "@/actions/listening";
+import { type GetOnThisDayResult, getOnThisDay } from "@/actions/listening";
 import { shareCard } from "@/lib/shareCard";
 
 import openGraphImage from "./opengraph-image";
@@ -13,22 +13,24 @@ vi.mock(import("@/lib/shareCard"), async (importOriginal) => ({
 
 vi.mock(import("@/actions/listening"), () => ({
   getOnThisDay: vi.fn(() =>
-    Promise.resolve({
-      status: "ok" as const,
+    Promise.resolve<GetOnThisDayResult>({
+      status: "ok",
       days: {
         date: "Oct 26",
         years: [
-          { year: "2027", count: 0 },
-          { year: "2026", count: 0 },
-          { year: "2025", count: 0 },
+          { year: "2027", day: "2027-10-26", count: 0 },
+          { year: "2026", day: "2026-10-26", count: 0 },
+          { year: "2025", day: "2025-10-26", count: 0 },
           {
             year: "2024",
+            day: "2024-10-26",
             count: 62,
             top: { track: "Apartment Story", artist: "The National" },
           },
-          { year: "2023", count: 0 },
+          { year: "2023", day: "2023-10-26", count: 0 },
           {
             year: "2022",
+            day: "2022-10-26",
             count: 62,
             top: { track: "Sober to Death", artist: "Car Seat Headrest" },
           },
@@ -69,7 +71,10 @@ describe("opengraph-image", () => {
   it("leaves out the busiest year when nothing was played", async () => {
     vi.mocked(getOnThisDay).mockResolvedValue({
       status: "ok",
-      days: { date: "Oct 26", years: [{ year: "2025", count: 0 }] },
+      days: {
+        date: "Oct 26",
+        years: [{ year: "2025", day: "2025-10-26", count: 0 }],
+      },
     });
 
     await renderCard();

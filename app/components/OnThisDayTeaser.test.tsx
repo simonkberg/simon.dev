@@ -19,10 +19,16 @@ describe("OnThisDayTeaser", () => {
   it("shows the past year with the most plays and a top track", async () => {
     await renderTeaser(
       days([
-        { year: "2025", count: 45, top: { artist: "Destroyer", track: "A" } },
-        { year: "2024", count: 80 },
+        {
+          year: "2025",
+          day: "2025-10-24",
+          count: 45,
+          top: { artist: "Destroyer", track: "A" },
+        },
+        { year: "2024", day: "2024-10-24", count: 80 },
         {
           year: "2012",
+          day: "2012-10-24",
           count: 62,
           top: { artist: "Lana Del Rey", track: "B" },
         },
@@ -38,7 +44,10 @@ describe("OnThisDayTeaser", () => {
   });
 
   it.each([
-    ["nothing was played", days([{ year: "2024", count: 0 }])],
+    [
+      "nothing was played",
+      days([{ year: "2024", day: "2024-10-24", count: 0 }]),
+    ],
     ["the days failed to load", { status: "error", error: "Failed" } as const],
   ])("renders nothing when %s", async (_, result) => {
     const { container } = await renderTeaser(result);

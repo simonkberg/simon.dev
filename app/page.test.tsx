@@ -48,7 +48,14 @@ vi.mock(import("@/actions/listening"), () => ({
       status: "ok",
       days: {
         date: "Oct 24",
-        years: [{ year: "2012", count: 62, top: { artist: "A", track: "T" } }],
+        years: [
+          {
+            year: "2012",
+            day: "2012-10-24",
+            count: 62,
+            top: { artist: "A", track: "T" },
+          },
+        ],
       },
     }),
   ),

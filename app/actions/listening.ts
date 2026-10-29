@@ -388,11 +388,12 @@ export async function getTopArtistByBucket(
 // The day's most played artist and their most played track, earliest first on ties.
 export type TopOfDay = Pick<Play, "artist" | "track">;
 
-export type PlayedYear = { year: string; count: number; top: TopOfDay };
+export type DayInYear = { year: string; day: Day; count: number } & (
+  | { top: TopOfDay }
+  | { top?: never }
+);
 
-export type DayInYear =
-  | PlayedYear
-  | { year: string; count: number; top?: never };
+export type PlayedYear = Extract<DayInYear, { top: TopOfDay }>;
 
 export interface OnThisDay {
   date: string;
@@ -430,7 +431,12 @@ export async function getOnThisDay(): Promise<GetOnThisDayResult> {
       sameDayBuckets(config.lastfmSince, now).map(
         async ({ label, from, to }) => {
           const played = await playsIn(from, to);
-          return { year: label, count: played.length, top: topOfDay(played) };
+          return {
+            year: label,
+            day: localDay(from),
+            count: played.length,
+            top: topOfDay(played),
+          };
         },
       ),
     );

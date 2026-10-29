@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type CSSProperties, use } from "react";
 
 import type {
@@ -10,6 +11,7 @@ import type {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
+import { href } from "@/listening/on/href";
 
 export interface OnThisDayProps {
   // Undefined when the days failed to load.
@@ -65,16 +67,18 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
               {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
             </span>
             <span className="timeline-plays">
-              <span aria-hidden="true">
-                <AnimatedNumber
-                  value={stop.year.count}
-                  follow
-                  format={(shown) => formatPlays(stop.year.count, shown)}
-                />
-              </span>
-              <span className="visually-hidden">
-                {formatPlays(stop.year.count)}
-              </span>
+              <Link href={href(stop.year.day)}>
+                <span aria-hidden="true">
+                  <AnimatedNumber
+                    value={stop.year.count}
+                    follow
+                    format={(shown) => formatPlays(stop.year.count, shown)}
+                  />
+                </span>
+                <span className="visually-hidden">
+                  {`${formatPlays(stop.year.count)} in ${stop.year.year}`}
+                </span>
+              </Link>
             </span>
           </li>
         ) : (

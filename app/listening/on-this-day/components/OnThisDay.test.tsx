@@ -15,34 +15,39 @@ describe("OnThisDay", () => {
     await renderDays({
       date: "Oct 24",
       years: [
-        { year: "2025", count: 12, top },
-        { year: "2024", count: 0 },
-        { year: "2023", count: 0 },
-        { year: "2022", count: 1, top },
-        { year: "2021", count: 0 },
+        { year: "2025", day: "2025-10-24", count: 12, top },
+        { year: "2024", day: "2024-10-24", count: 0 },
+        { year: "2023", day: "2023-10-24", count: 0 },
+        { year: "2022", day: "2022-10-24", count: 1, top },
+        { year: "2021", day: "2021-10-24", count: 0 },
       ],
     });
 
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(
       [
         "Oct 24",
-        "2025Glue – Bicep12 plays12 plays",
+        "2025Glue – Bicep12 plays12 plays in 2025",
         "2023–2024nothing played",
-        "2022Glue – Bicep1 play1 play",
+        "2022Glue – Bicep1 play1 play in 2022",
         "2021nothing played",
       ],
     );
-    const [shown, read] = screen.getAllByText("12 plays");
-    expect(shown?.parentElement).toHaveAttribute("aria-hidden", "true");
-    expect(read).toHaveClass("visually-hidden");
+    expect(screen.getByText("12 plays").parentElement).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(
+      screen.getByRole("link", { name: "12 plays in 2025" }),
+    ).toHaveAttribute("href", "/listening/on/2025/10/24");
+    expect(screen.getByText("12 plays in 2025")).toHaveClass("visually-hidden");
   });
 
   it("draws the timeline in from the origin, a stop at a time", async () => {
     await renderDays({
       date: "Oct 24",
       years: [
-        { year: "2025", count: 12, top },
-        { year: "2024", count: 0 },
+        { year: "2025", day: "2025-10-24", count: 12, top },
+        { year: "2024", day: "2024-10-24", count: 0 },
       ],
     });
 
@@ -62,7 +67,7 @@ describe("OnThisDay", () => {
         .querySelector<HTMLElement>(".timeline")
         ?.style.getPropertyValue("--count");
     const { rerender } = await act(async () =>
-      render(days([{ year: "2025", count: 12, top }])),
+      render(days([{ year: "2025", day: "2025-10-24", count: 12, top }])),
     );
     expect(count()).toBe("2");
 
@@ -70,8 +75,8 @@ describe("OnThisDay", () => {
     await act(async () =>
       rerender(
         days([
-          { year: "2025", count: 12, top },
-          { year: "2024", count: 1, top },
+          { year: "2025", day: "2025-10-24", count: 12, top },
+          { year: "2024", day: "2024-10-24", count: 1, top },
         ]),
       ),
     );
