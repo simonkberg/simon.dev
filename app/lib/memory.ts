@@ -263,14 +263,16 @@ function renderCategory(category: string, memories: Memory[]): string {
   ].join("\n");
 }
 
+/** The notes shown in full: `core`, and people/* for the participants. */
 export async function buildMemoryContext(
   participants: string[],
+  core: readonly string[] = Object.keys(CORE_CATEGORIES),
 ): Promise<string> {
   try {
     const people = participants
       .map(peopleCategory)
       .filter((category) => category !== undefined);
-    const shown = [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
+    const shown = [...new Set([...core, ...people])];
 
     const [{ rows: memoryRows }, { rows: countRows }] = await batch([
       notesIn(shown),

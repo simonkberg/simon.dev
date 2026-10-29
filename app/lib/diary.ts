@@ -15,6 +15,7 @@ import { dayFacts, type DayFacts } from "@/lib/diaryFacts";
 import { getGlobal, repeat } from "@/lib/global";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
+import { PUBLIC_CATEGORIES } from "@/lib/memory";
 import { query } from "@/lib/turso";
 
 const TICK_MS = 10 * 60_000;
@@ -86,8 +87,8 @@ export async function writeEntry(day: Day): Promise<string> {
   const [facts, recent, system] = await Promise.all([
     dayFacts(day),
     readEntries(RECENT_ENTRIES),
-    // No participants, so no people/* notes reach a public page.
-    buildSystem(DIARY_PROMPT, []),
+    // Only the notes /simon-bot already shows, since the diary is public too.
+    buildSystem(DIARY_PROMPT, [], PUBLIC_CATEGORIES),
   ]);
   const loop = runAgentLoop({
     system,

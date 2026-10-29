@@ -531,6 +531,24 @@ describe("buildMemoryContext", () => {
     );
   });
 
+  it("should show only the core categories asked for", async () => {
+    await seed(1, "self", "hi");
+    await seed(2, "context", "secret");
+
+    const context = await buildMemoryContext([], ["self"]);
+
+    expect(context).toBe(
+      [
+        "<memory>",
+        "## self",
+        "- #1 hi",
+        "",
+        "Other categories, use recall to read them: context (1)",
+        "</memory>",
+      ].join("\n"),
+    );
+  });
+
   it("should omit the index when every category is shown", async () => {
     await seed(1, "self", "hi");
 

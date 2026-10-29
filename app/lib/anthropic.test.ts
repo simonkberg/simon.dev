@@ -220,7 +220,10 @@ describe("createMessage", () => {
     expect(requests[0]?.messages).toEqual([
       { role: "user", content: formatConversation(chat) },
     ]);
-    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+    expect(buildMemoryContext).toHaveBeenCalledWith(
+      ["Alice", "Bob"],
+      undefined,
+    );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
 

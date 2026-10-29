@@ -8,6 +8,7 @@ import {
 } from "@/lib/anthropic";
 import type { DayFacts } from "@/lib/diaryFacts";
 import { tryLock } from "@/lib/locks";
+import { PUBLIC_CATEGORIES } from "@/lib/memory";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
@@ -70,6 +71,7 @@ describe("writeEntry", () => {
     expect(buildSystem).toHaveBeenCalledWith(
       expect.stringContaining("diary"),
       [],
+      PUBLIC_CATEGORIES,
     );
     const [options] = vi.mocked(runAgentLoop).mock.calls[0] ?? [];
     expect(options).toMatchObject({ tools: LISTENING_TOOLS, loop: "diary" });

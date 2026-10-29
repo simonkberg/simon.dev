@@ -291,7 +291,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **simon-bot diary:** `app/lib/diary.ts` writes one entry a Stockholm day into `diary`, ten
   minutes after midnight so the sync has the day's last plays, on the replica that takes the
   `diary` lock. It gets the day's facts (`app/lib/diaryFacts.ts`), its last entries, its
-  memory without `people/*` (the diary is public) and the listening tools; "nothing" stores an
+  public notes only (the diary is public) and the listening tools; "nothing" stores an
   empty entry, so the day isn't retried. Only yesterday is ever written: no backfill.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
   base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
