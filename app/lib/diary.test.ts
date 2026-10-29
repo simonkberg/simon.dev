@@ -7,13 +7,14 @@ import {
   runAgentLoop,
 } from "@/lib/anthropic";
 import type { DayFacts } from "@/lib/diaryFacts";
-import { tryLock } from "@/lib/locks";
+import { releaseLock, tryLock } from "@/lib/locks";
+import { log } from "@/lib/log";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
-import { readEntries, writeEntry, writeYesterday } from "./diary";
+import { readEntries, startDiary, writeEntry, writeYesterday } from "./diary";
 
 vi.mock(import("@/lib/turso"), async () =>
   (await import("@/mocks/sqlite")).mockTurso(),
@@ -41,6 +42,7 @@ vi.mock(import("@/lib/diaryFacts"), () => ({
 vi.mock(import("@/lib/locks"), async (importOriginal) => ({
   ...(await importOriginal()),
   tryLock: vi.fn(async () => true),
+  releaseLock: vi.fn(async () => {}),
 }));
 
 sqliteBeforeEach(query, [...BOOTSTRAP, ...MIGRATIONS]);
@@ -90,7 +92,15 @@ describe("writeEntry", () => {
     replies(["smog, on"], "max_tokens");
 
     await expect(writeEntry("2026-10-27")).rejects.toThrow(
-      "Diary entry ended in max_tokens",
+      "Diary entry ended in max_tokens with 8 characters",
+    );
+  });
+
+  it("should fail when the bot ends without an entry", async () => {
+    replies([]);
+
+    await expect(writeEntry("2026-10-27")).rejects.toThrow(
+      "Diary entry ended in end_turn with 0 characters",
     );
   });
 });
@@ -127,6 +137,28 @@ describe("writeYesterday", () => {
     ]);
   });
 
+  it("should leave an entry another replica wrote", async () => {
+    await entry("2026-10-27", "theirs");
+
+    await writeYesterday(NOW);
+
+    expect(runAgentLoop).not.toHaveBeenCalled();
+    expect(releaseLock).toHaveBeenCalled();
+  });
+
+  it("should warn when the lock isn't released", async () => {
+    const err = new Error("boom");
+    vi.mocked(releaseLock).mockRejectedValue(err);
+
+    await writeYesterday(NOW);
+
+    expect(await stored()).toHaveLength(1);
+    expect(log.warn).toHaveBeenCalledWith(
+      { err },
+      "Failed to release the diary lock",
+    );
+  });
+
   it("should wait for the day's last plays to sync", async () => {
     await writeYesterday(new Date("2026-10-27T23:05:00Z"));
 
@@ -151,5 +183,26 @@ describe("writeYesterday", () => {
 
     expect(runAgentLoop).toHaveBeenCalledTimes(3);
     expect(await stored()).toEqual([]);
+  });
+});
+
+describe("startDiary", () => {
+  it("should log a failed check and check again ten minutes later", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-27T23:20:00Z") });
+    const err = new Error("boom");
+    vi.mocked(tryLock).mockRejectedValueOnce(err);
+
+    startDiary();
+    await vi.waitFor(() =>
+      expect(log.warn).toHaveBeenCalledWith(
+        { err },
+        "Failed to write simon-bot's diary",
+      ),
+    );
+    expect(runAgentLoop).not.toHaveBeenCalled();
+
+    replies(["smog, once"]);
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(runAgentLoop).toHaveBeenCalledOnce();
   });
 });

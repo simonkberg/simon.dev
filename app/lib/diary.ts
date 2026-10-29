@@ -105,8 +105,10 @@ export async function writeEntry(day: Day): Promise<string> {
   let entry = "";
   let next = await loop.next();
   for (; !next.done; next = await loop.next()) entry = next.value.trim();
-  if (next.value !== "end_turn") {
-    throw new Error(`Diary entry ended in ${next.value}`);
+  if (next.value !== "end_turn" || entry === "") {
+    throw new Error(
+      `Diary entry ended in ${next.value} with ${entry.length} characters`,
+    );
   }
   return entry.toLowerCase().replace(/\W+$/, "") === SKIP ? "" : entry;
 }
@@ -132,11 +134,12 @@ export async function writeYesterday(now = new Date()): Promise<void> {
   }
   // A day that keeps failing isn't retried all day.
   if (current.written || current.tries >= MAX_TRIES) return;
-  const { rows } = await query("SELECT 1 FROM diary WHERE day = ?", [day]);
-  current.written = rows.length > 0;
-  if (current.written) return;
   if (!(await tryLock(LOCK_NAME, current.owner, LOCK_TTL_MS))) return;
   try {
+    // Under the lock, so an entry another replica just wrote isn't written twice.
+    const { rows } = await query("SELECT 1 FROM diary WHERE day = ?", [day]);
+    current.written = rows.length > 0;
+    if (current.written) return;
     current.tries++;
     const entry = await writeEntry(day);
     await query(

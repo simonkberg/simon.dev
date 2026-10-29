@@ -160,22 +160,16 @@ const periods: Record<Per, { key: string; name?: string; sort?: string }> = {
   year: { key: `strftime('%Y', ${LOCAL_TIME})` },
 };
 
-/** How many plays match, in all or per Stockholm hour, weekday, day, week, month or year. */
-export async function playCounts(
+type Counts = { period: string; plays: number }[];
+
+/** How many plays match per Stockholm hour, weekday, day, week, month or year. */
+export async function countsPer(
   filters: Filters,
-  per: Per | undefined,
+  per: Per,
   order: "time" | "plays",
   limit: number,
-): Promise<{
-  total: number;
-  counts?: { period: string; plays: number }[];
-  truncated?: boolean;
-}> {
+): Promise<{ total: number; counts: Counts; truncated?: boolean }> {
   const { sql, args } = matching(filters);
-  if (per === undefined) {
-    const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
-    return { total: Number(rows[0]?.["total"]) };
-  }
   const { key, name = key, sort = "key" } = periods[per];
   const { rows } = await query(
     // The total is summed before the limit, so it counts every period.
@@ -193,4 +187,17 @@ export async function playCounts(
     counts: counts.slice(0, limit),
     ...(counts.length > limit && { truncated: true }),
   };
+}
+
+/** How many plays match, in all or per Stockholm hour, weekday, day, week, month or year. */
+export async function playCounts(
+  filters: Filters,
+  per: Per | undefined,
+  order: "time" | "plays",
+  limit: number,
+): Promise<{ total: number; counts?: Counts; truncated?: boolean }> {
+  if (per !== undefined) return countsPer(filters, per, order, limit);
+  const { sql, args } = matching(filters);
+  const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
+  return { total: Number(rows[0]?.["total"]) };
 }

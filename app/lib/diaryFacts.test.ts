@@ -67,6 +67,18 @@ describe("dayFacts", () => {
     });
   });
 
+  it("should take the median day over the 90 before", async () => {
+    for (let day = 0; day < 45; day++) {
+      const at = Date.UTC(2026, 8, 1 + day, 12);
+      await play(new Date(at).toISOString(), "Smog", "Held");
+      await play(new Date(at + 60_000).toISOString(), "Smog", "Held");
+    }
+
+    await expect(dayFacts("2026-10-27")).resolves.toMatchObject({
+      typicalPlays: 2,
+    });
+  });
+
   it("should find no run on a day of single plays", async () => {
     await expect(dayFacts("2026-10-24")).resolves.not.toHaveProperty(
       "longestRun",

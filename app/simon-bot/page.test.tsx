@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   getBotNotes,
+  getDiary,
   type GetBotNotesResult,
   type GetDiaryResult,
 } from "@/actions/simonBot";
@@ -86,5 +87,17 @@ describe("SimonBotPage", () => {
     expect(
       screen.getAllByText("simon-bot's notes are temporarily unavailable :("),
     ).toHaveLength(3);
+  });
+
+  it("says the diary is unavailable when it failed to load", async () => {
+    vi.mocked(getDiary).mockResolvedValue({ status: "error", error: "Failed" });
+
+    await renderPage();
+
+    expect(
+      within(section(/^Diary/)).getByText(
+        "simon-bot's diary is temporarily unavailable :(",
+      ),
+    ).toBeInTheDocument();
   });
 });
