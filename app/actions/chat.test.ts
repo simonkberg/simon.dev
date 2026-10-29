@@ -152,6 +152,18 @@ describe("postChatMessage", () => {
     );
   });
 
+  it("records who posted from where, when it knows the IP", async () => {
+    await post();
+    fromIp(undefined);
+    await post();
+
+    expect(
+      (await query("SELECT message_id, username, ip FROM chat_posts")).rows,
+    ).toEqual([
+      { message_id: "msg-123", username: "test-user", ip: "0.0.0.0" },
+    ]);
+  });
+
   it("rejects the sixth post in 30 seconds with the wait time", async () => {
     await postUpToTheLimit();
     vi.advanceTimersByTime(10_000);
@@ -207,7 +219,10 @@ describe("postChatMessage", () => {
 
   it("bans whoever posts the Calendly spam", async () => {
     const spam = "Hoping to connect! https://calendly.com/melottogroup/30min";
-    const banned = { status: "error", error: "Blow your shit off smooth" };
+    const banned = {
+      status: "error",
+      error: "You've been banned :) blow your shit off smooth",
+    };
 
     expect(await post(spam)).toEqual(banned);
     expect(await post()).toEqual(banned);
@@ -220,7 +235,7 @@ describe("postChatMessage", () => {
 
     expect(await post("calendly.com/melottogroup")).toEqual({
       status: "error",
-      error: "Blow your shit off smooth",
+      error: "You've been banned :) blow your shit off smooth",
     });
     expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
   });

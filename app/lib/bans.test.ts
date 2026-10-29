@@ -3,10 +3,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
+import type { Username } from "@/lib/session";
 import { query } from "@/lib/turso";
 import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
 
-import { ban, isBanned, isSpam } from "./bans";
+import { ban, banPost, isBanned, isSpam, recordPost } from "./bans";
 import { MIGRATIONS } from "./migrations";
 
 vi.mock(import("@/lib/turso"), async () =>
@@ -14,6 +15,7 @@ vi.mock(import("@/lib/turso"), async () =>
 );
 
 const sqlite = sqliteBeforeEach(query, MIGRATIONS);
+const user = "test-user" as Username;
 
 describe("isSpam", () => {
   it.each([
@@ -64,6 +66,49 @@ describe("isBanned", () => {
     expect(log.warn).toHaveBeenCalledWith(
       { err: error, ip: "192.0.2.1" },
       "Failed to check for a ban",
+    );
+  });
+});
+
+describe("banPost", () => {
+  it("bans the network the post came from", async () => {
+    await recordPost("1", user, "192.0.2.1");
+    await recordPost("2", user, "192.0.2.2");
+
+    expect(await banPost("1")).toBe(user);
+    expect(await isBanned("192.0.2.1")).toBe(true);
+    expect(await isBanned("192.0.2.2")).toBe(false);
+  });
+
+  it("bans nobody for a post without an IP", async () => {
+    expect(await banPost("1")).toBeUndefined();
+    expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
+  });
+});
+
+describe("recordPost", () => {
+  it("keeps posts for 30 days", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await recordPost("1", user, "192.0.2.1");
+    vi.setSystemTime(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await recordPost("2", user, "192.0.2.2");
+
+    expect((await query("SELECT message_id FROM chat_posts")).rows).toEqual([
+      { message_id: "2" },
+    ]);
+  });
+
+  it("fails open", async () => {
+    const error = new Error("boom");
+    vi.mocked(query).mockImplementation(
+      failQuery(sqlite(), "INSERT", { error }),
+    );
+
+    await recordPost("1", user, "192.0.2.1");
+
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: error, messageId: "1" },
+      "Failed to record a chat post",
     );
   });
 });

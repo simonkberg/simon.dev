@@ -3,7 +3,7 @@
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
-import { ban, isBanned, isSpam } from "@/lib/bans";
+import { ban, isBanned, isSpam, recordPost } from "@/lib/bans";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
@@ -52,7 +52,10 @@ async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
 }
 
 const RATE_LIMIT = { limit: 5, windowMs: 30_000 };
-const BANNED = { status: "error", error: "Blow your shit off smooth" } as const;
+const BANNED = {
+  status: "error",
+  error: "You've been banned :) blow your shit off smooth",
+} as const;
 
 async function admit(
   action: string,
@@ -124,6 +127,9 @@ export async function postChatMessage(
 
     const messageId = await postChannelMessage(text, username, replyToId);
     void stopTyping(username);
+    if (request.ip !== undefined) {
+      void recordPost(messageId, username, request.ip);
+    }
 
     await dismissChatTip();
 

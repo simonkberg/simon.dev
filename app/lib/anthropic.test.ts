@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { recordPost } from "@/lib/bans";
 import {
   getChannelMessages,
   type Message,
@@ -23,6 +24,7 @@ import {
 import { MIGRATIONS } from "@/lib/migrations";
 import { addReaction } from "@/lib/reactions";
 import { recentPlays } from "@/lib/scrobbles";
+import type { Username } from "@/lib/session";
 import { query } from "@/lib/turso";
 import { getStats } from "@/lib/wakaTime";
 import { server } from "@/mocks/node";
@@ -196,6 +198,7 @@ describe("createMessage", () => {
         { name: "get_play_counts" },
         { name: "search_messages" },
         { name: "react" },
+        { name: "ban" },
         { name: "remember" },
         { name: "recall" },
         { name: "edit" },
@@ -1041,5 +1044,32 @@ describe("react tool", () => {
       error: expect.any(String),
     });
     expect(addReaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("ban tool", () => {
+  const chat: [ChatMessage] = [
+    { role: "user", id: "42", username: TEST_USERNAME, content: "spam" },
+  ];
+
+  it("bans the author of the message it is answering", async () => {
+    await recordPost("42", TEST_USERNAME as Username, "192.0.2.1");
+
+    expect(JSON.parse(await runTool("ban", {}, chat))).toEqual({
+      banned: TEST_USERNAME,
+    });
+  });
+
+  it.each([
+    ["a post without an IP", { message_id: "7" }, chat],
+    [
+      "no message",
+      {},
+      [{ role: "user", username: TEST_USERNAME, content: "hi" }] as const,
+    ],
+  ])("says so for %s", async (_, input, messages) => {
+    expect(JSON.parse(await runTool("ban", input, [...messages]))).toEqual({
+      error: "No site post from the last 30 days to ban for",
+    });
   });
 });
