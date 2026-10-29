@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(corepack enable)",
       "Bash(pnpm dev:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm lint:*)",

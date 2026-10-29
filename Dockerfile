@@ -1,18 +1,21 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # check=skip=SecretsUsedInArgOrEnv;error=true
 
-FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS base
+FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS base
 
 # Install dependencies
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
+COPY --from=ghcr.io/pnpm/pnpm:12.15.0-alpine@sha256:f164ca19f7736a0994dae195b81756cd969542a93ef692f5ab466759d06c1da9 /opt/pnpm /opt/pnpm
+ENV PATH=/opt/pnpm:$PATH
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm
 
-# Use cache mount for pnpm store
+# Cache the pnpm store and pnpm's metadata, which remembers verified lockfile entries.
+# The base image already has the Node that devEngines.runtime pins.
 RUN --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.local/share/pnpm/store,target=/root/.local/share/pnpm/store \
-    pnpm i --frozen-lockfile --ignore-scripts
+    --mount=type=cache,id=s/ef8993ce-cfd2-4811-8cd1-005564b52ee4-/root/.cache/pnpm,target=/root/.cache/pnpm \
+    pnpm i --frozen-lockfile --ignore-scripts --no-runtime
 
 # Build the app
 FROM base AS builder
