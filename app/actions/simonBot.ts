@@ -43,7 +43,8 @@ export async function getDiary(): Promise<GetDiaryResult> {
 
   try {
     const data = await readEntries(DIARY_ENTRIES);
-    cacheLife("minutes");
+    // A new entry comes once a day, so showing it within the hour will do.
+    cacheLife("hours");
     return { status: "ok", data };
   } catch (err) {
     cacheLife("seconds");

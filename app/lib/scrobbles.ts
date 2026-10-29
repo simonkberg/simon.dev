@@ -1,6 +1,6 @@
 import "server-only";
 import { config } from "@/config";
-import { getGlobal } from "@/lib/global";
+import { getGlobal, repeat } from "@/lib/global";
 import {
   bulk,
   type RecentTrack,
@@ -326,16 +326,12 @@ export async function syncScrobbles(): Promise<boolean> {
 
 /** Syncs each minute on the replica holding the lock, and back to back while backfilling. */
 export function startScrobbleSync(): void {
-  getGlobal("scrobble-sync-timer", () => {
-    const tick = () => {
-      void syncScrobbles()
-        .catch((err: unknown) => {
-          log.warn({ err }, "Failed to sync scrobbles");
-          return false;
-        })
-        .then((more) => setTimeout(tick, more ? 0 : SYNC_MS).unref());
-    };
-    tick();
-    return true;
-  });
+  repeat("scrobble-sync-timer", () =>
+    syncScrobbles()
+      .catch((err: unknown) => {
+        log.warn({ err }, "Failed to sync scrobbles");
+        return false;
+      })
+      .then((more) => (more ? 0 : SYNC_MS)),
+  );
 }

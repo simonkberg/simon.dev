@@ -11,8 +11,8 @@ import {
   toolResult,
 } from "@/lib/anthropic";
 import { addDays, type Day, dayStart, localDay } from "@/lib/dates";
-import { dayFacts } from "@/lib/diaryFacts";
-import { getGlobal } from "@/lib/global";
+import { dayFacts, type DayFacts } from "@/lib/diaryFacts";
+import { getGlobal, repeat } from "@/lib/global";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
@@ -67,7 +67,7 @@ export async function readEntries(limit: number): Promise<DiaryEntry[]> {
   }));
 }
 
-function formatInput(day: Day, facts: unknown, recent: DiaryEntry[]): string {
+function formatInput(day: Day, facts: DayFacts, recent: DiaryEntry[]): string {
   const entries = recent
     .toReversed()
     .map(({ day, entry }) => `<entry day="${day}">${escapeXml(entry)}</entry>`);
@@ -110,10 +110,14 @@ export async function writeEntry(day: Day): Promise<string> {
   return entry.toLowerCase().replace(/\W+$/, "") === SKIP ? "" : entry;
 }
 
-type State = { owner: string; day?: Day; tries: number };
+type State = { owner: string; day?: Day; tries: number; written: boolean };
 
 function state(): State {
-  return getGlobal("diary", () => ({ owner: crypto.randomUUID(), tries: 0 }));
+  return getGlobal("diary", () => ({
+    owner: crypto.randomUUID(),
+    tries: 0,
+    written: false,
+  }));
 }
 
 /** Writes yesterday's entry once its plays are in, on the one replica holding the lock. */
@@ -122,11 +126,14 @@ export async function writeYesterday(now = new Date()): Promise<void> {
   if (now.getTime() < dayStart(today).getTime() + SETTLE_MS) return;
   const day = addDays(today, -1);
   const current = state();
-  if (current.day !== day) Object.assign(current, { day, tries: 0 });
+  if (current.day !== day) {
+    Object.assign(current, { day, tries: 0, written: false });
+  }
   // A day that keeps failing isn't retried all day.
-  if (current.tries >= MAX_TRIES) return;
+  if (current.written || current.tries >= MAX_TRIES) return;
   const { rows } = await query("SELECT 1 FROM diary WHERE day = ?", [day]);
-  if (rows.length > 0) return;
+  current.written = rows.length > 0;
+  if (current.written) return;
   if (!(await tryLock(LOCK_NAME, current.owner, LOCK_TTL_MS))) return;
   try {
     current.tries++;
@@ -135,6 +142,7 @@ export async function writeYesterday(now = new Date()): Promise<void> {
       "INSERT OR IGNORE INTO diary (day, entry, written_at) VALUES (?, ?, ?)",
       [day, entry, Date.now()],
     );
+    current.written = true;
     log.info({ day, entry }, "Wrote simon-bot's diary");
   } finally {
     await releaseLock(LOCK_NAME, current.owner).catch((err: unknown) => {
@@ -145,15 +153,11 @@ export async function writeYesterday(now = new Date()): Promise<void> {
 
 /** Checks every few minutes whether yesterday's entry is due. */
 export function startDiary(): void {
-  getGlobal("diary-timer", () => {
-    const tick = () => {
-      void writeYesterday()
-        .catch((err: unknown) => {
-          log.warn({ err }, "Failed to write simon-bot's diary");
-        })
-        .then(() => setTimeout(tick, TICK_MS).unref());
-    };
-    tick();
-    return true;
-  });
+  repeat("diary-timer", () =>
+    writeYesterday()
+      .catch((err: unknown) => {
+        log.warn({ err }, "Failed to write simon-bot's diary");
+      })
+      .then(() => TICK_MS),
+  );
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Memory } from "@/lib/memory";
 
-import { NoteList, NoteListSkeleton } from "./NoteList";
+import { diaryNote, memoryNote, NoteList, NoteListSkeleton } from "./NoteList";
 
 const note = (overrides: Partial<Memory> = {}): Memory => ({
   id: 1,
@@ -15,7 +15,14 @@ const note = (overrides: Partial<Memory> = {}): Memory => ({
 });
 
 const renderNotes = (notes: Memory[] | undefined) =>
-  act(async () => render(<NoteList notes={Promise.resolve(notes)} />));
+  act(async () =>
+    render(
+      <NoteList
+        notes={Promise.resolve(notes?.map(memoryNote))}
+        unavailable="Unavailable"
+      />,
+    ),
+  );
 
 describe("NoteList", () => {
   it("dates a note from when it was written", async () => {
@@ -51,9 +58,30 @@ describe("NoteList", () => {
   it("says when the notes failed to load", async () => {
     await renderNotes(undefined);
 
-    expect(
-      screen.getByText("simon-bot's notes are temporarily unavailable :("),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+  });
+});
+
+describe("diaryNote", () => {
+  it("dates an entry by its day", async () => {
+    await act(async () =>
+      render(
+        <NoteList
+          notes={Promise.resolve([
+            diaryNote({ day: "2026-10-27", entry: "smog again" }),
+          ])}
+          unavailable="Unavailable"
+        />,
+      ),
+    );
+
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      "smog again (Tue, Oct 27, 2026)",
+    );
+    expect(screen.getByText("Tue, Oct 27, 2026")).toHaveAttribute(
+      "datetime",
+      "2026-10-27",
+    );
   });
 });
 

@@ -9,9 +9,13 @@ import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
 
-import { DiaryList } from "./components/DiaryList";
 import { headings } from "./components/headings";
-import { NoteList, NoteListSkeleton } from "./components/NoteList";
+import {
+  diaryNote,
+  memoryNote,
+  NoteList,
+  NoteListSkeleton,
+} from "./components/NoteList";
 
 export const metadata: Metadata = {
   title: "simon-bot",
@@ -40,10 +44,11 @@ export default function SimonBotPage() {
           Diary <Subtitle>(what it makes of Simon&apos;s listening)</Subtitle>
         </Heading>
         <Suspense fallback={<NoteListSkeleton />}>
-          <DiaryList
-            entries={diary.then((result) =>
-              result.status === "ok" ? result.data : undefined,
+          <NoteList
+            notes={diary.then((result) =>
+              result.status === "ok" ? result.data.map(diaryNote) : undefined,
             )}
+            unavailable="simon-bot's diary is temporarily unavailable :("
           />
         </Suspense>
       </section>
@@ -57,8 +62,11 @@ export default function SimonBotPage() {
           <Suspense fallback={<NoteListSkeleton />}>
             <NoteList
               notes={result.then((notes) =>
-                notes.status === "ok" ? notes.data[category] : undefined,
+                notes.status === "ok"
+                  ? notes.data[category].map(memoryNote)
+                  : undefined,
               )}
+              unavailable="simon-bot's notes are temporarily unavailable :("
             />
           </Suspense>
         </section>

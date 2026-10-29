@@ -1,20 +1,45 @@
-import { Suspense, use } from "react";
+import { type ReactNode, Suspense, use } from "react";
 
 import { RelativeTime } from "@/components/RelativeTime";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { Subtitle } from "@/components/Subtitle";
+import { fullDayLabel } from "@/lib/dates";
+import type { DiaryEntry } from "@/lib/diary";
 import type { Memory } from "@/lib/memory";
+
+export type Note = { key: string | number; content: string; when: ReactNode };
+
+export const memoryNote = (memory: Memory): Note => ({
+  key: memory.id,
+  content: memory.content,
+  when: (
+    <>
+      {memory.updatedAt ? "rewritten" : "noted"}{" "}
+      <Suspense fallback="Loading">
+        <RelativeTime date={memory.updatedAt ?? memory.createdAt} />
+      </Suspense>
+    </>
+  ),
+});
+
+export const diaryNote = ({ day, entry }: DiaryEntry): Note => ({
+  key: day,
+  content: entry,
+  when: <time dateTime={day}>{fullDayLabel(day)}</time>,
+});
 
 export interface NoteListProps {
   // Undefined when the notes failed to load.
-  notes: Promise<Memory[] | undefined>;
+  notes: Promise<Note[] | undefined>;
+  /** What to say when they failed to load. */
+  unavailable: string;
 }
 
-export const NoteList = ({ notes }: NoteListProps) => {
+export const NoteList = ({ notes, unavailable }: NoteListProps) => {
   const items = use(notes);
 
   if (items === undefined) {
-    return <p>simon-bot&apos;s notes are temporarily unavailable :(</p>;
+    return <p>{unavailable}</p>;
   }
 
   if (items.length === 0) {
@@ -23,16 +48,9 @@ export const NoteList = ({ notes }: NoteListProps) => {
 
   return (
     <ul className="notes">
-      {items.map((note) => (
-        <li key={note.id}>
-          {note.content}{" "}
-          <Subtitle>
-            ({note.updatedAt ? "rewritten" : "noted"}{" "}
-            <Suspense fallback="Loading">
-              <RelativeTime date={note.updatedAt ?? note.createdAt} />
-            </Suspense>
-            )
-          </Subtitle>
+      {items.map(({ key, content, when }) => (
+        <li key={key}>
+          {content} <Subtitle>({when})</Subtitle>
         </li>
       ))}
     </ul>

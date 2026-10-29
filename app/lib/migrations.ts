@@ -76,6 +76,7 @@ export const MIGRATIONS: readonly string[] = [
     entry TEXT NOT NULL,
     written_at INTEGER NOT NULL
   )`,
+  `CREATE INDEX IF NOT EXISTS scrobbles_artist ON scrobbles (artist, played_at)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

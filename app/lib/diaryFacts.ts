@@ -1,17 +1,13 @@
 import "server-only";
-import {
-  addDays,
-  clockTime,
-  type Day,
-  dayStart,
-  fullDayLabel,
-} from "@/lib/dates";
-import { playCounts } from "@/lib/listeningQuery";
+import { addDays, type Day, dayStart, fullDayLabel } from "@/lib/dates";
+import { playCounts, top } from "@/lib/listeningQuery";
 import { type Play, playsIn } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 const TYPICAL_DAYS = 90;
 const TOP = 5;
+// Every artist of a day: more than anyone plays in one.
+const ALL = 1000;
 // Longer between two plays than a track lasts, so a pause ends a run.
 const RUN_GAP_MS = 15 * 60_000;
 const AWAY_MS = 365 * 24 * 60 * 60_000;
@@ -33,19 +29,6 @@ export type DayFacts = {
   hours: { hour: string; plays: number; typical: number }[];
 };
 
-function ranked<T>(plays: Play[], key: (play: Play) => T & object) {
-  const counts = new Map<string, T & Count>();
-  for (const play of plays) {
-    const value = key(play);
-    const id = JSON.stringify(value);
-    const count = counts.get(id) ?? { ...value, plays: 0 };
-    count.plays++;
-    counts.set(id, count);
-  }
-  // Ties keep first played first.
-  return [...counts.values()].toSorted((a, b) => b.plays - a.plays);
-}
-
 function longestRun(plays: Play[]): DayFacts["longestRun"] {
   let longest: Play[] = [];
   let run: Play[] = [];
@@ -57,21 +40,19 @@ function longestRun(plays: Play[]): DayFacts["longestRun"] {
   }
   const [first] = longest;
   const last = longest.at(-1);
-  return first && last && longest.length > 1
-    ? { from: first.playedAt, to: last.playedAt, plays: longest.length }
-    : undefined;
+  if (!first || !last || first === last) return undefined;
+  return { from: first.playedAt, to: last.playedAt, plays: longest.length };
 }
 
 /** When each of the day's artists was first played, and last played before the day. */
 async function artistHistory(from: Date, to: Date) {
+  // Seeks on scrobbles_artist, so it reads a row or two per artist, not the history.
   const { rows } = await query(
-    `SELECT artist, MIN(played_at) AS first, MAX(CASE WHEN played_at < ? THEN played_at END) AS before
-     FROM scrobbles
-     WHERE played_at < ? AND artist IN (
-       SELECT artist FROM scrobbles WHERE played_at >= ? AND played_at < ?
-     )
-     GROUP BY artist`,
-    [from.getTime(), to.getTime(), from.getTime(), to.getTime()],
+    `SELECT a.artist,
+       (SELECT MIN(played_at) FROM scrobbles WHERE artist = a.artist) AS first,
+       (SELECT MAX(played_at) FROM scrobbles WHERE artist = a.artist AND played_at < ?) AS before
+     FROM (SELECT DISTINCT artist FROM scrobbles WHERE played_at >= ? AND played_at < ?) a`,
+    [from.getTime(), from.getTime(), to.getTime()],
   );
   return new Map(
     rows.map((row) => [
@@ -89,19 +70,24 @@ const median = (values: number[]) =>
 
 /** What stood out in a Stockholm day's listening, for simon-bot's diary. */
 export async function dayFacts(day: Day): Promise<DayFacts> {
-  const from = dayStart(day);
-  const to = dayStart(day, 1);
-  const before = { from: dayStart(addDays(day, -TYPICAL_DAYS)), to: from };
-  const [plays, history, days, hours] = await Promise.all([
-    playsIn(from, to),
-    artistHistory(from, to),
-    playCounts(before, "day", "time", TYPICAL_DAYS),
-    playCounts(before, "hour", "time", 24),
-  ]);
+  const span = { from: dayStart(day), to: dayStart(day, 1) };
+  const before = { from: dayStart(addDays(day, -TYPICAL_DAYS)), to: span.from };
+  const [plays, artists, tracks, hours, history, days, typicalHours] =
+    await Promise.all([
+      playsIn(span.from, span.to),
+      top(span, "artist", ALL),
+      top(span, "track", TOP),
+      playCounts(span, "hour", "time", 24),
+      artistHistory(span.from, span.to),
+      playCounts(before, "day", "time", TYPICAL_DAYS),
+      playCounts(before, "hour", "time", 24),
+    ]);
   const typicalHour = new Map(
-    hours.counts?.map(({ period, plays }) => [period, plays / TYPICAL_DAYS]),
+    typicalHours.counts?.map(({ period, plays }) => [
+      period,
+      plays / TYPICAL_DAYS,
+    ]),
   );
-  const artists = ranked(plays, ({ artist }) => ({ artist }));
   const run = longestRun(plays);
 
   return {
@@ -112,28 +98,28 @@ export async function dayFacts(day: Day): Promise<DayFacts> {
       ...(days.counts?.map(({ plays }) => plays) ?? []),
       ...Array<number>(TYPICAL_DAYS - (days.counts?.length ?? 0)).fill(0),
     ]),
-    topArtists: artists.slice(0, TOP),
-    repeats: ranked(plays, ({ artist, track }) => ({ artist, track }))
-      .filter(({ plays }) => plays > 1)
-      .slice(0, TOP),
-    firstTimeArtists: artists.filter(
-      ({ artist }) => (history.get(artist)?.first ?? 0) >= from.getTime(),
+    topArtists: artists
+      .slice(0, TOP)
+      .map(({ artist, plays }) => ({ artist, plays })),
+    repeats: tracks.flatMap(({ artist, track = "", plays }) =>
+      plays > 1 ? [{ artist, track, plays }] : [],
+    ),
+    firstTimeArtists: artists.flatMap(({ artist, plays }) =>
+      (history.get(artist)?.first ?? 0) >= span.from.getTime()
+        ? [{ artist, plays }]
+        : [],
     ),
     returningArtists: artists.flatMap(({ artist, plays }) => {
       const last = history.get(artist)?.before;
-      return last !== undefined && from.getTime() - last >= AWAY_MS
+      return last !== undefined && span.from.getTime() - last >= AWAY_MS
         ? [{ artist, plays, lastPlayedBefore: new Date(last) }]
         : [];
     }),
     ...(run && { longestRun: run }),
-    hours: ranked(plays, ({ playedAt }) => ({
-      hour: clockTime(playedAt).slice(11, 13),
-    }))
-      .toSorted((a, b) => a.hour.localeCompare(b.hour))
-      .map(({ hour, plays }) => ({
-        hour,
-        plays,
-        typical: Math.round((typicalHour.get(hour) ?? 0) * 10) / 10,
-      })),
+    hours: (hours.counts ?? []).map(({ period, plays }) => ({
+      hour: period,
+      plays,
+      typical: Math.round((typicalHour.get(period) ?? 0) * 10) / 10,
+    })),
   };
 }

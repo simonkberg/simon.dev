@@ -25,13 +25,13 @@ vi.mock(import("@/lib/session"), () => ({
 }));
 
 describe("getDiary", () => {
-  it("should return the latest entries and cache them for minutes", async () => {
+  it("should return the latest entries and cache them for hours", async () => {
     const entries = [{ day: "2026-10-27" as const, entry: "smog again" }];
     vi.mocked(readEntries).mockResolvedValue(entries);
 
     await expect(getDiary()).resolves.toEqual({ status: "ok", data: entries });
     expect(readEntries).toHaveBeenCalledWith(30);
-    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("minutes");
+    expect(cacheLife).toHaveBeenCalledExactlyOnceWith("hours");
   });
 
   it("should return an error and cache it briefly when the read fails", async () => {
