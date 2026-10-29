@@ -52,7 +52,10 @@ async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
 }
 
 const RATE_LIMIT = { limit: 5, windowMs: 30_000 };
-const BANNED = { status: "error", error: "Blow your shit off smooth" } as const;
+const BANNED = {
+  status: "error",
+  error: "You've been banned :) blow your shit off smooth",
+} as const;
 
 async function admit(
   action: string,

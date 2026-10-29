@@ -219,7 +219,10 @@ describe("postChatMessage", () => {
 
   it("bans whoever posts the Calendly spam", async () => {
     const spam = "Hoping to connect! https://calendly.com/melottogroup/30min";
-    const banned = { status: "error", error: "Blow your shit off smooth" };
+    const banned = {
+      status: "error",
+      error: "You've been banned :) blow your shit off smooth",
+    };
 
     expect(await post(spam)).toEqual(banned);
     expect(await post()).toEqual(banned);
@@ -232,7 +235,7 @@ describe("postChatMessage", () => {
 
     expect(await post("calendly.com/melottogroup")).toEqual({
       status: "error",
-      error: "Blow your shit off smooth",
+      error: "You've been banned :) blow your shit off smooth",
     });
     expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
   });
