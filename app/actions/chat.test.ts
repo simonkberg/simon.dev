@@ -205,6 +205,26 @@ describe("postChatMessage", () => {
     expect(await post()).toEqual({ status: "ok" });
   });
 
+  it("bans whoever posts the Calendly spam", async () => {
+    const spam = "Hoping to connect! https://calendly.com/melottogroup/30min";
+    const banned = { status: "error", error: "Blow your shit off smooth" };
+
+    expect(await post(spam)).toEqual(banned);
+    expect(await post()).toEqual(banned);
+    expect(await reactToChatMessage("123", "👍")).toEqual(banned);
+    expect(postChannelMessage).not.toHaveBeenCalled();
+  });
+
+  it("rejects the spam without an IP to ban", async () => {
+    fromIp(undefined);
+
+    expect(await post("calendly.com/melottogroup")).toEqual({
+      status: "error",
+      error: "Blow your shit off smooth",
+    });
+    expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
+  });
+
   it("returns error and logs when Discord API fails", async () => {
     const error = new Error("Discord connection failed");
     vi.mocked(postChannelMessage).mockRejectedValue(error);

@@ -66,6 +66,10 @@ export const MIGRATIONS: readonly string[] = [
     album TEXT NOT NULL,
     until INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS banned_networks (
+    network TEXT PRIMARY KEY,
+    banned_at INTEGER NOT NULL
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

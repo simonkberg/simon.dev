@@ -3,6 +3,7 @@
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
+import { ban, isBanned, isSpam } from "@/lib/bans";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
@@ -51,6 +52,7 @@ async function getChatHistoryAt(_revision: number): Promise<ChatHistoryResult> {
 }
 
 const RATE_LIMIT = { limit: 5, windowMs: 30_000 };
+const BANNED = { status: "error", error: "Blow your shit off smooth" } as const;
 
 async function admit(
   action: string,
@@ -64,7 +66,11 @@ async function admit(
   }
 
   const subject = ip === undefined ? username : networkOf(ip);
-  const result = await rateLimit(`${action}:${subject}`, limits);
+  const [banned, result] = await Promise.all([
+    ip !== undefined && isBanned(ip),
+    rateLimit(`${action}:${subject}`, limits),
+  ]);
+  if (banned) return BANNED;
   if (!result.success) {
     return {
       status: "error",
@@ -106,6 +112,10 @@ export async function postChatMessage(
         status: "error",
         error: `Messages can be at most ${MAX_MESSAGE_LENGTH} characters long.`,
       };
+    }
+    if (isSpam(text)) {
+      if (request.ip !== undefined) await ban(request.ip);
+      return BANNED;
     }
     const replyToId = z
       .string()
