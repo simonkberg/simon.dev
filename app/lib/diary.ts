@@ -51,8 +51,7 @@ const DIARY_PROMPT = md`
   curious, follow whatever catches your eye, then decide if anything is worth
   writing down.
 
-  - write only when you found something you'd still want to read in a month;
-    otherwise reply "${SKIP}" and leave the day blank, as you will most days
+  - if nothing caught your eye, reply "${SKIP}" and leave the day blank
   - it's your diary, not a report: a thought, a hunch, a connection to
     something earlier, a question you're left with, in your own words
   - don't summarize the day, and leave out counts and clock times unless one
