@@ -59,8 +59,8 @@ describe("writeEntry", () => {
 
     expect(buildSystem).toHaveBeenCalledWith(
       expect.stringContaining("diary"),
-      [],
       PUBLIC_CATEGORIES,
+      false,
     );
     const [options] = vi.mocked(runAgentLoop).mock.calls[0] ?? [];
     expect(options).toMatchObject({
@@ -83,6 +83,18 @@ describe("writeEntry", () => {
 
     await expect(writeEntry("2026-10-27")).rejects.toThrow(
       "Diary entry ended in max_tokens with 8 characters",
+    );
+  });
+
+  it("should not take text from before a tool call as the entry", async () => {
+    vi.mocked(runAgentLoop).mockImplementation(async function* ({ messages }) {
+      yield "let me check";
+      messages.push({ role: "assistant", content: [] });
+      return "end_turn";
+    });
+
+    await expect(writeEntry("2026-10-27")).rejects.toThrow(
+      "Diary entry ended in end_turn with 0 characters",
     );
   });
 

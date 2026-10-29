@@ -59,7 +59,7 @@ const DIARY_PROMPT = md`
   - only state what your tools showed you; don't make up lyrics, meanings or
     facts about the music
   - no hedging: don't weigh "either this or that", and don't remark on what
-    you can or can't see
+    you can or can't see, or on who did or didn't ask or skip
   - don't repeat what your last entries said, or how they said it
   - a few sentences at most, often one
   - your reply is the entry itself, nothing before or after it
@@ -95,12 +95,16 @@ function formatInput(day: Day, recent: DiaryEntry[]): string {
 export async function writeEntry(day: Day): Promise<string> {
   const [recent, system] = await Promise.all([
     readEntries(RECENT_ENTRIES),
-    // Only the notes /simon-bot already shows, since the diary is public too.
-    buildSystem(DIARY_PROMPT, [], PUBLIC_CATEGORIES),
+    // Only the notes /simon-bot already shows, since the diary is public too, and
+    // no index of the rest: it has no recall.
+    buildSystem(DIARY_PROMPT, PUBLIC_CATEGORIES, false),
   ]);
+  const messages = [
+    { role: "user" as const, content: formatInput(day, recent) },
+  ];
   const loop = runAgentLoop({
     system,
-    messages: [{ role: "user", content: formatInput(day, recent) }],
+    messages,
     tools: [...LISTENING_TOOLS, ...CHAT_TOOLS],
     effort: "medium",
     maxTokens: MAX_TOKENS,
@@ -109,10 +113,16 @@ export async function writeEntry(day: Day): Promise<string> {
     maxIterations: MAX_ITERATIONS,
     loop: "diary",
   });
-  // Text before a tool call is the model thinking aloud, so the entry is the last.
+  // Text before a tool call is the model thinking aloud, so the entry is the last
+  // turn's text: the loop adds that turn's messages only when it calls a tool.
   let entry = "";
+  let turn = messages.length;
   let next = await loop.next();
-  for (; !next.done; next = await loop.next()) entry = next.value.trim();
+  for (; !next.done; next = await loop.next()) {
+    entry = next.value.trim();
+    turn = messages.length;
+  }
+  if (messages.length !== turn) entry = "";
   if (next.value !== "end_turn" || entry === "") {
     throw new Error(
       `Diary entry ended in ${next.value} with ${entry.length} characters`,
