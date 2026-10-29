@@ -40,8 +40,10 @@ function stream(state: Stream, action: StreamAction): Stream {
   }
   if (state.status !== "open") return state;
   switch (action.type) {
-    case "gateway":
-      return { ...state, gateway: action.live ? "live" : "connecting" };
+    case "gateway": {
+      const gateway = action.live ? "live" : "connecting";
+      return gateway === state.gateway ? state : { ...state, gateway };
+    }
     case "presence":
       return { ...state, here: action.names };
     case "typing":

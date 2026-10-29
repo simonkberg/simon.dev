@@ -39,6 +39,11 @@ export const TravelContext = createContext<Travel>({
   release: () => {},
 });
 
+type Scrub = { type: "scrub"; to: Day } | { type: "settle" };
+
+const scrubbingTo = (_: Day | undefined, action: Scrub) =>
+  action.type === "scrub" ? action.to : undefined;
+
 // Long enough that holding an arrow key navigates once, where it stops.
 const SCRUB_MS = 300;
 
@@ -54,24 +59,19 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
   // The day being loaded, for as long as its navigation is.
   const [going, setGoing] = useOptimistic<Day | undefined>(undefined);
   // Where the tape is, until it is sent; the ref for the timer and drag to read.
-  const [scrubbing, dispatchScrub] = useReducer(
-    (
-      _: Day | undefined,
-      action: { type: "scrub"; to: Day } | { type: "settle" },
-    ) => (action.type === "scrub" ? action.to : undefined),
-    undefined,
-  );
+  const [scrubbing, dispatchScrub] = useReducer(scrubbingTo, undefined);
   const scrubbed = useRef<Day>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const sent = useRef<Day>(undefined);
   const heading = going ?? date;
   const shown = scrubbing ?? going;
 
-  const settle = () => {
+  const place = (action: Scrub) => {
     clearTimeout(timer.current);
-    scrubbed.current = undefined;
-    dispatchScrub({ type: "settle" });
+    scrubbed.current = scrubbingTo(scrubbed.current, action);
+    dispatchScrub(action);
   };
+  const settle = () => place({ type: "settle" });
 
   // A day reached another way (back, forward) wins over a scrub not yet sent.
   useEffect(() => {
@@ -95,9 +95,7 @@ export const TravelProvider = ({ children }: PropsWithChildren) => {
 
   const scrub = (to: Day, held: boolean) => {
     if (to === heading) return settle();
-    clearTimeout(timer.current);
-    scrubbed.current = to;
-    dispatchScrub({ type: "scrub", to });
+    place({ type: "scrub", to });
     if (!held) timer.current = setTimeout(release, SCRUB_MS);
   };
 

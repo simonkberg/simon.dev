@@ -61,18 +61,19 @@ function initialActive(typed: Typed) {
   return typed.complete ? null : 0;
 }
 
+const shownOf = (typed: Suggesting["typed"]) =>
+  typed && !typed.dismissed ? typed : null;
+
 // With where it starts, so a picked command's options start over.
-const shownKey = ({ typed }: Pick<Suggesting, "typed">) =>
-  typed && !typed.dismissed
-    ? `${typed.kind}:${typed.start}:${typed.query}`
-    : null;
+const shownKey = (typed: Suggesting["typed"]) => {
+  const shown = shownOf(typed);
+  return shown && `${shown.kind}:${shown.start}:${shown.query}`;
+};
 
 function retype(state: Suggesting, typed: Suggesting["typed"]): Suggesting {
-  if (shownKey({ typed }) === shownKey(state)) return { ...state, typed };
-  return {
-    typed,
-    active: typed && !typed.dismissed ? initialActive(typed) : null,
-  };
+  if (shownKey(typed) === shownKey(state.typed)) return { ...state, typed };
+  const shown = shownOf(typed);
+  return { typed, active: shown && initialActive(shown) };
 }
 
 // A dismissal holds only for the command or shortcode it closed on.
@@ -96,7 +97,9 @@ function suggesting(state: Suggesting, action: SuggestingAction): Suggesting {
     case "forget":
       return retype(state, null);
     case "choose":
-      return { ...state, active: action.index };
+      return action.index === state.active
+        ? state
+        : { ...state, active: action.index };
   }
 }
 
@@ -125,7 +128,7 @@ export const ChatSuggestInput = ({
     active: null,
   });
   if (typed && typed.value !== value) dispatch({ type: "forget" });
-  const shown = typed && !typed.dismissed ? typed : null;
+  const shown = shownOf(typed);
 
   const { modifier } = useSkinTone();
   const emojiMatches = (

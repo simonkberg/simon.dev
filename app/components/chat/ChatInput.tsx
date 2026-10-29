@@ -74,7 +74,6 @@ interface Draft {
 type DraftAction =
   | { type: "edit"; text: string }
   | { type: "ran"; command: string; result: CommandResult }
-  | { type: "send" }
   | { type: "sent"; result: PostChatMessageResult }
   | { type: "closeOutput" };
 
@@ -91,8 +90,6 @@ function draft(state: Draft, action: DraftAction): Draft {
         output: result.output ? { command, lines: result.output } : null,
       };
     }
-    case "send":
-      return { ...state, output: null };
     case "sent":
       return {
         ...state,
@@ -100,7 +97,7 @@ function draft(state: Draft, action: DraftAction): Draft {
         result: action.result,
       };
     case "closeOutput":
-      return { ...state, output: null };
+      return state.output ? { ...state, output: null } : state;
   }
 }
 
@@ -149,7 +146,7 @@ export const ChatInput = ({
       return;
     }
 
-    dispatch({ type: "send" });
+    dispatch({ type: "closeOutput" });
     startTransition(async () => {
       const formData = new FormData(form);
       formData.set("text", message);

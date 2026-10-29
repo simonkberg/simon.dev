@@ -127,14 +127,14 @@ export const ChatReactionPicker = ({
   const { reacting } = use(ChatReactionsContext);
   const pickerId = useId();
   // Rendered only while open: a hundred messages would otherwise hold thousands of buttons.
-  const [state, toggled] = useReducer(
-    (_: "open" | "closed", next: "open" | "closed") => next,
-    "closed",
+  const [open, toggled] = useReducer(
+    (_: boolean, newState: string) => newState === "open",
+    false,
   );
   const trigger = useRef<HTMLButtonElement>(null);
 
   const toggle = (event: ToggleEvent<HTMLDivElement>) => {
-    toggled(event.newState === "open" ? "open" : "closed");
+    toggled(event.newState);
     // The emoji unmount as it closes, which would otherwise leave focus on the page.
     if (
       event.newState !== "closed" ||
@@ -222,7 +222,7 @@ export const ChatReactionPicker = ({
         onToggle={focusFirst}
         onKeyDown={navigate}
       >
-        {state === "open" && (
+        {open && (
           <>
             <ReactionEmoji
               messageId={messageId}

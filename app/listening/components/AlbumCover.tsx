@@ -16,14 +16,15 @@ export interface AlbumCoverProps {
 
 // The sleeve shows from the first failure until a retry loads.
 interface Cover {
-  status: "loading" | "loaded" | "failed" | "retrying";
+  status: "shown" | "failed" | "retrying";
   attempt: number;
 }
 
-function cover({ attempt }: Cover, action: "load" | "error" | "retry"): Cover {
+function cover(state: Cover, action: "load" | "error" | "retry"): Cover {
+  const { status, attempt } = state;
   switch (action) {
     case "load":
-      return { status: "loaded", attempt };
+      return status === "shown" ? state : { status: "shown", attempt };
     case "error":
       return { status: "failed", attempt };
     case "retry":
@@ -34,7 +35,7 @@ function cover({ attempt }: Cover, action: "load" | "error" | "retry"): Cover {
 /** The album's cover, retried when it fails to load, with a text sleeve until one does. */
 export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
   const [{ status, attempt }, dispatch] = useReducer(cover, {
-    status: "loading",
+    status: "shown",
     attempt: 0,
   });
   const failed = status === "failed" || status === "retrying";

@@ -85,7 +85,7 @@ const replying = (_: string | null, action: ReplyAction) =>
   action.type === "reply" ? action.id : null;
 
 // A fresh object, so the toast shows a repeated error again.
-const reactionError = (
+const failure = (
   _: { error: string } | undefined,
   reaction: ReactToChatMessageResult,
 ) => (reaction.status === "error" ? { error: reaction.error } : undefined);
@@ -115,10 +115,7 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
     (current, { messageId, emoji }: { messageId: string; emoji: string }) =>
       withReactionToggled(current, messageId, emoji),
   );
-  const [reactionFailure, settleReaction] = useReducer(
-    reactionError,
-    undefined,
-  );
+  const [reactionFailure, settleReaction] = useReducer(failure, undefined);
 
   const react = (messageId: string, emoji: string) => {
     startReacting(async () => {
