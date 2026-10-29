@@ -1,11 +1,12 @@
 "use client";
 
 import {
+  type Dispatch,
   FormEvent,
   type PropsWithChildren,
   useEffect,
+  useReducer,
   useRef,
-  useState,
   useTransition,
 } from "react";
 
@@ -13,6 +14,7 @@ import { postChatMessage, PostChatMessageResult } from "@/actions/chat";
 import { TooltipButton } from "@/components/Tooltip";
 
 import { CaretBuddy } from "./CaretBuddy";
+import type { ReplyAction } from "./ChatMessage";
 import { ChatSuggestInput } from "./ChatSuggestInput";
 import { ChatToast } from "./ChatToast";
 import { type CommandResult, messageText, runCommand } from "./commands";
@@ -63,41 +65,67 @@ function useTypingSignal() {
   };
 }
 
+interface Draft {
+  text: string;
+  result: PostChatMessageResult;
+  output: { command: string; lines: readonly string[] } | null;
+}
+
+type DraftAction =
+  | { type: "edit"; text: string }
+  | { type: "ran"; command: string; result: CommandResult }
+  | { type: "send" }
+  | { type: "sent"; result: PostChatMessageResult }
+  | { type: "closeOutput" };
+
+function draft(state: Draft, action: DraftAction): Draft {
+  switch (action.type) {
+    case "edit":
+      return { ...state, text: action.text };
+    case "ran": {
+      const { command, result } = action;
+      if (result.status === "error") return { ...state, result };
+      return {
+        text: "",
+        result: { status: "initial" },
+        output: result.output ? { command, lines: result.output } : null,
+      };
+    }
+    case "send":
+      return { ...state, output: null };
+    case "sent":
+      return {
+        ...state,
+        text: action.result.status === "ok" ? "" : state.text,
+        result: action.result,
+      };
+    case "closeOutput":
+      return { ...state, output: null };
+  }
+}
+
 export interface ChatInputProps extends PropsWithChildren {
   replyToId: string | null;
-  setReplyToId: (id: string | null) => void;
+  dispatchReply: Dispatch<ReplyAction>;
 }
 
 export const ChatInput = ({
   replyToId,
-  setReplyToId,
+  dispatchReply,
   children,
 }: ChatInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [result, setResult] = useState<PostChatMessageResult>({
-    status: "initial",
+  const [{ text: inputValue, result, output }, dispatch] = useReducer(draft, {
+    text: "",
+    result: { status: "initial" },
+    output: null,
   });
   const [pending, startTransition] = useTransition();
-  const [inputValue, setInputValue] = useState("");
   const typing = useTypingSignal();
-  const changeInput = (value: string) => {
-    setInputValue(value);
-    typing.typed(value);
+  const changeInput = (text: string) => {
+    dispatch({ type: "edit", text });
+    typing.typed(text);
   };
-  const [output, setOutput] = useState<{
-    command: string;
-    lines: readonly string[];
-  } | null>(null);
-
-  function showCommand(text: string, command: CommandResult) {
-    if (command.status === "error") {
-      setResult(command);
-      return;
-    }
-    setResult({ status: "initial" });
-    setOutput(command.output ? { command: text, lines: command.output } : null);
-    setInputValue("");
-  }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,15 +139,17 @@ export const ChatInput = ({
       if (command instanceof Promise) {
         startTransition(async () => {
           const result = await command;
-          startTransition(() => showCommand(text, result));
+          startTransition(() =>
+            dispatch({ type: "ran", command: text, result }),
+          );
         });
       } else {
-        showCommand(text, command);
+        dispatch({ type: "ran", command: text, result: command });
       }
       return;
     }
 
-    setOutput(null);
+    dispatch({ type: "send" });
     startTransition(async () => {
       const formData = new FormData(form);
       formData.set("text", message);
@@ -128,16 +158,14 @@ export const ChatInput = ({
       }
       const result = await postChatMessage(formData);
 
-      if (result.status === "ok") {
-        // Nested startTransition required: after await, we're outside the original transition context
-        startTransition(() => {
-          setReplyToId(null);
+      // Nested startTransition required: after await, we're outside the original transition context
+      startTransition(() => {
+        if (result.status === "ok") {
+          dispatchReply({ type: "cancel" });
           typing.posted();
-          setInputValue("");
-        });
-      }
-
-      setResult(result);
+        }
+        dispatch({ type: "sent", result });
+      });
     });
   }
 
@@ -152,8 +180,8 @@ export const ChatInput = ({
     if (replyToId) inputRef.current?.focus();
   }, [replyToId]);
 
-  useEscape(!!replyToId, () => setReplyToId(null));
-  useEscape(!!output, () => setOutput(null));
+  useEscape(!!replyToId, () => dispatchReply({ type: "cancel" }));
+  useEscape(!!output, () => dispatch({ type: "closeOutput" }));
 
   return (
     <>
@@ -167,7 +195,7 @@ export const ChatInput = ({
           <TooltipButton
             tooltip="Close output"
             className="clear"
-            onClick={() => setOutput(null)}
+            onClick={() => dispatch({ type: "closeOutput" })}
           >
             &times;
           </TooltipButton>

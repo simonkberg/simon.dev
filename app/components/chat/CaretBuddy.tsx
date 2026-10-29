@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
 type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
@@ -74,73 +74,106 @@ interface CaretBuddyInputs {
   resultStatus: "initial" | "ok" | "error";
 }
 
-function useCaretBuddyState(inputs: CaretBuddyInputs): BuddyState {
-  const [now, setNow] = useState(() => Date.now());
-  const [lastInputChange, setLastInputChange] = useState(0);
-  const [successUntil, setSuccessUntil] = useState(0);
+interface Clock {
+  now: number;
+  typedAt: number;
+  successUntil: number;
+  // The inputs as last seen, to time their changes.
+  inputValue: string;
+  resultStatus: CaretBuddyInputs["resultStatus"];
+}
+
+type ClockAction =
+  | { type: "tick"; now: number }
+  | ({ type: "see" } & Omit<CaretBuddyInputs, "isPending">);
+
+function clock(state: Clock, action: ClockAction): Clock {
+  switch (action.type) {
+    case "tick":
+      return { ...state, now: action.now };
+    case "see":
+      return {
+        ...state,
+        inputValue: action.inputValue,
+        resultStatus: action.resultStatus,
+        typedAt:
+          action.inputValue === state.inputValue ? state.typedAt : state.now,
+        successUntil:
+          action.resultStatus === "ok" && state.resultStatus !== "ok"
+            ? state.now + SUCCESS_DURATION_MS
+            : state.successUntil,
+      };
+  }
+}
+
+function useCaretBuddyState({
+  inputValue,
+  isPending,
+  resultStatus,
+}: CaretBuddyInputs): BuddyState {
+  const [{ now, typedAt, successUntil, ...seen }, dispatch] = useReducer(
+    clock,
+    { inputValue, resultStatus },
+    (inputs): Clock => ({
+      ...inputs,
+      now: Date.now(),
+      typedAt: 0,
+      successUntil: 0,
+    }),
+  );
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), STATE_TICK_MS);
+    const id = setInterval(
+      () => dispatch({ type: "tick", now: Date.now() }),
+      STATE_TICK_MS,
+    );
     return () => clearInterval(id);
   }, []);
 
-  const [prevInputValue, setPrevInputValue] = useState(inputs.inputValue);
-  if (inputs.inputValue !== prevInputValue) {
-    setPrevInputValue(inputs.inputValue);
-    setLastInputChange(now);
+  if (inputValue !== seen.inputValue || resultStatus !== seen.resultStatus) {
+    dispatch({ type: "see", inputValue, resultStatus });
   }
 
-  const [prevResultStatus, setPrevResultStatus] = useState(inputs.resultStatus);
-  if (inputs.resultStatus === "ok" && prevResultStatus !== "ok") {
-    setSuccessUntil(now + SUCCESS_DURATION_MS);
-  }
-  if (inputs.resultStatus !== prevResultStatus) {
-    setPrevResultStatus(inputs.resultStatus);
-  }
-
-  if (inputs.resultStatus === "error") return "error";
+  if (resultStatus === "error") return "error";
   if (now < successUntil) return "success";
-  if (inputs.isPending) return "thinking";
-  if (inputs.inputValue.includes("`")) return "code";
-  if (/\blove\b/i.test(inputs.inputValue)) return "love";
-  if (inputs.inputValue.length > LONG_MESSAGE_THRESHOLD) return "long";
-  if (lastInputChange > 0 && now - lastInputChange < TYPING_TIMEOUT_MS)
-    return "typing";
+  if (isPending) return "thinking";
+  if (inputValue.includes("`")) return "code";
+  if (/\blove\b/i.test(inputValue)) return "love";
+  if (inputValue.length > LONG_MESSAGE_THRESHOLD) return "long";
+  if (typedAt > 0 && now - typedAt < TYPING_TIMEOUT_MS) return "typing";
   return "idle";
 }
 
-function useFrameAnimation(frames: AnimationFrames): string {
-  const frameIndexRef = useRef(0);
-  const [expression, setExpression] = useState(frames[0][1]);
+interface Animation {
+  frames: AnimationFrames;
+  index: number;
+}
 
-  const [prevFrames, setPrevFrames] = useState(frames);
-  if (frames !== prevFrames) {
-    setPrevFrames(frames);
-    setExpression(frames[0][1]);
+type AnimationAction =
+  | { type: "play"; frames: AnimationFrames }
+  | { type: "advance" };
+
+function animation(state: Animation, action: AnimationAction): Animation {
+  switch (action.type) {
+    case "play":
+      return { frames: action.frames, index: 0 };
+    case "advance":
+      return { ...state, index: (state.index + 1) % state.frames.length };
   }
+}
+
+function useFrameAnimation(frames: AnimationFrames): string {
+  const [state, dispatch] = useReducer(animation, { frames, index: 0 });
+  if (frames !== state.frames) dispatch({ type: "play", frames });
+  const [duration, expression] = state.frames[state.index] ?? state.frames[0];
 
   useEffect(() => {
-    frameIndexRef.current = 0;
-    let startTime: number | null = null;
-    let raf: number;
-
-    const animate = (timestamp: number) => {
-      startTime ??= timestamp;
-      const idx = frameIndexRef.current;
-
-      if (timestamp - startTime >= frames[idx]![0] * 1000) {
-        const next = (idx + 1) % frames.length;
-        frameIndexRef.current = next;
-        setExpression(frames[next]![1]);
-        startTime = timestamp;
-      }
-
-      raf = requestAnimationFrame(animate);
-    };
-
-    raf = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(raf);
-  }, [frames]);
+    const timer = setTimeout(
+      () => dispatch({ type: "advance" }),
+      duration * 1000,
+    );
+    return () => clearTimeout(timer);
+  }, [state, duration]);
 
   return expression;
 }

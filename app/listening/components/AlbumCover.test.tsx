@@ -55,6 +55,17 @@ describe("AlbumCover", () => {
     expect(sleeve()).not.toBeInTheDocument();
   });
 
+  it("waits for a retry to fail before the next", () => {
+    renderCover(cover);
+
+    fail();
+    wait(6_000);
+    const retried = image();
+    wait(60_000);
+
+    expect(image()).toBe(retried);
+  });
+
   it("keeps the sleeve once its retries have failed", () => {
     renderCover(cover);
 

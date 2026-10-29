@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 // The browser keeps a failed cover for 5s (its max-age), so each retry waits that out.
 const RETRY_MS = [6_000, 15_000];
@@ -14,17 +14,37 @@ export interface AlbumCoverProps {
   artist: string;
 }
 
+// The sleeve shows from the first failure until a retry loads.
+interface Cover {
+  status: "loading" | "loaded" | "failed" | "retrying";
+  attempt: number;
+}
+
+function cover({ attempt }: Cover, action: "load" | "error" | "retry"): Cover {
+  switch (action) {
+    case "load":
+      return { status: "loaded", attempt };
+    case "error":
+      return { status: "failed", attempt };
+    case "retry":
+      return { status: "retrying", attempt: attempt + 1 };
+  }
+}
+
 /** The album's cover, retried when it fails to load, with a text sleeve until one does. */
 export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
-  const [attempt, setAttempt] = useState(0);
-  const [failed, setFailed] = useState(false);
-  const retry = RETRY_MS[attempt];
+  const [{ status, attempt }, dispatch] = useReducer(cover, {
+    status: "loading",
+    attempt: 0,
+  });
+  const failed = status === "failed" || status === "retrying";
+  const retry = status === "failed" ? RETRY_MS[attempt] : undefined;
 
   useEffect(() => {
-    if (!failed || retry === undefined) return;
-    const timer = setTimeout(() => setAttempt(attempt + 1), retry);
+    if (retry === undefined) return;
+    const timer = setTimeout(() => dispatch("retry"), retry);
     return () => clearTimeout(timer);
-  }, [failed, attempt, retry]);
+  }, [attempt, retry]);
 
   return (
     <>
@@ -36,8 +56,8 @@ export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
             width={width}
             height={width}
             alt=""
-            onError={() => setFailed(true)}
-            onLoad={() => setFailed(false)}
+            onError={() => dispatch("error")}
+            onLoad={() => dispatch("load")}
           />
         </span>
       )}

@@ -4,7 +4,7 @@ import {
 } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import type { NextRouter } from "next/router";
-import { type PropsWithChildren, use, useEffect, useState } from "react";
+import { type PropsWithChildren, use, useEffect, useReducer } from "react";
 import { vi } from "vitest";
 
 const Loading = ({ page }: { page: Promise<void> }) => {
@@ -39,9 +39,12 @@ export function mockRouter() {
   } as unknown as NextRouter;
 
   const Router = ({ children }: PropsWithChildren) => {
-    const [page, setPage] = useState<Promise<void>>();
+    const [page, navigateTo] = useReducer(
+      (_: Promise<void> | undefined, next: Promise<void>) => next,
+      undefined,
+    );
     useEffect(() => {
-      load = setPage;
+      load = navigateTo;
     }, []);
     return (
       <AppRouterContext value={router}>

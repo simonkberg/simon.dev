@@ -6,8 +6,8 @@ import {
   type ToggleEvent,
   use,
   useId,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 
 import { TooltipButton, WhenShown } from "@/components/Tooltip";
@@ -43,7 +43,11 @@ const focusPressed = (button: HTMLButtonElement | null) => {
 
 const SkinTonePicker = ({ picker }: { picker: string }) => {
   const tone = useSkinTone();
-  const [choosing, setChoosing] = useState(false);
+  const [choosing, dispatch] = useReducer(
+    (choosing: boolean, action: "toggle" | "close") =>
+      action === "toggle" && !choosing,
+    false,
+  );
   const toggle = useRef<HTMLButtonElement>(null);
 
   return (
@@ -58,7 +62,7 @@ const SkinTonePicker = ({ picker }: { picker: string }) => {
             aria-pressed={option === tone}
             onClick={() => {
               setSkinTone(option);
-              setChoosing(false);
+              dispatch("close");
               toggle.current?.focus();
             }}
           >
@@ -70,7 +74,7 @@ const SkinTonePicker = ({ picker }: { picker: string }) => {
         tooltip={`Skin tone: ${tone.name}`}
         anchor={picker}
         aria-expanded={choosing}
-        onClick={() => setChoosing(!choosing)}
+        onClick={() => dispatch("toggle")}
       >
         {withSkinTone(HAND, tone.modifier)}
       </TooltipButton>
@@ -123,11 +127,14 @@ export const ChatReactionPicker = ({
   const { reacting } = use(ChatReactionsContext);
   const pickerId = useId();
   // Rendered only while open: a hundred messages would otherwise hold thousands of buttons.
-  const [open, setOpen] = useState(false);
+  const [state, toggled] = useReducer(
+    (_: "open" | "closed", next: "open" | "closed") => next,
+    "closed",
+  );
   const trigger = useRef<HTMLButtonElement>(null);
 
   const toggle = (event: ToggleEvent<HTMLDivElement>) => {
-    setOpen(event.newState === "open");
+    toggled(event.newState === "open" ? "open" : "closed");
     // The emoji unmount as it closes, which would otherwise leave focus on the page.
     if (
       event.newState !== "closed" ||
@@ -215,7 +222,7 @@ export const ChatReactionPicker = ({
         onToggle={focusFirst}
         onKeyDown={navigate}
       >
-        {open && (
+        {state === "open" && (
           <>
             <ReactionEmoji
               messageId={messageId}

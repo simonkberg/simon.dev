@@ -45,6 +45,27 @@ export default defineConfig({
     "react/unsupported-syntax": "warn",
     "import/no-anonymous-default-export": "warn",
     "unicorn/no-abusive-eslint-disable": "error",
+    // Local state is a reducer, so its states and the actions between them are spelled out.
+    "no-restricted-imports": [
+      "error",
+      {
+        paths: [
+          {
+            name: "react",
+            importNames: ["useState"],
+            message: "Model local state with useReducer.",
+          },
+        ],
+      },
+    ],
+    "no-restricted-properties": [
+      "error",
+      {
+        object: "React",
+        property: "useState",
+        message: "Model local state with useReducer.",
+      },
+    ],
     // `Image` here is `next/image`.
     "jsx-a11y/alt-text": ["error", { elements: ["img"], img: ["Image"] }],
     // `<output>` only takes phrasing content, so it can't replace the

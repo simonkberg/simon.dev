@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState, ViewTransition } from "react";
+import { useDeferredValue, useEffect, useReducer, ViewTransition } from "react";
 
 export interface ChatToastProps {
   // Compared by identity, so a repeated error shows again.
@@ -8,27 +8,40 @@ export interface ChatToastProps {
   duration?: number;
 }
 
-export const ChatToast = ({ result, duration = 5000 }: ChatToastProps) => {
-  const [isVisible, setIsVisible] = useState(!!result);
-  const [prevResult, setPrevResult] = useState(result);
-  const deferredResult = useDeferredValue(result);
-  const deferredIsVisible = useDeferredValue(isVisible);
+interface Toast {
+  result: { error: string } | undefined;
+  open: boolean;
+}
 
-  if (result !== prevResult) {
-    setPrevResult(result);
-    setIsVisible(!!result);
+type ToastAction =
+  | { type: "result"; result: { error: string } | undefined }
+  | { type: "close" };
+
+function toast(state: Toast, action: ToastAction): Toast {
+  switch (action.type) {
+    case "result":
+      return { result: action.result, open: !!action.result };
+    case "close":
+      return state.open ? { ...state, open: false } : state;
   }
+}
 
-  // result is unread here: it restarts the timer for each new result.
+export const ChatToast = ({ result, duration = 5000 }: ChatToastProps) => {
+  const [state, dispatch] = useReducer(toast, { result, open: !!result });
+  const shown = useDeferredValue(state);
+
+  if (result !== state.result) dispatch({ type: "result", result });
+
+  // Each result is a new state, so it restarts the timer.
   useEffect(() => {
-    if (!isVisible) return;
+    if (!state.open) return;
 
-    const timer = setTimeout(() => setIsVisible(false), duration);
+    const timer = setTimeout(() => dispatch({ type: "close" }), duration);
 
     return () => clearTimeout(timer);
-  }, [duration, isVisible, result]);
+  }, [duration, state]);
 
-  if (!deferredIsVisible) return null;
+  if (!shown.open) return null;
 
   return (
     <ViewTransition>
@@ -38,10 +51,10 @@ export const ChatToast = ({ result, duration = 5000 }: ChatToastProps) => {
         aria-atomic="true"
         className="chat-toast error"
       >
-        <span>{deferredResult?.error}</span>
+        <span>{shown.result?.error}</span>
         <button
           type="button"
-          onClick={() => setIsVisible(false)}
+          onClick={() => dispatch({ type: "close" })}
           aria-label="Close notification"
         >
           &times;

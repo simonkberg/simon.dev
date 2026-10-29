@@ -423,9 +423,13 @@ Classes use JavaScript private fields (`#fieldName`), not TypeScript `private`. 
 
 Next's prerender needs a `<Suspense>` above a client component that reads the clock — see `RelativeTime` usage in `RecentTracksList` and `ChatMessage`. The clock still moves between the server render and hydration, so `RelativeTime` hydrates over the server's text (`suppressHydrationWarning`) and then remounts its `<time>` with its own. On a fully prerendered page the time never reaches the HTML: the browser fills in the fallback, so `/simon-bot` waits on `io()` before its cached notes, as `/` does.
 
-### setState During Render
+### Local State
 
-Components use React's recommended [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders) pattern to adjust state based on changing props (e.g. `ChatToast`, `CaretBuddy`, `RelativeTime`). This is NOT an anti-pattern — do not suggest `useEffect` or `useMemo` as replacements.
+Local state outside the URL is a `useReducer` with its states and actions spelled out, so each
+change has a name; Oxlint bans `useState`. A component adjusts state to changed props by
+dispatching during render, React's [storing information from previous renders](https://react.dev/reference/react/useState#storing-information-from-previous-renders)
+pattern (e.g. `ChatToast`, `CaretBuddy`, `ChatHistory`). This is NOT an anti-pattern — do not
+suggest `useEffect` or `useMemo` as replacements.
 
 ### Style Variants
 

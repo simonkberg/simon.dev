@@ -11,7 +11,7 @@ const message = (id: string, content: string, replies: Message[] = []) =>
   createMessage({ id, content, replies });
 
 const renderHistory = (messages: Message[]) => {
-  const props = { replyToId: null, setReplyToId: vi.fn() };
+  const props = { replyToId: null, dispatchReply: vi.fn() };
   const view = render(<ChatHistory messages={messages} {...props} />);
   return {
     ...view,

@@ -1,14 +1,17 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useReducer } from "react";
 
 /** Discord's `||spoiler||`: hidden until clicked, then shown for good. */
 export const ChatSpoiler = ({ children }: { children: ReactNode }) => {
-  const [hidden, setHidden] = useState(true);
+  const [spoiler, reveal] = useReducer(
+    (): "hidden" | "revealed" => "revealed",
+    "hidden",
+  );
 
   // The same spans either way, so revealing never remounts what's inside.
   // A `<button>` can't hold the links a spoiler may, nor wrap across lines like text.
-  return hidden ? (
+  return spoiler === "hidden" ? (
     <span
       className="spoiler"
       role="button"
@@ -17,12 +20,12 @@ export const ChatSpoiler = ({ children }: { children: ReactNode }) => {
       onClick={(event) => {
         // In a link's text, the first click only reveals.
         event.preventDefault();
-        setHidden(false);
+        reveal();
       }}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        setHidden(false);
+        reveal();
       }}
     >
       <span inert>{children}</span>

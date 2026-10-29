@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useReducer, useSyncExternalStore } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
 
@@ -16,19 +16,31 @@ const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
   timeStyle: "short",
 });
 
-const createRtf = (options: Intl.RelativeTimeFormatOptions) =>
-  new Intl.RelativeTimeFormat("en", { numeric: "auto", ...options });
+type Style = "long" | "short" | "narrow";
+
+const createRtf = (style: Style) =>
+  new Intl.RelativeTimeFormat("en", { numeric: "auto", style });
+
+const formats: Record<Style, Intl.RelativeTimeFormat> = {
+  long: createRtf("long"),
+  short: createRtf("short"),
+  narrow: createRtf("narrow"),
+};
 
 export interface RelativeTimeProps {
   date: Date;
   /** @defaultValue "long" */
-  style?: "long" | "short" | "narrow";
+  style?: Style;
 }
 
 const subscribe = () => () => {};
 
 export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
-  const [now, setNow] = useState(Date.now);
+  const [now, tick] = useReducer(
+    (_: number, at: number) => at,
+    undefined,
+    Date.now,
+  );
   const hydrating = useSyncExternalStore(
     subscribe,
     () => false,
@@ -37,19 +49,13 @@ export const RelativeTime = ({ date, style = "long" }: RelativeTimeProps) => {
   const relativeTime = now - date.getTime();
   const elapsed = Math.abs(relativeTime);
   const sign = Math.sign(-relativeTime);
-  const [rtf, setRtf] = useState(() => createRtf({ style }));
-  const [prevStyle, setPrevStyle] = useState(style);
-
-  if (style !== prevStyle) {
-    setPrevStyle(style);
-    setRtf(createRtf({ style }));
-  }
+  const rtf = formats[style];
 
   useEffect(() => {
     if (elapsed > day) return;
 
     const timer = setTimeout(
-      () => setNow(Date.now()),
+      () => tick(Date.now()),
       elapsed < 2 * minute ? second : elapsed < hour ? minute : 5 * minute,
     );
     return () => clearTimeout(timer);

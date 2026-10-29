@@ -1,9 +1,13 @@
 "use client";
 
-import { use, useOptimistic, useState, useTransition } from "react";
+import { use, useOptimistic, useReducer, useTransition } from "react";
 
-import { type ChatHistoryResult, reactToChatMessage } from "@/actions/chat";
-import ChatMessage from "@/components/chat/ChatMessage";
+import {
+  type ChatHistoryResult,
+  reactToChatMessage,
+  type ReactToChatMessageResult,
+} from "@/actions/chat";
+import ChatMessage, { type ReplyAction } from "@/components/chat/ChatMessage";
 import { Subtitle } from "@/components/Subtitle";
 import { TooltipButton } from "@/components/Tooltip";
 import type { Message, Reaction } from "@/lib/discord/api";
@@ -77,6 +81,15 @@ function withReactionToggled(
   });
 }
 
+const replying = (_: string | null, action: ReplyAction) =>
+  action.type === "reply" ? action.id : null;
+
+// A fresh object, so the toast shows a repeated error again.
+const reactionError = (
+  _: { error: string } | undefined,
+  reaction: ReactToChatMessageResult,
+) => (reaction.status === "error" ? { error: reaction.error } : undefined);
+
 // Shared, so the passthrough keeps its identity while nothing is pending.
 const NOT_REACTING: ReadonlySet<string> = new Set();
 
@@ -88,7 +101,7 @@ export interface ChatProps {
 export const Chat = ({ history, tipDismissed }: ChatProps) => {
   const result = use(history);
   const dismissed = useChatTipDismissed(use(tipDismissed));
-  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyToId, dispatchReply] = useReducer(replying, null);
   const [, startReacting] = useTransition();
   // Per message, so a slow toggle (Discord's rate limit can hold it 30s) blocks only its own.
   const [reacting, markReacting] = useOptimistic(
@@ -102,26 +115,23 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
     (current, { messageId, emoji }: { messageId: string; emoji: string }) =>
       withReactionToggled(current, messageId, emoji),
   );
-  const [reactionError, setReactionError] = useState<{ error: string }>();
+  const [reactionFailure, settleReaction] = useReducer(
+    reactionError,
+    undefined,
+  );
 
   const react = (messageId: string, emoji: string) => {
     startReacting(async () => {
       markReacting(messageId);
       toggleOptimistically({ messageId, emoji });
       const reaction = await reactToChatMessage(messageId, emoji).catch(
-        () =>
-          ({
-            status: "error",
-            error: "Failed to react to chat message",
-          }) as const,
+        (): ReactToChatMessageResult => ({
+          status: "error",
+          error: "Failed to react to chat message",
+        }),
       );
       // After an await, updates leave the transition unless wrapped again.
-      startReacting(() => {
-        // A fresh object, so the toast shows a repeated error again.
-        setReactionError(
-          reaction.status === "error" ? { error: reaction.error } : undefined,
-        );
-      });
+      startReacting(() => settleReaction(reaction));
     });
   };
 
@@ -134,35 +144,35 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
     ? findMessageById(messages, replyToId)
     : null;
   // Its banner holds the only way to clear it.
-  if (replyToId && !replyToMessage) setReplyToId(null);
+  if (replyToId && !replyToMessage) dispatchReply({ type: "cancel" });
 
   return (
     <ChatReactionsContext value={{ reacting, react }}>
-      <ChatToast result={reactionError} />
+      <ChatToast result={reactionFailure} />
       <ChatHistory
         messages={messages}
         replyToId={replyToId}
-        setReplyToId={setReplyToId}
+        dispatchReply={dispatchReply}
       />
       {replyToMessage && (
         <div className="chat-replying-to" role="status" aria-live="polite">
           <Subtitle>Replying to</Subtitle>
           <ChatMessage
             replyToId={replyToId}
-            setReplyToId={setReplyToId}
+            dispatchReply={dispatchReply}
             {...replyToMessage}
             preview
           />
           <TooltipButton
             tooltip="Clear reply"
             className="clear"
-            onClick={() => setReplyToId(null)}
+            onClick={() => dispatchReply({ type: "cancel" })}
           >
             &times;
           </TooltipButton>
         </div>
       )}
-      <ChatInput replyToId={replyToId} setReplyToId={setReplyToId}>
+      <ChatInput replyToId={replyToId} dispatchReply={dispatchReply}>
         {!dismissed && <ChatTip />}
       </ChatInput>
     </ChatReactionsContext>
