@@ -238,12 +238,17 @@ describe("TimeTravel", () => {
   });
 
   it("ignores a press other than the main button", async () => {
+    vi.useFakeTimers();
     await renderTape();
 
     press("pointerDown", 2, 2);
     press("pointerMove", 2);
-
     expect(screen.getByRole("status")).toHaveTextContent("Sun, Oct 14, 2012");
+
+    // Nor does its release cut short a slide's wait.
+    await slide(9);
+    press("pointerUp", 2);
+    expect(replace()).not.toHaveBeenCalled();
   });
 
   it("keeps the slider focused as the drag's page arrives", async () => {
