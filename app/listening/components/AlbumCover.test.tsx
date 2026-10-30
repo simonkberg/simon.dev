@@ -8,10 +8,10 @@ import { AlbumCover } from "./AlbumCover";
 const cover = `${config.lastfmCoverCdn}abc.jpg`;
 
 const renderCover = (src: string | undefined) =>
-  render(<AlbumCover src={src} width={160} name="Knock Knock" artist="Smog" />);
+  render(<AlbumCover src={src} width={160} />);
 
-const sleeve = () => screen.queryByText("Knock Knock");
 const image = () => screen.getByRole("presentation");
+const hidden = () => image().closest("[data-failed]") !== null;
 const fail = () => fireEvent.error(image());
 const wait = (ms: number) =>
   act(() => {
@@ -23,36 +23,34 @@ beforeEach(() => {
 });
 
 describe("AlbumCover", () => {
-  it("shows the cover without a sleeve", () => {
+  it("shows the cover", () => {
     renderCover(cover);
 
     expect(image()).toHaveAttribute("src", expect.stringContaining("abc.jpg"));
-    expect(sleeve()).not.toBeInTheDocument();
+    expect(hidden()).toBe(false);
   });
 
-  it("shows a sleeve for an album without a cover", () => {
-    renderCover(undefined);
+  it("renders nothing for an album without a cover", () => {
+    const { container } = renderCover(undefined);
 
-    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
-    expect(sleeve()).toBeInTheDocument();
-    expect(screen.getByText("Smog")).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows a sleeve while a failed cover retries, until one loads", async () => {
+  it("hides a failed cover while it retries, until one loads", async () => {
     renderCover(cover);
     const first = image();
 
     fail();
-    expect(sleeve()).toBeInTheDocument();
+    expect(hidden()).toBe(true);
 
     wait(5_999);
     expect(image()).toBe(first);
     wait(1);
     expect(image()).not.toBe(first);
-    expect(sleeve()).toBeInTheDocument();
+    expect(hidden()).toBe(true);
 
     await act(async () => fireEvent.load(image()));
-    expect(sleeve()).not.toBeInTheDocument();
+    expect(hidden()).toBe(false);
   });
 
   it("waits for a retry to fail before the next", () => {
@@ -66,7 +64,7 @@ describe("AlbumCover", () => {
     expect(image()).toBe(retried);
   });
 
-  it("keeps the sleeve once its retries have failed", () => {
+  it("stays hidden once its retries have failed", () => {
     renderCover(cover);
 
     fail();
@@ -78,6 +76,6 @@ describe("AlbumCover", () => {
     wait(60_000);
 
     expect(image()).toBe(last);
-    expect(sleeve()).toBeInTheDocument();
+    expect(hidden()).toBe(true);
   });
 });

@@ -23,7 +23,7 @@ describe("AlbumCollage", () => {
     await renderCollage(albums);
 
     const link = screen.getByRole("link", {
-      name: "Knock Knock by Smog on Last.fm",
+      name: "Knock Knock by Smog, 39 plays, on Last.fm",
     });
     expect(link).toHaveAttribute(
       "href",
@@ -34,19 +34,20 @@ describe("AlbumCollage", () => {
     }
   });
 
-  it("gives an album without art a sleeve of its name", async () => {
+  it("captions each cover with its rank, plays, name and artist", async () => {
     await renderCollage(albums);
 
     const link = screen.getByRole("link", {
-      name: "Stuff Like That There by Yo La Tengo on Last.fm",
+      name: "Stuff Like That There by Yo La Tengo, 37 plays, on Last.fm",
     });
-    expect(within(link).queryByRole("presentation")).not.toBeInTheDocument();
-    expect(link.querySelector(".cover-sleeve")).toHaveTextContent(
-      "Stuff Like That ThereYo La Tengo",
-    );
+    expect(
+      [".cover-rank", ".cover-plays", ".caption-name", ".caption-artist"].map(
+        (selector) => link.querySelector(selector)?.textContent,
+      ),
+    ).toEqual(["3", "37", "Stuff Like That There", "Yo La Tengo"]);
   });
 
-  it("doesn't pass a failed cover's sleeve to the album taking its rank", async () => {
+  it("doesn't pass a failed cover to the album taking its rank", async () => {
     const { rerender } = await renderCollage(albums);
     const [image] = screen.getAllByRole("presentation");
     fireEvent.error(image!);
@@ -61,33 +62,20 @@ describe("AlbumCollage", () => {
       ),
     );
 
-    const link = screen.getByRole("link", { name: "Pale by Mimi on Last.fm" });
-    expect(link.querySelector(".cover-sleeve")).not.toBeInTheDocument();
+    const link = screen.getByRole("link", {
+      name: "Pale by Mimi, 39 plays, on Last.fm",
+    });
+    expect(link.querySelector("[data-failed]")).not.toBeInTheDocument();
   });
 
   it("pads a short list with empty tiles to fill the grid", async () => {
     await renderCollage(albums);
 
-    const [covers] = screen.getAllByRole("list");
+    const covers = screen.getByRole("list");
     expect(
-      within(covers!).getAllByRole("listitem", { hidden: true }),
+      within(covers).getAllByRole("listitem", { hidden: true }),
     ).toHaveLength(10);
-    expect(within(covers!).getAllByRole("listitem")).toHaveLength(3);
-  });
-
-  it("lists each album's rank, name, artist and plays", async () => {
-    await renderCollage(albums);
-
-    const [, legend] = screen.getAllByRole("list");
-    expect(
-      within(legend!)
-        .getAllByRole("listitem")
-        .map((item) => [...item.children].map((child) => child.textContent)),
-    ).toEqual([
-      ["1", "Knock Knock", "Smog", "39"],
-      ["2", "Beheaded", "Bedhead", "38"],
-      ["3", "Stuff Like That There", "Yo La Tengo", "37"],
-    ]);
+    expect(within(covers).getAllByRole("listitem")).toHaveLength(3);
   });
 
   it("says the albums are unavailable when they failed to load", async () => {

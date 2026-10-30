@@ -135,7 +135,11 @@
   --cover-threshold: none;
   --cover-frame: none;
   --cover-frame-hover: var(--cover-frame);
-  --sleeve-artist: var(--muted);
+  --caption-scrim: none;
+  --caption-bg: var(--ground);
+  --caption-ink: var(--ink);
+  --caption-muted: var(--muted);
+  --plays-bg: var(--caption-bg);
   --timeline-origin: "┬";
   --timeline-bar: "━";
   --timeline-bar-color: var(--accent);
@@ -357,6 +361,12 @@
   );
   --cover-frame: 1px solid var(--rule);
   --cover-frame-hover: 1px solid var(--accent);
+  /* Light on a scrim, so captions read on any cover in either theme. */
+  --caption-scrim: linear-gradient(transparent, oklch(0 0 0 / 0.8));
+  --caption-bg: transparent;
+  --caption-ink: oklch(0.97 0 0);
+  --caption-muted: oklch(0.85 0 0);
+  --plays-bg: oklch(0.15 0.008 260 / 0.85);
 
   --track-padding: 0 0 0 2.5ch;
   --track-marker: "›";
@@ -500,8 +510,6 @@
   --cover-filter: grayscale(1) contrast(1.1);
   --cover-overlay: var(--cover-bg);
   --cover-blend: multiply;
-  /* Muted is too faint on the accent wash. */
-  --sleeve-artist: color-mix(in oklch, currentColor 75%, transparent);
   --lane-weight: 2px;
   --tape-bar: color-mix(in oklch, var(--accent) 45%, transparent);
   --timeline-origin: "◇";
@@ -2821,14 +2829,12 @@ tbody tr:hover {
 }
 
 .collage {
-  display: grid;
-  gap: 1lh;
   container-type: inline-size;
 }
 
 .collage-covers {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--collage-gap);
   margin: 0;
   padding: 0;
@@ -2836,18 +2842,22 @@ tbody tr:hover {
   background: var(--collage-bg);
   border: var(--collage-border);
 
-  /* The top album spans three rows and columns; equal gaps keep it square with them. */
-  > :first-child {
-    grid-column: span 3;
-    grid-row: span 3;
+  /* Tiles stay wide enough for their captions: the top two over rows of four, then #1 beside a 3×3 grid. */
+  @container (30rem <= width < 44rem) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    > :nth-child(-n + 2) {
+      grid-column: span 2;
+    }
   }
 
-  @container (width < 36rem) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Equal gaps keep the top album square with the three rows it spans. */
+  @container (width >= 44rem) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
 
     > :first-child {
-      grid-column: 1 / -1;
-      grid-row: auto;
+      grid-column: span 3;
+      grid-row: span 3;
     }
   }
 }
@@ -2940,97 +2950,62 @@ tbody tr:hover {
   }
 }
 
-/* Stands in for a cover that is missing or failed to load, sized to its tile. */
-.cover-sleeve {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  /* Safe, so a name too long for a small tile runs off its foot rather than under the rank. */
-  justify-content: safe flex-end;
-  overflow: hidden;
-  padding: 2lh 1ch 0.5lh;
-  font-size: clamp(0.75rem, 7cqi, 1.25rem);
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-
-  > span {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-  }
-}
-
-.sleeve-name {
-  -webkit-line-clamp: 3;
-  font-weight: bold;
-}
-
-.sleeve-artist {
-  -webkit-line-clamp: 2;
-  color: var(--sleeve-artist);
-}
-
-@container (width < 12rem) {
-  .sleeve-name {
-    -webkit-line-clamp: 2;
-  }
-
-  .sleeve-artist {
-    -webkit-line-clamp: 1;
-  }
-}
-
-.cover-rank {
+.cover-rank,
+.cover-plays {
   position: absolute;
   z-index: 1;
   top: 0;
-  left: 0;
   padding: 0 1ch;
   font-size: 0.875rem;
   line-height: 1.5;
+}
+
+.cover-rank {
+  left: 0;
   color: var(--on-accent);
   background: var(--accent);
 }
 
-.collage-legend {
-  columns: 2;
-  column-gap: 3ch;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  @container (width < 36rem) {
-    columns: 1;
-  }
-
-  > li {
-    display: grid;
-    break-inside: avoid;
-    grid-template-columns: 3ch minmax(0, 1fr) auto;
-    column-gap: 1ch;
-    padding: var(--td-padding);
-    border-bottom: var(--td-rule);
-  }
+.cover-plays {
+  right: 0;
+  color: var(--caption-ink);
+  background: var(--plays-bg);
 }
 
-.legend-rank {
-  color: var(--rank-color);
-}
-
-.legend-name,
-.legend-artist {
+/* Clamped lines, so a long name runs off its foot rather than under the corners. */
+.cover-caption {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 2lh;
+  font-size: clamp(0.75rem, 6.5cqi, 1.25rem);
+  line-height: 1.3;
+  color: var(--caption-ink);
+  background: var(--caption-scrim);
   overflow-wrap: anywhere;
+
+  > span {
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0 1ch;
+    background: var(--caption-bg);
+    -webkit-box-orient: vertical;
+  }
 }
 
-.legend-artist {
-  grid-column: 2;
-  color: var(--muted);
+.caption-name {
+  -webkit-line-clamp: 2;
+  font-weight: bold;
 }
 
-.legend-plays {
-  grid-area: 1 / 3;
-  color: var(--muted);
+.caption-artist {
+  -webkit-line-clamp: 1;
+  font-size: 0.9em;
+  color: var(--caption-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
