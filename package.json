@@ -60,7 +60,7 @@
     "msw": "3.0.3",
     "oxc-transform-react": "0.156.0",
     "oxfmt": "0.75.0",
-    "oxlint": "1.89.0",
+    "oxlint": "1.90.0",
     "oxlint-tsgolint": "7.0.2005",
     "pino-pretty": "13.2.0",
     "railway": "3.16.0",
