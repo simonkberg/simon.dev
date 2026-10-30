@@ -362,7 +362,7 @@
   --cover-frame: 1px solid var(--rule);
   --cover-frame-hover: 1px solid var(--accent);
   /* Light on a scrim, so captions read on any cover in either theme. */
-  --caption-scrim: linear-gradient(transparent, oklch(0 0 0 / 0.8));
+  --caption-scrim: linear-gradient(transparent, oklch(0 0 0 / 0.75) 2lh);
   --caption-bg: transparent;
   --caption-ink: oklch(0.97 0 0);
   --caption-muted: oklch(0.85 0 0);

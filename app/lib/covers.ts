@@ -20,7 +20,7 @@ const INLINE_RETRY_MS = [1_000, 3_000];
 // This replica's own server, whose image cache the warm-up fills.
 export const localOrigin = `http://localhost:${process.env["PORT"] ?? 3000}`;
 
-// A fixed width gives each cover just a 1x and a 2x URL to warm. #2 is large only in the medium grid, at most about 340px.
+// A fixed width gives each cover just a 1x and a 2x URL to warm. #2 is widest in the medium grid, about 340px.
 export const coverWidth = (index: number) =>
   index === 0 ? 480 : index === 1 ? 320 : 160;
 
