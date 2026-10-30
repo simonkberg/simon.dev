@@ -12,11 +12,9 @@ export interface AlbumCoverProps {
   // Undefined when Last.fm has no cover.
   src: string | undefined;
   width: number;
-  name: string;
-  artist: string;
 }
 
-// The sleeve shows from the first failure until a retry loads.
+// Hidden from the first failure until a retry loads, leaving the tile's caption.
 interface Cover {
   status: "shown" | "failed" | "retrying";
   attempt: number;
@@ -34,8 +32,8 @@ function cover(state: Cover, action: "load" | "error" | "retry"): Cover {
   }
 }
 
-/** The album's cover, retried when it fails to load, with a text sleeve until one does. */
-export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
+/** The album's cover, retried when it fails to load and hidden until one does. */
+export const AlbumCover = ({ src, width }: AlbumCoverProps) => {
   const [{ status, attempt }, dispatch] = useReducer(cover, {
     status: "shown",
     attempt: 0,
@@ -45,27 +43,19 @@ export const AlbumCover = ({ src, width, name, artist }: AlbumCoverProps) => {
 
   useTimeout(() => dispatch("retry"), retry);
 
+  if (!src) return null;
+
   return (
-    <>
-      {src && (
-        <span className="cover-art" data-failed={failed || undefined}>
-          <Image
-            key={attempt}
-            src={src}
-            width={width}
-            height={width}
-            alt=""
-            onError={() => dispatch("error")}
-            onLoad={() => dispatch("load")}
-          />
-        </span>
-      )}
-      {(!src || failed) && (
-        <span className="cover-sleeve" aria-hidden="true">
-          <span className="sleeve-name">{name}</span>
-          <span className="sleeve-artist">{artist}</span>
-        </span>
-      )}
-    </>
+    <span className="cover-art" data-failed={failed || undefined}>
+      <Image
+        key={attempt}
+        src={src}
+        width={width}
+        height={width}
+        alt=""
+        onError={() => dispatch("error")}
+        onLoad={() => dispatch("load")}
+      />
+    </span>
   );
 };

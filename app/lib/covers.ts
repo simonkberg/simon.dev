@@ -6,7 +6,7 @@ import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { periods } from "@/lib/periods";
 
-// The listening page shows this many, as a #1 tile beside a 3×3 grid.
+// The listening page shows this many, the first one or two as large tiles.
 export const TOP_ALBUMS = 10;
 
 const WARM_MS = 60 * 60 * 1000;
@@ -20,8 +20,9 @@ const INLINE_RETRY_MS = [1_000, 3_000];
 // This replica's own server, whose image cache the warm-up fills.
 export const localOrigin = `http://localhost:${process.env["PORT"] ?? 3000}`;
 
-// A fixed width gives each cover just a 1x and a 2x URL to warm.
-export const coverWidth = (index: number) => (index === 0 ? 480 : 160);
+// A fixed width gives each cover just a 1x and a 2x URL to warm. #2 is widest in the medium grid, about 340px.
+export const coverWidth = (index: number) =>
+  index === 0 ? 480 : index === 1 ? 320 : 160;
 
 export function coverUrls(src: string, index: number): string[] {
   const { srcSet } = getImageProps({
