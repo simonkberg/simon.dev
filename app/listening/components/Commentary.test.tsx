@@ -47,7 +47,6 @@ describe("Commentary", () => {
       screen.getByRole("heading", { name: "simon-bot (take)" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByRole("paragraph")).toHaveClass("reserved");
 
     await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "false");
@@ -136,7 +135,6 @@ describe("Commentary", () => {
     );
 
     expect(take()).toHaveTextContent("ask me once the day is over");
-    expect(screen.getByRole("paragraph")).not.toHaveClass("reserved");
     await act(() => vi.advanceTimersByTimeAsync(2000));
     expect(gets).toBe(0);
     expect(posts).toEqual([]);
@@ -161,7 +159,6 @@ describe("Commentary", () => {
       );
 
       expect(take()).toHaveTextContent(TEXT);
-      expect(screen.getByRole("paragraph")).not.toHaveClass("reserved");
       await act(() => vi.advanceTimersByTimeAsync(2000));
       expect(gets).toBe(0);
       expect(posts).toEqual([]);

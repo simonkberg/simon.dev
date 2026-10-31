@@ -128,11 +128,11 @@ function Words({ state }: { state: State }) {
   }
 }
 
-function Pane({ state, reserved }: { state: State; reserved: boolean }) {
+function Pane({ state }: { state: State }) {
   const face = useFrameAnimation(framesOf(state));
   return (
     <p
-      className={reserved ? "commentary reserved" : "commentary"}
+      className="commentary"
       aria-busy={
         state.phase === "asking" ||
         state.phase === "waiting" ||
@@ -206,7 +206,7 @@ function Take({
     state.phase === "typing" ? state.shown : undefined,
   );
 
-  return <Pane state={state} reserved={!settled} />;
+  return <Pane state={state} />;
 }
 
 /**
@@ -223,13 +223,12 @@ export function Commentary({
   stored?: Promise<string | undefined | null>;
   today?: Promise<Day>;
 }) {
-  // The pane is there from the first paint, with room for a take that loads, so little moves when one arrives.
   return (
     <section>
       <Heading level={2}>
         simon-bot <Subtitle>(take)</Subtitle>
       </Heading>
-      <Suspense fallback={<Pane state={{ phase: "asking" }} reserved />}>
+      <Suspense fallback={<Pane state={{ phase: "asking" }} />}>
         <Take page={page} stored={stored} today={today} />
       </Suspense>
     </section>

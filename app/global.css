@@ -2720,15 +2720,6 @@ ul {
   gap: 1ch;
   margin: 0;
 
-  /* Room for a typical take before it arrives, so nothing under it moves. */
-  &.reserved {
-    min-block-size: 3lh;
-
-    @media (width < 30rem) {
-      min-block-size: 6lh;
-    }
-  }
-
   > .face {
     flex: none;
     /* The widest frame, (・.・?), so the text stays put as the face moves. */
