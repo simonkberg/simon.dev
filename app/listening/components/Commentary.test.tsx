@@ -62,7 +62,7 @@ describe("Commentary", () => {
     await vi.waitFor(() => expect(take()).toHaveTextContent("listening back"));
     expect(posts).toEqual([]);
 
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
     await vi.waitFor(() => expect(posts).toEqual(["2019-03-04"]));
     await vi.waitFor(() =>
       expect(TEXT.startsWith(take().textContent)).toBe(true),
@@ -83,7 +83,7 @@ describe("Commentary", () => {
     render(<Commentary page="7day" />);
 
     await vi.waitFor(() => expect(take()).toHaveTextContent("listening back"));
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
 
     await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
   });
@@ -100,7 +100,7 @@ describe("Commentary", () => {
     answer(get, post);
     render(<Commentary page="7day" />);
 
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
 
     await vi.waitFor(() =>
       expect(take()).toHaveTextContent("nothing to say this time"),
@@ -123,7 +123,7 @@ describe("Commentary", () => {
     await vi.waitFor(() => expect(take()).toHaveTextContent("listening back"));
 
     unmount();
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
 
     expect(posts).toEqual([]);
   });
@@ -136,14 +136,14 @@ describe("Commentary", () => {
       </Activity>
     );
     const { rerender } = render(page("visible"));
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
     await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT), {
       timeout: 5000,
     });
 
     rerender(page("hidden"));
     rerender(page("visible"));
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
 
     expect(posts).toEqual(["2019-03-04"]);
     expect(take()).toHaveTextContent(TEXT);
@@ -162,7 +162,7 @@ describe("Commentary", () => {
         );
 
         expect(take()).toHaveTextContent(shown);
-        await act(() => vi.advanceTimersByTimeAsync(2000));
+        await act(() => vi.advanceTimersByTimeAsync(1000));
         expect(gets).toBe(0);
         expect(posts).toEqual([]);
       },
@@ -180,7 +180,7 @@ describe("Commentary", () => {
       );
 
       expect(take()).toHaveTextContent("listening back");
-      await act(() => vi.advanceTimersByTimeAsync(2000));
+      await act(() => vi.advanceTimersByTimeAsync(1000));
       await vi.waitFor(() => expect(posts).toEqual(["7day"]));
       expect(gets).toBe(0);
     });
