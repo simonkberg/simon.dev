@@ -3,15 +3,13 @@
 import { Suspense } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
-import { withoutSkinTone } from "@/lib/emoji";
 
-import { useShortcodes } from "./shortcodes";
+import { useShortcode } from "./shortcodes";
 
 const EMOJI = /(\p{RGI_Emoji})/v;
 
 const Shortcode = ({ emoji }: { emoji: string }) => {
-  const base = withoutSkinTone(emoji);
-  const name = useShortcodes().find(([known]) => known === base)?.[1][0];
+  const name = useShortcode(emoji);
   return name && `:${name}:`;
 };
 

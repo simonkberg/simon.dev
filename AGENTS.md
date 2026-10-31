@@ -186,7 +186,7 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   Emojibase's keywords, which Discord matches too (whole, after every shortcode). The chat
   fetches it once it hydrates, so a hovered message emoji or reaction names its shortcode at
   once while the full set never ships with the page; `app/components/chat/shortcodes.ts` holds
-  the one cached request; render with `useShortcodes`, as `use()` flashes the fallback on a
+  the one cached request; render with `useShortcode`, as `use()` flashes the fallback on a
   promise it hasn't read, even a settled one.
   Sending turns known `:shortcodes:` into emoji (`emojify`, called from `postChannelMessage`), as
   Discord clients do: the one place they convert, so the input never rewrites what is typed.

@@ -1,6 +1,10 @@
 import { use } from "react";
 
-import { type EmojiShortcodes, REACTION_EMOJI } from "@/lib/emoji";
+import {
+  type EmojiShortcodes,
+  REACTION_EMOJI,
+  withoutSkinTone,
+} from "@/lib/emoji";
 
 const REACTION_SHORTCODES: EmojiShortcodes[] = REACTION_EMOJI.map(
   ({ emoji, name }) => [emoji, [name], []],
@@ -25,8 +29,12 @@ export function loadShortcodes(): Promise<EmojiShortcodes[]> {
   return shortcodes;
 }
 
-/** The set, suspending until it loads; `use()` alone would flash the fallback for 300ms on a promise it hasn't read, even a settled one. */
-export const useShortcodes = () => loaded ?? use(loadShortcodes());
+/** The emoji's first shortcode, suspending until the set loads; `use()` alone would flash the fallback for 300ms on a promise it hasn't read, even a settled one. */
+export function useShortcode(emoji: string): string | undefined {
+  const base = withoutSkinTone(emoji);
+  const set = loaded ?? use(loadShortcodes());
+  return set.find(([known]) => known === base)?.[1][0];
+}
 
 /** Loads the set, retrying a fetch that failed; for an explicit event like focus, never render. */
 export function reloadShortcodes(): Promise<EmojiShortcodes[]> {
