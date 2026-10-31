@@ -85,7 +85,7 @@ describe("listeningCard", () => {
     );
     expect(screen.getByText("(1 year · per month)")).toBeInTheDocument();
     expect(screen.getByText("1,500")).toBeInTheDocument();
-    expect(document.body).toHaveTextContent("top artistSmog1,234 plays");
+    expect(document.body).toHaveTextContent("top artistSmog1,234");
     expect(screen.getByText("500")).toBeInTheDocument();
     expect(screen.getByText("250 avg")).toBeInTheDocument();
     expect(
@@ -145,7 +145,7 @@ describe("listeningCard", () => {
 
     await renderCard();
 
-    expect(screen.getByText("The Magnetic…")).toBeInTheDocument();
+    expect(screen.getByText("The Magnetic Fiel…")).toBeInTheDocument();
   });
 
   it("leaves out the covers when the albums fail", async () => {

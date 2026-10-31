@@ -61,7 +61,7 @@ describe("opengraph-image", () => {
     expect(screen.getByText("(2 of 6 years)")).toBeInTheDocument();
     expect(screen.getByText("Oct 26")).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      "busiest:2024·Apartment Story–The National(9 plays)·62 plays that day",
+      "busiest:2024·Apartment Story–The National·62 plays",
     );
     expect(
       screen.getAllByText(/^(The National|Car Seat Headrest)$/),
