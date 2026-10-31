@@ -10,7 +10,8 @@ const EMOJI = /(\p{RGI_Emoji})/v;
 
 const Shortcode = ({ emoji }: { emoji: string }) => {
   const name = useShortcode(emoji);
-  return name && `:${name}:`;
+  if (!name) return null;
+  return `:${name}:`;
 };
 
 /** The emoji's `:shortcode:`, from the set the chat prefetches. */

@@ -25,15 +25,21 @@ export function loadShortcodes(): Promise<EmojiShortcodes[]> {
       failed = true;
       return REACTION_SHORTCODES;
     })
-    .then((set) => (loaded = set));
+    .then((set) => {
+      loaded = set;
+      return set;
+    });
   return shortcodes;
 }
 
 /** The emoji's first shortcode, suspending until the set loads; `use()` alone would flash the fallback for 300ms on a promise it hasn't read, even a settled one. */
 export function useShortcode(emoji: string): string | undefined {
-  const base = withoutSkinTone(emoji);
   const set = loaded ?? use(loadShortcodes());
-  return set.find(([known]) => known === base)?.[1][0];
+  const base = withoutSkinTone(emoji);
+  const entry = set.find(([known]) => known === base);
+  if (!entry) return undefined;
+  const [, names] = entry;
+  return names[0];
 }
 
 /** Loads the set, retrying a fetch that failed; for an explicit event like focus, never render. */
