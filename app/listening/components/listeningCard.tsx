@@ -132,7 +132,7 @@ const Stats = ({
   width: number;
 }) => {
   const total = scrobbled === undefined ? undefined : formatNumber(scrobbled);
-  const plays = top && formatNumber(top.playcount);
+  const plays = top && formatPlays(top.playcount);
   // The top artist's name gives way, so the row never runs into the covers.
   const nameRoom =
     width -

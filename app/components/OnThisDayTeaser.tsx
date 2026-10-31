@@ -4,7 +4,7 @@ import { use } from "react";
 import type { GetOnThisDayResult } from "@/actions/listening";
 import { Skeleton } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
-import { busiestYear } from "@/lib/onThisDay";
+import { busiestYear, topTrackPlays } from "@/lib/onThisDay";
 
 export interface OnThisDayTeaserProps {
   onThisDay: Promise<GetOnThisDayResult>;
@@ -17,6 +17,8 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
 
   if (year === undefined) return null;
 
+  const trackPlays = topTrackPlays(year);
+
   return (
     <div className="flashback">
       <strong className="flashback-title">
@@ -24,7 +26,7 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
       </strong>
       <p>
         {year.top.track} &ndash; <em>{year.top.artist}</em>
-        {` (${formatPlays(year.top.plays)})`}. See&nbsp;
+        {trackPlays && ` ${trackPlays}`}. See&nbsp;
         <Link href="/listening/on-this-day">every&nbsp;year</Link>.
       </p>
     </div>

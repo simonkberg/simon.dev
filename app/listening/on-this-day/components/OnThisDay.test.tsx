@@ -28,7 +28,7 @@ describe("OnThisDay", () => {
         "Oct 24",
         "2025Glue – Bicep (9 plays)12 plays that day12 plays in 2025",
         "2023–2024nothing played",
-        "2022Glue – Bicep (9 plays)1 play that day1 play in 2022",
+        "2022Glue – Bicep1 play that day1 play in 2022",
         "2021nothing played",
       ],
     );

@@ -2,7 +2,7 @@
 
 import { type DayInYear, getOnThisDay } from "@/actions/listening";
 import { formatPlays } from "@/lib/formatNumber";
-import { busiestYear } from "@/lib/onThisDay";
+import { busiestYear, topTrackPlays } from "@/lib/onThisDay";
 import { color, Pane, shareCard } from "@/lib/shareCard";
 
 export { contentType, size } from "@/lib/shareCard";
@@ -143,6 +143,7 @@ export default async function openGraphImage() {
   // Oldest first, along the time axis.
   // Before reversing, so a tie goes to the newest year, as on the home page.
   const busiest = busiestYear(days?.years ?? []);
+  const trackPlays = busiest && topTrackPlays(busiest);
   const years = days?.years.toReversed() ?? [];
   const played = years.filter(({ top }) => top).length;
 
@@ -182,7 +183,7 @@ export default async function openGraphImage() {
                   <span style={{ ...clip, fontStyle: "italic" }}>
                     {busiest.top.artist}
                   </span>
-                  <span style={keep}>({formatPlays(busiest.top.plays)})</span>
+                  {trackPlays && <span style={keep}>{trackPlays}</span>}
                   <span style={keep}>·</span>
                   <span style={keep}>
                     {formatPlays(busiest.count)} that day
