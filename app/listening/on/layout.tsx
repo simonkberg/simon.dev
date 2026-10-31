@@ -10,6 +10,7 @@ import { firstYear } from "@/lib/dates";
 import { getToday } from "@/lib/today";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
+import { DayCommentary } from "./components/DayCommentary";
 import { TimeTravel, TimeTravelSkeleton } from "./components/TimeTravel";
 import { TravelProvider } from "./components/Travel";
 
@@ -51,6 +52,7 @@ export default function TimeTravelLayout({
               {days}
             </TimeTravel>
           </Suspense>
+          <DayCommentary />
         </section>
 
         {children}

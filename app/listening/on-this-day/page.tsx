@@ -6,6 +6,7 @@ import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { config } from "@/config";
+import { Commentary } from "@/listening/components/Commentary";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
 import { OnThisDay, OnThisDaySkeleton } from "./components/OnThisDay";
@@ -41,6 +42,7 @@ export default function OnThisDayPage() {
         <Suspense fallback={<OnThisDaySkeleton />}>
           <OnThisDay days={days} />
         </Suspense>
+        <Commentary page="on-this-day" />
       </section>
     </Page>
   );

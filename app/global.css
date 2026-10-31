@@ -99,6 +99,12 @@
   --heading-sub-case: none;
   --heading-number: none;
 
+  --note-top: 0;
+  --note-inset: 0;
+  --note-translate: none;
+  --note-padding: 0;
+  --note-bg: transparent;
+
   --stats-columns: minmax(0, 1fr) max-content;
   --stats-gap: 0;
   --stats-max: none;
@@ -347,6 +353,12 @@
   --heading-number: counter(pane, decimal-leading-zero) " ";
   --heading-wrap: nowrap;
 
+  /* On the pane's top border, like its heading. */
+  --note-inset: 1.5ch;
+  --note-translate: 0 -50%;
+  --note-padding: 0 1ch;
+  --note-bg: var(--heading-bg);
+
   --stats-gap: 0 2ch;
   --stats-row-padding: 0 1ch;
   --stats-row-bleed: -1ch;
@@ -488,6 +500,8 @@
   --heading-row: 1 / span 20;
   --heading-sub-display: block;
   --heading-sub-gap: 0.25rem;
+
+  --note-top: 1.25rem;
 
   --stats-columns: max-content minmax(4rem, 1fr) max-content;
   --stats-gap: 0.15rem 2ch;
@@ -2702,6 +2716,76 @@ ul {
         opacity: 0.5;
       }
     }
+  }
+}
+
+.commentary {
+  position: absolute;
+  top: var(--note-top);
+  right: var(--note-inset);
+  translate: var(--note-translate);
+  /* Above the heading, which cuts off under it on a narrow pane. */
+  z-index: 3;
+  font-size: var(--small-size);
+
+  > .tag {
+    display: flex;
+    gap: 1ch;
+    padding: var(--note-padding);
+    background: var(--note-bg);
+    font: inherit;
+    font-weight: bold;
+    text-transform: var(--heading-case);
+    letter-spacing: var(--heading-tracking);
+    color: var(--accent);
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+    }
+
+    > .hint {
+      font-weight: normal;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--muted);
+    }
+  }
+
+  > .bubble {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    right: 0;
+    width: min(44ch, calc(100vw - 4rem));
+    margin: 0;
+    padding: 0.75rem 1ch;
+    border: 1px solid var(--accent);
+    /* Clears the chart under it, so the text never sits on a line. */
+    box-shadow: 0 0 0 0.5rem var(--ground);
+    background: var(--ground);
+    color: var(--ink);
+    line-height: var(--leading);
+    white-space: normal;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 0.6ch;
+    height: 1em;
+    margin-inline-start: 0.1ch;
+    vertical-align: -0.15em;
+    background: var(--accent);
+    animation-name: blink;
+    animation-duration: 1s;
+    animation-timing-function: steps(1);
+    animation-iteration-count: infinite;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
   }
 }
 

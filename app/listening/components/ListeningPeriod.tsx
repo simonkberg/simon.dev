@@ -11,6 +11,7 @@ import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
+import { Commentary } from "./Commentary";
 import { ScrobbleChart, ScrobbleChartSkeleton } from "./ScrobbleChart";
 import { TopLists } from "./TopLists";
 
@@ -55,6 +56,7 @@ export function ListeningPeriod({ period }: { period: Period }) {
             topArtistByBucket={topArtistByBucket}
           />
         </Suspense>
+        <Commentary key={period} page={period} />
       </section>
 
       <TopLists span={period} subtitle="Top 10" />

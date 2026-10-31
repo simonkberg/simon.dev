@@ -5,13 +5,13 @@ import { useReducer } from "react";
 import { useTimeout } from "@/components/useTimeout";
 
 type AnimationFrame = readonly [durationSeconds: number, expression: string];
-type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
+export type AnimationFrames = readonly [AnimationFrame, ...AnimationFrame[]];
 
 const SUCCESS_DURATION_MS = 1500;
 const TYPING_TIMEOUT_MS = 3000;
 const LONG_MESSAGE_THRESHOLD = 100;
 
-const ANIMATIONS = {
+export const ANIMATIONS = {
   idle: [
     // Z wave
     [0.5, "(-_-)zzz"],
@@ -168,7 +168,7 @@ function animation(state: Animation, action: AnimationAction): Animation {
   }
 }
 
-function useFrameAnimation(frames: AnimationFrames): string {
+export function useFrameAnimation(frames: AnimationFrames): string {
   const [state, dispatch] = useReducer(animation, {
     frames,
     index: 0,

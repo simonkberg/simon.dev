@@ -31,12 +31,14 @@ import {
 import {
   type ChartItem,
   countScrobbles,
+  hasSettled,
   LATE_MS,
   type Play,
   type Played,
   playsIn,
   recentPlays,
   type RecentTrack,
+  SETTLE_MS,
   topArtist,
   topArtists,
   topPlayed,
@@ -267,11 +269,6 @@ async function endedTopArtist(from: Date, to: Date) {
   "use cache";
   return settle(() => topArtist(from, to), to);
 }
-
-// A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
-const SETTLE_MS = 60 * 60 * 1000;
-
-const hasSettled = (end: number, now: Date) => end + SETTLE_MS <= now.getTime();
 
 /** Caches what ended at `end` once it has settled, and says whether it had. */
 function cacheSettled(end: number, now: Date) {

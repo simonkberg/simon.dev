@@ -14,6 +14,7 @@ import { playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  chatCategories,
   describeMiss,
   edit,
   forget,
@@ -191,12 +192,12 @@ describe("createMessage", () => {
       ],
       tools: [
         { name: "get_chat_history" },
+        { name: "search_messages" },
         { name: "get_wakatime_stats" },
         { name: "get_recent_tracks" },
         { name: "get_plays" },
         { name: "get_top" },
         { name: "get_play_counts" },
-        { name: "search_messages" },
         { name: "react" },
         { name: "ban" },
         { name: "remember" },
@@ -223,7 +224,10 @@ describe("createMessage", () => {
     expect(requests[0]?.messages).toEqual([
       { role: "user", content: formatConversation(chat) },
     ]);
-    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+    expect(buildMemoryContext).toHaveBeenCalledWith(
+      chatCategories(["Alice", "Bob"]),
+      true,
+    );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
 
