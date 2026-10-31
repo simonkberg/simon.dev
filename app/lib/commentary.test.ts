@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getDayPlays,
+  getOnThisDay,
   getScrobbles,
   getTopAlbums,
   getTopArtistByBucket,
@@ -367,29 +368,46 @@ Oct 31: 3 (so far)
 });
 
 describe("page facts", () => {
-  it("should leave out what failed to load", async () => {
-    vi.mocked(getScrobbles).mockResolvedValueOnce({
-      status: "error",
-      error: "down",
-    });
-    vi.mocked(getTopArtistByBucket).mockResolvedValueOnce({
-      status: "error",
-      error: "down",
-    });
-    vi.mocked(getTopArtists).mockResolvedValueOnce({
-      status: "error",
-      error: "down",
-    });
-    vi.mocked(getTopAlbums).mockResolvedValueOnce({
-      status: "error",
-      error: "down",
-    });
-    reply("hm");
+  const down = { status: "error" as const, error: "down" };
 
-    await writeCommentary("7day", NOW);
+  it.each([
+    [
+      "a period's chart",
+      "7day",
+      () => vi.mocked(getScrobbles).mockResolvedValueOnce(down),
+    ],
+    [
+      "a period's lanes",
+      "7day",
+      () => vi.mocked(getTopArtistByBucket).mockResolvedValueOnce(down),
+    ],
+    [
+      "a top list",
+      "7day",
+      () => vi.mocked(getTopAlbums).mockResolvedValueOnce(down),
+    ],
+    [
+      "On this day's years",
+      "on-this-day",
+      () => vi.mocked(getOnThisDay).mockResolvedValueOnce(down),
+    ],
+    [
+      "a day's plays",
+      "2019-03-04",
+      () => vi.mocked(getDayPlays).mockResolvedValueOnce(down),
+    ],
+    [
+      "a day's month",
+      "2019-03-04",
+      () => vi.mocked(getTopArtists).mockResolvedValueOnce(down),
+    ],
+  ] as const)("should write nothing without %s", async (_, page, fail) => {
+    fail();
 
-    expect(input()).not.toContain("<scrobbles>");
-    expect(input()).not.toContain("<top_artists>");
-    expect(input()).not.toContain("<top_albums>");
+    await expect(writeCommentary(page, NOW)).rejects.toThrow(
+      "Commentary is missing part of the page",
+    );
+    expect(finalText).not.toHaveBeenCalled();
+    expect(await stored()).toEqual([]);
   });
 });

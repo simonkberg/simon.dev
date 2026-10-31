@@ -185,24 +185,23 @@ async function periodFacts(period: Period): Promise<Fact[]> {
     getTopArtistByBucket(period),
     spanFacts(period),
   ]);
-  const artists =
-    lanes.status === "ok"
-      ? new Map(lanes.buckets.map((b) => [b.label, b.artist?.name]))
-      : undefined;
+  if (scrobbles.status === "error" || lanes.status === "error") {
+    return [false, ...tops];
+  }
+  const artists = new Map(lanes.buckets.map((b) => [b.label, b.artist?.name]));
   return [
-    scrobbles.status === "ok" &&
-      list(
-        "scrobbles",
-        scrobbles.scrobbles.map(({ label, count, current }) =>
-          [
-            `${label}: ${count}`,
-            artists?.get(label) && `, mostly ${artists.get(label)}`,
-            current && " (so far)",
-          ]
-            .filter(Boolean)
-            .join(""),
-        ),
+    list(
+      "scrobbles",
+      scrobbles.scrobbles.map(({ label, count, current }) =>
+        [
+          `${label}: ${count}`,
+          artists.get(label) && `, mostly ${artists.get(label)}`,
+          current && " (so far)",
+        ]
+          .filter(Boolean)
+          .join(""),
       ),
+    ),
     ...tops,
   ];
 }
@@ -236,7 +235,7 @@ async function dayFacts(day: Day): Promise<Fact[]> {
           ({ time, name, artist }) => `${time} ${name} - ${artist}`,
         ),
       ),
-    `<month_tops>\n${tops.filter((fact) => fact !== false).join("\n")}\n</month_tops>`,
+    !tops.includes(false) && `<month_tops>\n${tops.join("\n")}\n</month_tops>`,
   ];
 }
 
@@ -268,9 +267,12 @@ async function pageInput(
     // A day's slot is the day itself, so an earlier one is another day, not this page before.
     slot.page === "day" ? undefined : readPrevious(slot.page, slot.slot),
   ]);
+  // A comment is kept until its slot ends, a day's for good, so none is written from part of the page.
+  if (facts.includes(false))
+    throw new Error("Commentary is missing part of the page");
   return [
     `<page description="${escapeXml(describe(page, localDay(now)))}">`,
-    ...facts.filter((fact) => fact !== false),
+    ...facts,
     "</page>",
     previous !== undefined && `<previous>${escapeXml(previous)}</previous>`,
   ]
