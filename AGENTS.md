@@ -184,9 +184,10 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
 - **Emoji shortcodes:** typing `:` in the chat input suggests emoji from `/api/emoji`, a static
   route built from `emojibase-data` with JoyPixels' names first, the closest to Discord's, and
   Emojibase's keywords, which Discord matches too (whole, after every shortcode). The chat
-  fetches it at low priority once it hydrates, so a hovered message emoji or reaction names
-  its shortcode at once while the full set never ships with the page;
-  `app/components/chat/shortcodes.ts` holds the one cached request.
+  fetches it once it hydrates, so a hovered message emoji or reaction names its shortcode at
+  once while the full set never ships with the page; `app/components/chat/shortcodes.ts` holds
+  the one cached request, and the loaded set for renders, since `use()` flashes the fallback
+  on a promise it hasn't read.
   Sending turns known `:shortcodes:` into emoji (`emojify`, called from `postChannelMessage`), as
   Discord clients do: the one place they convert, so the input never rewrites what is typed.
   The reaction picker's ✋ sets one skin tone per visitor, for its emoji and the suggestions
