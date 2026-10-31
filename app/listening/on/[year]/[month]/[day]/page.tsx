@@ -6,8 +6,11 @@ import type { Metadata } from "next";
 import { getDayPlays } from "@/actions/listening";
 import { Heading } from "@/components/Heading";
 import { Subtitle } from "@/components/Subtitle";
+import { storedTake } from "@/lib/commentary";
 import { fullDayLabel } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
+import { getToday } from "@/lib/today";
+import { Commentary } from "@/listening/components/Commentary";
 
 import { toDay } from "../../../toDay";
 import { DayPlays } from "./components/DayPlays";
@@ -39,15 +42,18 @@ export default async function TimeTravelPage({ params }: TimeTravelPageProps) {
   const plays = result.status === "ok" ? result.plays : undefined;
 
   return (
-    <section>
-      <Heading level={2}>
-        That Day{" "}
-        <Subtitle>
-          ({fullDayLabel(day)}
-          {plays && ` · ${formatPlays(plays.length)}`})
-        </Subtitle>
-      </Heading>
-      <DayPlays plays={plays} />
-    </section>
+    <>
+      <Commentary page={day} stored={storedTake(day)} today={getToday()} />
+      <section>
+        <Heading level={2}>
+          That Day{" "}
+          <Subtitle>
+            ({fullDayLabel(day)}
+            {plays && ` · ${formatPlays(plays.length)}`})
+          </Subtitle>
+        </Heading>
+        <DayPlays plays={plays} />
+      </section>
+    </>
   );
 }

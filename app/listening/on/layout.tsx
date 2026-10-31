@@ -10,7 +10,6 @@ import { firstYear } from "@/lib/dates";
 import { getToday } from "@/lib/today";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
-import { DayCommentary } from "./components/DayCommentary";
 import { TimeTravel, TimeTravelSkeleton } from "./components/TimeTravel";
 import { TravelProvider } from "./components/Travel";
 
@@ -22,7 +21,6 @@ export default function TimeTravelLayout({
   const months = getScrobbleMonths().then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );
-  const today = getToday();
   const years = getTopArtistByBucket("overall").then((result) =>
     result.status === "ok" ? result.buckets : undefined,
   );
@@ -49,13 +47,11 @@ export default function TimeTravelLayout({
             Time Travel <Subtitle>(drag, or use the arrow keys)</Subtitle>
           </Heading>
           <Suspense fallback={<TimeTravelSkeleton />}>
-            <TimeTravel today={today} months={months} years={years}>
+            <TimeTravel today={getToday()} months={months} years={years}>
               {days}
             </TimeTravel>
           </Suspense>
         </section>
-
-        <DayCommentary today={today} />
 
         {children}
       </TravelProvider>

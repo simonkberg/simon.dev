@@ -2733,7 +2733,7 @@ ul {
     flex: none;
     /* The widest frame, (・.・?), so the text stays put as the face moves. */
     min-inline-size: 8ch;
-    text-align: end;
+    text-align: center;
     color: var(--accent);
   }
 
