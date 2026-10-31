@@ -77,6 +77,15 @@ export const MIGRATIONS: readonly string[] = [
     posted_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS chat_posts_posted_at ON chat_posts (posted_at)`,
+  // simon-bot's comment on a listening page, one for each day, week or month (slot) it covers.
+  `CREATE TABLE IF NOT EXISTS commentary (
+    page TEXT NOT NULL,
+    slot TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    written_at INTEGER NOT NULL,
+    PRIMARY KEY (page, slot)
+  )`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

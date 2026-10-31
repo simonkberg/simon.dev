@@ -7,6 +7,7 @@ import {
   MEMORY_TOOLS,
   runAgentLoop,
 } from "@/lib/anthropic";
+import { chatCategories } from "@/lib/memory";
 
 import { reflect } from "./reflection";
 
@@ -43,7 +44,7 @@ describe("reflect", () => {
 
     expect(buildSystem).toHaveBeenCalledWith(
       expect.stringContaining("taking a quiet"),
-      ["alice", "simon"],
+      chatCategories(["alice", "simon"]),
     );
     expect(runAgentLoop).toHaveBeenCalledWith({
       system,

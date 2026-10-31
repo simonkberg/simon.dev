@@ -4,9 +4,14 @@ import { type Level, type Logger, pino } from "pino";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Pino's own reads Date.now(), which fails a prerender, and Next logs its warnings from one.
+export const epochTime = () =>
+  `,"time":${Math.round(performance.timeOrigin + performance.now())}`;
+
 export const log = pino({
   level: process.env["LOG_LEVEL"] ?? (isDev ? "debug" : "info"),
   formatters: { level: (label) => ({ level: label }) },
+  timestamp: epochTime,
   transport: isDev
     ? { target: "pino-pretty", options: { colorize: true } }
     : undefined,

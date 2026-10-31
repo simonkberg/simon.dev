@@ -6,8 +6,10 @@ import type { Metadata } from "next";
 import { getDayPlays } from "@/actions/listening";
 import { Heading } from "@/components/Heading";
 import { Subtitle } from "@/components/Subtitle";
+import { getCommentary } from "@/lib/commentary";
 import { fullDayLabel } from "@/lib/dates";
 import { formatPlays } from "@/lib/formatNumber";
+import { Commentary } from "@/listening/components/Commentary";
 
 import { toDay } from "../../../toDay";
 import { DayPlays } from "./components/DayPlays";
@@ -35,19 +37,24 @@ export async function generateMetadata({
 
 export default async function TimeTravelPage({ params }: TimeTravelPageProps) {
   const day = await toDay(await params);
-  const result = await getDayPlays(day);
+  const take = getCommentary(day);
+  // Awaited, so stepping days keeps the day before, take and all, until this one's is in.
+  const [result] = await Promise.all([getDayPlays(day), take]);
   const plays = result.status === "ok" ? result.plays : undefined;
 
   return (
-    <section>
-      <Heading level={2}>
-        That Day{" "}
-        <Subtitle>
-          ({fullDayLabel(day)}
-          {plays && ` · ${formatPlays(plays.length)}`})
-        </Subtitle>
-      </Heading>
-      <DayPlays plays={plays} />
-    </section>
+    <>
+      <Commentary page={day} stored={take} />
+      <section>
+        <Heading level={2}>
+          That Day{" "}
+          <Subtitle>
+            ({fullDayLabel(day)}
+            {plays && ` · ${formatPlays(plays.length)}`})
+          </Subtitle>
+        </Heading>
+        <DayPlays plays={plays} />
+      </section>
+    </>
   );
 }

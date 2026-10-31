@@ -23,6 +23,12 @@ const BACKFILL_SLICE_MS = 50_000;
 // Last.fm takes scrobbles up to two weeks old, so an offline player's arrive late.
 export const LATE_MS = 14 * 24 * 60 * 60_000;
 
+// A scrobble can land a while after its track, so a bar that just ended is still fetched with the chart.
+export const SETTLE_MS = 60 * 60 * 1000;
+
+export const hasSettled = (end: number, now: Date) =>
+  end + SETTLE_MS <= now.getTime();
+
 type Page = Awaited<ReturnType<typeof userGetScrobbles>>;
 type Tracks = Page["tracks"];
 

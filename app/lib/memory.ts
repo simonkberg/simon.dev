@@ -263,28 +263,40 @@ function renderCategory(category: string, memories: Memory[]): string {
   ].join("\n");
 }
 
+/** The core categories and the participants' people/* notes: what a chat shows in full. */
+export function chatCategories(participants: string[]): string[] {
+  const people = participants
+    .map(peopleCategory)
+    .filter((category) => category !== undefined);
+  return [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
+}
+
+export type MemoryContextOptions = { index?: boolean; required?: boolean };
+
+/** The notes in `shown`, and with `index` the other categories by name, for a bot that can recall them. */
 export async function buildMemoryContext(
-  participants: string[],
+  shown: readonly string[],
+  { index = true, required = false }: MemoryContextOptions = {},
 ): Promise<string> {
   try {
-    const people = participants
-      .map(peopleCategory)
-      .filter((category) => category !== undefined);
-    const shown = [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
-
-    const [{ rows: memoryRows }, { rows: countRows }] = await batch([
-      notesIn(shown),
-      {
-        sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
-      },
-    ]);
+    const shownNotes = notesIn(shown);
+    const [{ rows: memoryRows }, counts] = await batch(
+      index
+        ? [
+            shownNotes,
+            {
+              sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
+            },
+          ]
+        : [shownNotes],
+    );
 
     const notes = byCategory(memoryRows);
     const sections = shown.map((category) =>
       renderCategory(category, notes.get(category) ?? []),
     );
 
-    const others = countRows
+    const others = (counts?.rows ?? [])
       .filter((row) => !shown.includes(String(row["category"])))
       .map((row) => `${row["category"]} (${row["count"]})`);
     if (others.length > 0) {
@@ -295,6 +307,7 @@ export async function buildMemoryContext(
 
     return `<memory>\n${sections.join("\n\n")}\n</memory>`;
   } catch (err) {
+    if (required) throw err;
     log.error({ err }, "Failed to build memory context");
     return "";
   }

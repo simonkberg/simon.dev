@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { getDayPlays, type GetDayPlaysResult } from "@/actions/listening";
+import { getCommentary } from "@/lib/commentary";
 
 import { toDay } from "../../../toDay";
 import TimeTravelPage, { generateMetadata, generateStaticParams } from "./page";
@@ -19,6 +20,17 @@ vi.mock(import("@/actions/listening"), () => ({
       ],
     }),
   ),
+}));
+
+vi.mock(import("@/lib/commentary"), () => ({
+  getCommentary: vi.fn(async () => ({
+    status: "ok" as const,
+    text: "a quiet sunday with the magnetic fields",
+  })),
+}));
+
+vi.mock(import("@/lib/today"), () => ({
+  getToday: vi.fn(() => Promise.resolve("2026-10-31" as const)),
 }));
 
 const params = Promise.resolve({ year: "2012", month: "10", day: "14" });
@@ -54,6 +66,10 @@ describe("TimeTravelPage", () => {
       screen.getByText("(Sun, Oct 14, 2012 · 1 play)"),
     ).toBeInTheDocument();
     expect(screen.getByText("Old Fools")).toBeInTheDocument();
+    expect(getCommentary).toHaveBeenCalledWith("2012-10-14");
+    expect(
+      screen.getByText("a quiet sunday with the magnetic fields"),
+    ).toBeInTheDocument();
   });
 
   it("says the plays failed to load", async () => {
