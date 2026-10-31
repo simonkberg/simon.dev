@@ -149,6 +149,22 @@ describe("Commentary", () => {
     expect(take()).toHaveTextContent(TEXT);
   });
 
+  it("should blink now and then once its take is done", async () => {
+    await act(async () =>
+      render(
+        <Commentary
+          page="7day"
+          stored={Promise.resolve({ status: "ok", text: TEXT })}
+        />,
+      ),
+    );
+    const face = () => document.querySelector(".face");
+
+    expect(face()).toHaveTextContent("(°ᴗ°)");
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+    expect(face()).toHaveTextContent("(-ᴗ-)");
+  });
+
   describe("with the take the page looked up", () => {
     it.each([
       [{ status: "ok", text: TEXT } as const, TEXT],
