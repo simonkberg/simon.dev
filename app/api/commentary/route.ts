@@ -11,7 +11,7 @@ import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { findSession } from "@/lib/session";
 
-// Above what a visitor stepping through days asks for, but a script can't write every day at once.
+// Enough to page through days writing as you go, but a script can't write every day at once.
 const LIMITS = { limit: 30, windowMs: 60_000 };
 
 const pageOf = (request: NextRequest): CommentaryPage | undefined =>
