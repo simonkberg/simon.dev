@@ -34,7 +34,7 @@ describe("CaretBuddy", () => {
 
     it("shows thinking when isPending is true", () => {
       render(<CaretBuddy {...defaultProps} isPending={true} />);
-      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+      expect(screen.getByText("(• •?)")).toBeInTheDocument();
     });
 
     it("shows code when input contains backticks", () => {
@@ -61,7 +61,7 @@ describe("CaretBuddy", () => {
     it("shows success when resultStatus changes to ok", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
     });
   });
 
@@ -69,7 +69,7 @@ describe("CaretBuddy", () => {
     it("error takes priority over success", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
 
       rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
       expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("CaretBuddy", () => {
       render(
         <CaretBuddy {...defaultProps} inputValue="`code`" isPending={true} />,
       );
-      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+      expect(screen.getByText("(• •?)")).toBeInTheDocument();
     });
 
     it("code takes priority over love", () => {
@@ -126,7 +126,7 @@ describe("CaretBuddy", () => {
     it("transitions from success to idle after 1.5 seconds", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(1500);
@@ -160,7 +160,7 @@ describe("CaretBuddy", () => {
         vi.advanceTimersByTime(900);
       });
 
-      expect(screen.getByText("(＾▽＾)")).toBeInTheDocument();
+      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
     });
   });
 
@@ -178,7 +178,7 @@ describe("CaretBuddy", () => {
 
       elapse(1000);
 
-      expect(screen.getByText("(╥︵╥)")).toBeInTheDocument();
+      expect(screen.getByText("(╥⌢╥)")).toBeInTheDocument();
     });
 
     it("loops back to first frame after last", () => {
@@ -196,11 +196,11 @@ describe("CaretBuddy", () => {
       );
 
       elapse(1000);
-      expect(screen.getByText("(╥︵╥)")).toBeInTheDocument();
+      expect(screen.getByText("(╥⌢╥)")).toBeInTheDocument();
 
       rerender(<CaretBuddy {...defaultProps} isPending={true} />);
 
-      expect(screen.getByText("(・・?)")).toBeInTheDocument();
+      expect(screen.getByText("(• •?)")).toBeInTheDocument();
     });
   });
 });
