@@ -2736,11 +2736,6 @@ ul {
     top: auto;
     bottom: 0;
     translate: var(--commentary-phone-translate);
-
-    > .bubble {
-      top: auto;
-      bottom: calc(100% + 0.75rem);
-    }
   }
 
   > .tag {
@@ -2782,6 +2777,11 @@ ul {
     color: var(--ink);
     line-height: var(--leading);
     white-space: normal;
+
+    @media (width < 30rem) {
+      top: auto;
+      bottom: calc(100% + 0.75rem);
+    }
   }
 
   .caret {
