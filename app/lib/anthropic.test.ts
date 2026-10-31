@@ -646,7 +646,12 @@ describe("createMessage", () => {
   });
 
   it("should keep tools on the last iteration when the loop opts out of ending in text", async () => {
-    respond(() => reply([toolUse("recall")], "tool_use"));
+    respond(() =>
+      reply(
+        [{ type: "text", text: "checking" }, toolUse("recall")],
+        "tool_use",
+      ),
+    );
 
     const loop = runAgentLoop({
       system: [],
@@ -663,7 +668,7 @@ describe("createMessage", () => {
     let next = await loop.next();
     while (next.done !== true) next = await loop.next();
 
-    expect(next.value).toBe("max_iterations");
+    expect(next.value).toEqual({ end: "max_iterations", text: "" });
     expect(requests.map((body) => body.tool_choice)).toEqual([
       undefined,
       undefined,

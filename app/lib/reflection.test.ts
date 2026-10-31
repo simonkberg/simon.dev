@@ -29,7 +29,7 @@ describe("reflect", () => {
   it("should hand the transcript and self tools to the agent loop", async () => {
     async function* loop() {
       yield "remembered that alice likes cats";
-      return "end_turn" as const;
+      return { end: "end_turn" as const, text: "" };
     }
     vi.mocked(runAgentLoop).mockReturnValue(loop());
 
