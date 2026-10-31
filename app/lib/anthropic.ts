@@ -645,6 +645,9 @@ export async function buildSystem(
 /** How a loop ended; anything but end_turn is the model being cut off. */
 export type LoopEnd = "end_turn" | "refusal" | "max_tokens" | "max_iterations";
 
+/** How a loop ended, and the text of its last turn: text before a tool call is the model thinking aloud. */
+export type LoopResult = { end: LoopEnd; text: string };
+
 // What the chat sees when a reply is cut off; endInText keeps replies from running out of iterations.
 const FALLBACKS: Record<
   Exclude<LoopEnd, "end_turn" | "max_iterations">,
@@ -780,9 +783,10 @@ export async function* runAgentLoop({
   endInText = true,
   loop,
   replyingTo,
-}: AgentLoopOptions): AsyncGenerator<string, LoopEnd, unknown> {
+}: AgentLoopOptions): AsyncGenerator<string, LoopResult, unknown> {
   const isTextOnly = (iteration: number) =>
     endInText && iteration === maxIterations - 1;
+  let text = "";
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     const body = JSON.stringify({
       model: MODEL,
@@ -814,9 +818,13 @@ export async function* runAgentLoop({
     // Must precede the yield loop - a refusal can still carry text.
     if (result.stop_reason === "refusal") {
       log.warn({ loop }, "simon-bot response was refused");
-      return "refusal";
+      return { end: "refusal", text: "" };
     }
 
+    text = result.content
+      .flatMap((block) => (block.type === "text" ? [block.text.trim()] : []))
+      .filter(Boolean)
+      .join(" ");
     for (const block of result.content) {
       if (block.type === "thinking" && block.thinking !== "") {
         log.info({ loop, thinking: block.thinking }, "simon-bot thinking");
@@ -829,12 +837,12 @@ export async function* runAgentLoop({
 
     if (result.stop_reason === "max_tokens") {
       log.warn({ loop }, "simon-bot response hit the token limit");
-      return "max_tokens";
+      return { end: "max_tokens", text };
     }
 
     // If not a tool use, we're done
     if (result.stop_reason !== "tool_use") {
-      return "end_turn";
+      return { end: "end_turn", text };
     }
 
     // Extract tool use blocks for execution
@@ -881,26 +889,17 @@ export async function* runAgentLoop({
     { loop, iterations: maxIterations },
     "simon-bot reached max tool iterations",
   );
-  return "max_iterations";
+  return { end: "max_iterations", text };
 }
 
-/** Runs the loop for its answer: the last turn's text, as text before a tool call is the model thinking aloud. */
+/** Runs the loop for its answer, the last turn's text, without streaming its parts. */
 export async function finalText(
   options: AgentLoopOptions,
-): Promise<{ text: string; end: LoopEnd }> {
+): Promise<LoopResult> {
   const loop = runAgentLoop(options);
-  // The loop adds a turn to messages only when it calls a tool, so the answer's parts are yielded at the final length.
-  const parts: [turns: number, text: string][] = [];
   let next = await loop.next();
-  for (; !next.done; next = await loop.next()) {
-    parts.push([options.messages.length, next.value]);
-  }
-  const text = parts
-    .filter(([turns]) => turns === options.messages.length)
-    .map(([, part]) => part.trim())
-    .filter(Boolean)
-    .join(" ");
-  return { text, end: next.value };
+  while (next.done !== true) next = await loop.next();
+  return next.value;
 }
 
 export async function* createMessage(
@@ -921,7 +920,7 @@ export async function* createMessage(
     "simon-bot received conversation",
   );
 
-  const end = yield* runAgentLoop({
+  const { end } = yield* runAgentLoop({
     system,
     messages,
     tools: TOOLS,
