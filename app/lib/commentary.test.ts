@@ -304,7 +304,7 @@ Oct 31: 3 (so far)
 00:05 I'm Jim Morrison, I'm Dead - Mogwai
 </plays>
 <month_tops>`);
-    expect(input()).not.toContain("<previous>");
+    expect(input()).not.toContain("<previous");
   });
 
   it("should replace a comment from an older prompt, without following one", async () => {
@@ -313,7 +313,7 @@ Oct 31: 3 (so far)
 
     await writeCommentary("7day");
 
-    expect(input()).not.toContain("<previous>");
+    expect(input()).not.toContain("<previous");
     expect(await stored()).toEqual([
       { page: "7day", slot: "2026-10-30", text: "older prompt" },
       { page: "7day", slot: "2026-10-31", text: "frog ate the week" },

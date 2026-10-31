@@ -53,6 +53,11 @@ describe("GET /api/commentary", () => {
     expect((await GET(request("2019-03-04"))).status).toBe(204);
   });
 
+  it("should not find a page that isn't one", async () => {
+    expect((await GET(request("someday"))).status).toBe(404);
+    expect(getCommentary).not.toHaveBeenCalled();
+  });
+
   it("should not find a day whose plays are still coming in", async () => {
     vi.mocked(getCommentary).mockResolvedValueOnce({ status: "early" });
 

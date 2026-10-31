@@ -132,8 +132,8 @@ async function readText(page: string, slot: string) {
 
 async function readPrevious(page: string, slot: string) {
   const { rows } = await query(
-    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? ORDER BY slot DESC LIMIT 1",
-    [page, slot],
+    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
+    [page, slot, VERSION],
   );
   const row = rows[0];
   return (
