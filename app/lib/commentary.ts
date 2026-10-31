@@ -43,8 +43,9 @@ const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 10_000;
 const MAX_ITERATIONS = 6;
-// Outlasts the slowest comment: every round timing out.
-const LOCK_TTL_MS = 4 * 60_000;
+// Outlasts the slowest comment: each round's three attempts timing out, after their retry sleeps.
+const LOCK_TTL_MS =
+  MAX_ITERATIONS * (3 * TIMEOUT_MS + MAX_RETRY_SLEEP_MS) + 60_000;
 const POLL_MS = 1000;
 
 const COMMENTARY_PROMPT = md`
