@@ -7,9 +7,12 @@ const REACTION_SHORTCODES: EmojiShortcodes[] = REACTION_EMOJI.map(
 let shortcodes: Promise<EmojiShortcodes[]> | undefined;
 let failed = false;
 
-/** Fetched on first use, so the full set never ships with the page; the same promise every call, so it is safe to `use()`. */
+/** Fetched after the chat hydrates, so the full set never ships with the page; the same promise every call, so it is safe to `use()`. */
 export function loadShortcodes(): Promise<EmojiShortcodes[]> {
-  shortcodes ??= fetch("/api/emoji", { signal: AbortSignal.timeout(10_000) })
+  shortcodes ??= fetch("/api/emoji", {
+    priority: "low",
+    signal: AbortSignal.timeout(10_000),
+  })
     .then((response) => {
       if (!response.ok) throw new Error(String(response.status));
       return response.json() as Promise<EmojiShortcodes[]>;

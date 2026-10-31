@@ -1,6 +1,12 @@
 "use client";
 
-import { use, useOptimistic, useReducer, useTransition } from "react";
+import {
+  use,
+  useEffect,
+  useOptimistic,
+  useReducer,
+  useTransition,
+} from "react";
 
 import {
   type ChatHistoryResult,
@@ -18,6 +24,7 @@ import { ChatInput } from "./ChatInput";
 import { ChatReactionsContext } from "./ChatReactions";
 import { ChatTip, useChatTipDismissed } from "./ChatTip";
 import { ChatToast } from "./ChatToast";
+import { loadShortcodes } from "./shortcodes";
 
 const findMessageById = (messages: Message[], id: string): Message | null => {
   for (const message of messages) {
@@ -120,6 +127,9 @@ export const Chat = ({ history, tipDismissed }: ChatProps) => {
       withReactionToggled(current, messageId, emoji),
   );
   const [reactionFailure, settleReaction] = useReducer(failure, undefined);
+
+  // So an emoji's name is there on its first hover, and suggestions on the first `:`.
+  useEffect(() => void loadShortcodes(), []);
 
   const react = (messageId: string, emoji: string) => {
     startReacting(async () => {

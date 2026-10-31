@@ -15,7 +15,7 @@ const Shortcode = ({ emoji }: { emoji: string }) => {
   return name && `:${name}:`;
 };
 
-/** The emoji's `:shortcode:`, loading the set as it first renders. */
+/** The emoji's `:shortcode:`, from the set the chat prefetches. */
 export const EmojiShortcode = ({ emoji }: { emoji: string }) => (
   <Suspense fallback="…">
     <Shortcode emoji={emoji} />
