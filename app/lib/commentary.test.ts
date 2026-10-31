@@ -37,10 +37,7 @@ vi.mock(import("@/lib/turso"), async () =>
   (await import("@/mocks/sqlite")).mockTurso(),
 );
 
-vi.mock(import("next/cache"), () => ({
-  cacheLife: vi.fn(),
-  io: vi.fn(async () => undefined),
-}));
+vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => ({
   ...(await importOriginal()),

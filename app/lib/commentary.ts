@@ -1,5 +1,5 @@
 import "server-only";
-import { cacheLife, io } from "next/cache";
+import { cacheLife } from "next/cache";
 // The `md` name is what marks the prompt as Markdown for Oxfmt.
 import md from "string-dedent";
 
@@ -166,11 +166,11 @@ export async function getCommentary(
   }
 }
 
-/** The stored take for a page to render, kept out of its static shell; null when it can't be read. */
+/** The stored take for a page to render, in its static shell so a navigation shows it at once; null when it can't be read. */
 export const storedTake = (page: CommentaryPage) =>
-  io()
-    .then(() => getCommentary(page))
-    .then((result) => (result.status === "ok" ? result.text : null));
+  getCommentary(page).then((result) =>
+    result.status === "ok" ? result.text : null,
+  );
 
 type Fact = string | false;
 
