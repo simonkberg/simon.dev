@@ -18,12 +18,12 @@ const WAIT_MS = 1000;
 const TICK_MS = 30;
 const CHARACTERS_PER_TICK = 2;
 const RESTING: AnimationFrames = [
-  [4, "(°ᴗ°)"],
+  [4, "(•ᴗ•)"],
   [0.12, "(-ᴗ-)"],
-  [0.15, "(°ᴗ°)"],
+  [0.15, "(•ᴗ•)"],
   [0.12, "(-ᴗ-)"],
-  [4, "(°ᴗ°)"],
-  [0.4, "(°ᴗ-)"],
+  [4, "(•ᴗ•)"],
+  [0.4, "(•ᴗ-)"],
 ];
 
 type State =
