@@ -11,7 +11,8 @@ import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { findSession } from "@/lib/session";
 
-const LIMITS = { limit: 20, windowMs: 60 * 60_000 };
+// A burst, not a total, is what would crowd out simon-bot's replies.
+const LIMITS = { limit: 10, windowMs: 60_000 };
 
 const pageOf = (request: NextRequest): CommentaryPage | undefined =>
   parsePage(request.nextUrl.searchParams.get("page"), new Date());
