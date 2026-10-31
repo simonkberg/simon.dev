@@ -3,27 +3,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildSystem,
   type ChatMessage,
+  chatMemory,
   formatConversation,
   MEMORY_TOOLS,
   runAgentLoop,
 } from "@/lib/anthropic";
-import { chatCategories } from "@/lib/memory";
 
 import { reflect } from "./reflection";
 
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, runAgentLoop: vi.fn(), buildSystem: vi.fn() };
+  return { ...actual, runAgentLoop: vi.fn(), chatMemory: vi.fn() };
 });
 
 describe("reflect", () => {
-  const system = [
-    { type: "text" as const, text: "prompt" },
-    { type: "text" as const, text: "<memory>\n</memory>" },
-  ];
-
   beforeEach(() => {
-    vi.mocked(buildSystem).mockResolvedValue(system);
+    vi.mocked(chatMemory).mockResolvedValue("<memory>\n</memory>");
   });
 
   it("should hand the transcript and self tools to the agent loop", async () => {
@@ -42,12 +37,12 @@ describe("reflect", () => {
 
     await reflect(transcript);
 
-    expect(buildSystem).toHaveBeenCalledWith(
-      expect.stringContaining("taking a quiet"),
-      chatCategories(["alice", "simon"]),
-    );
+    expect(chatMemory).toHaveBeenCalledWith(transcript);
     expect(runAgentLoop).toHaveBeenCalledWith({
-      system,
+      system: buildSystem(
+        expect.stringContaining("taking a quiet"),
+        "<memory>\n</memory>",
+      ),
       messages: [{ role: "user", content: formatConversation(transcript) }],
       tools: MEMORY_TOOLS,
       effort: "high",

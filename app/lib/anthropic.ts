@@ -19,7 +19,6 @@ import { type Filters, playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
-  type MemoryContextOptions,
   chatCategories,
   categorySchema,
   contentSchema,
@@ -628,17 +627,22 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
   ];
 }
 
-export async function buildSystem(
-  prompt: string,
-  categories: readonly string[],
-  options?: MemoryContextOptions,
-): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(categories, options);
+/** The notes for a chat's participants, or none: a reply without memory beats no reply. */
+export async function chatMemory(chatMessages: ChatMessage[]): Promise<string> {
+  try {
+    return await buildMemoryContext(
+      chatCategories(participantsOf(chatMessages)),
+    );
+  } catch (err) {
+    log.error({ err }, "Failed to build memory context");
+    return "";
+  }
+}
+
+export function buildSystem(prompt: string, memory: string): SystemBlock[] {
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
-    ...(memoryContext === ""
-      ? []
-      : [{ type: "text" as const, text: memoryContext }]),
+    ...(memory === "" ? [] : [{ type: "text" as const, text: memory }]),
   ];
 }
 
@@ -909,10 +913,7 @@ export async function* createMessage(
     { role: "user", content: formatConversation(chatMessages) },
   ];
 
-  const system = await buildSystem(
-    SYSTEM_PROMPT,
-    chatCategories(participantsOf(chatMessages)),
-  );
+  const system = buildSystem(SYSTEM_PROMPT, await chatMemory(chatMessages));
 
   log.info(
     { messages, contextBlocks: system.slice(1) },

@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 
-import { log } from "@/lib/log";
 import { likeContains } from "@/lib/sql";
 import { batch, query, type Row, type Value } from "@/lib/turso";
 
@@ -271,46 +270,38 @@ export function chatCategories(participants: string[]): string[] {
   return [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
 }
 
-export type MemoryContextOptions = { index?: boolean; required?: boolean };
-
 /** The notes in `shown`, and with `index` the other categories by name, for a bot that can recall them. */
 export async function buildMemoryContext(
   shown: readonly string[],
-  { index = true, required = false }: MemoryContextOptions = {},
+  { index = true }: { index?: boolean } = {},
 ): Promise<string> {
-  try {
-    const shownNotes = notesIn(shown);
-    const [{ rows: memoryRows }, counts] = await batch(
-      index
-        ? [
-            shownNotes,
-            {
-              sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
-            },
-          ]
-        : [shownNotes],
+  const shownNotes = notesIn(shown);
+  const [{ rows: memoryRows }, counts] = await batch(
+    index
+      ? [
+          shownNotes,
+          {
+            sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
+          },
+        ]
+      : [shownNotes],
+  );
+
+  const notes = byCategory(memoryRows);
+  const sections = shown.map((category) =>
+    renderCategory(category, notes.get(category) ?? []),
+  );
+
+  const others = (counts?.rows ?? [])
+    .filter((row) => !shown.includes(String(row["category"])))
+    .map((row) => `${row["category"]} (${row["count"]})`);
+  if (others.length > 0) {
+    sections.push(
+      `Other categories, use recall to read them: ${others.join(", ")}`,
     );
-
-    const notes = byCategory(memoryRows);
-    const sections = shown.map((category) =>
-      renderCategory(category, notes.get(category) ?? []),
-    );
-
-    const others = (counts?.rows ?? [])
-      .filter((row) => !shown.includes(String(row["category"])))
-      .map((row) => `${row["category"]} (${row["count"]})`);
-    if (others.length > 0) {
-      sections.push(
-        `Other categories, use recall to read them: ${others.join(", ")}`,
-      );
-    }
-
-    return `<memory>\n${sections.join("\n\n")}\n</memory>`;
-  } catch (err) {
-    if (required) throw err;
-    log.error({ err }, "Failed to build memory context");
-    return "";
   }
+
+  return `<memory>\n${sections.join("\n\n")}\n</memory>`;
 }
 
 // The bot's own notes, shown on its page; people/* and context stay private.

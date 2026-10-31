@@ -2,7 +2,6 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
@@ -554,22 +553,10 @@ describe("buildMemoryContext", () => {
     expect(context).toContain("## style\n(nothing yet)");
   });
 
-  it("should return an empty string and log when the database fails", async () => {
+  it("should throw when the database fails", async () => {
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
-    await expect(buildMemoryContext(["self"])).resolves.toBe("");
-    expect(log.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      "Failed to build memory context",
-    );
-  });
-
-  it("should throw when the notes are required", async () => {
-    vi.mocked(query).mockRejectedValue(new Error("db down"));
-
-    await expect(
-      buildMemoryContext(["self"], { required: true }),
-    ).rejects.toThrow("db down");
+    await expect(buildMemoryContext(["self"])).rejects.toThrow("db down");
   });
 });
 
