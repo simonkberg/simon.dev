@@ -261,7 +261,7 @@ describe("CaretBuddy integration", () => {
 
     await user.type(input, "H");
 
-    expect(screen.getByText("(•▽•)")).toBeInTheDocument();
+    expect(screen.getByText("(°▽°)")).toBeInTheDocument();
   });
 
   it("shows thinking state while message is pending", async () => {
@@ -273,7 +273,7 @@ describe("CaretBuddy integration", () => {
 
     await send("Hello");
 
-    expect(screen.getByText("(• •?)")).toBeInTheDocument();
+    expect(screen.getByText("(・・?)")).toBeInTheDocument();
   });
 
   it("shows error state on failed submission", async () => {
@@ -293,7 +293,7 @@ describe("CaretBuddy integration", () => {
 
     await send("Hello");
 
-    expect(await screen.findByText("(^▽^)")).toBeInTheDocument();
+    expect(await screen.findByText("(＾▽＾)")).toBeInTheDocument();
   });
 
   describe("commands", () => {
