@@ -47,6 +47,7 @@ describe("Commentary", () => {
       screen.getByRole("heading", { name: "simon-bot (take)" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "true");
+    expect(take()).toHaveTextContent("listening back");
 
     await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "false");

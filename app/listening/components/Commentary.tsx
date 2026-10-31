@@ -95,7 +95,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 const framesOf = (state: State) =>
-  state.phase === "waiting"
+  state.phase === "asking" || state.phase === "waiting"
     ? ANIMATIONS.thinking
     : state.phase === "typing"
       ? ANIMATIONS.typing
@@ -103,8 +103,8 @@ const framesOf = (state: State) =>
 
 function Words({ state }: { state: State }) {
   switch (state.phase) {
+    // Looked up or written, the wait reads the same, so a miss streaming in changes nothing.
     case "asking":
-      return null;
     case "waiting":
       return (
         <span className="quiet">
