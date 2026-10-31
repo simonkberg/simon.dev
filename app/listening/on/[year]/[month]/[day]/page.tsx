@@ -38,12 +38,15 @@ export async function generateMetadata({
 
 export default async function TimeTravelPage({ params }: TimeTravelPageProps) {
   const day = await toDay(await params);
-  const result = await getDayPlays(day);
+  const take = storedTake(day);
+  const today = getToday();
+  // Awaited, so stepping days keeps the day before, take and all, until this one's is in.
+  const [result] = await Promise.all([getDayPlays(day), take, today]);
   const plays = result.status === "ok" ? result.plays : undefined;
 
   return (
     <>
-      <Commentary page={day} stored={storedTake(day)} today={getToday()} />
+      <Commentary page={day} stored={take} today={today} />
       <section>
         <Heading level={2}>
           That Day{" "}
