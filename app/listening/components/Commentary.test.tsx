@@ -149,7 +149,7 @@ describe("Commentary", () => {
     expect(take()).toHaveTextContent(TEXT);
   });
 
-  it("should blink now and then once its take is done", async () => {
+  it("should blink, then wink, now and then once its take is done", async () => {
     await act(async () =>
       render(
         <Commentary
@@ -160,9 +160,14 @@ describe("Commentary", () => {
     );
     const face = () => document.querySelector(".face");
 
-    expect(face()).toHaveTextContent("(°ᴗ°)");
+    expect(face()).toHaveTextContent("(•ᴗ•)");
     await act(() => vi.advanceTimersByTimeAsync(4000));
     expect(face()).toHaveTextContent("(-ᴗ-)");
+    // Each frame's timeout starts once the last one renders.
+    for (const ms of [120, 150, 120, 4000]) {
+      await act(() => vi.advanceTimersByTimeAsync(ms));
+    }
+    expect(face()).toHaveTextContent("(•ᴗ-)");
   });
 
   describe("with the take the page looked up", () => {
