@@ -275,6 +275,7 @@ export function chatCategories(participants: string[]): string[] {
 export async function buildMemoryContext(
   shown: readonly string[],
   index: boolean,
+  { required = false }: { required?: boolean } = {},
 ): Promise<string> {
   try {
     const shownNotes = notesIn(shown);
@@ -305,6 +306,7 @@ export async function buildMemoryContext(
 
     return `<memory>\n${sections.join("\n\n")}\n</memory>`;
   } catch (err) {
+    if (required) throw err;
     log.error({ err }, "Failed to build memory context");
     return "";
   }

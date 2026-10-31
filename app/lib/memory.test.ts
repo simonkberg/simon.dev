@@ -564,6 +564,14 @@ describe("buildMemoryContext", () => {
       "Failed to build memory context",
     );
   });
+
+  it("should throw when the notes are required", async () => {
+    vi.mocked(query).mockRejectedValue(new Error("db down"));
+
+    await expect(
+      buildMemoryContext(["self"], true, { required: true }),
+    ).rejects.toThrow("db down");
+  });
 });
 
 describe("readPublicNotes", () => {

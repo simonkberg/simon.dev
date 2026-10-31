@@ -229,6 +229,7 @@ describe("createMessage", () => {
     expect(buildMemoryContext).toHaveBeenCalledWith(
       chatCategories(["Alice", "Bob"]),
       true,
+      { required: undefined },
     );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });

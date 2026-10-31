@@ -630,9 +630,11 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 export async function buildSystem(
   prompt: string,
   categories: readonly string[],
-  { index = true }: { index?: boolean } = {},
+  { index = true, required }: { index?: boolean; required?: boolean } = {},
 ): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(categories, index);
+  const memoryContext = await buildMemoryContext(categories, index, {
+    required,
+  });
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
     ...(memoryContext === ""

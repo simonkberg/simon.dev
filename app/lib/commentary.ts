@@ -298,7 +298,11 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
 async function compose(page: CommentaryPage, slot: Slot) {
   const [system, input] = await Promise.all([
     // Only the notes /simon-bot already shows, since the page is public, and no index of the rest: it has no recall.
-    buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, { index: false }),
+    // Required, since a comment is stored: one written without its voice would stay.
+    buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, {
+      index: false,
+      required: true,
+    }),
     pageInput(page, slot),
   ]);
   const { text, end } = await finalText({

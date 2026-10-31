@@ -233,7 +233,7 @@ describe("writeCommentary", () => {
     expect(buildSystem).toHaveBeenCalledWith(
       expect.stringContaining("comment"),
       PUBLIC_CATEGORIES,
-      { index: false },
+      { index: false, required: true },
     );
     expect(vi.mocked(finalText).mock.calls[0]?.[0]).toMatchObject({
       tools: LISTENING_TOOLS,
