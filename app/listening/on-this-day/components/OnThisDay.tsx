@@ -64,7 +64,10 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
           >
             <span className="timeline-year">{stop.year.year}</span>
             <span className="timeline-top">
-              {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
+              {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>{" "}
+              <span className="timeline-track-plays">
+                ({formatPlays(stop.year.top.plays)})
+              </span>
             </span>
             <span className="timeline-plays">
               <Link href={href(stop.year.day)}>
@@ -72,7 +75,9 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
                   <AnimatedNumber
                     value={stop.year.count}
                     follow
-                    format={(shown) => formatPlays(stop.year.count, shown)}
+                    format={(shown) =>
+                      `${formatPlays(stop.year.count, shown)} that day`
+                    }
                   />
                 </span>
                 <span className="visually-hidden">

@@ -25,14 +25,18 @@ vi.mock(import("@/actions/listening"), () => ({
             year: "2024",
             day: "2024-10-26",
             count: 62,
-            top: { track: "Apartment Story", artist: "The National" },
+            top: { track: "Apartment Story", artist: "The National", plays: 9 },
           },
           { year: "2023", day: "2023-10-26", count: 0 },
           {
             year: "2022",
             day: "2022-10-26",
             count: 62,
-            top: { track: "Sober to Death", artist: "Car Seat Headrest" },
+            top: {
+              track: "Sober to Death",
+              artist: "Car Seat Headrest",
+              plays: 7,
+            },
           },
         ],
       },
@@ -57,7 +61,7 @@ describe("opengraph-image", () => {
     expect(screen.getByText("(2 of 6 years)")).toBeInTheDocument();
     expect(screen.getByText("Oct 26")).toBeInTheDocument();
     expect(document.body).toHaveTextContent(
-      "busiest:2024·Apartment Story–The National·62 plays",
+      "busiest:2024·Apartment Story–The National(9 plays)·62 plays that day",
     );
     expect(
       screen.getAllByText(/^(The National|Car Seat Headrest)$/),

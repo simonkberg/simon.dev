@@ -1498,6 +1498,10 @@ ul {
     overflow-wrap: anywhere;
   }
 
+  .timeline-track-plays {
+    color: var(--muted);
+  }
+
   /* Grows at the lanes' pace from its stop's start, while later stops keep coming. */
   .timeline-plays {
     --grow-duration: initial;

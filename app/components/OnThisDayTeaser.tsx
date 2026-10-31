@@ -23,7 +23,8 @@ export const OnThisDayTeaser = ({ onThisDay }: OnThisDayTeaserProps) => {
         On this day in {year.year} ({formatPlays(year.count)})
       </strong>
       <p>
-        {year.top.track} &ndash; <em>{year.top.artist}</em>. See&nbsp;
+        {year.top.track} &ndash; <em>{year.top.artist}</em>
+        {` (${formatPlays(year.top.plays)})`}. See&nbsp;
         <Link href="/listening/on-this-day">every&nbsp;year</Link>.
       </p>
     </div>

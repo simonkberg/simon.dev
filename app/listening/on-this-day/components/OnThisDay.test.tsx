@@ -8,7 +8,7 @@ import { OnThisDay, OnThisDaySkeleton } from "./OnThisDay";
 const renderDays = (days: OnThisDayData | undefined) =>
   act(async () => render(<OnThisDay days={Promise.resolve(days)} />));
 
-const top = { artist: "Bicep", track: "Glue" };
+const top = { artist: "Bicep", track: "Glue", plays: 9 };
 
 describe("OnThisDay", () => {
   it("renders a stop per year played and folds silent years together", async () => {
@@ -26,13 +26,13 @@ describe("OnThisDay", () => {
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual(
       [
         "Oct 24",
-        "2025Glue – Bicep12 plays12 plays in 2025",
+        "2025Glue – Bicep (9 plays)12 plays that day12 plays in 2025",
         "2023–2024nothing played",
-        "2022Glue – Bicep1 play1 play in 2022",
+        "2022Glue – Bicep (9 plays)1 play that day1 play in 2022",
         "2021nothing played",
       ],
     );
-    expect(screen.getByText("12 plays").parentElement).toHaveAttribute(
+    expect(screen.getByText("12 plays that day").parentElement).toHaveAttribute(
       "aria-hidden",
       "true",
     );

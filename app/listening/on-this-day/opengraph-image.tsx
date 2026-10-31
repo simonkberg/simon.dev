@@ -182,8 +182,11 @@ export default async function openGraphImage() {
                   <span style={{ ...clip, fontStyle: "italic" }}>
                     {busiest.top.artist}
                   </span>
+                  <span style={keep}>({formatPlays(busiest.top.plays)})</span>
                   <span style={keep}>·</span>
-                  <span style={keep}>{formatPlays(busiest.count)}</span>
+                  <span style={keep}>
+                    {formatPlays(busiest.count)} that day
+                  </span>
                 </div>
               )}
             </div>
