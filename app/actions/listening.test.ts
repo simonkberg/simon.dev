@@ -648,7 +648,7 @@ describe("getOnThisDay", () => {
             year: "2025",
             day: "2025-10-23",
             count: 5,
-            top: { artist: "Top", track: "First" },
+            top: { artist: "Top", track: "First", plays: 2 },
           },
           { year: "2008", day: "2008-10-23", count: 0, top: undefined },
         ]),

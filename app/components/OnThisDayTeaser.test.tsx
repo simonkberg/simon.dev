@@ -23,14 +23,14 @@ describe("OnThisDayTeaser", () => {
           year: "2025",
           day: "2025-10-24",
           count: 45,
-          top: { artist: "Destroyer", track: "A" },
+          top: { artist: "Destroyer", track: "A", plays: 3 },
         },
         { year: "2024", day: "2024-10-24", count: 80 },
         {
           year: "2012",
           day: "2012-10-24",
           count: 62,
-          top: { artist: "Lana Del Rey", track: "B" },
+          top: { artist: "Lana Del Rey", track: "B", plays: 21 },
         },
       ]),
     );
@@ -39,7 +39,7 @@ describe("OnThisDayTeaser", () => {
       screen.getByText("On this day in 2012 (62 plays)"),
     ).toBeInTheDocument();
     expect(screen.getByRole("paragraph")).toHaveTextContent(
-      "B – Lana Del Rey. See every year.",
+      "B – Lana Del Rey (21 plays). See every year.",
     );
   });
 

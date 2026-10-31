@@ -384,7 +384,7 @@ export async function getTopArtistByBucket(
 }
 
 // The day's most played artist and their most played track, earliest first on ties.
-export type TopOfDay = Pick<Play, "artist" | "track">;
+export type TopOfDay = Pick<Play, "artist" | "track"> & { plays: number };
 
 export type DayInYear = { year: string; day: Day; count: number } & (
   | { top: TopOfDay }
@@ -403,21 +403,23 @@ export type GetOnThisDayResult =
   | { status: "ok"; days: OnThisDay }
   | { status: "error"; error: string };
 
-function mostPlayed(items: readonly string[]): string | undefined {
+function mostPlayed(
+  items: readonly string[],
+): [item: string, count: number] | undefined {
   const counts = new Map<string, number>();
   for (const item of items) counts.set(item, (counts.get(item) ?? 0) + 1);
   // A map keeps first-seen order and sorting is stable, so ties go to the earliest.
-  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return [...counts].sort((a, b) => b[1] - a[1])[0];
 }
 
 function topOfDay(played: readonly Play[]): TopOfDay | undefined {
-  const artist = mostPlayed(played.map((play) => play.artist));
+  const [artist] = mostPlayed(played.map((play) => play.artist)) ?? [];
   const track = mostPlayed(
     played.filter((play) => play.artist === artist).map((play) => play.track),
   );
   return artist === undefined || track === undefined
     ? undefined
-    : { artist, track };
+    : { artist, track: track[0], plays: track[1] };
 }
 
 export async function getOnThisDay(): Promise<GetOnThisDayResult> {

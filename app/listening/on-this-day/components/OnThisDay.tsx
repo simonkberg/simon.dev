@@ -11,6 +11,7 @@ import type {
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Skeleton, SkeletonStatus } from "@/components/Skeleton";
 import { formatPlays } from "@/lib/formatNumber";
+import { topTrackPlays } from "@/lib/onThisDay";
 import { href } from "@/listening/on/href";
 
 export interface OnThisDayProps {
@@ -55,6 +56,8 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
       {stops.map((stop, index) => {
         // The origin is stop 0.
         const step = index + 1;
+        const trackPlays =
+          stop.kind === "played" ? topTrackPlays(stop.year) : undefined;
         return stop.kind === "played" ? (
           <li
             key={stop.year.year}
@@ -65,6 +68,12 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
             <span className="timeline-year">{stop.year.year}</span>
             <span className="timeline-top">
               {stop.year.top.track} &ndash; <em>{stop.year.top.artist}</em>
+              {trackPlays && (
+                <>
+                  {" "}
+                  <span className="timeline-track-plays">{trackPlays}</span>
+                </>
+              )}
             </span>
             <span className="timeline-plays">
               <Link href={href(stop.year.day)}>
@@ -72,7 +81,9 @@ export const OnThisDay = ({ days }: OnThisDayProps) => {
                   <AnimatedNumber
                     value={stop.year.count}
                     follow
-                    format={(shown) => formatPlays(stop.year.count, shown)}
+                    format={(shown) =>
+                      `${formatPlays(stop.year.count, shown)} that day`
+                    }
                   />
                 </span>
                 <span className="visually-hidden">
