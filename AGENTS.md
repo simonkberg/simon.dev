@@ -290,11 +290,13 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   failures degrade to a reply without memory, never to no reply. `/simon-bot` shows the
   `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
 - **simon-bot commentary:** the bot's take on each listening page is a pane of its own under the
-  first (`Commentary`), there from the first paint so nothing moves when it arrives, one Turso `commentary` row per page and slot: the Stockholm day
+  first (`Commentary`), one Turso `commentary` row per page and slot: the Stockholm day
   (7 days, On this day), week (1 month) or month (longer periods) it covers, or a time travel day,
-  for good once it settled (`app/lib/commentary.ts`). The browser asks `/api/commentary` once
-  hydrated, so crawlers and prerenders never write one; a miss waits 2s, then POSTs, which writes
-  it under a lock per slot (other requests poll the row), limited per network. A route handler, as
+  for good once it settled (`app/lib/commentary.ts`). Pages render a stored take with the rest
+  (`storedTake`, out of the static shell); time travel's lives in the layout, so the browser GETs
+  it per day. Only the hydrated browser writes one, so crawlers and prerenders never do: a miss
+  waits 2s, then POSTs with the visitor's session, which writes it under a lock per slot (other
+  requests poll the row), limited per network. A route handler, as
   Next runs a tab's server actions one at a time: a slow write would hold up chat posts. Bump
   `VERSION` there to rewrite every page after a prompt change; delete a row to rewrite one.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the

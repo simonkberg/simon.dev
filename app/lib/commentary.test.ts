@@ -28,6 +28,7 @@ import {
   getCommentary,
   parsePage,
   slotOf,
+  storedTake,
   writeCommentary,
   VERSION,
 } from "./commentary";
@@ -36,7 +37,10 @@ vi.mock(import("@/lib/turso"), async () =>
   (await import("@/mocks/sqlite")).mockTurso(),
 );
 
-vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
+vi.mock(import("next/cache"), () => ({
+  cacheLife: vi.fn(),
+  io: vi.fn(async () => undefined),
+}));
 
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -214,6 +218,20 @@ describe("getCommentary", () => {
       error: "Failed to read commentary",
     });
     expect(cacheLife).toHaveBeenCalledWith("seconds");
+  });
+});
+
+describe("storedTake", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+  });
+
+  it("should give the stored take, or null when it can't be read", async () => {
+    await store("7day", "2026-10-31", "today's");
+    await expect(storedTake("7day")).resolves.toBe("today's");
+
+    vi.mocked(query).mockRejectedValueOnce(new Error("down"));
+    await expect(storedTake("7day")).resolves.toBeNull();
   });
 });
 

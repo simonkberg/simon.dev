@@ -8,6 +8,7 @@ import { Commentary } from "./Commentary";
 
 const TEXT = "frog ate the middle of the week";
 
+let gets = 0;
 let posts: string[];
 
 function answer(
@@ -15,7 +16,10 @@ function answer(
   post: () => Response = () => HttpResponse.json({ text: TEXT }),
 ) {
   server.use(
-    http.get("*/api/commentary", get),
+    http.get("*/api/commentary", () => {
+      gets += 1;
+      return get();
+    }),
     http.post("*/api/commentary", ({ request }) => {
       posts.push(new URL(request.url).searchParams.get("page") ?? "");
       return post();
@@ -26,6 +30,7 @@ function answer(
 const none = () => new HttpResponse(null, { status: 204 });
 
 beforeEach(() => {
+  gets = 0;
   posts = [];
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 });
@@ -109,5 +114,40 @@ describe("Commentary", () => {
     await act(() => vi.advanceTimersByTimeAsync(2000));
 
     expect(posts).toEqual([]);
+  });
+
+  describe("with the take the page looked up", () => {
+    it("should render a stored take with the page, asking nothing", async () => {
+      answer(none);
+      await act(async () =>
+        render(<Commentary page="7day" stored={Promise.resolve(TEXT)} />),
+      );
+
+      expect(take()).toHaveTextContent(TEXT);
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      expect(gets).toBe(0);
+      expect(posts).toEqual([]);
+    });
+
+    it("should have a missing take written without asking for it first", async () => {
+      answer(none);
+      await act(async () =>
+        render(<Commentary page="7day" stored={Promise.resolve(undefined)} />),
+      );
+
+      expect(take()).toHaveTextContent("listening back");
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      await vi.waitFor(() => expect(posts).toEqual(["7day"]));
+      expect(gets).toBe(0);
+    });
+
+    it("should ask for it when the page couldn't look it up", async () => {
+      answer(() => HttpResponse.json({ text: TEXT }));
+      await act(async () =>
+        render(<Commentary page="7day" stored={Promise.resolve(null)} />),
+      );
+
+      await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
+    });
   });
 });

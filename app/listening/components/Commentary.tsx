@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { Suspense, use, useEffect, useReducer } from "react";
 import { z } from "zod";
 
 import {
@@ -92,7 +92,7 @@ const framesOf = (state: State) =>
       ? ANIMATIONS.typing
       : RESTING;
 
-function Take({ state }: { state: State }) {
+function Words({ state }: { state: State }) {
   switch (state.phase) {
     case "asking":
       return null;
@@ -117,19 +117,50 @@ function Take({ state }: { state: State }) {
   }
 }
 
-/** simon-bot's take on a page, in a pane of its own, written on the first visit that finds none. */
-export function Commentary({ page }: { page: string }) {
-  const [state, dispatch] = useReducer(reduce, { phase: "asking" });
+function Pane({ state }: { state: State }) {
   const face = useFrameAnimation(framesOf(state));
+  return (
+    <p
+      className="commentary"
+      aria-busy={state.phase !== "done" && state.phase !== "none"}
+    >
+      <span className="face" aria-hidden="true">
+        {face}
+      </span>
+      <Words state={state} />
+    </p>
+  );
+}
+
+const initialState = (stored: string | undefined | null): State =>
+  stored === null
+    ? { phase: "asking" }
+    : stored === undefined
+      ? { phase: "waiting" }
+      : { phase: "done", text: stored };
+
+function Take({
+  page,
+  stored,
+}: {
+  page: string;
+  stored: Promise<string | undefined | null> | undefined;
+}) {
+  // Null when the page couldn't look it up, so the browser asks.
+  const known = stored === undefined ? null : use(stored);
+  const [state, dispatch] = useReducer(reduce, known, initialState);
 
   useEffect(() => {
+    if (known !== undefined && known !== null) return;
     const controller = new AbortController();
     const { signal } = controller;
     void (async () => {
       try {
-        const stored = await ask(page, "GET", signal);
-        dispatch({ type: "stored", text: stored });
-        if (stored !== undefined) return;
+        if (known === null) {
+          const found = await ask(page, "GET", signal);
+          dispatch({ type: "stored", text: found });
+          if (found !== undefined) return;
+        }
         await sleep(WAIT_MS, signal);
         const written = await ask(page, "POST", signal);
         const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -139,7 +170,7 @@ export function Commentary({ page }: { page: string }) {
       }
     })();
     return () => controller.abort();
-  }, [page]);
+  }, [page, known]);
 
   useTimeout(
     () => dispatch({ type: "tick" }),
@@ -147,21 +178,29 @@ export function Commentary({ page }: { page: string }) {
     state.phase === "typing" ? state.shown : undefined,
   );
 
-  // The pane is in the page from the first paint, so nothing moves when the take arrives.
+  return <Pane state={state} />;
+}
+
+/**
+ * simon-bot's take on a page, in a pane of its own, written on the first visit that finds none.
+ * A page that can look up the stored take passes it, so it renders with the page.
+ */
+export function Commentary({
+  page,
+  stored,
+}: {
+  page: string;
+  stored?: Promise<string | undefined | null>;
+}) {
+  // The pane is there from the first paint, with room for a take, so little moves when one arrives.
   return (
     <section>
       <Heading level={2}>
         simon-bot <Subtitle>(take)</Subtitle>
       </Heading>
-      <p
-        className="commentary"
-        aria-busy={state.phase !== "done" && state.phase !== "none"}
-      >
-        <span className="face" aria-hidden="true">
-          {face}
-        </span>
-        <Take state={state} />
-      </p>
+      <Suspense fallback={<Pane state={{ phase: "asking" }} />}>
+        <Take page={page} stored={stored} />
+      </Suspense>
     </section>
   );
 }
