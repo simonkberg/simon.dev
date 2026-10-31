@@ -29,6 +29,7 @@ import {
   parsePage,
   slotOf,
   writeCommentary,
+  VERSION,
 } from "./commentary";
 
 vi.mock(import("@/lib/turso"), async () =>
@@ -111,7 +112,7 @@ function reply(text: string, end: LoopEnd = "end_turn") {
   vi.mocked(finalText).mockResolvedValue({ text, end });
 }
 
-const store = (page: string, slot: string, text: string, version = 1) =>
+const store = (page: string, slot: string, text: string, version = VERSION) =>
   query("INSERT INTO commentary VALUES (?, ?, ?, ?, 0)", [
     page,
     slot,

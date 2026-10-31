@@ -38,7 +38,7 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-const VERSION = 1;
+export const VERSION = 2;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 10_000;
@@ -61,8 +61,18 @@ const COMMENTARY_PROMPT = md`
   one, is what you wrote on it last time. Your tools reach every scrobble he
   has, with Stockholm times, if you want to look further.
 
-  Say what you make of it in two to four sentences of plain text, no markdown:
-  the page shows it as is. Your reply is the comment itself, nothing before or after it.
+  The visitor reads your take right beside the page, so every number, date, time,
+  rank and name in <page> is already in front of them. Don't say any of it back,
+  in your words or his: no counts, no timestamps, no "x plays of y", no "since
+  sunday". A take is what the page doesn't say: why he plays what he plays, what
+  it gives away about him, what it says about his week or his taste. Find one
+  angle and commit to it, as a joke, a roast or a compliment, the way a friend
+  who knows his music would rib him about it. If the angle needs a fact, allude
+  to it rather than quote it. Land the point in your last sentence; no shrug,
+  aside or "anyway" after it.
+
+  Write one to three short sentences of plain text, no markdown: the page shows
+  it as is. Your reply is the comment itself, nothing before or after it.
 `;
 
 /** A listening page with a comment: a period, On this day, or a time travel day. */
