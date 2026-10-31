@@ -38,7 +38,7 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-export const VERSION = 3;
+export const VERSION = 4;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 10_000;
@@ -228,7 +228,7 @@ async function onThisDayFacts(): Promise<Fact[]> {
         "years",
         result.days.years.map(({ year, count, top }) =>
           top
-            ? `${year}: ${count} plays, mostly ${top.track} - ${top.artist}`
+            ? `${year}: ${count} plays in all, the most by ${top.artist}, mostly ${top.track}`
             : `${year}: nothing played`,
         ),
         ` date="${escapeXml(result.days.date)}"`,

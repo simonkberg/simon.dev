@@ -280,7 +280,7 @@ Oct 31: 3 (so far)
     await writeCommentary("on-this-day", { now: NOW });
 
     expect(input()).toContain(`<years date="Oct 31">
-2025: 35 plays, mostly Snow Globes - Black Country, New Road
+2025: 35 plays in all, the most by Black Country, New Road, mostly Snow Globes
 2024: nothing played
 </years>`);
   });
