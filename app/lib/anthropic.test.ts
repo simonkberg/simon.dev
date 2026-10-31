@@ -228,17 +228,20 @@ describe("createMessage", () => {
     ]);
     expect(buildMemoryContext).toHaveBeenCalledWith(
       chatCategories(["Alice", "Bob"]),
-      undefined,
     );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
 
-  it("should omit the memory block when there is none", async () => {
-    vi.mocked(buildMemoryContext).mockResolvedValue("");
+  it("should reply without memory when it fails to load", async () => {
+    vi.mocked(buildMemoryContext).mockRejectedValue(new Error("db down"));
     respond(() => reply([text("ok")]));
 
     expect(await ask()).toEqual(["ok"]);
     expect(requests[0]?.system).toHaveLength(1);
+    expect(log.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      "Failed to build memory context",
+    );
   });
 
   describe("memory tools", () => {

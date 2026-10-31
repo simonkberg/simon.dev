@@ -32,7 +32,7 @@ import {
 import { formatPlays } from "@/lib/formatNumber";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
-import { PUBLIC_CATEGORIES } from "@/lib/memory";
+import { buildMemoryContext, PUBLIC_CATEGORIES } from "@/lib/memory";
 import { topTrackPlays } from "@/lib/onThisDay";
 import { isValidPeriod, type Period, periodLabels } from "@/lib/periods";
 import { type BucketUnit, currentBucket } from "@/lib/scrobbleBuckets";
@@ -310,15 +310,13 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
 }
 
 async function compose(page: CommentaryPage, slot: Slot) {
-  const [system, input] = await Promise.all([
+  const [memory, input] = await Promise.all([
     // Only the notes /simon-bot already shows, since the page is public, and no index of the rest: it has no recall.
-    // Required, since a comment is stored: one written without its voice would stay.
-    buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, {
-      index: false,
-      required: true,
-    }),
+    // Unlike a reply, a failure fails the take: one written without its voice would be stored.
+    buildMemoryContext(PUBLIC_CATEGORIES, { index: false }),
     pageInput(page, slot),
   ]);
+  const system = buildSystem(COMMENTARY_PROMPT, memory);
   const { text, end } = await finalText({
     system,
     messages: [{ role: "user", content: input }],

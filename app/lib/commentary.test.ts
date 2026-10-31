@@ -10,15 +10,10 @@ import {
   getTopArtists,
   getTopTracks,
 } from "@/actions/listening";
-import {
-  buildSystem,
-  finalText,
-  LISTENING_TOOLS,
-  type LoopEnd,
-} from "@/lib/anthropic";
+import { finalText, LISTENING_TOOLS, type LoopEnd } from "@/lib/anthropic";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
-import { PUBLIC_CATEGORIES } from "@/lib/memory";
+import { buildMemoryContext, PUBLIC_CATEGORIES } from "@/lib/memory";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
 import { topAlbum } from "@/mocks/listening";
@@ -41,7 +36,6 @@ vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => ({
   ...(await importOriginal()),
   finalText: vi.fn(),
-  buildSystem: vi.fn(async () => [{ type: "text" as const, text: "prompt" }]),
 }));
 
 vi.mock(import("@/lib/locks"), async (importOriginal) => ({
@@ -238,12 +232,11 @@ describe("writeCommentary", () => {
 
     await expect(writeCommentary("7day")).resolves.toBe("frog ate the week");
 
-    expect(buildSystem).toHaveBeenCalledWith(
-      expect.stringContaining("comment"),
-      PUBLIC_CATEGORIES,
-      { index: false, required: true },
-    );
     expect(vi.mocked(finalText).mock.calls[0]?.[0]).toMatchObject({
+      system: [
+        { text: expect.stringContaining("comment") },
+        { text: await buildMemoryContext(PUBLIC_CATEGORIES, { index: false }) },
+      ],
       tools: LISTENING_TOOLS,
       endInText: true,
       loop: "commentary",
