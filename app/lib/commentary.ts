@@ -29,9 +29,11 @@ import {
   localDay,
   monthOf,
 } from "@/lib/dates";
+import { formatPlays } from "@/lib/formatNumber";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
+import { topTrackPlays } from "@/lib/onThisDay";
 import { isValidPeriod, type Period, periodLabels } from "@/lib/periods";
 import { type BucketUnit, currentBucket } from "@/lib/scrobbleBuckets";
 import { hasSettled } from "@/lib/scrobbles";
@@ -237,10 +239,15 @@ async function onThisDayFacts(): Promise<Fact[]> {
     result.status === "ok" &&
       list(
         "years",
-        result.days.years.map(({ year, count, top }) =>
-          top
-            ? `${year}: ${count} plays in all, ${top.plays} of them ${top.track} by ${top.artist}`
-            : `${year}: nothing played`,
+        result.days.years.map((day) =>
+          day.top
+            ? [
+                `${day.year}: ${formatPlays(day.count)} in all, the most by ${day.top.artist}, mostly ${day.top.track}`,
+                topTrackPlays(day),
+              ]
+                .filter(Boolean)
+                .join(" ")
+            : `${day.year}: nothing played`,
         ),
         ` date="${escapeXml(result.days.date)}"`,
       ),
