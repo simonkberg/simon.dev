@@ -2708,16 +2708,22 @@ ul {
 .commentary {
   display: flex;
   gap: 1ch;
-  /* Room for a typical take before it arrives, so nothing under it moves. */
-  min-block-size: 3lh;
   margin: 0;
 
-  @media (width < 30rem) {
-    min-block-size: 6lh;
+  /* Room for a typical take before it arrives, so nothing under it moves. */
+  &.reserved {
+    min-block-size: 3lh;
+
+    @media (width < 30rem) {
+      min-block-size: 6lh;
+    }
   }
 
   > .face {
     flex: none;
+    /* The widest frame, (・.・?), so the text stays put as the face moves. */
+    min-inline-size: 8ch;
+    text-align: end;
     color: var(--accent);
   }
 

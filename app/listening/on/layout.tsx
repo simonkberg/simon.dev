@@ -22,6 +22,7 @@ export default function TimeTravelLayout({
   const months = getScrobbleMonths().then((result) =>
     result.status === "ok" ? result.scrobbles : undefined,
   );
+  const today = getToday();
   const years = getTopArtistByBucket("overall").then((result) =>
     result.status === "ok" ? result.buckets : undefined,
   );
@@ -48,13 +49,13 @@ export default function TimeTravelLayout({
             Time Travel <Subtitle>(drag, or use the arrow keys)</Subtitle>
           </Heading>
           <Suspense fallback={<TimeTravelSkeleton />}>
-            <TimeTravel today={getToday()} months={months} years={years}>
+            <TimeTravel today={today} months={months} years={years}>
               {days}
             </TimeTravel>
           </Suspense>
         </section>
 
-        <DayCommentary />
+        <DayCommentary today={today} />
 
         {children}
       </TravelProvider>

@@ -47,6 +47,7 @@ describe("Commentary", () => {
       screen.getByRole("heading", { name: "simon-bot (take)" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("paragraph")).toHaveClass("reserved");
 
     await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
     expect(screen.getByRole("paragraph")).toHaveAttribute("aria-busy", "false");
@@ -126,6 +127,32 @@ describe("Commentary", () => {
     expect(posts).toEqual([]);
   });
 
+  it("should say today has none yet with the page, asking nothing", async () => {
+    answer(none);
+    await act(async () =>
+      render(
+        <Commentary page="2026-10-31" today={Promise.resolve("2026-10-31")} />,
+      ),
+    );
+
+    expect(take()).toHaveTextContent("ask me once the day is over");
+    expect(screen.getByRole("paragraph")).not.toHaveClass("reserved");
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(gets).toBe(0);
+    expect(posts).toEqual([]);
+  });
+
+  it("should ask about a day before today", async () => {
+    answer(() => HttpResponse.json({ text: TEXT }));
+    await act(async () =>
+      render(
+        <Commentary page="2026-10-30" today={Promise.resolve("2026-10-31")} />,
+      ),
+    );
+
+    await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
+  });
+
   describe("with the take the page looked up", () => {
     it("should render a stored take with the page, asking nothing", async () => {
       answer(none);
@@ -134,6 +161,7 @@ describe("Commentary", () => {
       );
 
       expect(take()).toHaveTextContent(TEXT);
+      expect(screen.getByRole("paragraph")).not.toHaveClass("reserved");
       await act(() => vi.advanceTimersByTimeAsync(2000));
       expect(gets).toBe(0);
       expect(posts).toEqual([]);

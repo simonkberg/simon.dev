@@ -11,6 +11,7 @@ import {
 import { Heading } from "@/components/Heading";
 import { Subtitle } from "@/components/Subtitle";
 import { useTimeout } from "@/components/useTimeout";
+import type { Day } from "@/lib/dates";
 
 // Long enough that stepping through days doesn't have each one written.
 const WAIT_MS = 2000;
@@ -127,11 +128,11 @@ function Words({ state }: { state: State }) {
   }
 }
 
-function Pane({ state }: { state: State }) {
+function Pane({ state, reserved }: { state: State; reserved: boolean }) {
   const face = useFrameAnimation(framesOf(state));
   return (
     <p
-      className="commentary"
+      className={reserved ? "commentary reserved" : "commentary"}
       aria-busy={
         state.phase === "asking" ||
         state.phase === "waiting" ||
@@ -146,26 +147,38 @@ function Pane({ state }: { state: State }) {
   );
 }
 
-const initialState = (stored: string | undefined | null): State =>
-  stored === null
-    ? { phase: "asking" }
-    : stored === undefined
-      ? { phase: "waiting" }
-      : { phase: "done", text: stored };
+const initialState = ({
+  known,
+  early,
+}: {
+  known: string | undefined | null;
+  early: boolean;
+}): State =>
+  early
+    ? { phase: "early" }
+    : known === null
+      ? { phase: "asking" }
+      : known === undefined
+        ? { phase: "waiting" }
+        : { phase: "done", text: known };
 
 function Take({
   page,
   stored,
+  today,
 }: {
   page: string;
   stored: Promise<string | undefined | null> | undefined;
+  today: Promise<Day> | undefined;
 }) {
   // Null when the page couldn't look it up, so the browser asks.
   const known = stored === undefined ? null : use(stored);
-  const [state, dispatch] = useReducer(reduce, known, initialState);
+  const early = today !== undefined && page >= use(today);
+  const [state, dispatch] = useReducer(reduce, { known, early }, initialState);
+  const settled = early || (known !== undefined && known !== null);
 
   useEffect(() => {
-    if (known !== undefined && known !== null) return;
+    if (settled) return;
     const controller = new AbortController();
     const { signal } = controller;
     void (async () => {
@@ -185,7 +198,7 @@ function Take({
       }
     })();
     return () => controller.abort();
-  }, [page, known]);
+  }, [page, known, settled]);
 
   useTimeout(
     () => dispatch({ type: "tick" }),
@@ -193,28 +206,31 @@ function Take({
     state.phase === "typing" ? state.shown : undefined,
   );
 
-  return <Pane state={state} />;
+  return <Pane state={state} reserved={!settled} />;
 }
 
 /**
  * simon-bot's take on a page, in a pane of its own, written on the first visit that finds none.
  * A page that can look up the stored take passes it, so it renders with the page.
+ * A day's page passes today, so a day still taking plays says so with the page.
  */
 export function Commentary({
   page,
   stored,
+  today,
 }: {
   page: string;
   stored?: Promise<string | undefined | null>;
+  today?: Promise<Day>;
 }) {
-  // The pane is there from the first paint, with room for a take, so little moves when one arrives.
+  // The pane is there from the first paint, with room for a take that loads, so little moves when one arrives.
   return (
     <section>
       <Heading level={2}>
         simon-bot <Subtitle>(take)</Subtitle>
       </Heading>
-      <Suspense fallback={<Pane state={{ phase: "asking" }} />}>
-        <Take page={page} stored={stored} />
+      <Suspense fallback={<Pane state={{ phase: "asking" }} reserved />}>
+        <Take page={page} stored={stored} today={today} />
       </Suspense>
     </section>
   );

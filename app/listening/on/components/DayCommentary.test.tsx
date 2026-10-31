@@ -5,8 +5,15 @@ import { DayCommentary } from "./DayCommentary";
 import { TravelContext } from "./Travel";
 
 vi.mock(import("@/listening/components/Commentary"), () => ({
-  Commentary: ({ page }: { page: string }) => <p>comment on {page}</p>,
+  Commentary: ({ page, today }: { page: string; today?: Promise<string> }) => (
+    <p>
+      comment on {page}
+      {today === undefined ? "" : " knowing today"}
+    </p>
+  ),
 }));
+
+const today = Promise.resolve("2026-10-31" as const);
 
 describe("DayCommentary", () => {
   it("should comment on the day travelled to", () => {
@@ -22,15 +29,17 @@ describe("DayCommentary", () => {
           cancel: vi.fn(),
         }}
       >
-        <DayCommentary />
+        <DayCommentary today={today} />
       </TravelContext>,
     );
 
-    expect(screen.getByText("comment on 2019-03-04")).toBeInTheDocument();
+    expect(
+      screen.getByText("comment on 2019-03-04 knowing today"),
+    ).toBeInTheDocument();
   });
 
   it("should comment on nothing before a day is picked", () => {
-    const { container } = render(<DayCommentary />);
+    const { container } = render(<DayCommentary today={today} />);
 
     expect(container).toBeEmptyDOMElement();
   });
