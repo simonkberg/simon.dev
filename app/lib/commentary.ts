@@ -357,7 +357,10 @@ export async function writeCommentary(
     if (stored !== undefined || waited) return stored;
     const text = await compose(page, slot);
     // The page's own reads take the time afresh, so a write that ran past its slot describes the next one.
-    if (slotOf(page, new Date())?.slot !== slot.slot) return text;
+    if (slotOf(page, new Date())?.slot !== slot.slot) {
+      log.info(slot, "Dropped commentary written past its slot");
+      return text;
+    }
     await query(
       `INSERT INTO commentary (page, slot, version, text, written_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT (page, slot) DO UPDATE SET version = excluded.version, text = excluded.text, written_at = excluded.written_at`,

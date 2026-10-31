@@ -391,6 +391,10 @@ Oct 31: 3 (so far)
       "frog ate the week",
     );
     expect(await stored()).toEqual([]);
+    expect(log.info).toHaveBeenCalledWith(
+      { page: "7day", slot: "2026-10-31", end: expect.any(Date) },
+      "Dropped commentary written past its slot",
+    );
   });
 
   it("should write nothing for a day whose plays are still coming in", async () => {
