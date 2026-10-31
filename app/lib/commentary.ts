@@ -310,7 +310,7 @@ async function compose(page: CommentaryPage, slot: Slot, now: Date) {
 /** Writes the page's comment for its current slot, or waits for the request already writing it. */
 export async function writeCommentary(
   page: CommentaryPage,
-  now = new Date(),
+  { now = new Date(), signal }: { now?: Date; signal?: AbortSignal } = {},
 ): Promise<string | undefined> {
   const slot = slotOf(page, now);
   if (slot === undefined) return undefined;
@@ -321,7 +321,7 @@ export async function writeCommentary(
   // Polls while another request writes it.
   while (!(await tryLock(lock, owner, LOCK_TTL_MS))) {
     waited = true;
-    if (Date.now() >= until) return undefined;
+    if (Date.now() >= until || signal?.aborted) return undefined;
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
     const text = await readText(slot.page, slot.slot);
     if (text !== undefined) return text;
@@ -332,6 +332,8 @@ export async function writeCommentary(
     // A lock freed without a comment is a write that failed, which a waiter would only fail again.
     if (stored !== undefined || waited) return stored;
     const text = await compose(page, slot, now);
+    // The page's own reads take the time afresh, so a write that ran past its slot describes the next one.
+    if (slotOf(page, new Date())?.slot !== slot.slot) return text;
     await query(
       `INSERT INTO commentary (page, slot, version, text, written_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT (page, slot) DO UPDATE SET version = excluded.version, text = excluded.text, written_at = excluded.written_at`,

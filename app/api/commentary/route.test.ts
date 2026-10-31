@@ -69,7 +69,9 @@ describe("POST /api/commentary", () => {
   it("should write the comment, limited per network", async () => {
     const response = await POST(request("7day", "POST"));
 
-    expect(writeCommentary).toHaveBeenCalledWith("7day");
+    expect(writeCommentary).toHaveBeenCalledWith("7day", {
+      signal: expect.any(AbortSignal),
+    });
     expect(admit).toHaveBeenCalledWith("commentary", "2001:db8::1", "unknown", {
       limit: 20,
       windowMs: 3_600_000,

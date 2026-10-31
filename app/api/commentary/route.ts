@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   if (refusal) return new NextResponse(null, { status: 403 });
 
   try {
-    return text(await writeCommentary(page));
+    return text(await writeCommentary(page, { signal: request.signal }));
   } catch (err) {
     log.error({ err, page }, "Failed to write commentary");
     return new NextResponse(null, { status: 503 });

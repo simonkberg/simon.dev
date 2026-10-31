@@ -218,13 +218,14 @@ describe("getCommentary", () => {
 
 describe("writeCommentary", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     reply("frog ate the week");
   });
 
   it("should write a period's comment from its page and the last one", async () => {
     await store("7day", "2026-10-30", "goats <again>");
 
-    await expect(writeCommentary("7day", NOW)).resolves.toBe(
+    await expect(writeCommentary("7day", { now: NOW })).resolves.toBe(
       "frog ate the week",
     );
 
@@ -267,7 +268,7 @@ Oct 31: 3 (so far)
   });
 
   it("should describe all time by its own words", async () => {
-    await writeCommentary("overall", NOW);
+    await writeCommentary("overall", { now: NOW });
 
     expect(input()).toContain(
       "<page description=\"all of Simon's listening, today being",
@@ -275,7 +276,7 @@ Oct 31: 3 (so far)
   });
 
   it("should write On this day from its years", async () => {
-    await writeCommentary("on-this-day", NOW);
+    await writeCommentary("on-this-day", { now: NOW });
 
     expect(input()).toContain(`<years date="Oct 31">
 2025: 35 plays, mostly Snow Globes - Black Country, New Road
@@ -286,7 +287,7 @@ Oct 31: 3 (so far)
   it("should write a day from its plays and month, without another day's comment", async () => {
     await store("day", "2019-03-03", "sunday");
 
-    await writeCommentary("2019-03-04", NOW);
+    await writeCommentary("2019-03-04", { now: NOW });
 
     expect(getDayPlays).toHaveBeenCalledWith("2019-03-04");
     expect(getTopTracks).toHaveBeenCalledWith("2019-03");
@@ -301,7 +302,7 @@ Oct 31: 3 (so far)
     await store("7day", "2026-10-30", "older prompt", 0);
     await store("7day", "2026-10-31", "old prompt", 0);
 
-    await writeCommentary("7day", NOW);
+    await writeCommentary("7day", { now: NOW });
 
     expect(input()).not.toContain("<previous>");
     expect(await stored()).toEqual([
@@ -313,15 +314,17 @@ Oct 31: 3 (so far)
   it("should return the comment another request stored before the lock", async () => {
     await store("7day", "2026-10-31", "already here");
 
-    await expect(writeCommentary("7day", NOW)).resolves.toBe("already here");
+    await expect(writeCommentary("7day", { now: NOW })).resolves.toBe(
+      "already here",
+    );
     expect(finalText).not.toHaveBeenCalled();
   });
 
   it("should wait for the request holding the lock", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: NOW });
     vi.mocked(tryLock).mockResolvedValue(false);
 
-    const written = writeCommentary("7day", NOW);
+    const written = writeCommentary("7day", { now: NOW });
     await vi.advanceTimersByTimeAsync(1000);
     await store("7day", "2026-10-31", "theirs");
     await vi.advanceTimersByTimeAsync(1000);
@@ -331,10 +334,10 @@ Oct 31: 3 (so far)
   });
 
   it("should give up when the request holding the lock failed", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: NOW });
     vi.mocked(tryLock).mockResolvedValueOnce(false);
 
-    const written = writeCommentary("7day", NOW);
+    const written = writeCommentary("7day", { now: NOW });
     await vi.advanceTimersByTimeAsync(1000);
 
     await expect(written).resolves.toBeUndefined();
@@ -342,15 +345,46 @@ Oct 31: 3 (so far)
     expect(releaseLock).toHaveBeenCalled();
   });
 
+  it("should stop waiting once the request is gone", async () => {
+    vi.useFakeTimers({ now: NOW });
+    vi.mocked(tryLock).mockResolvedValue(false);
+    const controller = new AbortController();
+
+    const written = writeCommentary("7day", {
+      now: NOW,
+      signal: controller.signal,
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(written).resolves.toBeUndefined();
+  });
+
+  it("should not store a comment that ran past its slot", async () => {
+    vi.mocked(finalText).mockImplementation(async () => {
+      // Midnight in Stockholm passes while it writes.
+      vi.setSystemTime(new Date("2026-10-31T23:00:00Z"));
+      return { text: "frog ate the week", end: "end_turn" };
+    });
+
+    await expect(writeCommentary("7day", { now: NOW })).resolves.toBe(
+      "frog ate the week",
+    );
+    expect(await stored()).toEqual([]);
+  });
+
   it("should write nothing for a day whose plays are still coming in", async () => {
-    await expect(writeCommentary("2026-10-31", NOW)).resolves.toBeUndefined();
+    await expect(
+      writeCommentary("2026-10-31", { now: NOW }),
+    ).resolves.toBeUndefined();
     expect(tryLock).not.toHaveBeenCalled();
   });
 
   it("should fail and release the lock when the bot is cut off", async () => {
     reply("frog ate", "max_tokens");
 
-    await expect(writeCommentary("7day", NOW)).rejects.toThrow(
+    await expect(writeCommentary("7day", { now: NOW })).rejects.toThrow(
       "Commentary ended in max_tokens with 8 characters",
     );
     expect(releaseLock).toHaveBeenCalled();
@@ -361,7 +395,7 @@ Oct 31: 3 (so far)
     const err = new Error("down");
     vi.mocked(releaseLock).mockRejectedValueOnce(err);
 
-    await expect(writeCommentary("7day", NOW)).resolves.toBe(
+    await expect(writeCommentary("7day", { now: NOW })).resolves.toBe(
       "frog ate the week",
     );
     expect(log.warn).toHaveBeenCalledWith(
@@ -408,7 +442,7 @@ describe("page facts", () => {
   ] as const)("should write nothing without %s", async (_, page, fail) => {
     fail();
 
-    await expect(writeCommentary(page, NOW)).rejects.toThrow(
+    await expect(writeCommentary(page, { now: NOW })).rejects.toThrow(
       "Commentary is missing part of the page",
     );
     expect(finalText).not.toHaveBeenCalled();
