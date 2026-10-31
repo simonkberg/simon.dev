@@ -271,11 +271,12 @@ export function chatCategories(participants: string[]): string[] {
   return [...new Set([...Object.keys(CORE_CATEGORIES), ...people])];
 }
 
+export type MemoryContextOptions = { index?: boolean; required?: boolean };
+
 /** The notes in `shown`, and with `index` the other categories by name, for a bot that can recall them. */
 export async function buildMemoryContext(
   shown: readonly string[],
-  index: boolean,
-  { required = false }: { required?: boolean } = {},
+  { index = true, required = false }: MemoryContextOptions = {},
 ): Promise<string> {
   try {
     const shownNotes = notesIn(shown);

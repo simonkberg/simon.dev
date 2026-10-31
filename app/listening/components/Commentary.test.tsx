@@ -127,48 +127,34 @@ describe("Commentary", () => {
     expect(posts).toEqual([]);
   });
 
-  it("should say today has none yet with the page, asking nothing", async () => {
-    answer(none);
-    await act(async () =>
-      render(
-        <Commentary page="2026-10-31" today={Promise.resolve("2026-10-31")} />,
-      ),
-    );
-
-    expect(take()).toHaveTextContent("ask me once the day is over");
-    await act(() => vi.advanceTimersByTimeAsync(2000));
-    expect(gets).toBe(0);
-    expect(posts).toEqual([]);
-  });
-
-  it("should ask about a day before today", async () => {
-    answer(() => HttpResponse.json({ text: TEXT }));
-    await act(async () =>
-      render(
-        <Commentary page="2026-10-30" today={Promise.resolve("2026-10-31")} />,
-      ),
-    );
-
-    await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));
-  });
-
   describe("with the take the page looked up", () => {
-    it("should render a stored take with the page, asking nothing", async () => {
-      answer(none);
-      await act(async () =>
-        render(<Commentary page="7day" stored={Promise.resolve(TEXT)} />),
-      );
+    it.each([
+      [{ status: "ok", text: TEXT } as const, TEXT],
+      [{ status: "early" } as const, "ask me once the day is over"],
+    ])(
+      "should render %o with the page, asking nothing",
+      async (stored, shown) => {
+        answer(none);
+        await act(async () =>
+          render(<Commentary page="7day" stored={Promise.resolve(stored)} />),
+        );
 
-      expect(take()).toHaveTextContent(TEXT);
-      await act(() => vi.advanceTimersByTimeAsync(2000));
-      expect(gets).toBe(0);
-      expect(posts).toEqual([]);
-    });
+        expect(take()).toHaveTextContent(shown);
+        await act(() => vi.advanceTimersByTimeAsync(2000));
+        expect(gets).toBe(0);
+        expect(posts).toEqual([]);
+      },
+    );
 
     it("should have a missing take written without asking for it first", async () => {
       answer(none);
       await act(async () =>
-        render(<Commentary page="7day" stored={Promise.resolve(undefined)} />),
+        render(
+          <Commentary
+            page="7day"
+            stored={Promise.resolve({ status: "ok", text: undefined })}
+          />,
+        ),
       );
 
       expect(take()).toHaveTextContent("listening back");
@@ -180,7 +166,12 @@ describe("Commentary", () => {
     it("should ask for it when the page couldn't look it up", async () => {
       answer(() => HttpResponse.json({ text: TEXT }));
       await act(async () =>
-        render(<Commentary page="7day" stored={Promise.resolve(null)} />),
+        render(
+          <Commentary
+            page="7day"
+            stored={Promise.resolve({ status: "error", error: "down" })}
+          />,
+        ),
       );
 
       await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT));

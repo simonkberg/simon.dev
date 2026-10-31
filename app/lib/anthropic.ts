@@ -19,6 +19,7 @@ import { type Filters, playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  type MemoryContextOptions,
   chatCategories,
   categorySchema,
   contentSchema,
@@ -630,11 +631,9 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 export async function buildSystem(
   prompt: string,
   categories: readonly string[],
-  { index = true, required }: { index?: boolean; required?: boolean } = {},
+  options?: MemoryContextOptions,
 ): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(categories, index, {
-    required,
-  });
+  const memoryContext = await buildMemoryContext(categories, options);
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
     ...(memoryContext === ""

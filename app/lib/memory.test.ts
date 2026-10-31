@@ -507,7 +507,6 @@ describe("buildMemoryContext", () => {
 
     const context = await buildMemoryContext(
       chatCategories(["Alice", "Alice", "!!!"]),
-      true,
     );
 
     expect(context).toBe(
@@ -539,7 +538,7 @@ describe("buildMemoryContext", () => {
     await seed(1, "self", "hi");
     await seed(2, "context", "secret");
 
-    const context = await buildMemoryContext(["self"], false);
+    const context = await buildMemoryContext(["self"], { index: false });
 
     expect(context).toBe(
       ["<memory>", "## self", "- #1 hi", "</memory>"].join("\n"),
@@ -549,7 +548,7 @@ describe("buildMemoryContext", () => {
   it("should omit the index when every category is shown", async () => {
     await seed(1, "self", "hi");
 
-    const context = await buildMemoryContext(chatCategories([]), true);
+    const context = await buildMemoryContext(chatCategories([]));
 
     expect(context).not.toContain("Other categories");
     expect(context).toContain("## style\n(nothing yet)");
@@ -558,7 +557,7 @@ describe("buildMemoryContext", () => {
   it("should return an empty string and log when the database fails", async () => {
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
-    await expect(buildMemoryContext(["self"], true)).resolves.toBe("");
+    await expect(buildMemoryContext(["self"])).resolves.toBe("");
     expect(log.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
       "Failed to build memory context",
@@ -569,7 +568,7 @@ describe("buildMemoryContext", () => {
     vi.mocked(query).mockRejectedValue(new Error("db down"));
 
     await expect(
-      buildMemoryContext(["self"], true, { required: true }),
+      buildMemoryContext(["self"], { required: true }),
     ).rejects.toThrow("db down");
   });
 });

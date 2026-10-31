@@ -54,8 +54,9 @@ describe("GET /api/commentary", () => {
   });
 
   it("should not find a day whose plays are still coming in", async () => {
+    vi.mocked(getCommentary).mockResolvedValueOnce({ status: "early" });
+
     expect((await GET(request("2026-10-31"))).status).toBe(404);
-    expect(getCommentary).not.toHaveBeenCalled();
   });
 
   it("should answer unavailable when the read fails", async () => {
@@ -132,6 +133,13 @@ describe("POST /api/commentary", () => {
 
   it("should not find a page without a comment", async () => {
     expect((await POST(request("someday", "POST"))).status).toBe(404);
+  });
+
+  it("should write nothing for a day whose plays are still coming in", async () => {
+    vi.mocked(getCommentary).mockResolvedValueOnce({ status: "early" });
+
+    expect((await POST(request("2026-10-31", "POST"))).status).toBe(404);
+    expect(writeCommentary).not.toHaveBeenCalled();
   });
 
   it("should answer no content when no comment came of it", async () => {

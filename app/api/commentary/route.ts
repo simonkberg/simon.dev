@@ -17,6 +17,9 @@ const LIMITS = { limit: 10, windowMs: 60_000 };
 const pageOf = (request: NextRequest): CommentaryPage | undefined =>
   parsePage(request.nextUrl.searchParams.get("page"), new Date());
 
+// A day still taking plays has no take yet, as a page that isn't one has none.
+const notFound = () => new NextResponse(null, { status: 404 });
+
 const text = (value: string | undefined) =>
   value === undefined
     ? new NextResponse(null, { status: 204 })
@@ -24,9 +27,10 @@ const text = (value: string | undefined) =>
 
 export async function GET(request: NextRequest) {
   const page = pageOf(request);
-  if (page === undefined) return new NextResponse(null, { status: 404 });
+  if (page === undefined) return notFound();
 
   const result = await getCommentary(page);
+  if (result.status === "early") return notFound();
   if (result.status === "error") return new NextResponse(null, { status: 503 });
   return text(result.text);
 }
@@ -34,9 +38,10 @@ export async function GET(request: NextRequest) {
 // Writes one when none is stored; the client asks only after hydrating, so crawlers never do.
 export async function POST(request: NextRequest) {
   const page = pageOf(request);
-  if (page === undefined) return new NextResponse(null, { status: 404 });
+  if (page === undefined) return notFound();
 
   const stored = await getCommentary(page);
+  if (stored.status === "early") return notFound();
   if (stored.status === "ok" && stored.text !== undefined) {
     return text(stored.text);
   }

@@ -13,13 +13,16 @@ import {
   getTopTracks,
   type GetTopTracksResult,
 } from "@/actions/listening";
-import { storedTake } from "@/lib/commentary";
+import { getCommentary } from "@/lib/commentary";
 import type { Period } from "@/lib/periods";
 
 import { ListeningPeriod, periodMetadata } from "./ListeningPeriod";
 
 vi.mock(import("@/lib/commentary"), () => ({
-  storedTake: vi.fn(async () => "frog ate the week"),
+  getCommentary: vi.fn(async () => ({
+    status: "ok" as const,
+    text: "frog ate the week",
+  })),
 }));
 vi.mock(import("@/actions/listening"), () => ({
   getScrobbles: vi.fn(() =>
@@ -67,7 +70,7 @@ describe("ListeningPeriod", () => {
   it("should render the stored take with the page", async () => {
     await renderPage("1month");
 
-    expect(storedTake).toHaveBeenCalledWith("1month");
+    expect(getCommentary).toHaveBeenCalledWith("1month");
     expect(screen.getByText("frog ate the week")).toBeInTheDocument();
   });
 

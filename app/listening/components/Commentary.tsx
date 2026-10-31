@@ -11,7 +11,7 @@ import {
 import { Heading } from "@/components/Heading";
 import { Subtitle } from "@/components/Subtitle";
 import { useTimeout } from "@/components/useTimeout";
-import type { Day } from "@/lib/dates";
+import type { GetCommentaryResult } from "@/lib/commentary";
 
 // Long enough that stepping through days doesn't have each one written.
 const WAIT_MS = 2000;
@@ -20,8 +20,7 @@ const CHARACTERS_PER_TICK = 2;
 const RESTING: AnimationFrames = [[60, "(°ᴗ°)"]];
 
 type State =
-  | { phase: "asking" }
-  | { phase: "waiting" }
+  | { phase: "pending" }
   | { phase: "typing"; text: string; shown: number }
   | { phase: "done"; text: string }
   | { phase: "early" }
@@ -38,7 +37,7 @@ function reduce(state: State, action: Action): State {
   switch (action.type) {
     case "stored":
       return action.text === undefined
-        ? { phase: "waiting" }
+        ? { phase: "pending" }
         : { phase: "done", text: action.text };
     case "written":
       if (action.text === undefined) return { phase: "none" };
@@ -79,23 +78,8 @@ async function ask(
   return responseSchema.parse(await response.json()).text;
 }
 
-function sleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) return reject(signal.reason);
-    const abort = () => {
-      clearTimeout(timer);
-      reject(signal.reason);
-    };
-    const timer = setTimeout(() => {
-      signal.removeEventListener("abort", abort);
-      resolve();
-    }, ms);
-    signal.addEventListener("abort", abort, { once: true });
-  });
-}
-
 const framesOf = (state: State) =>
-  state.phase === "asking" || state.phase === "waiting"
+  state.phase === "pending"
     ? ANIMATIONS.thinking
     : state.phase === "typing"
       ? ANIMATIONS.typing
@@ -104,8 +88,7 @@ const framesOf = (state: State) =>
 function Words({ state }: { state: State }) {
   switch (state.phase) {
     // Looked up or written, the wait reads the same, so a miss streaming in changes nothing.
-    case "asking":
-    case "waiting":
+    case "pending":
       return (
         <span className="quiet">
           listening back
@@ -133,11 +116,7 @@ function Pane({ state }: { state: State }) {
   return (
     <p
       className="commentary"
-      aria-busy={
-        state.phase === "asking" ||
-        state.phase === "waiting" ||
-        state.phase === "typing"
-      }
+      aria-busy={state.phase === "pending" || state.phase === "typing"}
     >
       <span className="face" aria-hidden="true">
         {face}
@@ -147,35 +126,26 @@ function Pane({ state }: { state: State }) {
   );
 }
 
-const initialState = ({
-  known,
-  early,
-}: {
-  known: string | undefined | null;
-  early: boolean;
-}): State =>
-  early
-    ? { phase: "early" }
-    : known === null
-      ? { phase: "asking" }
-      : known === undefined
-        ? { phase: "waiting" }
-        : { phase: "done", text: known };
+function initialState(stored: GetCommentaryResult | undefined): State {
+  if (stored?.status === "early") return { phase: "early" };
+  if (stored?.status === "ok" && stored.text !== undefined) {
+    return { phase: "done", text: stored.text };
+  }
+  return { phase: "pending" };
+}
 
 function Take({
   page,
   stored,
-  today,
 }: {
   page: string;
-  stored: Promise<string | undefined | null> | undefined;
-  today: Promise<Day> | undefined;
+  stored: Promise<GetCommentaryResult> | undefined;
 }) {
-  // Null when the page couldn't look it up, so the browser asks.
-  const known = stored === undefined ? null : use(stored);
-  const early = today !== undefined && page >= use(today);
-  const [state, dispatch] = useReducer(reduce, { known, early }, initialState);
-  const settled = early || (known !== undefined && known !== null);
+  const result = stored && use(stored);
+  const [state, dispatch] = useReducer(reduce, result, initialState);
+  // Looked up by the browser when the page couldn't.
+  const lookUp = result === undefined || result.status === "error";
+  const settled = initialState(result).phase !== "pending";
 
   useEffect(() => {
     if (settled) return;
@@ -183,12 +153,13 @@ function Take({
     const { signal } = controller;
     void (async () => {
       try {
-        if (known === null) {
+        if (lookUp) {
           const found = await ask(page, "GET", signal);
           dispatch({ type: "stored", text: found });
           if (found !== undefined) return;
         }
-        await sleep(WAIT_MS, signal);
+        await new Promise((resolve) => setTimeout(resolve, WAIT_MS));
+        // Aborted by then, the request is too, and the catch drops it.
         const written = await ask(page, "POST", signal);
         const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
         dispatch({ type: "written", text: written, instant });
@@ -198,7 +169,7 @@ function Take({
       }
     })();
     return () => controller.abort();
-  }, [page, known, settled]);
+  }, [page, lookUp, settled]);
 
   useTimeout(
     () => dispatch({ type: "tick" }),
@@ -212,24 +183,21 @@ function Take({
 /**
  * simon-bot's take on a page, in a pane of its own, written on the first visit that finds none.
  * A page that can look up the stored take passes it, so it renders with the page.
- * A day's page passes today, so a day still taking plays says so with the page.
  */
 export function Commentary({
   page,
   stored,
-  today,
 }: {
   page: string;
-  stored?: Promise<string | undefined | null>;
-  today?: Promise<Day>;
+  stored?: Promise<GetCommentaryResult>;
 }) {
   return (
     <section>
       <Heading level={2}>
         simon-bot <Subtitle>(take)</Subtitle>
       </Heading>
-      <Suspense fallback={<Pane state={{ phase: "asking" }} />}>
-        <Take page={page} stored={stored} today={today} />
+      <Suspense fallback={<Pane state={{ phase: "pending" }} />}>
+        <Take page={page} stored={stored} />
       </Suspense>
     </section>
   );

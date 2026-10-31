@@ -96,9 +96,12 @@ const slotUnits = {
   overall: "month",
 } as const satisfies Record<Exclude<CommentaryPage, Day>, BucketUnit>;
 
+const hasSlotUnit = (page: string): page is keyof typeof slotUnits =>
+  Object.hasOwn(slotUnits, page);
+
 /** The day, week or month a page's comment covers, or none while a day's plays are still coming in. */
 export function slotOf(page: CommentaryPage, now: Date): Slot | undefined {
-  if (isValidPeriod(page) || page === "on-this-day") {
+  if (hasSlotUnit(page)) {
     const unit = slotUnits[page];
     const { from, to } = currentBucket(unit, now);
     const day = localDay(from);
@@ -109,15 +112,14 @@ export function slotOf(page: CommentaryPage, now: Date): Slot | undefined {
     : undefined;
 }
 
-/** The page asked for, if it has a comment to show now. */
+/** The page asked for, if it is one. */
 export function parsePage(
   value: string | null,
   now: Date,
 ): CommentaryPage | undefined {
   if (value === null) return undefined;
-  if (isValidPeriod(value) || value === "on-this-day") return value;
-  const day = inHistory(value, localDay(now));
-  return day && slotOf(day, now) ? day : undefined;
+  if (hasSlotUnit(value)) return value;
+  return inHistory(value, localDay(now));
 }
 
 async function readText(page: string, slot: string) {
@@ -130,18 +132,19 @@ async function readText(page: string, slot: string) {
 
 async function readPrevious(page: string, slot: string) {
   const { rows } = await query(
-    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
-    [page, slot, VERSION],
+    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? ORDER BY slot DESC LIMIT 1",
+    [page, slot],
   );
   const row = rows[0];
   return (
-    row &&
+    row !== undefined &&
     `<previous slot="${escapeXml(String(row["slot"]))}">${escapeXml(String(row["text"]))}</previous>`
   );
 }
 
 export type GetCommentaryResult =
   | { status: "ok"; text: string | undefined }
+  | { status: "early" }
   | { status: "error"; error: string };
 
 /** The stored comment for the page's current slot, if one has been written. */
@@ -153,11 +156,15 @@ export async function getCommentary(
   try {
     const now = new Date();
     const slot = slotOf(page, now);
-    const text = slot && (await readText(slot.page, slot.slot));
+    if (slot === undefined) {
+      cacheLife("seconds");
+      return { status: "early" };
+    }
+    const text = await readText(slot.page, slot.slot);
     // A miss is reread soon, since a replica's tag can't reach the others.
     if (text === undefined) cacheLife("seconds");
     // An hour at most, so a deleted row is written again the same day.
-    else cacheUntil(slot?.end?.getTime() ?? Infinity, now, 60 * 60);
+    else cacheUntil(slot.end?.getTime() ?? Infinity, now, 60 * 60);
     return { status: "ok", text };
   } catch (err) {
     cacheLife("seconds");
@@ -165,12 +172,6 @@ export async function getCommentary(
     return { status: "error", error: "Failed to read commentary" };
   }
 }
-
-/** The stored take for a page to render, in its static shell so a navigation shows it at once; null when it can't be read. */
-export const storedTake = (page: CommentaryPage) =>
-  getCommentary(page).then((result) =>
-    result.status === "ok" ? result.text : null,
-  );
 
 type Fact = string | false;
 
@@ -293,7 +294,7 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
         ? onThisDayFacts()
         : dayFacts(page),
     // A day's slot is the day itself, so an earlier one is another day, not this page before.
-    slot.page === "day" ? undefined : readPrevious(slot.page, slot.slot),
+    slot.page !== "day" && readPrevious(slot.page, slot.slot),
   ]);
   // A comment is kept until its slot ends, a day's for good, so none is written from part of the page.
   if (facts.includes(false))
@@ -302,7 +303,7 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
     `<page description="${escapeXml(describe(page))}">`,
     ...facts,
     "</page>",
-    previous !== undefined && previous,
+    previous,
   ]
     .filter((line) => line !== false)
     .join("\n");
@@ -341,9 +342,9 @@ async function compose(page: CommentaryPage, slot: Slot) {
 /** Writes the page's comment for its current slot, or waits for the request already writing it. */
 export async function writeCommentary(
   page: CommentaryPage,
-  { now = new Date(), signal }: { now?: Date; signal?: AbortSignal } = {},
+  { signal }: { signal?: AbortSignal } = {},
 ): Promise<string | undefined> {
-  const slot = slotOf(page, now);
+  const slot = slotOf(page, new Date());
   if (slot === undefined) return undefined;
   const lock = `commentary:${slot.page}/${slot.slot}`;
   const owner = crypto.randomUUID();

@@ -293,9 +293,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   first (`Commentary`), one Turso `commentary` row per page and slot: the Stockholm day
   (7 days, On this day), week (1 month) or month (longer periods) it covers, or a time travel day,
   for good once it settled (`app/lib/commentary.ts`). Pages render a stored take with the rest
-  (`storedTake`, in the static shell so a navigation shows it at once: they run no server actions
-  for a stale shell to break), and a time travel day still taking plays says it has
-  none. Only the hydrated browser writes one, so crawlers and prerenders never do: a miss
+  (`getCommentary`, in the static shell so a navigation shows it at once: they run no server actions
+  for a stale shell to break), or that a time travel day still taking plays has none yet. Only the hydrated browser writes one, so crawlers and prerenders never do: a miss
   waits 2s, then POSTs with the visitor's session, which writes it under a lock per slot (other
   requests poll the row), limited per network. A route handler, as
   Next runs a tab's server actions one at a time: a slow write would hold up chat posts. Bump

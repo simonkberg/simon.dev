@@ -6,7 +6,7 @@ import { ExternalLink } from "@/components/ExternalLink";
 import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { config } from "@/config";
-import { storedTake } from "@/lib/commentary";
+import { getCommentary } from "@/lib/commentary";
 import { Commentary } from "@/listening/components/Commentary";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
 
@@ -45,7 +45,7 @@ export default function OnThisDayPage() {
         </Suspense>
       </section>
 
-      <Commentary page="on-this-day" stored={storedTake("on-this-day")} />
+      <Commentary page="on-this-day" stored={getCommentary("on-this-day")} />
     </Page>
   );
 }

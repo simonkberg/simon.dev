@@ -7,7 +7,7 @@ import { Heading } from "@/components/Heading";
 import { Page } from "@/components/Page";
 import { Subtitle } from "@/components/Subtitle";
 import { config } from "@/config";
-import { storedTake } from "@/lib/commentary";
+import { getCommentary } from "@/lib/commentary";
 import { type Period, periodLabels } from "@/lib/periods";
 import { bucketUnits } from "@/lib/scrobbleBuckets";
 import { PeriodSelector } from "@/listening/components/PeriodSelector";
@@ -59,7 +59,7 @@ export function ListeningPeriod({ period }: { period: Period }) {
         </Suspense>
       </section>
 
-      <Commentary key={period} page={period} stored={storedTake(period)} />
+      <Commentary key={period} page={period} stored={getCommentary(period)} />
 
       <TopLists span={period} subtitle="Top 10" />
     </Page>
