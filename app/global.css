@@ -1411,6 +1411,7 @@ ul {
 }
 
 .timeline {
+  container-type: inline-size;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1515,7 +1516,11 @@ ul {
       content: var(--timeline-bars) var(--timeline-bars) var(--timeline-bars)
         var(--timeline-bars);
       display: inline-block;
-      width: max(1ch, var(--value, 0) / var(--max, 1) * var(--grow) * 16ch);
+      /* Leaves room on a phone for the rail, the year and "999 plays that day" beside the longest bar. */
+      width: max(
+        1ch,
+        var(--value, 0) / var(--max, 1) * var(--grow) * min(16ch, 100cqi - 28ch)
+      );
       margin-inline-end: 1ch;
       overflow: hidden;
       color: var(--timeline-bar-color);
