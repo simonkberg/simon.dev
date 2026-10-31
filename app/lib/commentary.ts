@@ -239,7 +239,7 @@ async function onThisDayFacts(): Promise<Fact[]> {
         "years",
         result.days.years.map(({ year, count, top }) =>
           top
-            ? `${year}: ${count} plays in all, the most by ${top.artist}, mostly ${top.track}`
+            ? `${year}: ${count} plays in all, ${top.plays} of them ${top.track} by ${top.artist}`
             : `${year}: nothing played`,
         ),
         ` date="${escapeXml(result.days.date)}"`,
