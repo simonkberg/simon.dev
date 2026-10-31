@@ -146,15 +146,12 @@ export function Commentary({ page }: { page: string }) {
         simon-bot
         {state.phase === "waiting" && (
           <span className="hint">
-            <span className="words">is listening back</span>
+            is listening back
             <span className="caret" />
           </span>
         )}
         {state.phase === "done" && (
-          <span className="hint">
-            {!open && <span className="words">has a take </span>}
-            {open ? "▴" : "▾"}
-          </span>
+          <span className="hint">{open ? "▴" : "has a take ▾"}</span>
         )}
       </button>
       {open && (

@@ -99,11 +99,12 @@
   --heading-sub-case: none;
   --heading-number: none;
 
-  --note-top: 0;
-  --note-inset: 0;
-  --note-translate: none;
-  --note-padding: 0;
-  --note-bg: transparent;
+  --commentary-top: 0;
+  --commentary-inset: 0;
+  --commentary-translate: none;
+  --commentary-padding: 0;
+  --commentary-bg: transparent;
+  --commentary-phone-translate: 0 100%;
 
   --stats-columns: minmax(0, 1fr) max-content;
   --stats-gap: 0;
@@ -354,10 +355,12 @@
   --heading-wrap: nowrap;
 
   /* On the pane's top border, like its heading. */
-  --note-inset: 1.5ch;
-  --note-translate: 0 -50%;
-  --note-padding: 0 1ch;
-  --note-bg: var(--heading-bg);
+  --commentary-inset: 1.5ch;
+  --commentary-translate: 0 -50%;
+  --commentary-padding: 0 1ch;
+  --commentary-bg: var(--heading-bg);
+  /* On its bottom border on a phone. */
+  --commentary-phone-translate: 0 50%;
 
   --stats-gap: 0 2ch;
   --stats-row-padding: 0 1ch;
@@ -501,7 +504,7 @@
   --heading-sub-display: block;
   --heading-sub-gap: 0.25rem;
 
-  --note-top: 1.25rem;
+  --commentary-top: 1.25rem;
 
   --stats-columns: max-content minmax(4rem, 1fr) max-content;
   --stats-gap: 0.15rem 2ch;
@@ -2721,18 +2724,30 @@ ul {
 
 .commentary {
   position: absolute;
-  top: var(--note-top);
-  right: var(--note-inset);
-  translate: var(--note-translate);
+  top: var(--commentary-top);
+  right: var(--commentary-inset);
+  translate: var(--commentary-translate);
   /* Above the heading, which cuts off under it on a narrow pane. */
   z-index: 3;
   font-size: var(--small-size);
 
+  /* A phone's pane is too narrow to share its heading's line, so the note hangs off its foot instead. */
+  @media (width < 30rem) {
+    top: auto;
+    bottom: 0;
+    translate: var(--commentary-phone-translate);
+
+    > .bubble {
+      top: auto;
+      bottom: calc(100% + 0.75rem);
+    }
+  }
+
   > .tag {
     display: flex;
     gap: 1ch;
-    padding: var(--note-padding);
-    background: var(--note-bg);
+    padding: var(--commentary-padding);
+    background: var(--commentary-bg);
     font: inherit;
     font-weight: bold;
     text-transform: var(--heading-case);
@@ -2750,13 +2765,6 @@ ul {
       text-transform: none;
       letter-spacing: normal;
       color: var(--muted);
-
-      /* Clears the heading on a phone. */
-      @media (width < 30rem) {
-        > .words {
-          display: none;
-        }
-      }
     }
   }
 
