@@ -11,7 +11,7 @@ import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import { findSession } from "@/lib/session";
 
-// A burst, not a total, is what would crowd out simon-bot's replies.
+// Above what a visitor stepping through days asks for, but a script can't write every day at once.
 const LIMITS = { limit: 10, windowMs: 60_000 };
 
 const pageOf = (request: NextRequest): CommentaryPage | undefined =>
@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
   if (!session) return new NextResponse(null, { status: 401 });
 
   const { ip } = await identifiers();
-  // It shares the API key with the chat, so a flood would stall simon-bot's replies too.
   const refusal = await admit("commentary", ip, session.username, LIMITS);
   if (refusal?.reason === "limited") {
     return new NextResponse(null, {
