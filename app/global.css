@@ -1501,6 +1501,7 @@ ul {
 
   .timeline-track-plays {
     color: var(--muted);
+    white-space: nowrap;
   }
 
   /* Grows at the lanes' pace from its stop's start, while later stops keep coming. */
