@@ -58,8 +58,9 @@ const COMMENTARY_PROMPT = md`
   simon.dev's listening pages show Simon's Last.fm history, and each one
   carries a comment from you in its corner. You're writing the one for the page
   below: <page> holds what a visitor sees on it, and <previous>, when there is
-  one, is what you wrote on it last time. Your tools reach every scrobble he
-  has, with Stockholm times, if you want to look further.
+  one, is what you wrote on it last, for the day, week or month its slot starts.
+  Your tools reach every scrobble he has, with Stockholm times, if you want to
+  look further.
 
   The visitor reads your take right beside the page, so every number, date, time,
   rank and name in <page> is already in front of them. Don't say any of it back,
@@ -127,10 +128,14 @@ async function readText(page: string, slot: string) {
 
 async function readPrevious(page: string, slot: string) {
   const { rows } = await query(
-    "SELECT text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
+    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
     [page, slot, VERSION],
   );
-  return rows[0] === undefined ? undefined : String(rows[0]["text"]);
+  const row = rows[0];
+  return (
+    row &&
+    `<previous slot="${escapeXml(String(row["slot"]))}">${escapeXml(String(row["text"]))}</previous>`
+  );
 }
 
 export type GetCommentaryResult =
@@ -284,7 +289,7 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
     `<page description="${escapeXml(describe(page))}">`,
     ...facts,
     "</page>",
-    previous !== undefined && `<previous>${escapeXml(previous)}</previous>`,
+    previous !== undefined && previous,
   ]
     .filter((line) => line !== false)
     .join("\n");

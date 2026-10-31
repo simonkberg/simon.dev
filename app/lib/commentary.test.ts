@@ -256,7 +256,7 @@ Oct 31: 3 (so far)
 1. Grimm Tales - Frog: 39
 </top_albums>
 </page>
-<previous>goats &lt;again&gt;</previous>`,
+<previous slot="2026-10-30">goats &lt;again&gt;</previous>`,
     );
     expect(await stored()).toEqual([
       { page: "7day", slot: "2026-10-30", text: "goats <again>" },
