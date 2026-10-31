@@ -136,8 +136,8 @@ export async function getCommentary(
     const text = slot && (await readText(slot.page, slot.slot));
     // A miss is reread soon, since a replica's tag can't reach the others.
     if (text === undefined) cacheLife("seconds");
-    else if (slot?.end === undefined) cacheLife("max");
-    else cacheUntil(slot.end.getTime(), now);
+    // An hour at most, so a deleted row is written again the same day.
+    else cacheUntil(slot?.end?.getTime() ?? Infinity, now, 60 * 60);
     return { status: "ok", text };
   } catch (err) {
     cacheLife("seconds");
@@ -317,8 +317,10 @@ export async function writeCommentary(
   const lock = `commentary:${slot.page}/${slot.slot}`;
   const owner = crypto.randomUUID();
   const until = Date.now() + LOCK_TTL_MS;
-  // Polls while another request writes it, and takes over if that one fails.
+  let waited = false;
+  // Polls while another request writes it.
   while (!(await tryLock(lock, owner, LOCK_TTL_MS))) {
+    waited = true;
     if (Date.now() >= until) return undefined;
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
     const text = await readText(slot.page, slot.slot);
@@ -327,7 +329,8 @@ export async function writeCommentary(
   try {
     // Under the lock, so a comment another request just wrote isn't written twice.
     const stored = await readText(slot.page, slot.slot);
-    if (stored !== undefined) return stored;
+    // A lock freed without a comment is a write that failed, which a waiter would only fail again.
+    if (stored !== undefined || waited) return stored;
     const text = await compose(page, slot, now);
     await query(
       `INSERT INTO commentary (page, slot, version, text, written_at) VALUES (?, ?, ?, ?, ?)

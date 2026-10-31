@@ -170,7 +170,7 @@ describe("getCommentary", () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
   });
 
-  it("should keep the slot's comment until the slot ends", async () => {
+  it("should keep the slot's comment an hour at most", async () => {
     await store("7day", "2026-10-30", "yesterday's");
     await store("7day", "2026-10-31", "today's");
 
@@ -179,18 +179,20 @@ describe("getCommentary", () => {
       text: "today's",
     });
     expect(cacheLife).toHaveBeenCalledWith(
-      expect.objectContaining({ revalidate: 12 * 60 * 60 }),
+      expect.objectContaining({ revalidate: 60 * 60 }),
     );
   });
 
-  it("should keep a day's comment for good", async () => {
+  it("should keep a day's comment past any end", async () => {
     await store("day", "2019-03-04", "mogwai monday");
 
     await expect(getCommentary("2019-03-04")).resolves.toEqual({
       status: "ok",
       text: "mogwai monday",
     });
-    expect(cacheLife).toHaveBeenCalledWith("max");
+    expect(cacheLife).toHaveBeenCalledWith(
+      expect.objectContaining({ revalidate: 60 * 60 }),
+    );
   });
 
   it("should reread soon when none matches the prompt's version", async () => {
@@ -328,14 +330,16 @@ Oct 31: 3 (so far)
     expect(finalText).not.toHaveBeenCalled();
   });
 
-  it("should take over from a request that gave up", async () => {
+  it("should give up when the request holding the lock failed", async () => {
     vi.useFakeTimers();
     vi.mocked(tryLock).mockResolvedValueOnce(false);
 
     const written = writeCommentary("7day", NOW);
     await vi.advanceTimersByTimeAsync(1000);
 
-    await expect(written).resolves.toBe("frog ate the week");
+    await expect(written).resolves.toBeUndefined();
+    expect(finalText).not.toHaveBeenCalled();
+    expect(releaseLock).toHaveBeenCalled();
   });
 
   it("should write nothing for a day whose plays are still coming in", async () => {
