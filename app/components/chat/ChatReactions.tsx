@@ -254,11 +254,10 @@ function groupByEmoji(reactions: Reaction[]): Map<string, Reaction[]> {
 function describeReactors(variants: Reaction[], count: number): string {
   const users = variants.flatMap((variant) => variant.users);
   const mine = variants.filter((variant) => variant.mine).length;
-  const named = new Set(mine > 0 ? ["you", ...users] : users);
+  const names = new Set(mine > 0 ? ["you", ...users] : users);
   const onDiscord = count - users.length - mine;
-  return nameList.format(
-    onDiscord > 0 ? [...named, `${onDiscord} on Discord`] : named,
-  );
+  if (onDiscord > 0) names.add(`${onDiscord} on Discord`);
+  return nameList.format(names);
 }
 
 export const ChatReactionList = ({

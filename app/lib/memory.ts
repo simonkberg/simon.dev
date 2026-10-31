@@ -256,10 +256,8 @@ export async function forgetPerson(username: string): Promise<number> {
 
 function renderCategory(category: string, memories: Memory[]): string {
   const lines = memories.map((memory) => `- #${memory.id} ${memory.content}`);
-  return [
-    `## ${category}`,
-    ...(lines.length > 0 ? lines : ["(nothing yet)"]),
-  ].join("\n");
+  if (lines.length === 0) lines.push("(nothing yet)");
+  return [`## ${category}`, ...lines].join("\n");
 }
 
 /** The core categories and the participants' people/* notes: what a chat shows in full. */

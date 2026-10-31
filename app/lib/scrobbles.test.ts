@@ -67,7 +67,7 @@ const fakeLastfm: typeof userGetScrobbles = async (
   return {
     total: inRange.length,
     tracks: inRange.slice((page - 1) * limit, page * limit).map(scrobble),
-    ...(playing && { nowPlaying: playing }),
+    nowPlaying: playing,
   };
 };
 

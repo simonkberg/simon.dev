@@ -1,5 +1,7 @@
 "use no memo";
 
+import type { CSSProperties } from "react";
+
 import {
   getDailyScrobbles,
   type GetScrobblesResult,
@@ -185,6 +187,18 @@ type CoverAlbum = TopAlbum & { image: string | undefined };
 // A stacked tile's sleeve takes fewer lines, so it stays clear of the rank.
 const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => {
   const large = size >= coverSize;
+  const face: CSSProperties = album.image
+    ? { backgroundImage: `url(${album.image})`, backgroundSize: "100% 100%" }
+    : {
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        padding: size / 16,
+        overflow: "hidden",
+        wordBreak: "break-word",
+        fontSize: large ? 24 : 11,
+        lineHeight: 1.25,
+        backgroundColor: color.wash,
+      };
   return (
     <div
       style={{
@@ -194,21 +208,7 @@ const Cover = ({ album, size }: { album: CoverAlbum; size: number }) => {
         height: size,
         flexShrink: 0,
         border: `1px solid ${color.rule}`,
-        ...(album.image
-          ? {
-              backgroundImage: `url(${album.image})`,
-              backgroundSize: "100% 100%",
-            }
-          : {
-              flexDirection: "column",
-              justifyContent: "flex-end",
-              padding: size / 16,
-              overflow: "hidden",
-              wordBreak: "break-word",
-              fontSize: large ? 24 : 11,
-              lineHeight: 1.25,
-              backgroundColor: color.wash,
-            }),
+        ...face,
       }}
     >
       {!album.image && (
@@ -315,6 +315,18 @@ export const dayCard = (day: Day) =>
     labels: { scrobbled: "plays that day", top: "month's top" },
   });
 
+async function coversOf(span: Span) {
+  const result = await getTopAlbums(span);
+  if (result.status !== "ok") return [];
+  const albums = result.albums.slice(0, 4);
+  return Promise.all(
+    albums.map(async (album, index) => ({
+      ...album,
+      image: album.cover && (await inlineCover(album.cover, index)),
+    })),
+  );
+}
+
 async function card({
   subtitle,
   span,
@@ -327,18 +339,7 @@ async function card({
     scrobblesResult,
     lanesResult,
     getTopArtists(span),
-    getTopAlbums(span).then((result) =>
-      result.status === "ok"
-        ? Promise.all(
-            result.albums
-              .slice(0, 4)
-              .map(async (album, index) => ({
-                ...album,
-                image: album.cover && (await inlineCover(album.cover, index)),
-              })),
-          )
-        : [],
-    ),
+    coversOf(span),
   ]);
   const items = scrobbles.status === "ok" ? scrobbles.scrobbles : undefined;
   const top = topArtists.status === "ok" ? topArtists.artists[0] : undefined;

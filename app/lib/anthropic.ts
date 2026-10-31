@@ -640,10 +640,11 @@ export async function chatMemory(chatMessages: ChatMessage[]): Promise<string> {
 }
 
 export function buildSystem(prompt: string, memory: string): SystemBlock[] {
-  return [
+  const system: SystemBlock[] = [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
-    ...(memory === "" ? [] : [{ type: "text" as const, text: memory }]),
   ];
+  if (memory !== "") system.push({ type: "text", text: memory });
+  return system;
 }
 
 /** How a loop ended; anything but end_turn is the model being cut off. */
@@ -791,19 +792,25 @@ export async function* runAgentLoop({
   const isTextOnly = (iteration: number) =>
     endInText && iteration === maxIterations - 1;
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    const body = JSON.stringify({
+    const request: {
+      [key: string]: unknown;
+      cache_control?: { type: "ephemeral" };
+      tool_choice?: { type: "none" };
+    } = {
       model: MODEL,
       max_tokens: maxTokens,
       thinking: { type: "adaptive", display: "summarized" },
       output_config: { effort },
-      // Only a write the next request can read pays off; tool_choice: none invalidates it.
-      ...(iteration + 1 < maxIterations &&
-        !isTextOnly(iteration + 1) && { cache_control: { type: "ephemeral" } }),
       system,
       messages,
       tools,
-      ...(isTextOnly(iteration) && { tool_choice: { type: "none" } }),
-    });
+    };
+    // Only a write the next request can read pays off; tool_choice: none invalidates it.
+    if (iteration + 1 < maxIterations && !isTextOnly(iteration + 1)) {
+      request.cache_control = { type: "ephemeral" };
+    }
+    if (isTextOnly(iteration)) request.tool_choice = { type: "none" };
+    const body = JSON.stringify(request);
     const json = await postMessages(body, { timeoutMs, maxRetrySleepMs, loop });
 
     const result = createMessageResponseSchema.parse(json);

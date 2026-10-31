@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import {
+  type EmojiMatch,
   type EmojiShortcodes,
   REACTION_EMOJI,
   searchEmoji,
@@ -69,6 +70,15 @@ const shownKey = (typed: Suggesting["typed"]) => {
   const shown = shownOf(typed);
   return shown && `${shown.kind}:${shown.start}:${shown.query}`;
 };
+
+function matchEmoji(
+  shown: Suggesting["typed"],
+  emoji: EmojiShortcodes[] | null,
+): readonly EmojiMatch[] {
+  if (shown?.kind !== "emoji" || !emoji) return [];
+  if (shown.query) return searchEmoji(emoji, shown.query, LIMIT);
+  return REACTION_EMOJI;
+}
 
 function retype(state: Suggesting, typed: Suggesting["typed"]): Suggesting {
   if (shownKey(typed) === shownKey(state.typed)) return { ...state, typed };
@@ -129,13 +139,10 @@ export const ChatSuggestInput = ({
   const shown = shownOf(typed);
 
   const { modifier } = useSkinTone();
-  const emojiMatches = (
-    shown?.kind !== "emoji" || !emoji
-      ? []
-      : shown.query
-        ? searchEmoji(emoji, shown.query, LIMIT)
-        : REACTION_EMOJI
-  ).map((match) => ({ ...match, emoji: withSkinTone(match.emoji, modifier) }));
+  const emojiMatches = matchEmoji(shown, emoji).map((match) => ({
+    ...match,
+    emoji: withSkinTone(match.emoji, modifier),
+  }));
   const commandMatches = shown?.kind === "command" ? shown.suggestions : [];
   const picks =
     shown?.kind === "command"
