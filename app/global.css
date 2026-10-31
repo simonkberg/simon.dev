@@ -2750,6 +2750,13 @@ ul {
       text-transform: none;
       letter-spacing: normal;
       color: var(--muted);
+
+      /* Clears the heading on a phone. */
+      @media (width < 30rem) {
+        > .words {
+          display: none;
+        }
+      }
     }
   }
 
