@@ -45,6 +45,8 @@ describe("Commentary", () => {
     expect(await tag()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(TEXT)).toBeInTheDocument();
 
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(screen.getByText(TEXT)).toBeInTheDocument();
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(screen.queryByText(TEXT)).not.toBeInTheDocument();
     expect(posts).toEqual([]);
