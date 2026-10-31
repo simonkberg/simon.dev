@@ -3,9 +3,9 @@
 import { Writable } from "node:stream";
 
 import { pino } from "pino";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { bridgeConsole } from "./log";
+import { bridgeConsole, epochTime } from "./log";
 
 function bridged() {
   const lines: Array<Record<string, unknown>> = [];
@@ -136,5 +136,19 @@ describe("bridgeConsole", () => {
     target.error(new Error("boom"));
 
     expect(lines[0]?.["msg"]).toBe("boom");
+  });
+});
+
+describe("epochTime", () => {
+  it("should give the epoch time without reading Date.now()", () => {
+    const before = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => {
+      throw new Error("Date.now() in a prerender");
+    });
+
+    const time = Number(epochTime().replace(',"time":', ""));
+
+    expect(time).toBeGreaterThanOrEqual(before - 1);
+    expect(time).toBeLessThan(before + 1000);
   });
 });
