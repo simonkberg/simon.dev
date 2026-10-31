@@ -2,6 +2,7 @@ import "server-only";
 import { isBanned } from "@/lib/bans";
 import { networkOf } from "@/lib/identifiers";
 import { isDeniedRequest } from "@/lib/ipDenyList";
+import { log } from "@/lib/log";
 import { rateLimit } from "@/lib/rateLimit";
 
 export type Refusal =
@@ -25,6 +26,10 @@ export async function admit(
   ]);
   if (banned) return { reason: "banned" };
   if (!result.success) {
+    log.info(
+      { action, subject, retryAfterSeconds: result.retryAfterSeconds },
+      "Rate limited",
+    );
     return { reason: "limited", retryAfterSeconds: result.retryAfterSeconds };
   }
   return undefined;
