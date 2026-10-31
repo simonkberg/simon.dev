@@ -786,7 +786,6 @@ export async function* runAgentLoop({
 }: AgentLoopOptions): AsyncGenerator<string, LoopResult, unknown> {
   const isTextOnly = (iteration: number) =>
     endInText && iteration === maxIterations - 1;
-  let text = "";
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     const body = JSON.stringify({
       model: MODEL,
@@ -821,7 +820,7 @@ export async function* runAgentLoop({
       return { end: "refusal", text: "" };
     }
 
-    text = result.content
+    const text = result.content
       .flatMap((block) => (block.type === "text" ? [block.text.trim()] : []))
       .filter(Boolean)
       .join(" ");
@@ -889,7 +888,7 @@ export async function* runAgentLoop({
     { loop, iterations: maxIterations },
     "simon-bot reached max tool iterations",
   );
-  return { end: "max_iterations", text };
+  return { end: "max_iterations", text: "" };
 }
 
 /** Runs the loop for its answer, the last turn's text, without streaming its parts. */
