@@ -13,7 +13,7 @@ import { Subtitle } from "@/components/Subtitle";
 import { useTimeout } from "@/components/useTimeout";
 import type { GetCommentaryResult } from "@/lib/commentary";
 
-// Long enough that stepping through days doesn't have each one written.
+// Skips a day only glanced at on the way to another.
 const WAIT_MS = 1000;
 const TICK_MS = 30;
 const CHARACTERS_PER_TICK = 2;
