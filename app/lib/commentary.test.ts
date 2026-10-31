@@ -241,7 +241,7 @@ describe("writeCommentary", () => {
       loop: "commentary",
     });
     expect(input()).toContain(
-      `<page description="Simon's last 7 days, today being Sat, Oct 31, 2026: scrobbles over time, with each bar's top artist, then his tops.">
+      `<page description="Simon's last 7 days: scrobbles over time, with each bar's top artist, then his tops.">
 <scrobbles>
 Oct 25: 237, mostly The Mountain Goats
 Oct 31: 3 (so far)
@@ -272,7 +272,7 @@ Oct 31: 3 (so far)
     await writeCommentary("overall", { now: NOW });
 
     expect(input()).toContain(
-      "<page description=\"all of Simon's listening, today being",
+      "<page description=\"all of Simon's listening: scrobbles",
     );
   });
 

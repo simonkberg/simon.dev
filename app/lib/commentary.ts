@@ -38,7 +38,7 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-export const VERSION = 4;
+export const VERSION = 5;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 10_000;
@@ -69,7 +69,7 @@ const COMMENTARY_PROMPT = md`
   angle that belongs to this page, not one you could leave on any of his pages,
   and commit to it as a joke, a roast or a compliment, the way a friend who knows
   his music would rib him about it. If the angle needs a fact, allude to it
-  rather than quote it. Today's date is there to read the page by, not a topic.
+  rather than quote it.
   You're talking to the visitor about Simon, so he's "he", never "you".
 
   Write one or two short sentences of plain text, no markdown: the page shows it
@@ -253,13 +253,13 @@ async function dayFacts(day: Day): Promise<Fact[]> {
   ];
 }
 
-function describe(page: CommentaryPage, today: Day): string {
+function describe(page: CommentaryPage): string {
   if (isValidPeriod(page)) {
     const span =
       page === "overall"
         ? "all of Simon's listening"
         : `Simon's last ${periodLabels[page]}`;
-    return `${span}, today being ${fullDayLabel(today)}: scrobbles over time, with each bar's top artist, then his tops.`;
+    return `${span}: scrobbles over time, with each bar's top artist, then his tops.`;
   }
   if (page === "on-this-day") {
     return "On this day: what Simon played on today's date in each year since he started, newest first.";
@@ -267,11 +267,7 @@ function describe(page: CommentaryPage, today: Day): string {
   return `Time travel to ${fullDayLabel(page)}: every play that day, then the tops of its month.`;
 }
 
-async function pageInput(
-  page: CommentaryPage,
-  slot: Slot,
-  now: Date,
-): Promise<string> {
+async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
   const [facts, previous] = await Promise.all([
     isValidPeriod(page)
       ? periodFacts(page)
@@ -285,7 +281,7 @@ async function pageInput(
   if (facts.includes(false))
     throw new Error("Commentary is missing part of the page");
   return [
-    `<page description="${escapeXml(describe(page, localDay(now)))}">`,
+    `<page description="${escapeXml(describe(page))}">`,
     ...facts,
     "</page>",
     previous !== undefined && `<previous>${escapeXml(previous)}</previous>`,
@@ -294,11 +290,11 @@ async function pageInput(
     .join("\n");
 }
 
-async function compose(page: CommentaryPage, slot: Slot, now: Date) {
+async function compose(page: CommentaryPage, slot: Slot) {
   const [system, input] = await Promise.all([
     // Only the notes /simon-bot already shows, since the page is public, and no index of the rest: it has no recall.
     buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, { index: false }),
-    pageInput(page, slot, now),
+    pageInput(page, slot),
   ]);
   const { text, end } = await finalText({
     system,
@@ -344,7 +340,7 @@ export async function writeCommentary(
     const stored = await readText(slot.page, slot.slot);
     // A lock freed without a comment is a write that failed, which a waiter would only fail again.
     if (stored !== undefined || waited) return stored;
-    const text = await compose(page, slot, now);
+    const text = await compose(page, slot);
     // The page's own reads take the time afresh, so a write that ran past its slot describes the next one.
     if (slotOf(page, new Date())?.slot !== slot.slot) return text;
     await query(
