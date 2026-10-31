@@ -45,7 +45,7 @@ describe("Commentary", () => {
     expect(await tag()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(TEXT)).toBeInTheDocument();
 
-    fireEvent.keyDown(await tag(), { key: "Escape" });
+    fireEvent.keyDown(document.body, { key: "Escape" });
     expect(screen.queryByText(TEXT)).not.toBeInTheDocument();
     expect(posts).toEqual([]);
   });
@@ -70,6 +70,19 @@ describe("Commentary", () => {
     });
     expect(bubble).toHaveAttribute("aria-busy", "false");
     expect(await tag()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("should stop typing and close when asked to", async () => {
+    answer(none);
+    render(<Commentary page="7day" />);
+    await tag();
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await vi.waitFor(() => screen.getByRole("paragraph"));
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    expect(screen.queryByRole("paragraph")).not.toBeInTheDocument();
+    expect(await tag()).toHaveTextContent("has a take");
   });
 
   it("should show a written comment at once with reduced motion", async () => {

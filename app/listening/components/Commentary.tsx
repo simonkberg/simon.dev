@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useId, useReducer } from "react";
+import { useEffect, useId, useReducer } from "react";
 import { z } from "zod";
 
 import {
@@ -28,6 +28,7 @@ type Action =
   | { type: "written"; text: string | undefined; instant: boolean }
   | { type: "tick" }
   | { type: "toggle" }
+  | { type: "close" }
   | { type: "fail" };
 
 function reduce(state: State, action: Action): State {
@@ -50,6 +51,10 @@ function reduce(state: State, action: Action): State {
     }
     case "toggle":
       return state.phase === "done" ? { ...state, open: !state.open } : state;
+    case "close":
+      return state.phase === "typing" || state.phase === "done"
+        ? { phase: "done", text: state.text, open: false }
+        : state;
     case "fail":
       return { phase: "none" };
   }
@@ -123,13 +128,20 @@ export function Commentary({ page }: { page: string }) {
     state.phase === "typing" ? state.shown : undefined,
   );
 
-  if (state.phase === "asking" || state.phase === "none") return null;
-
   const open =
     state.phase === "typing" || (state.phase === "done" && state.open);
-  const closeOnEscape = (event: KeyboardEvent) => {
-    if (event.key === "Escape" && open) dispatch({ type: "toggle" });
-  };
+
+  // From anywhere on the page: the tag can't hold focus while it types.
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dispatch({ type: "close" });
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
+
+  if (state.phase === "asking" || state.phase === "none") return null;
 
   return (
     <div className="commentary">
@@ -140,7 +152,6 @@ export function Commentary({ page }: { page: string }) {
         aria-controls={bubble}
         disabled={state.phase !== "done"}
         onClick={() => dispatch({ type: "toggle" })}
-        onKeyDown={closeOnEscape}
       >
         <span aria-hidden="true">{face}</span>
         simon-bot

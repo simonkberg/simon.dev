@@ -60,8 +60,8 @@ const COMMENTARY_PROMPT = md`
   one, is what you wrote on it last time. Your tools reach every scrobble he
   has, with Stockholm times, if you want to look further.
 
-  Say what you make of it in two to four sentences of plain text: the page shows
-  it as is. Your reply is the comment itself, nothing before or after it.
+  Say what you make of it in two to four sentences of plain text, no markdown:
+  the page shows it as is. Your reply is the comment itself, nothing before or after it.
 `;
 
 /** A listening page with a comment: a period, On this day, or a time travel day. */
@@ -113,8 +113,8 @@ async function readText(page: string, slot: string) {
 
 async function readPrevious(page: string, slot: string) {
   const { rows } = await query(
-    "SELECT text FROM commentary WHERE page = ? AND slot < ? ORDER BY slot DESC LIMIT 1",
-    [page, slot],
+    "SELECT text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
+    [page, slot, VERSION],
   );
   return rows[0] === undefined ? undefined : String(rows[0]["text"]);
 }

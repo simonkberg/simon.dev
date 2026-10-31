@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getDayPlays,
   getScrobbles,
+  getTopAlbums,
   getTopArtistByBucket,
   getTopArtists,
   getTopTracks,
@@ -15,9 +16,11 @@ import {
   type LoopEnd,
 } from "@/lib/anthropic";
 import { releaseLock, tryLock } from "@/lib/locks";
+import { log } from "@/lib/log";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
+import { topAlbum } from "@/mocks/listening";
 import { sqliteBeforeEach } from "@/mocks/sqlite";
 
 import {
@@ -72,8 +75,8 @@ vi.mock(import("@/actions/listening"), () => ({
     artists: [{ rank: 1, name: "Frog & Toad", playcount: 76 }],
   })),
   getTopAlbums: vi.fn(async () => ({
-    status: "error" as const,
-    error: "Failed to fetch top albums",
+    status: "ok" as const,
+    albums: [topAlbum("Grimm Tales", "Frog", 1)],
   })),
   getOnThisDay: vi.fn(async () => ({
     status: "ok" as const,
@@ -244,6 +247,9 @@ Oct 31: 3 (so far)
 <top_artists>
 1. Frog &amp; Toad: 76
 </top_artists>
+<top_albums>
+1. Grimm Tales - Frog: 39
+</top_albums>
 </page>
 <previous>goats &lt;again&gt;</previous>`,
     );
@@ -288,12 +294,15 @@ Oct 31: 3 (so far)
     expect(input()).not.toContain("<previous>");
   });
 
-  it("should replace a comment from an older prompt", async () => {
+  it("should replace a comment from an older prompt, without following one", async () => {
+    await store("7day", "2026-10-30", "older prompt", 0);
     await store("7day", "2026-10-31", "old prompt", 0);
 
     await writeCommentary("7day", NOW);
 
+    expect(input()).not.toContain("<previous>");
     expect(await stored()).toEqual([
+      { page: "7day", slot: "2026-10-30", text: "older prompt" },
       { page: "7day", slot: "2026-10-31", text: "frog ate the week" },
     ]);
   });
@@ -342,6 +351,19 @@ Oct 31: 3 (so far)
     expect(releaseLock).toHaveBeenCalled();
     expect(await stored()).toEqual([]);
   });
+
+  it("should keep the comment when the lock fails to release", async () => {
+    const err = new Error("down");
+    vi.mocked(releaseLock).mockRejectedValueOnce(err);
+
+    await expect(writeCommentary("7day", NOW)).resolves.toBe(
+      "frog ate the week",
+    );
+    expect(log.warn).toHaveBeenCalledWith(
+      { err },
+      "Failed to release the commentary lock",
+    );
+  });
 });
 
 describe("page facts", () => {
@@ -358,11 +380,16 @@ describe("page facts", () => {
       status: "error",
       error: "down",
     });
+    vi.mocked(getTopAlbums).mockResolvedValueOnce({
+      status: "error",
+      error: "down",
+    });
     reply("hm");
 
     await writeCommentary("7day", NOW);
 
     expect(input()).not.toContain("<scrobbles>");
     expect(input()).not.toContain("<top_artists>");
+    expect(input()).not.toContain("<top_albums>");
   });
 });
