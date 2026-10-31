@@ -145,10 +145,11 @@ function Take({
   const [state, dispatch] = useReducer(reduce, result, initialState);
   // Looked up by the browser when the page couldn't.
   const lookUp = result === undefined || result.status === "error";
-  const settled = initialState(result).phase !== "pending";
+  // A page left and come back to keeps its state but reruns effects: only a take still pending asks.
+  const pending = state.phase === "pending";
 
   useEffect(() => {
-    if (settled) return;
+    if (!pending) return;
     const controller = new AbortController();
     const { signal } = controller;
     void (async () => {
@@ -169,7 +170,7 @@ function Take({
       }
     })();
     return () => controller.abort();
-  }, [page, lookUp, settled]);
+  }, [page, lookUp, pending]);
 
   useTimeout(
     () => dispatch({ type: "tick" }),
