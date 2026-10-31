@@ -1,5 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { Activity } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/mocks/node";
@@ -125,6 +126,27 @@ describe("Commentary", () => {
     await act(() => vi.advanceTimersByTimeAsync(2000));
 
     expect(posts).toEqual([]);
+  });
+
+  it("should keep a written take when its page is left and come back to", async () => {
+    answer(none);
+    const page = (mode: "visible" | "hidden") => (
+      <Activity mode={mode}>
+        <Commentary page="2019-03-04" />
+      </Activity>
+    );
+    const { rerender } = render(page("visible"));
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await vi.waitFor(() => expect(take()).toHaveTextContent(TEXT), {
+      timeout: 5000,
+    });
+
+    rerender(page("hidden"));
+    rerender(page("visible"));
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+
+    expect(posts).toEqual(["2019-03-04"]);
+    expect(take()).toHaveTextContent(TEXT);
   });
 
   describe("with the take the page looked up", () => {
