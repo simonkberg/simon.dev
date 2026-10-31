@@ -86,7 +86,7 @@ describe("POST /api/commentary", () => {
       signal: expect.any(AbortSignal),
     });
     expect(admit).toHaveBeenCalledWith("commentary", "2001:db8::1", "bob", {
-      limit: 10,
+      limit: 30,
       windowMs: 60_000,
     });
     await expect(response.json()).resolves.toEqual({
