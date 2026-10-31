@@ -56,8 +56,9 @@ export function ListeningPeriod({ period }: { period: Period }) {
             topArtistByBucket={topArtistByBucket}
           />
         </Suspense>
-        <Commentary key={period} page={period} />
       </section>
+
+      <Commentary key={period} page={period} />
 
       <TopLists span={period} subtitle="Top 10" />
     </Page>

@@ -9,6 +9,7 @@ import {
 } from "@/lib/commentary";
 import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
+import { findSession } from "@/lib/session";
 
 const LIMITS = { limit: 20, windowMs: 60 * 60_000 };
 
@@ -39,9 +40,13 @@ export async function POST(request: NextRequest) {
     return text(stored.text);
   }
 
+  // Every page mints one, and its lax cookie never rides a cross-site POST.
+  const session = await findSession();
+  if (!session) return new NextResponse(null, { status: 401 });
+
   const { ip } = await identifiers();
   // It shares the API key with the chat, so a flood would stall simon-bot's replies too.
-  const refusal = await admit("commentary", ip, "unknown", LIMITS);
+  const refusal = await admit("commentary", ip, session.username, LIMITS);
   if (refusal?.reason === "limited") {
     return new NextResponse(null, {
       status: 429,

@@ -52,8 +52,9 @@ export default function TimeTravelLayout({
               {days}
             </TimeTravel>
           </Suspense>
-          <DayCommentary />
         </section>
+
+        <DayCommentary />
 
         {children}
       </TravelProvider>

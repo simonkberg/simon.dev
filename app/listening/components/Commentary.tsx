@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { z } from "zod";
 
 import {
@@ -8,6 +8,8 @@ import {
   type AnimationFrames,
   useFrameAnimation,
 } from "@/components/faces";
+import { Heading } from "@/components/Heading";
+import { Subtitle } from "@/components/Subtitle";
 import { useTimeout } from "@/components/useTimeout";
 
 // Long enough that stepping through days doesn't have each one written.
@@ -20,15 +22,13 @@ type State =
   | { phase: "asking" }
   | { phase: "waiting" }
   | { phase: "typing"; text: string; shown: number }
-  | { phase: "done"; text: string; open: boolean }
+  | { phase: "done"; text: string }
   | { phase: "none" };
 
 type Action =
   | { type: "stored"; text: string | undefined }
   | { type: "written"; text: string | undefined; instant: boolean }
   | { type: "tick" }
-  | { type: "toggle" }
-  | { type: "close" }
   | { type: "fail" };
 
 function reduce(state: State, action: Action): State {
@@ -36,25 +36,19 @@ function reduce(state: State, action: Action): State {
     case "stored":
       return action.text === undefined
         ? { phase: "waiting" }
-        : { phase: "done", text: action.text, open: false };
+        : { phase: "done", text: action.text };
     case "written":
       if (action.text === undefined) return { phase: "none" };
       return action.instant
-        ? { phase: "done", text: action.text, open: true }
+        ? { phase: "done", text: action.text }
         : { phase: "typing", text: action.text, shown: 0 };
     case "tick": {
       if (state.phase !== "typing") return state;
       const shown = state.shown + CHARACTERS_PER_TICK;
       return shown < state.text.length
         ? { ...state, shown }
-        : { phase: "done", text: state.text, open: true };
+        : { phase: "done", text: state.text };
     }
-    case "toggle":
-      return state.phase === "done" ? { ...state, open: !state.open } : state;
-    case "close":
-      return state.phase === "typing" || state.phase === "done"
-        ? { phase: "done", text: state.text, open: false }
-        : state;
     case "fail":
       return { phase: "none" };
   }
@@ -98,11 +92,35 @@ const framesOf = (state: State) =>
       ? ANIMATIONS.typing
       : RESTING;
 
-/** simon-bot's comment in the corner of a page's first pane, written on the first visit that finds none. */
+function Take({ state }: { state: State }) {
+  switch (state.phase) {
+    case "asking":
+      return null;
+    case "waiting":
+      return (
+        <span className="quiet">
+          listening back
+          <span className="caret" />
+        </span>
+      );
+    case "typing":
+      return (
+        <span>
+          {state.text.slice(0, state.shown)}
+          <span className="caret" />
+        </span>
+      );
+    case "done":
+      return <span>{state.text}</span>;
+    case "none":
+      return <span className="quiet">nothing to say this time</span>;
+  }
+}
+
+/** simon-bot's take on a page, in a pane of its own, written on the first visit that finds none. */
 export function Commentary({ page }: { page: string }) {
   const [state, dispatch] = useReducer(reduce, { phase: "asking" });
   const face = useFrameAnimation(framesOf(state));
-  const bubble = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -129,55 +147,21 @@ export function Commentary({ page }: { page: string }) {
     state.phase === "typing" ? state.shown : undefined,
   );
 
-  const open =
-    state.phase === "typing" || (state.phase === "done" && state.open);
-
-  // From anywhere on the page: the tag can't hold focus while it types.
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dispatch({ type: "close" });
-    };
-    document.addEventListener("keydown", close);
-    return () => document.removeEventListener("keydown", close);
-  }, [open]);
-
-  if (state.phase === "asking" || state.phase === "none") return null;
-
+  // The pane is in the page from the first paint, so nothing moves when the take arrives.
   return (
-    <div className="commentary">
-      <button
-        type="button"
-        className="tag"
-        aria-expanded={open}
-        aria-controls={bubble}
-        disabled={state.phase !== "done"}
-        onClick={() => dispatch({ type: "toggle" })}
+    <section>
+      <Heading level={2}>
+        simon-bot <Subtitle>(take)</Subtitle>
+      </Heading>
+      <p
+        className="commentary"
+        aria-busy={state.phase !== "done" && state.phase !== "none"}
       >
-        <span aria-hidden="true">{face}</span>
-        simon-bot
-        {state.phase === "waiting" && (
-          <span className="hint">
-            is listening back
-            <span className="caret" />
-          </span>
-        )}
-        {state.phase === "done" && (
-          <span className="hint">{open ? "▴" : "has a take ▾"}</span>
-        )}
-      </button>
-      {open && (
-        <p id={bubble} className="bubble" aria-busy={state.phase === "typing"}>
-          {state.phase === "typing" ? (
-            <>
-              {state.text.slice(0, state.shown)}
-              <span className="caret" />
-            </>
-          ) : (
-            state.text
-          )}
-        </p>
-      )}
-    </div>
+        <span className="face" aria-hidden="true">
+          {face}
+        </span>
+        <Take state={state} />
+      </p>
+    </section>
   );
 }

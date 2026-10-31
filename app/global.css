@@ -99,13 +99,6 @@
   --heading-sub-case: none;
   --heading-number: none;
 
-  --commentary-top: 0;
-  --commentary-inset: 0;
-  --commentary-translate: none;
-  --commentary-padding: 0;
-  --commentary-bg: transparent;
-  --commentary-phone-translate: 0 100%;
-
   --stats-columns: minmax(0, 1fr) max-content;
   --stats-gap: 0;
   --stats-max: none;
@@ -354,14 +347,6 @@
   --heading-number: counter(pane, decimal-leading-zero) " ";
   --heading-wrap: nowrap;
 
-  /* On the pane's top border, like its heading. */
-  --commentary-inset: 1.5ch;
-  --commentary-translate: 0 -50%;
-  --commentary-padding: 0 1ch;
-  --commentary-bg: var(--heading-bg);
-  /* On its bottom border on a phone. */
-  --commentary-phone-translate: 0 50%;
-
   --stats-gap: 0 2ch;
   --stats-row-padding: 0 1ch;
   --stats-row-bleed: -1ch;
@@ -503,8 +488,6 @@
   --heading-row: 1 / span 20;
   --heading-sub-display: block;
   --heading-sub-gap: 0.25rem;
-
-  --commentary-top: 1.25rem;
 
   --stats-columns: max-content minmax(4rem, 1fr) max-content;
   --stats-gap: 0.15rem 2ch;
@@ -2723,65 +2706,23 @@ ul {
 }
 
 .commentary {
-  position: absolute;
-  top: var(--commentary-top);
-  right: var(--commentary-inset);
-  translate: var(--commentary-translate);
-  /* Above the heading, which cuts off under it on a narrow pane. */
-  z-index: 3;
-  font-size: var(--small-size);
+  display: flex;
+  gap: 1ch;
+  /* Room for a typical take before it arrives, so nothing under it moves. */
+  min-block-size: 3lh;
+  margin: 0;
 
-  /* A phone's pane is too narrow to share its heading's line, so the note hangs off its foot instead. */
   @media (width < 30rem) {
-    top: auto;
-    bottom: 0;
-    translate: var(--commentary-phone-translate);
+    min-block-size: 6lh;
   }
 
-  > .tag {
-    display: flex;
-    gap: 1ch;
-    padding: var(--commentary-padding);
-    background: var(--commentary-bg);
-    font: inherit;
-    font-weight: bold;
-    text-transform: var(--heading-case);
-    letter-spacing: var(--heading-tracking);
+  > .face {
+    flex: none;
     color: var(--accent);
-    white-space: nowrap;
-    cursor: pointer;
-
-    &:disabled {
-      cursor: default;
-    }
-
-    > .hint {
-      font-weight: normal;
-      text-transform: none;
-      letter-spacing: normal;
-      color: var(--muted);
-    }
   }
 
-  > .bubble {
-    position: absolute;
-    top: calc(100% + 0.75rem);
-    right: 0;
-    width: min(44ch, calc(100vw - 4rem));
-    margin: 0;
-    padding: 0.75rem 1ch;
-    border: 1px solid var(--accent);
-    /* Clears the chart under it, so the text never sits on a line. */
-    box-shadow: 0 0 0 0.5rem var(--ground);
-    background: var(--ground);
-    color: var(--ink);
-    line-height: var(--leading);
-    white-space: normal;
-
-    @media (width < 30rem) {
-      top: auto;
-      bottom: calc(100% + 0.75rem);
-    }
+  > .quiet {
+    color: var(--muted);
   }
 
   .caret {

@@ -56,7 +56,7 @@ const COMMENTARY_PROMPT = md`
   ${PERSONALITY}
 
   simon.dev's listening pages show Simon's Last.fm history, and each one
-  carries a comment from you in its corner. You're writing the one for the page
+  carries a take from you under its first pane. You're writing the one for the page
   below: <page> holds what a visitor sees on it, and <previous>, when there is
   one, is what you wrote on it last, for the day, week or month its slot starts.
   Your tools reach every scrobble he has, with Stockholm times, if you want to

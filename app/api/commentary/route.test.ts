@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { admit } from "@/lib/admission";
 import { getCommentary, writeCommentary } from "@/lib/commentary";
 import { log } from "@/lib/log";
+import { encrypt, type Username } from "@/lib/session";
+import { mockCookieJar } from "@/mocks/headers";
 
 import { GET, POST } from "./route";
 
@@ -15,6 +17,7 @@ vi.mock(import("@/lib/commentary"), async (importOriginal) => ({
   })),
   writeCommentary: vi.fn(async () => "frog ate the week"),
 }));
+vi.mock(import("next/headers"), () => ({ cookies: vi.fn() }));
 vi.mock(import("@/lib/identifiers"), async (importOriginal) => ({
   ...(await importOriginal()),
   identifiers: vi.fn(async () => ({ ip: "2001:db8::1", userAgent: undefined })),
@@ -66,13 +69,17 @@ describe("GET /api/commentary", () => {
 });
 
 describe("POST /api/commentary", () => {
+  beforeEach(async () => {
+    mockCookieJar(`session=${await encrypt({ username: "bob" as Username })}`);
+  });
+
   it("should write the comment, limited per network", async () => {
     const response = await POST(request("7day", "POST"));
 
     expect(writeCommentary).toHaveBeenCalledWith("7day", {
       signal: expect.any(AbortSignal),
     });
-    expect(admit).toHaveBeenCalledWith("commentary", "2001:db8::1", "unknown", {
+    expect(admit).toHaveBeenCalledWith("commentary", "2001:db8::1", "bob", {
       limit: 20,
       windowMs: 3_600_000,
     });
@@ -114,6 +121,13 @@ describe("POST /api/commentary", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("Retry-After")).toBe("42");
+  });
+
+  it("should turn away a request without a session", async () => {
+    mockCookieJar();
+
+    expect((await POST(request("7day", "POST"))).status).toBe(401);
+    expect(admit).not.toHaveBeenCalled();
   });
 
   it("should not find a page without a comment", async () => {

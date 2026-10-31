@@ -42,8 +42,9 @@ export default function OnThisDayPage() {
         <Suspense fallback={<OnThisDaySkeleton />}>
           <OnThisDay days={days} />
         </Suspense>
-        <Commentary page="on-this-day" />
       </section>
+
+      <Commentary page="on-this-day" />
     </Page>
   );
 }

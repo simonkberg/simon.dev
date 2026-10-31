@@ -289,8 +289,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   with `recall`. Notes are one line. `edit` and `forget` are compare-and-swap on the note's text. Memory
   failures degrade to a reply without memory, never to no reply. `/simon-bot` shows the
   `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
-- **simon-bot commentary:** the first pane of each listening page carries the bot's comment in
-  its corner (`Commentary`), one Turso `commentary` row per page and slot: the Stockholm day
+- **simon-bot commentary:** the bot's take on each listening page is a pane of its own under the
+  first (`Commentary`), there from the first paint so nothing moves when it arrives, one Turso `commentary` row per page and slot: the Stockholm day
   (7 days, On this day), week (1 month) or month (longer periods) it covers, or a time travel day,
   for good once it settled (`app/lib/commentary.ts`). The browser asks `/api/commentary` once
   hydrated, so crawlers and prerenders never write one; a miss waits 2s, then POSTs, which writes
