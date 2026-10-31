@@ -7,7 +7,7 @@ import {
   ANIMATIONS,
   type AnimationFrames,
   useFrameAnimation,
-} from "@/components/chat/CaretBuddy";
+} from "@/components/faces";
 import { useTimeout } from "@/components/useTimeout";
 
 // Long enough that stepping through days doesn't have each one written.

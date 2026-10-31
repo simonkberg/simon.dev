@@ -630,7 +630,7 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 export async function buildSystem(
   prompt: string,
   categories: readonly string[],
-  index = true,
+  { index = true }: { index?: boolean } = {},
 ): Promise<SystemBlock[]> {
   const memoryContext = await buildMemoryContext(categories, index);
   return [
@@ -881,6 +881,25 @@ export async function* runAgentLoop({
     "simon-bot reached max tool iterations",
   );
   return "max_iterations";
+}
+
+/** Runs the loop for its answer: the last turn's text, as text before a tool call is the model thinking aloud. */
+export async function finalText(
+  options: AgentLoopOptions,
+): Promise<{ text: string; end: LoopEnd }> {
+  const loop = runAgentLoop(options);
+  // The loop adds a turn to messages only when it calls a tool, so the answer's parts are yielded at the final length.
+  const parts: [turns: number, text: string][] = [];
+  let next = await loop.next();
+  for (; !next.done; next = await loop.next()) {
+    parts.push([options.messages.length, next.value]);
+  }
+  const text = parts
+    .filter(([turns]) => turns === options.messages.length)
+    .map(([, part]) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+  return { text, end: next.value };
 }
 
 export async function* createMessage(

@@ -17,24 +17,23 @@ import {
   buildSystem,
   escapeXml,
   LISTENING_TOOLS,
+  finalText,
   PERSONALITY,
-  runAgentLoop,
 } from "@/lib/anthropic";
 import { cacheUntil } from "@/lib/cacheUntil";
 import {
-  addDays,
   type Day,
   dayStart,
   fullDayLabel,
   inHistory,
   localDay,
-  midnight,
   monthOf,
 } from "@/lib/dates";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
 import { isValidPeriod, type Period, periodLabels } from "@/lib/periods";
+import { type BucketUnit, currentBucket } from "@/lib/scrobbleBuckets";
 import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
@@ -68,54 +67,54 @@ const COMMENTARY_PROMPT = md`
 /** A listening page with a comment: a period, On this day, or a time travel day. */
 export type CommentaryPage = Period | "on-this-day" | Day;
 
-export function parsePage(
-  value: string | null,
-  today: Day,
-): CommentaryPage | undefined {
-  if (value === null) return undefined;
-  if (isValidPeriod(value) || value === "on-this-day") return value;
-  return inHistory(value, today);
-}
-
 type Slot = { page: string; slot: string; end: Date | undefined };
 
-function startOfWeek(day: Day): Day {
-  // Weeks start on Monday.
-  return addDays(day, -((new Date(day).getUTCDay() + 6) % 7));
-}
-
-function nextMonth(day: Day): Date {
-  const date = new Date(day);
-  return midnight(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
-}
+const slotUnits = {
+  "7day": "day",
+  "on-this-day": "day",
+  "1month": "week",
+  "3month": "month",
+  "6month": "month",
+  "12month": "month",
+  overall: "month",
+} as const satisfies Record<Exclude<CommentaryPage, Day>, BucketUnit>;
 
 /** The day, week or month a page's comment covers, or none while a day's plays are still coming in. */
 export function slotOf(page: CommentaryPage, now: Date): Slot | undefined {
-  const today = localDay(now);
-  switch (page) {
-    case "7day":
-    case "on-this-day":
-      return { page, slot: today, end: dayStart(today, 1) };
-    case "1month": {
-      const monday = startOfWeek(today);
-      return { page, slot: monday, end: dayStart(monday, 7) };
-    }
-    case "3month":
-    case "6month":
-    case "12month":
-    case "overall":
-      return { page, slot: monthOf(today), end: nextMonth(today) };
-    default:
-      return hasSettled(dayStart(page, 1).getTime(), now)
-        ? { page: "day", slot: page, end: undefined }
-        : undefined;
+  if (isValidPeriod(page) || page === "on-this-day") {
+    const unit = slotUnits[page];
+    const { from, to } = currentBucket(unit, now);
+    const day = localDay(from);
+    return { page, slot: unit === "month" ? monthOf(day) : day, end: to };
   }
+  return hasSettled(dayStart(page, 1).getTime(), now)
+    ? { page: "day", slot: page, end: undefined }
+    : undefined;
+}
+
+/** The page asked for, if it has a comment to show now. */
+export function parsePage(
+  value: string | null,
+  now: Date,
+): CommentaryPage | undefined {
+  if (value === null) return undefined;
+  if (isValidPeriod(value) || value === "on-this-day") return value;
+  const day = inHistory(value, localDay(now));
+  return day && slotOf(day, now) ? day : undefined;
 }
 
 async function readText(page: string, slot: string) {
   const { rows } = await query(
     "SELECT text FROM commentary WHERE page = ? AND slot = ? AND version = ?",
     [page, slot, VERSION],
+  );
+  return rows[0] === undefined ? undefined : String(rows[0]["text"]);
+}
+
+async function readPrevious(page: string, slot: string) {
+  const { rows } = await query(
+    "SELECT text FROM commentary WHERE page = ? AND slot < ? ORDER BY slot DESC LIMIT 1",
+    [page, slot],
   );
   return rows[0] === undefined ? undefined : String(rows[0]["text"]);
 }
@@ -146,10 +145,12 @@ export async function getCommentary(
   }
 }
 
-const list = (tag: string, items: readonly string[]) =>
-  `<${tag}>\n${items.map(escapeXml).join("\n")}\n</${tag.split(" ")[0]}>`;
+type Fact = string | false;
 
-async function spanFacts(span: Span): Promise<string[]> {
+const list = (tag: string, items: readonly string[], attributes = "") =>
+  `<${tag}${attributes}>\n${items.map(escapeXml).join("\n")}\n</${tag}>`;
+
+async function spanFacts(span: Span): Promise<Fact[]> {
   const [tracks, artists, albums] = await Promise.all([
     getTopTracks(span),
     getTopArtists(span),
@@ -175,10 +176,10 @@ async function spanFacts(span: Span): Promise<string[]> {
           (a) => `${a.rank}. ${a.name} - ${a.artist}: ${a.playcount}`,
         ),
       ),
-  ].filter((fact) => fact !== false);
+  ];
 }
 
-async function periodFacts(period: Period): Promise<string[]> {
+async function periodFacts(period: Period): Promise<Fact[]> {
   const [scrobbles, lanes, tops] = await Promise.all([
     getScrobbles(period),
     getTopArtistByBucket(period),
@@ -189,58 +190,53 @@ async function periodFacts(period: Period): Promise<string[]> {
       ? new Map(lanes.buckets.map((b) => [b.label, b.artist?.name]))
       : undefined;
   return [
-    ...(scrobbles.status === "ok"
-      ? [
-          list(
-            "scrobbles",
-            scrobbles.scrobbles.map(({ label, count, current }) =>
-              [
-                `${label}: ${count}`,
-                artists?.get(label) && `, mostly ${artists.get(label)}`,
-                current && " (so far)",
-              ]
-                .filter(Boolean)
-                .join(""),
-            ),
-          ),
-        ]
-      : []),
+    scrobbles.status === "ok" &&
+      list(
+        "scrobbles",
+        scrobbles.scrobbles.map(({ label, count, current }) =>
+          [
+            `${label}: ${count}`,
+            artists?.get(label) && `, mostly ${artists.get(label)}`,
+            current && " (so far)",
+          ]
+            .filter(Boolean)
+            .join(""),
+        ),
+      ),
     ...tops,
   ];
 }
 
-async function onThisDayFacts(): Promise<string[]> {
+async function onThisDayFacts(): Promise<Fact[]> {
   const result = await getOnThisDay();
-  if (result.status === "error") return [];
   return [
-    list(
-      `years date="${result.days.date}"`,
-      result.days.years.map(({ year, count, top }) =>
-        top
-          ? `${year}: ${count} plays, mostly ${top.track} - ${top.artist}`
-          : `${year}: nothing played`,
+    result.status === "ok" &&
+      list(
+        "years",
+        result.days.years.map(({ year, count, top }) =>
+          top
+            ? `${year}: ${count} plays, mostly ${top.track} - ${top.artist}`
+            : `${year}: nothing played`,
+        ),
+        ` date="${escapeXml(result.days.date)}"`,
       ),
-    ),
   ];
 }
 
-async function dayFacts(day: Day): Promise<string[]> {
+async function dayFacts(day: Day): Promise<Fact[]> {
   const [plays, tops] = await Promise.all([
     getDayPlays(day),
     spanFacts(monthOf(day)),
   ]);
   return [
-    ...(plays.status === "ok"
-      ? [
-          list(
-            "plays",
-            plays.plays.map(
-              ({ time, name, artist }) => `${time} ${name} - ${artist}`,
-            ),
-          ),
-        ]
-      : []),
-    `<month_tops>\n${tops.join("\n")}\n</month_tops>`,
+    plays.status === "ok" &&
+      list(
+        "plays",
+        plays.plays.map(
+          ({ time, name, artist }) => `${time} ${name} - ${artist}`,
+        ),
+      ),
+    `<month_tops>\n${tops.filter((fact) => fact !== false).join("\n")}\n</month_tops>`,
   ];
 }
 
@@ -263,7 +259,6 @@ async function pageInput(
   slot: Slot,
   now: Date,
 ): Promise<string> {
-  const today = localDay(now);
   const [facts, previous] = await Promise.all([
     isValidPeriod(page)
       ? periodFacts(page)
@@ -271,35 +266,27 @@ async function pageInput(
         ? onThisDayFacts()
         : dayFacts(page),
     // A day's slot is the day itself, so an earlier one is another day, not this page before.
-    slot.end === undefined
-      ? undefined
-      : query(
-          "SELECT text FROM commentary WHERE page = ? AND slot < ? ORDER BY slot DESC LIMIT 1",
-          [slot.page, slot.slot],
-        ),
+    slot.page === "day" ? undefined : readPrevious(slot.page, slot.slot),
   ]);
-  const last = previous?.rows[0]?.["text"];
   return [
-    `<page description="${escapeXml(describe(page, today))}">`,
-    ...facts,
+    `<page description="${escapeXml(describe(page, localDay(now)))}">`,
+    ...facts.filter((fact) => fact !== false),
     "</page>",
-    ...(last === undefined
-      ? []
-      : [`<previous>${escapeXml(String(last))}</previous>`]),
-  ].join("\n");
+    previous !== undefined && `<previous>${escapeXml(previous)}</previous>`,
+  ]
+    .filter((line) => line !== false)
+    .join("\n");
 }
 
 async function compose(page: CommentaryPage, slot: Slot, now: Date) {
   const [system, input] = await Promise.all([
-    // Only the notes /simon-bot already shows, since the page is public, and no
-    // index of the rest: it has no recall.
-    buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, false),
+    // Only the notes /simon-bot already shows, since the page is public, and no index of the rest: it has no recall.
+    buildSystem(COMMENTARY_PROMPT, PUBLIC_CATEGORIES, { index: false }),
     pageInput(page, slot, now),
   ]);
-  const messages = [{ role: "user" as const, content: input }];
-  const loop = runAgentLoop({
+  const { text, end } = await finalText({
     system,
-    messages,
+    messages: [{ role: "user", content: input }],
     tools: LISTENING_TOOLS,
     effort: "medium",
     maxTokens: MAX_TOKENS,
@@ -309,37 +296,12 @@ async function compose(page: CommentaryPage, slot: Slot, now: Date) {
     endInText: true,
     loop: "commentary",
   });
-  // Text before a tool call is the model thinking aloud, so the comment is the last
-  // turn's text: the loop adds that turn's messages only when it calls a tool.
-  let texts: string[] = [];
-  let turn = messages.length;
-  let next = await loop.next();
-  for (; !next.done; next = await loop.next()) {
-    if (messages.length !== turn) texts = [];
-    texts.push(next.value);
-    turn = messages.length;
-  }
-  if (messages.length !== turn) texts = [];
-  const text = texts
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(" ");
-  if (next.value !== "end_turn" || text === "") {
+  if (end !== "end_turn" || text === "") {
     throw new Error(
-      `Commentary ended in ${next.value} with ${text.length} characters`,
+      `Commentary ended in ${end} with ${text.length} characters`,
     );
   }
   return text;
-}
-
-async function waitFor(slot: Slot): Promise<string | undefined> {
-  const until = Date.now() + LOCK_TTL_MS;
-  while (Date.now() < until) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-    const text = await readText(slot.page, slot.slot);
-    if (text !== undefined) return text;
-  }
-  return undefined;
 }
 
 /** Writes the page's comment for its current slot, or waits for the request already writing it. */
@@ -351,7 +313,14 @@ export async function writeCommentary(
   if (slot === undefined) return undefined;
   const lock = `commentary:${slot.page}/${slot.slot}`;
   const owner = crypto.randomUUID();
-  if (!(await tryLock(lock, owner, LOCK_TTL_MS))) return waitFor(slot);
+  const until = Date.now() + LOCK_TTL_MS;
+  // Polls while another request writes it, and takes over if that one fails.
+  while (!(await tryLock(lock, owner, LOCK_TTL_MS))) {
+    if (Date.now() >= until) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    const text = await readText(slot.page, slot.slot);
+    if (text !== undefined) return text;
+  }
   try {
     // Under the lock, so a comment another request just wrote isn't written twice.
     const stored = await readText(slot.page, slot.slot);

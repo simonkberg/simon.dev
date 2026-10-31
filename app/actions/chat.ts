@@ -3,7 +3,8 @@
 import { cacheLife, cacheTag, refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
-import { ban, isBanned, isSpam, recordPost } from "@/lib/bans";
+import { admit } from "@/lib/admission";
+import { ban, isSpam, recordPost } from "@/lib/bans";
 import { setChatTipDismissed } from "@/lib/chatTip";
 import {
   DiscordApiError,
@@ -12,10 +13,8 @@ import {
   type Message,
   postChannelMessage,
 } from "@/lib/discord/api";
-import { identifiers, networkOf } from "@/lib/identifiers";
-import { isDeniedRequest } from "@/lib/ipDenyList";
+import { identifiers } from "@/lib/identifiers";
 import { log } from "@/lib/log";
-import { rateLimit } from "@/lib/rateLimit";
 import {
   EmojiSchema,
   MessageIdSchema,
@@ -57,30 +56,30 @@ const BANNED = {
   error: "You've been banned :) blow your shit off smooth",
 } as const;
 
-async function admit(
+async function refuse(
   action: string,
   verb: string,
   ip: string | undefined,
   username: Username,
   limits: { limit: number; windowMs: number },
 ): Promise<{ status: "error"; error: string } | null> {
-  if (isDeniedRequest(ip, action)) {
-    return { status: "error", error: `${verb} from your network is blocked.` };
+  const refusal = await admit(action, ip, username, limits);
+  switch (refusal?.reason) {
+    case undefined:
+      return null;
+    case "denied":
+      return {
+        status: "error",
+        error: `${verb} from your network is blocked.`,
+      };
+    case "banned":
+      return BANNED;
+    case "limited":
+      return {
+        status: "error",
+        error: `Rate limit exceeded. Wait ${refusal.retryAfterSeconds} seconds before trying again.`,
+      };
   }
-
-  const subject = ip === undefined ? username : networkOf(ip);
-  const [banned, result] = await Promise.all([
-    ip !== undefined && isBanned(ip),
-    rateLimit(`${action}:${subject}`, limits),
-  ]);
-  if (banned) return BANNED;
-  if (!result.success) {
-    return {
-      status: "error",
-      error: `Rate limit exceeded. Wait ${result.retryAfterSeconds} seconds before trying again.`,
-    };
-  }
-  return null;
 }
 
 export async function dismissChatTip() {
@@ -100,7 +99,7 @@ export async function postChatMessage(
 
     // Admitted first, so malformed requests count against the limit too.
     const request = await identifiers();
-    const denied = await admit(
+    const denied = await refuse(
       "postChatMessage",
       "Posting",
       request.ip,
@@ -162,7 +161,7 @@ export async function reactToChatMessage(
     const { username } = await getSession();
 
     const { ip } = await identifiers();
-    const denied = await admit(
+    const denied = await refuse(
       "reactToChatMessage",
       "Reacting",
       ip,

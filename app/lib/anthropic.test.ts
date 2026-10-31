@@ -34,7 +34,9 @@ import { sqliteBeforeEach } from "@/mocks/sqlite";
 import {
   type ChatMessage,
   createMessage,
+  finalText,
   formatConversation,
+  LISTENING_TOOLS,
   MEMORY_TOOLS,
   runAgentLoop,
 } from "./anthropic";
@@ -957,6 +959,29 @@ describe("createMessage", () => {
       expect(plays).toHaveBeenCalledWith({}, "newest", 10);
       expect(playCounts).toHaveBeenCalledWith({}, undefined, "time", 50);
     });
+  });
+});
+
+describe("finalText", () => {
+  it("should answer with the last turn's text", async () => {
+    respond(
+      () =>
+        reply([text("let me check"), toolUse("get_recent_tracks")], "tool_use"),
+      () => reply([text("frog."), text(" again. ")]),
+    );
+
+    await expect(
+      finalText({
+        system: [],
+        messages: [{ role: "user", content: "the week?" }],
+        tools: LISTENING_TOOLS,
+        effort: "medium",
+        maxTokens: 1024,
+        timeoutMs: 1000,
+        maxRetrySleepMs: 0,
+        loop: "commentary",
+      }),
+    ).resolves.toEqual({ text: "frog. again.", end: "end_turn" });
   });
 });
 

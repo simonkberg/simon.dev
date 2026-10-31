@@ -277,16 +277,17 @@ export async function buildMemoryContext(
   index: boolean,
 ): Promise<string> {
   try {
-    const [{ rows: memoryRows }, counts] = await batch([
-      notesIn(shown),
-      ...(index
+    const shownNotes = notesIn(shown);
+    const [{ rows: memoryRows }, counts] = await batch(
+      index
         ? [
+            shownNotes,
             {
               sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
             },
           ]
-        : []),
-    ]);
+        : [shownNotes],
+    );
 
     const notes = byCategory(memoryRows);
     const sections = shown.map((category) =>

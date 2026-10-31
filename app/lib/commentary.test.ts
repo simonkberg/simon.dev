@@ -10,9 +10,9 @@ import {
 } from "@/actions/listening";
 import {
   buildSystem,
+  finalText,
   LISTENING_TOOLS,
   type LoopEnd,
-  runAgentLoop,
 } from "@/lib/anthropic";
 import { releaseLock, tryLock } from "@/lib/locks";
 import { PUBLIC_CATEGORIES } from "@/lib/memory";
@@ -35,7 +35,7 @@ vi.mock(import("next/cache"), () => ({ cacheLife: vi.fn() }));
 
 vi.mock(import("@/lib/anthropic"), async (importOriginal) => ({
   ...(await importOriginal()),
-  runAgentLoop: vi.fn(),
+  finalText: vi.fn(),
   buildSystem: vi.fn(async () => [{ type: "text" as const, text: "prompt" }]),
 }));
 
@@ -103,11 +103,8 @@ sqliteBeforeEach(query, [...BOOTSTRAP, ...MIGRATIONS]);
 // Noon on Saturday, October 31st, in Stockholm.
 const NOW = new Date("2026-10-31T11:00:00Z");
 
-function replies(texts: string[], end: LoopEnd = "end_turn") {
-  vi.mocked(runAgentLoop).mockImplementation(async function* () {
-    yield* texts;
-    return end;
-  });
+function reply(text: string, end: LoopEnd = "end_turn") {
+  vi.mocked(finalText).mockResolvedValue({ text, end });
 }
 
 const store = (page: string, slot: string, text: string, version = 1) =>
@@ -122,8 +119,7 @@ const stored = async () =>
   (await query("SELECT page, slot, text FROM commentary ORDER BY slot")).rows;
 
 function input(): string {
-  const content =
-    vi.mocked(runAgentLoop).mock.calls[0]?.[0].messages[0]?.content;
+  const content = vi.mocked(finalText).mock.calls[0]?.[0].messages[0]?.content;
   return typeof content === "string" ? content : "";
 }
 
@@ -132,11 +128,12 @@ describe("parsePage", () => {
     ["7day", "7day"],
     ["on-this-day", "on-this-day"],
     ["2019-03-04", "2019-03-04"],
-    ["2026-11-01", undefined],
+    ["2026-10-30", "2026-10-30"],
+    ["2026-10-31", undefined],
     ["yesterday", undefined],
     [null, undefined],
   ])("should read %s as %s", (value, page) => {
-    expect(parsePage(value, "2026-10-31")).toBe(page);
+    expect(parsePage(value, NOW)).toBe(page);
   });
 });
 
@@ -215,7 +212,7 @@ describe("getCommentary", () => {
 
 describe("writeCommentary", () => {
   beforeEach(() => {
-    replies(["frog ate the week"]);
+    reply("frog ate the week");
   });
 
   it("should write a period's comment from its page and the last one", async () => {
@@ -228,9 +225,9 @@ describe("writeCommentary", () => {
     expect(buildSystem).toHaveBeenCalledWith(
       expect.stringContaining("comment"),
       PUBLIC_CATEGORIES,
-      false,
+      { index: false },
     );
-    expect(vi.mocked(runAgentLoop).mock.calls[0]?.[0]).toMatchObject({
+    expect(vi.mocked(finalText).mock.calls[0]?.[0]).toMatchObject({
       tools: LISTENING_TOOLS,
       endInText: true,
       loop: "commentary",
@@ -305,12 +302,12 @@ Oct 31: 3 (so far)
     await store("7day", "2026-10-31", "already here");
 
     await expect(writeCommentary("7day", NOW)).resolves.toBe("already here");
-    expect(runAgentLoop).not.toHaveBeenCalled();
+    expect(finalText).not.toHaveBeenCalled();
   });
 
   it("should wait for the request holding the lock", async () => {
     vi.useFakeTimers();
-    vi.mocked(tryLock).mockResolvedValueOnce(false);
+    vi.mocked(tryLock).mockResolvedValue(false);
 
     const written = writeCommentary("7day", NOW);
     await vi.advanceTimersByTimeAsync(1000);
@@ -318,7 +315,17 @@ Oct 31: 3 (so far)
     await vi.advanceTimersByTimeAsync(1000);
 
     await expect(written).resolves.toBe("theirs");
-    expect(runAgentLoop).not.toHaveBeenCalled();
+    expect(finalText).not.toHaveBeenCalled();
+  });
+
+  it("should take over from a request that gave up", async () => {
+    vi.useFakeTimers();
+    vi.mocked(tryLock).mockResolvedValueOnce(false);
+
+    const written = writeCommentary("7day", NOW);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(written).resolves.toBe("frog ate the week");
   });
 
   it("should write nothing for a day whose plays are still coming in", async () => {
@@ -326,20 +333,8 @@ Oct 31: 3 (so far)
     expect(tryLock).not.toHaveBeenCalled();
   });
 
-  it("should take only the last turn's text", async () => {
-    vi.mocked(runAgentLoop).mockImplementation(async function* ({ messages }) {
-      yield "let me check";
-      messages.push({ role: "assistant", content: [] });
-      yield "frog.";
-      yield "again.";
-      return "end_turn";
-    });
-
-    await expect(writeCommentary("7day", NOW)).resolves.toBe("frog. again.");
-  });
-
   it("should fail and release the lock when the bot is cut off", async () => {
-    replies(["frog ate"], "max_tokens");
+    reply("frog ate", "max_tokens");
 
     await expect(writeCommentary("7day", NOW)).rejects.toThrow(
       "Commentary ended in max_tokens with 8 characters",
@@ -363,7 +358,7 @@ describe("page facts", () => {
       status: "error",
       error: "down",
     });
-    replies(["hm"]);
+    reply("hm");
 
     await writeCommentary("7day", NOW);
 

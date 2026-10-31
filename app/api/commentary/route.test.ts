@@ -1,12 +1,9 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isBanned } from "@/lib/bans";
+import { admit } from "@/lib/admission";
 import { getCommentary, writeCommentary } from "@/lib/commentary";
-import { identifiers } from "@/lib/identifiers";
-import { isDeniedRequest } from "@/lib/ipDenyList";
 import { log } from "@/lib/log";
-import { rateLimit } from "@/lib/rateLimit";
 
 import { GET, POST } from "./route";
 
@@ -18,20 +15,18 @@ vi.mock(import("@/lib/commentary"), async (importOriginal) => ({
   })),
   writeCommentary: vi.fn(async () => "frog ate the week"),
 }));
-vi.mock(import("@/lib/today"), () => ({
-  getToday: vi.fn(async () => "2026-10-31" as const),
-}));
 vi.mock(import("@/lib/identifiers"), async (importOriginal) => ({
   ...(await importOriginal()),
   identifiers: vi.fn(async () => ({ ip: "2001:db8::1", userAgent: undefined })),
 }));
-vi.mock(import("@/lib/ipDenyList"), () => ({
-  isDeniedRequest: vi.fn(() => false),
+vi.mock(import("@/lib/admission"), () => ({
+  admit: vi.fn(async () => undefined),
 }));
-vi.mock(import("@/lib/bans"), () => ({ isBanned: vi.fn(async () => false) }));
-vi.mock(import("@/lib/rateLimit"), () => ({
-  rateLimit: vi.fn(async () => ({ success: true as const })),
-}));
+
+beforeEach(() => {
+  // Noon in Stockholm.
+  vi.useFakeTimers({ now: new Date("2026-10-31T11:00:00Z"), toFake: ["Date"] });
+});
 
 const request = (page: string, method = "GET") =>
   new NextRequest(`http://localhost/api/commentary?page=${page}`, { method });
@@ -55,8 +50,8 @@ describe("GET /api/commentary", () => {
     expect((await GET(request("2019-03-04"))).status).toBe(204);
   });
 
-  it("should not find a page without a comment", async () => {
-    expect((await GET(request("2026-11-01"))).status).toBe(404);
+  it("should not find a day whose plays are still coming in", async () => {
+    expect((await GET(request("2026-10-31"))).status).toBe(404);
     expect(getCommentary).not.toHaveBeenCalled();
   });
 
@@ -75,7 +70,7 @@ describe("POST /api/commentary", () => {
     const response = await POST(request("7day", "POST"));
 
     expect(writeCommentary).toHaveBeenCalledWith("7day");
-    expect(rateLimit).toHaveBeenCalledWith("commentary:2001:db8:0:0::/64", {
+    expect(admit).toHaveBeenCalledWith("commentary", "2001:db8::1", "unknown", {
       limit: 20,
       windowMs: 3_600_000,
     });
@@ -93,33 +88,23 @@ describe("POST /api/commentary", () => {
     const response = await POST(request("7day", "POST"));
 
     await expect(response.json()).resolves.toEqual({ text: "already here" });
-    expect(rateLimit).not.toHaveBeenCalled();
+    expect(admit).not.toHaveBeenCalled();
     expect(writeCommentary).not.toHaveBeenCalled();
   });
 
-  it("should skip the limits without a client address", async () => {
-    vi.mocked(identifiers).mockResolvedValueOnce({
-      ip: undefined,
-      userAgent: undefined,
-    });
+  it.each(["denied", "banned"] as const)(
+    "should turn away a request that is %s",
+    async (reason) => {
+      vi.mocked(admit).mockResolvedValueOnce({ reason });
 
-    expect((await POST(request("7day", "POST"))).status).toBe(200);
-    expect(rateLimit).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ["a listed IP", () => vi.mocked(isDeniedRequest).mockReturnValueOnce(true)],
-    ["a banned one", () => vi.mocked(isBanned).mockResolvedValueOnce(true)],
-  ])("should turn away %s", async (_, deny) => {
-    deny();
-
-    expect((await POST(request("7day", "POST"))).status).toBe(403);
-    expect(writeCommentary).not.toHaveBeenCalled();
-  });
+      expect((await POST(request("7day", "POST"))).status).toBe(403);
+      expect(writeCommentary).not.toHaveBeenCalled();
+    },
+  );
 
   it("should turn away a network over its limit", async () => {
-    vi.mocked(rateLimit).mockResolvedValueOnce({
-      success: false,
+    vi.mocked(admit).mockResolvedValueOnce({
+      reason: "limited",
       retryAfterSeconds: 42,
     });
 
@@ -136,7 +121,7 @@ describe("POST /api/commentary", () => {
   it("should answer no content when no comment came of it", async () => {
     vi.mocked(writeCommentary).mockResolvedValueOnce(undefined);
 
-    expect((await POST(request("2026-10-31", "POST"))).status).toBe(204);
+    expect((await POST(request("7day", "POST"))).status).toBe(204);
   });
 
   it("should log a failed write", async () => {

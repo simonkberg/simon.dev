@@ -29,7 +29,7 @@ const labels = {
   year: new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric" }),
 };
 
-type BucketUnit = keyof typeof labels;
+export type BucketUnit = keyof typeof labels;
 
 export const bucketUnits = {
   "7day": "day",
@@ -67,6 +67,15 @@ function start(unit: BucketUnit, today: Date, offset: number): Date {
     case "year":
       return midnight(year - offset, 0, 1);
   }
+}
+
+/** The Stockholm day, week or month that now falls in. */
+export function currentBucket(
+  unit: BucketUnit,
+  now: Date,
+): { from: Date; to: Date } {
+  const today = localDate(now);
+  return { from: start(unit, today, 0), to: start(unit, today, -1) };
 }
 
 function buckets(
