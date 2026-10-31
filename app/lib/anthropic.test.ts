@@ -663,7 +663,7 @@ describe("createMessage", () => {
     let next = await loop.next();
     while (next.done !== true) next = await loop.next();
 
-    expect(next.value).toBe("max_iterations");
+    expect(next.value).toEqual({ end: "max_iterations", text: "" });
     expect(requests.map((body) => body.tool_choice)).toEqual([
       undefined,
       undefined,
