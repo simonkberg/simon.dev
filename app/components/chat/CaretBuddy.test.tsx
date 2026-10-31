@@ -61,7 +61,7 @@ describe("CaretBuddy", () => {
     it("shows success when resultStatus changes to ok", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
+      expect(screen.getByText("(^▽^)")).toBeInTheDocument();
     });
   });
 
@@ -69,7 +69,7 @@ describe("CaretBuddy", () => {
     it("error takes priority over success", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
+      expect(screen.getByText("(^▽^)")).toBeInTheDocument();
 
       rerender(<CaretBuddy {...defaultProps} resultStatus="error" />);
       expect(screen.getByText("(╥_╥)")).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("CaretBuddy", () => {
     it("transitions from success to idle after 1.5 seconds", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} resultStatus="ok" />);
-      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
+      expect(screen.getByText("(^▽^)")).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(1500);
@@ -160,7 +160,7 @@ describe("CaretBuddy", () => {
         vi.advanceTimersByTime(900);
       });
 
-      expect(screen.getByText("(^ᵥ^)")).toBeInTheDocument();
+      expect(screen.getByText("(^▽^)")).toBeInTheDocument();
     });
   });
 

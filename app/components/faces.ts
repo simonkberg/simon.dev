@@ -56,7 +56,7 @@ export const ANIMATIONS = {
     [0.15, "(╥⌢╥)"],
   ],
   success: [
-    [1.0, "(^ᵥ^)"],
+    [1.0, "(^▽^)"],
     [0.15, "(^_^)"],
   ],
 } as const satisfies Record<string, AnimationFrames>;

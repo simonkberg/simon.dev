@@ -293,7 +293,7 @@ describe("CaretBuddy integration", () => {
 
     await send("Hello");
 
-    expect(await screen.findByText("(^ᵥ^)")).toBeInTheDocument();
+    expect(await screen.findByText("(^▽^)")).toBeInTheDocument();
   });
 
   describe("commands", () => {
