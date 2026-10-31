@@ -2722,8 +2722,8 @@ ul {
 
   > .face {
     flex: none;
-    /* The widest frame, (・.・?), so the text stays put as the face moves. */
-    min-inline-size: 8ch;
+    /* The widest frame, (•.•?), so the text stays put as the face moves. */
+    min-inline-size: 6ch;
     text-align: center;
     color: var(--accent);
   }
