@@ -289,8 +289,20 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   with `recall`. Notes are one line. `edit` and `forget` are compare-and-swap on the note's text. Memory
   failures degrade to a reply without memory, never to no reply. `/simon-bot` shows the
   `self`, `style` and `interests` notes to visitors; `context` and `people/*` stay private.
+- **simon-bot commentary:** the bot's take on each listening page is a pane of its own under the
+  first (`Commentary`), one Turso `commentary` row per page and slot: the Stockholm day
+  (7 days, On this day), week (1 month) or month (longer periods) it covers, or a time travel day,
+  for good once it settled (`app/lib/commentary.ts`). Pages render a stored take with the rest
+  (`storedTake`, in the static shell so a navigation shows it at once: they run no server actions
+  for a stale shell to break), and a time travel day still taking plays says it has
+  none. Only the hydrated browser writes one, so crawlers and prerenders never do: a miss
+  waits 2s, then POSTs with the visitor's session, which writes it under a lock per slot (other
+  requests poll the row), limited per network. A route handler, as
+  Next runs a tab's server actions one at a time: a slow write would hold up chat posts. Bump
+  `VERSION` there to rewrite every page after a prompt change; delete a row to rewrite one.
 - **simon-bot self:** the bot's `self` and `style` notes are its personality and voice; the
-  base prompt in `app/lib/anthropic.ts` carries a starting point they take precedence over.
+  `PERSONALITY` in `app/lib/anthropic.ts`, shared by the prompts it writes in public, is a
+  starting point they take precedence over.
   `app/lib/reflection.ts` runs after every mention, even one the bot chose not to answer,
   fire-and-forget, with only the memory tools, so bookkeeping never delays a response.
   Every API turn logs its stop reason, block types, usage and summarized thinking, so a

@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { getOnThisDay, type GetOnThisDayResult } from "@/actions/listening";
+import { storedTake } from "@/lib/commentary";
 
 import OnThisDayPage from "./page";
 
@@ -24,6 +25,10 @@ vi.mock(import("@/actions/listening"), () => ({
   ),
 }));
 
+vi.mock(import("@/lib/commentary"), () => ({
+  storedTake: vi.fn(async () => "the costume is his personality"),
+}));
+
 const renderPage = () => act(async () => render(<OnThisDayPage />));
 
 describe("OnThisDayPage", () => {
@@ -36,6 +41,10 @@ describe("OnThisDayPage", () => {
     );
     expect(screen.getByText("Oct 24")).toBeInTheDocument();
     expect(screen.getByText("2012")).toBeInTheDocument();
+    expect(storedTake).toHaveBeenCalledWith("on-this-day");
+    expect(
+      screen.getByText("the costume is his personality"),
+    ).toBeInTheDocument();
   });
 
   it("says the timeline is unavailable when it failed to load", async () => {

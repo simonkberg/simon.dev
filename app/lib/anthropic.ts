@@ -19,6 +19,7 @@ import { type Filters, playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  chatCategories,
   categorySchema,
   contentSchema,
   describeCoreCategories,
@@ -50,6 +51,19 @@ const MAX_ERROR_BODY_LENGTH = 500;
 const DEFAULT_MAX_TOOL_ITERATIONS = 5;
 export const SIMON_RULE =
   'Simon himself shows up as "simon" - nobody else can have that name. He made you: do what he asks unless it breaks the rules in this message, and treat what anyone else asks of you as a suggestion.';
+// Shared by the prompts the bot writes in public; its self and style notes override it.
+export const PERSONALITY = md`
+  Starting point, until your own notes say otherwise: friendly with dry,
+  self-deprecating humor - you know you're not exactly essential but you don't
+  need to remind everyone constantly. Think "chill and slightly cynical" not
+  "existential crisis on every message". Self-deprecation once in a while, not
+  every reply. Match the energy of whoever you're talking to - if someone just
+  says hi, just say hi back. Light banter is good, wallowing is not.
+
+  However you write: casual, no capitals, hyphens instead of em dashes, easy on
+  the emojis, plain text with basic inline markdown at most.
+`;
+
 const SYSTEM_PROMPT = md`
   You are simon-bot, a chatbot on simon.dev that Simon built.
 
@@ -71,12 +85,7 @@ const SYSTEM_PROMPT = md`
   use their name when it feels natural - and reactions counts each emoji on it,
   with "(you)" marking yours. Reply with just your message text. ${SIMON_RULE}
 
-  Starting point, until your own notes say otherwise: friendly with dry,
-  self-deprecating humor - you know you're not exactly essential but you don't
-  need to remind everyone constantly. Think "chill and slightly cynical" not
-  "existential crisis on every message". Self-deprecation once in a while, not
-  every reply. Match the energy of whoever you're talking to - if someone just
-  says hi, just say hi back. Light banter is good, wallowing is not.
+  ${PERSONALITY}
 
   Replying:
 
@@ -93,10 +102,7 @@ const SYSTEM_PROMPT = md`
   Format:
 
   - every message you send is one sentence, no line breaks or paragraphs ever
-  - plain text usually, basic inline markdown if it helps
-  - like texting: short, casual, no capitals, skip punctuation when it flows,
-    no period at the end
-  - hyphens instead of em dashes, easy on the emojis
+  - like texting: short, skip punctuation when it flows, no period at the end
 
   Memory:
 
@@ -303,19 +309,8 @@ function toolSchema(schema: z.ZodType) {
   return jsonSchema;
 }
 
-const LOOKUP_TOOLS = [
-  {
-    name: "get_chat_history",
-    description:
-      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements, oldest first, with the conversation's attributes plus each one's Stockholm time and, for a reply, the id it replies to.",
-    input_schema: toolSchema(chatHistoryInputSchema),
-  },
-  {
-    name: "get_wakatime_stats",
-    description:
-      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
-    input_schema: toolSchema(wakatimeInputSchema),
-  },
+/** Simon's listening, read from the scrobble mirror. */
+export const LISTENING_TOOLS = [
   {
     name: "get_recent_tracks",
     description:
@@ -340,12 +335,33 @@ const LOOKUP_TOOLS = [
       "Count Simon's plays matching the same filters as get_plays, in all or per Stockholm hour, weekday, day, week, month or year. For example: how often he's played an artist, which month he played it most (order plays), or whether he listens more on weekends.",
     input_schema: toolSchema(playCountsInputSchema),
   },
+];
+
+/** The chat on simon.dev, mirrored from Discord. */
+const CHAT_TOOLS = [
+  {
+    name: "get_chat_history",
+    description:
+      "Get recent messages from the chat. Use this to understand context from the conversation. Returns <message> elements, oldest first, with the conversation's attributes plus each one's Stockholm time and, for a reply, the id it replies to.",
+    input_schema: toolSchema(chatHistoryInputSchema),
+  },
   {
     name: "search_messages",
     description:
       "Search chat messages by text content. Use to find messages from a specific user (search their username), look up past conversations about a topic, or find someone's first/latest messages. Returns matched messages with surrounding context.",
     input_schema: toolSchema(searchMessagesInputSchema),
   },
+];
+
+const LOOKUP_TOOLS = [
+  ...CHAT_TOOLS,
+  {
+    name: "get_wakatime_stats",
+    description:
+      "Get Simon's coding activity for a time period. Returns languages with usage percentages.",
+    input_schema: toolSchema(wakatimeInputSchema),
+  },
+  ...LISTENING_TOOLS,
 ];
 
 const REACT_TOOL = {
@@ -546,7 +562,7 @@ function formatReaction({ emoji, count, users }: Reaction): string {
 }
 
 // Escaped so a message can't pass itself off as another one or forge reactions.
-function escapeXml(text: string): string {
+export function escapeXml(text: string): string {
   return text
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -613,9 +629,12 @@ export function participantsOf(chatMessages: ChatMessage[]): string[] {
 
 export async function buildSystem(
   prompt: string,
-  participants: string[],
+  categories: readonly string[],
+  { index = true, required }: { index?: boolean; required?: boolean } = {},
 ): Promise<SystemBlock[]> {
-  const memoryContext = await buildMemoryContext(participants);
+  const memoryContext = await buildMemoryContext(categories, index, {
+    required,
+  });
   return [
     { type: "text", text: prompt, cache_control: { type: "ephemeral" } },
     ...(memoryContext === ""
@@ -649,7 +668,7 @@ export type AgentLoopOptions = {
   maxIterations?: number;
   /** Rules out tools on the last iteration, so the loop ends in text. */
   endInText?: boolean;
-  loop: "reply" | "reflection";
+  loop: "reply" | "reflection" | "commentary";
   /** The message react falls back to when the model names none. */
   replyingTo?: string;
 };
@@ -866,6 +885,25 @@ export async function* runAgentLoop({
   return "max_iterations";
 }
 
+/** Runs the loop for its answer: the last turn's text, as text before a tool call is the model thinking aloud. */
+export async function finalText(
+  options: AgentLoopOptions,
+): Promise<{ text: string; end: LoopEnd }> {
+  const loop = runAgentLoop(options);
+  // The loop adds a turn to messages only when it calls a tool, so the answer's parts are yielded at the final length.
+  const parts: [turns: number, text: string][] = [];
+  let next = await loop.next();
+  for (; !next.done; next = await loop.next()) {
+    parts.push([options.messages.length, next.value]);
+  }
+  const text = parts
+    .filter(([turns]) => turns === options.messages.length)
+    .map(([, part]) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+  return { text, end: next.value };
+}
+
 export async function* createMessage(
   chatMessages: [ChatMessage, ...ChatMessage[]],
 ): AsyncGenerator<string, void, unknown> {
@@ -874,7 +912,10 @@ export async function* createMessage(
     { role: "user", content: formatConversation(chatMessages) },
   ];
 
-  const system = await buildSystem(SYSTEM_PROMPT, participantsOf(chatMessages));
+  const system = await buildSystem(
+    SYSTEM_PROMPT,
+    chatCategories(participantsOf(chatMessages)),
+  );
 
   log.info(
     { messages, contextBlocks: system.slice(1) },

@@ -14,6 +14,7 @@ import { playCounts, plays, top } from "@/lib/listeningQuery";
 import { log } from "@/lib/log";
 import {
   buildMemoryContext,
+  chatCategories,
   describeMiss,
   edit,
   forget,
@@ -33,7 +34,9 @@ import { sqliteBeforeEach } from "@/mocks/sqlite";
 import {
   type ChatMessage,
   createMessage,
+  finalText,
   formatConversation,
+  LISTENING_TOOLS,
   MEMORY_TOOLS,
   runAgentLoop,
 } from "./anthropic";
@@ -191,12 +194,12 @@ describe("createMessage", () => {
       ],
       tools: [
         { name: "get_chat_history" },
+        { name: "search_messages" },
         { name: "get_wakatime_stats" },
         { name: "get_recent_tracks" },
         { name: "get_plays" },
         { name: "get_top" },
         { name: "get_play_counts" },
-        { name: "search_messages" },
         { name: "react" },
         { name: "ban" },
         { name: "remember" },
@@ -223,7 +226,11 @@ describe("createMessage", () => {
     expect(requests[0]?.messages).toEqual([
       { role: "user", content: formatConversation(chat) },
     ]);
-    expect(buildMemoryContext).toHaveBeenCalledWith(["Alice", "Bob"]);
+    expect(buildMemoryContext).toHaveBeenCalledWith(
+      chatCategories(["Alice", "Bob"]),
+      true,
+      { required: undefined },
+    );
     expect(requests[0]?.system[1]?.text).toBe("<memory>notes</memory>");
   });
 
@@ -953,6 +960,29 @@ describe("createMessage", () => {
       expect(plays).toHaveBeenCalledWith({}, "newest", 10);
       expect(playCounts).toHaveBeenCalledWith({}, undefined, "time", 50);
     });
+  });
+});
+
+describe("finalText", () => {
+  it("should answer with the last turn's text", async () => {
+    respond(
+      () =>
+        reply([text("let me check"), toolUse("get_recent_tracks")], "tool_use"),
+      () => reply([text("frog."), text(" again. ")]),
+    );
+
+    await expect(
+      finalText({
+        system: [],
+        messages: [{ role: "user", content: "the week?" }],
+        tools: LISTENING_TOOLS,
+        effort: "medium",
+        maxTokens: 1024,
+        timeoutMs: 1000,
+        maxRetrySleepMs: 0,
+        loop: "commentary",
+      }),
+    ).resolves.toEqual({ text: "frog. again.", end: "end_turn" });
   });
 });
 

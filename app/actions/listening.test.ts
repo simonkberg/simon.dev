@@ -32,9 +32,9 @@ vi.mock(import("@/lib/lastfm"), async (importOriginal) => ({
   albumGetInfo: vi.fn(),
 }));
 
-vi.mock(import("@/lib/scrobbles"), () => ({
+vi.mock(import("@/lib/scrobbles"), async (importOriginal) => ({
+  ...(await importOriginal()),
   countScrobbles: vi.fn(),
-  LATE_MS: 14 * 24 * 60 * 60_000,
   playsIn: vi.fn(),
   recentPlays: vi.fn(),
   topArtist: vi.fn(),

@@ -2715,6 +2715,43 @@ ul {
   }
 }
 
+.commentary {
+  display: flex;
+  gap: 1ch;
+  margin: 0;
+
+  > .face {
+    flex: none;
+    /* The widest frame, (・.・?), so the text stays put as the face moves. */
+    min-inline-size: 8ch;
+    text-align: center;
+    color: var(--accent);
+  }
+
+  > .quiet {
+    color: var(--muted);
+  }
+
+  .caret {
+    display: inline-block;
+    width: 0.6ch;
+    height: 1em;
+    margin-inline-start: 0.1ch;
+    vertical-align: -0.15em;
+    background: var(--accent);
+    animation-name: blink;
+    animation-duration: 1s;
+    animation-timing-function: steps(1);
+    animation-iteration-count: infinite;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 .caret-buddy {
   position: absolute;
   right: 0;
