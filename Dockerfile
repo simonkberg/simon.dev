@@ -6,7 +6,7 @@ FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3
 # Install dependencies
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
-COPY --from=ghcr.io/pnpm/pnpm:12.16.1-alpine@sha256:3b67e34454e18e4797a50ade3176dde31cec13ad6670f460a81bdf6e1d8b547b /opt/pnpm /opt/pnpm
+COPY --from=ghcr.io/pnpm/pnpm:12.17.0-alpine@sha256:b3e3037c4c598f472ba681f5239631e39ac2c01b9d8e6681d57d02067979ac7d /opt/pnpm /opt/pnpm
 ENV PATH=/opt/pnpm:$PATH
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
