@@ -1,3 +1,5 @@
+import { use } from "react";
+
 import { type EmojiShortcodes, REACTION_EMOJI } from "@/lib/emoji";
 
 const REACTION_SHORTCODES: EmojiShortcodes[] = REACTION_EMOJI.map(
@@ -23,8 +25,8 @@ export function loadShortcodes(): Promise<EmojiShortcodes[]> {
   return shortcodes;
 }
 
-/** The set once loaded: `use()` suspends on a promise it hasn't read yet, even a settled one, showing the fallback for 300ms. */
-export const loadedShortcodes = () => loaded;
+/** The set, suspending until it loads; `use()` alone would flash the fallback for 300ms on a promise it hasn't read, even a settled one. */
+export const useShortcodes = () => loaded ?? use(loadShortcodes());
 
 /** Loads the set, retrying a fetch that failed; for an explicit event like focus, never render. */
 export function reloadShortcodes(): Promise<EmojiShortcodes[]> {
