@@ -49,13 +49,13 @@ describe("CaretBuddy", () => {
 
     it("shows long when input exceeds 100 characters", () => {
       render(<CaretBuddy {...defaultProps} inputValue={"a".repeat(101)} />);
-      expect(screen.getByText("(°o°)")).toBeInTheDocument();
+      expect(screen.getByText("(•o•)")).toBeInTheDocument();
     });
 
     it("shows typing when input changes", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} inputValue="h" />);
-      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+      expect(screen.getByText("(•ᵥ•)")).toBeInTheDocument();
     });
 
     it("shows success when resultStatus changes to ok", () => {
@@ -99,7 +99,7 @@ describe("CaretBuddy", () => {
     it("transitions from typing to idle after 3 seconds", () => {
       const { rerender } = render(<CaretBuddy {...defaultProps} />);
       rerender(<CaretBuddy {...defaultProps} inputValue="hello" />);
-      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+      expect(screen.getByText("(•ᵥ•)")).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(3000);
@@ -120,7 +120,7 @@ describe("CaretBuddy", () => {
         vi.advanceTimersByTime(2000);
       });
 
-      expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+      expect(screen.getByText("(•ᵥ•)")).toBeInTheDocument();
     });
 
     it("transitions from success to idle after 1.5 seconds", () => {

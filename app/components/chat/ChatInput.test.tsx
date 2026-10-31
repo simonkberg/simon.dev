@@ -261,7 +261,7 @@ describe("CaretBuddy integration", () => {
 
     await user.type(input, "H");
 
-    expect(screen.getByText("(°▽°)")).toBeInTheDocument();
+    expect(screen.getByText("(•ᵥ•)")).toBeInTheDocument();
   });
 
   it("shows thinking state while message is pending", async () => {
