@@ -105,6 +105,16 @@ describe("Commentary", () => {
     );
   });
 
+  it("should say a day still taking plays has none yet", async () => {
+    answer(() => new HttpResponse(null, { status: 404 }));
+    render(<Commentary page="2026-10-31" />);
+
+    await vi.waitFor(() =>
+      expect(take()).toHaveTextContent("ask me once the day is over"),
+    );
+    expect(posts).toEqual([]);
+  });
+
   it("should not ask for a comment once it's gone", async () => {
     answer(none);
     const { unmount } = render(<Commentary page="2019-03-04" />);

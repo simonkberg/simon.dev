@@ -23,12 +23,14 @@ type State =
   | { phase: "waiting" }
   | { phase: "typing"; text: string; shown: number }
   | { phase: "done"; text: string }
+  | { phase: "early" }
   | { phase: "none" };
 
 type Action =
   | { type: "stored"; text: string | undefined }
   | { type: "written"; text: string | undefined; instant: boolean }
   | { type: "tick" }
+  | { type: "early" }
   | { type: "fail" };
 
 function reduce(state: State, action: Action): State {
@@ -49,10 +51,15 @@ function reduce(state: State, action: Action): State {
         ? { ...state, shown }
         : { phase: "done", text: state.text };
     }
+    case "early":
+      return { phase: "early" };
     case "fail":
       return { phase: "none" };
   }
 }
+
+// A day still taking plays has no take yet.
+class TooEarly extends Error {}
 
 const responseSchema = z.object({ text: z.string() });
 
@@ -66,6 +73,7 @@ async function ask(
     { method, signal },
   );
   if (response.status === 204) return undefined;
+  if (response.status === 404) throw new TooEarly();
   if (!response.ok) throw new Error(`Commentary answered ${response.status}`);
   return responseSchema.parse(await response.json()).text;
 }
@@ -112,6 +120,8 @@ function Words({ state }: { state: State }) {
       );
     case "done":
       return <span>{state.text}</span>;
+    case "early":
+      return <span className="quiet">ask me once the day is over</span>;
     case "none":
       return <span className="quiet">nothing to say this time</span>;
   }
@@ -122,7 +132,11 @@ function Pane({ state }: { state: State }) {
   return (
     <p
       className="commentary"
-      aria-busy={state.phase !== "done" && state.phase !== "none"}
+      aria-busy={
+        state.phase === "asking" ||
+        state.phase === "waiting" ||
+        state.phase === "typing"
+      }
     >
       <span className="face" aria-hidden="true">
         {face}
@@ -165,8 +179,9 @@ function Take({
         const written = await ask(page, "POST", signal);
         const instant = matchMedia("(prefers-reduced-motion: reduce)").matches;
         dispatch({ type: "written", text: written, instant });
-      } catch {
-        if (!signal.aborted) dispatch({ type: "fail" });
+      } catch (err) {
+        if (signal.aborted) return;
+        dispatch({ type: err instanceof TooEarly ? "early" : "fail" });
       }
     })();
     return () => controller.abort();
