@@ -1,21 +1,20 @@
 "use client";
 
-import { Suspense, use } from "react";
+import { Suspense } from "react";
 
 import { TooltipText } from "@/components/Tooltip";
-import { withoutSkinTone } from "@/lib/emoji";
 
-import { loadShortcodes } from "./shortcodes";
+import { useShortcode } from "./shortcodes";
 
 const EMOJI = /(\p{RGI_Emoji})/v;
 
 const Shortcode = ({ emoji }: { emoji: string }) => {
-  const base = withoutSkinTone(emoji);
-  const name = use(loadShortcodes()).find(([known]) => known === base)?.[1][0];
-  return name && `:${name}:`;
+  const name = useShortcode(emoji);
+  if (!name) return null;
+  return `:${name}:`;
 };
 
-/** The emoji's `:shortcode:`, loading the set as it first renders. */
+/** The emoji's `:shortcode:`, from the set the chat prefetches. */
 export const EmojiShortcode = ({ emoji }: { emoji: string }) => (
   <Suspense fallback="…">
     <Shortcode emoji={emoji} />

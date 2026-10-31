@@ -8,8 +8,10 @@ import { createMessage } from "@/mocks/messages";
 import { sendToggle } from "@/mocks/popover";
 
 import { Chat } from "./Chat";
+import { loadShortcodes } from "./shortcodes";
 
 vi.mock(import("@/actions/chat"), () => ({ reactToChatMessage: vi.fn() }));
+vi.mock(import("./shortcodes"), { spy: true });
 
 describe("Chat", () => {
   const chatElement = (result: ChatHistoryResult, tipDismissed = false) => (
@@ -21,6 +23,12 @@ describe("Chat", () => {
 
   const renderChat = (messages: Message[]) =>
     act(async () => render(chatElement({ status: "ok", messages })));
+
+  it("loads the emoji shortcodes once it mounts", async () => {
+    await renderChat([]);
+
+    expect(loadShortcodes).toHaveBeenCalled();
+  });
 
   it("renders the simon-bot tip until it is dismissed", async () => {
     await renderChat([]);
