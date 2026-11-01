@@ -29,7 +29,7 @@
     "@tanstack/markdown": "1.0.0",
     "comparator.ts": "2.0.0",
     "emojibase-data": "18.0.0",
-    "jose": "6.2.13",
+    "jose": "6.2.14",
     "next": "16.4.3",
     "pino": "10.4.0",
     "react": "19.3.1",
