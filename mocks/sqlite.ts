@@ -34,6 +34,9 @@ export function createSqliteQuery(setup: readonly string[] = []): typeof query {
     } else {
       statement.run(...args);
     }
+    if (!schema && rows.length > 0) {
+      throw new Error(`Turso returned rows without a schema in ${sql}`);
+    }
     return {
       rows: schema ? rows.map((row) => schema.parse(row)) : [],
       rowsAffected: changes() - before,

@@ -113,7 +113,18 @@ function encodeStatement({ sql, args = [] }: Statement): EncodedStatement {
   return { sql, args: args.map(encodeValue) };
 }
 
-function parseRows<T>(rows: Row[], schema: z.ZodType<T>, source: string) {
+function parseRows<T>(
+  rows: Row[],
+  schema: z.ZodType<T> | undefined,
+  source: string,
+): T[] {
+  // Else a read that forgot its schema would look like one that found nothing.
+  if (!schema) {
+    if (rows.length > 0) {
+      throw new Error(`Turso returned rows without a schema in ${source}`);
+    }
+    return [];
+  }
   try {
     return rows.map((row) => schema.parse(row));
   } catch (cause) {
@@ -139,7 +150,7 @@ function decodeResult<T>(
       ]),
     );
   return {
-    rows: schema ? parseRows(rows.map(toRow), schema, source) : [],
+    rows: parseRows(rows.map(toRow), schema, source),
     rowsAffected: affected_row_count,
     lastInsertRowId:
       last_insert_rowid === null ? null : Number(last_insert_rowid),
@@ -239,7 +250,7 @@ export async function batch<const T extends readonly Statement[]>(
 export function keepWarm(): void {
   getGlobal("turso-keep-warm", () =>
     setInterval(() => {
-      query({ sql: "SELECT 1" }).catch((err: unknown) => {
+      query({ sql: "SELECT 1", rows: z.unknown() }).catch((err: unknown) => {
         log.warn({ err }, "Turso keep-warm query failed");
       });
     }, KEEP_WARM_MS).unref(),

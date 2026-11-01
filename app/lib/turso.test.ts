@@ -140,7 +140,7 @@ describe("query", () => {
     ).rejects.toThrow("Turso rows didn't match in SELECT 1");
   });
 
-  it("should return no rows without a schema", async () => {
+  it("should throw when a statement without a schema returns rows", async () => {
     capture(
       pipelineResponse({
         cols: [{ name: "n" }],
@@ -148,9 +148,9 @@ describe("query", () => {
       }),
     );
 
-    await expect(query({ sql: "SELECT 1" })).resolves.toMatchObject({
-      rows: [],
-    });
+    await expect(query({ sql: "SELECT 1" })).rejects.toThrow(
+      "Turso returned rows without a schema in SELECT 1",
+    );
   });
 
   it("should throw on HTTP errors", async () => {
@@ -215,10 +215,14 @@ describe("query", () => {
 });
 
 describe("batch", () => {
-  function stmtResult(value: number) {
+  // A step without a value returns no rows, as BEGIN, COMMIT and writes do.
+  function stmtResult(value?: number) {
     return {
       cols: [{ name: "n" }],
-      rows: [[{ type: "integer", value: String(value) }]],
+      rows:
+        value === undefined
+          ? []
+          : [[{ type: "integer", value: String(value) }]],
       affected_row_count: 0,
       last_insert_rowid: null,
     };
@@ -237,10 +241,10 @@ describe("batch", () => {
   it("should run the statements in one transaction that rolls back on failure", async () => {
     const requests = capture(
       batchResponse([
-        stmtResult(0),
+        stmtResult(),
         stmtResult(1),
-        stmtResult(2),
-        stmtResult(0),
+        stmtResult(),
+        stmtResult(),
         null,
       ]),
     );
@@ -248,7 +252,7 @@ describe("batch", () => {
     await expect(
       batch([
         { sql: "SELECT ?", args: [1], rows: z.object({ n: z.number() }) },
-        { sql: "SELECT 2" },
+        { sql: "DELETE FROM t" },
       ]),
     ).resolves.toEqual([
       { rows: [{ n: 1 }], rowsAffected: 0, lastInsertRowId: null },
@@ -270,7 +274,7 @@ describe("batch", () => {
               },
               {
                 condition: { type: "ok", step: 1 },
-                stmt: { sql: "SELECT 2", args: [] },
+                stmt: { sql: "DELETE FROM t", args: [] },
               },
               { condition: { type: "ok", step: 2 }, stmt: { sql: "COMMIT" } },
               {
@@ -295,7 +299,7 @@ describe("batch", () => {
     capture(
       batchResponse(
         steps.map((index) =>
-          index < failed || index === 4 ? stmtResult(0) : null,
+          index < failed || index === 4 ? stmtResult() : null,
         ),
         steps.map((index) =>
           index === failed ? { message: "database is locked" } : null,
@@ -309,7 +313,7 @@ describe("batch", () => {
   });
 
   it("should throw when a step has neither a result nor an error", async () => {
-    capture(batchResponse([stmtResult(0), null, stmtResult(0), null]));
+    capture(batchResponse([stmtResult(), null, stmtResult(), null]));
 
     await expect(batch([{ sql: "SELECT 1" }])).rejects.toThrow(
       "Turso query error in statement 1: no result",
@@ -317,7 +321,7 @@ describe("batch", () => {
   });
 
   it("should name the statement whose rows don't match its schema", async () => {
-    capture(batchResponse([stmtResult(0), stmtResult(1), stmtResult(0), null]));
+    capture(batchResponse([stmtResult(), stmtResult(1), stmtResult(), null]));
 
     await expect(
       batch([{ sql: "SELECT 1", rows: z.object({ n: z.string() }) }]),
