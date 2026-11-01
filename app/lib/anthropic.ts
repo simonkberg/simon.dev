@@ -680,6 +680,18 @@ export type AgentLoopOptions = {
   replyingTo?: string;
 };
 
+type MessagesRequest = {
+  model: string;
+  max_tokens: number;
+  thinking: { type: "adaptive"; display: "summarized" };
+  output_config: { effort: AgentLoopOptions["effort"] };
+  cache_control?: { type: "ephemeral" };
+  system: SystemBlock[];
+  messages: Message[];
+  tools: typeof TOOLS;
+  tool_choice?: { type: "none" };
+};
+
 function isRetryable(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
@@ -792,11 +804,7 @@ export async function* runAgentLoop({
   const isTextOnly = (iteration: number) =>
     endInText && iteration === maxIterations - 1;
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    const request: {
-      [key: string]: unknown;
-      cache_control?: { type: "ephemeral" };
-      tool_choice?: { type: "none" };
-    } = {
+    const request: MessagesRequest = {
       model: MODEL,
       max_tokens: maxTokens,
       thinking: { type: "adaptive", display: "summarized" },
