@@ -76,14 +76,20 @@ export async function remember(input: {
   const content = contentSchema.parse(input.content);
 
   // One statement so parallel tool calls can't both slip past the cap.
-  const { rows } = await query(
-    `INSERT INTO memories (category, content, created_at)
+  const { rows } = await query({
+    sql: `INSERT INTO memories (category, content, created_at)
      SELECT ?, ?, ?
      WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?
      RETURNING ${COLUMNS}`,
-    [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
-    memorySchema,
-  );
+    args: [
+      category,
+      content,
+      new Date().toISOString(),
+      category,
+      MAX_PER_CATEGORY,
+    ],
+    rows: memorySchema,
+  });
   const memory = rows[0];
   return memory === undefined
     ? { status: "full", category }
@@ -109,12 +115,12 @@ export async function recall(input: {
 
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const { rows } = await query(
-    `SELECT ${COLUMNS} FROM memories
+  const { rows } = await query({
+    sql: `SELECT ${COLUMNS} FROM memories
      ${where} ORDER BY created_at DESC, id DESC LIMIT ?`,
-    [...args, input.limit ?? 20],
-    memorySchema,
-  );
+    args: [...args, input.limit ?? 20],
+    rows: memorySchema,
+  });
   return rows;
 }
 
@@ -142,11 +148,11 @@ export function describeMiss(miss: WriteMiss) {
 }
 
 async function explainMiss(id: number): Promise<WriteMiss> {
-  const { rows } = await query(
-    `SELECT ${COLUMNS} FROM memories WHERE id = ?`,
-    [id],
-    memorySchema,
-  );
+  const { rows } = await query({
+    sql: `SELECT ${COLUMNS} FROM memories WHERE id = ?`,
+    args: [id],
+    rows: memorySchema,
+  });
   const current = rows[0];
   return current === undefined
     ? { status: "missing", id }
@@ -179,15 +185,15 @@ export async function edit(input: {
     input.category === undefined ? null : categorySchema.parse(input.category);
   const read = asRead(input.id, input.oldContent);
   // A move into another category counts against that category's cap.
-  const { rows } = await query(
-    `UPDATE memories
+  const { rows } = await query({
+    sql: `UPDATE memories
      SET content = ?, category = COALESCE(?, category),
        updated_at = CASE WHEN content = ? THEN updated_at ELSE ? END
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
      RETURNING ${COLUMNS}`,
-    [
+    args: [
       newContent,
       category,
       newContent,
@@ -198,8 +204,8 @@ export async function edit(input: {
       category,
       MAX_PER_CATEGORY,
     ],
-    memorySchema,
-  );
+    rows: memorySchema,
+  });
   const memory = rows[0];
   if (memory !== undefined) return { status: "ok", memory };
   const miss = await explainMiss(input.id);
@@ -212,10 +218,10 @@ export async function forget(input: {
   id: number;
   content: string;
 }): Promise<{ status: "ok" } | WriteMiss> {
-  const { rowsAffected } = await query(
-    "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
-    [input.id, ...asRead(input.id, input.content)],
-  );
+  const { rowsAffected } = await query({
+    sql: "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
+    args: [input.id, ...asRead(input.id, input.content)],
+  });
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
@@ -235,17 +241,16 @@ const byCategory = (notes: Memory[]) =>
 export async function readPersonNotes(username: string): Promise<Memory[]> {
   const category = peopleCategory(username);
   if (category === undefined) return [];
-  const notes = notesIn([category]);
-  return (await query(notes.sql, notes.args, notes.rows)).rows;
+  return (await query(notesIn([category]))).rows;
 }
 
 export async function forgetPerson(username: string): Promise<number> {
   const category = peopleCategory(username);
   if (category === undefined) return 0;
-  const { rowsAffected } = await query(
-    "DELETE FROM memories WHERE category = ?",
-    [category],
-  );
+  const { rowsAffected } = await query({
+    sql: "DELETE FROM memories WHERE category = ?",
+    args: [category],
+  });
   return rowsAffected;
 }
 
@@ -310,13 +315,7 @@ export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
 export async function readPublicNotes(): Promise<
   Record<PublicCategory, Memory[]>
 > {
-  const publicNotes = notesIn(PUBLIC_CATEGORIES);
-  const { rows } = await query(
-    publicNotes.sql,
-    publicNotes.args,
-    publicNotes.rows,
-  );
-  const notes = byCategory(rows);
+  const notes = byCategory((await query(notesIn(PUBLIC_CATEGORIES))).rows);
   return Object.fromEntries(
     PUBLIC_CATEGORIES.map((category) => [category, notes.get(category) ?? []]),
   ) as Record<PublicCategory, Memory[]>;

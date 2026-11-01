@@ -336,9 +336,9 @@ describe("handleMessage", () => {
   });
 
   it("should show the bot each message's reactions, the site's included", async () => {
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('msg-1', '😂', 'otter')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('msg-1', '😂', 'otter')",
+    });
     vi.mocked(getMessageChain).mockResolvedValue([
       link("msg-1", 0, "User1", "hey simon-bot", [
         { emoji: "😂", count: 1, users: [] },
@@ -435,9 +435,9 @@ describe("handleMessage", () => {
     ]);
 
     async function* mockResponse() {
-      await query(
-        "INSERT INTO reactions (message_id, emoji, username) VALUES ('msg-1', '👍', 'simon-bot')",
-      );
+      await query({
+        sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('msg-1', '👍', 'simon-bot')",
+      });
       // A react-only turn says nothing.
       yield* [];
     }

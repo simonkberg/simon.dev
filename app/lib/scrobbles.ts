@@ -75,30 +75,29 @@ async function store(tracks: Tracks): Promise<void> {
       album,
     ]),
   );
-  await query(sql, args);
+  await query({ sql, args });
 }
 
 async function storeNowPlaying(track: Page["nowPlaying"]): Promise<void> {
   if (!track) {
-    await query("DELETE FROM now_playing");
+    await query({ sql: "DELETE FROM now_playing" });
     return;
   }
-  await query(
-    `INSERT OR REPLACE INTO now_playing (id, artist, track, album, until)
+  await query({
+    sql: `INSERT OR REPLACE INTO now_playing (id, artist, track, album, until)
      VALUES (1, ?, ?, ?, ?)`,
     // A sync that stopped leaves its row behind, so it lasts only as long as a sync could still renew it.
-    [track.artist, track.name, track.album, Date.now() + LOCK_TTL_MS],
-  );
+    args: [track.artist, track.name, track.album, Date.now() + LOCK_TTL_MS],
+  });
 }
 
 const edgeSchema = z.object({ played_at: z.number().nullable() });
 
 async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
-  const { rows } = await query(
-    `SELECT ${edge}(played_at) AS played_at FROM scrobbles`,
-    [],
-    edgeSchema,
-  );
+  const { rows } = await query({
+    sql: `SELECT ${edge}(played_at) AS played_at FROM scrobbles`,
+    rows: edgeSchema,
+  });
   return rows[0]?.played_at ?? undefined;
 }
 
@@ -172,11 +171,10 @@ function missingFrom(loves: Love[], others: Love[]): Love[] {
 async function syncLoved(): Promise<void> {
   const [tracks, { rows: stored }] = await Promise.all([
     lovedTracks(),
-    query(
-      "SELECT artist, track, loved_at AS lovedAt FROM loved",
-      [],
-      loveSchema,
-    ),
+    query({
+      sql: "SELECT artist, track, loved_at AS lovedAt FROM loved",
+      rows: loveSchema,
+    }),
   ]);
   const listed = tracks.map(({ artist, name, lovedAt }) => ({
     artist,
@@ -222,11 +220,11 @@ const countSchema = z.object({ count: z.number() });
 
 /** Scrobbles played from `from` until `to`. */
 export async function countScrobbles(from: Date, to: Date): Promise<number> {
-  const { rows } = await query(
-    "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
-    [from.getTime(), to.getTime()],
-    countSchema,
-  );
+  const { rows } = await query({
+    sql: "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
+    args: [from.getTime(), to.getTime()],
+    rows: countSchema,
+  });
   return Number(rows[0]?.count);
 }
 
@@ -240,11 +238,11 @@ export type Play = z.infer<typeof playSchema>;
 
 /** What played from `from` until `to`, oldest first. */
 export async function playsIn(from: Date, to: Date): Promise<Play[]> {
-  const { rows } = await query(
-    "SELECT played_at AS playedAt, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
-    [from.getTime(), to.getTime()],
-    playSchema,
-  );
+  const { rows } = await query({
+    sql: "SELECT played_at AS playedAt, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
+    args: [from.getTime(), to.getTime()],
+    rows: playSchema,
+  });
   return rows;
 }
 
@@ -269,8 +267,8 @@ const recentPlaySchema = z
 
 /** What plays now, if a sync saw it lately, then the latest plays: `limit` in all, newest first. */
 export async function recentPlays(limit: number): Promise<RecentTrack[]> {
-  const { rows } = await query(
-    `SELECT r.played_at, r.artist, r.track, r.album, l.track IS NOT NULL AS loved
+  const { rows } = await query({
+    sql: `SELECT r.played_at, r.artist, r.track, r.album, l.track IS NOT NULL AS loved
      FROM (
        SELECT NULL AS played_at, artist, track, album FROM now_playing WHERE until > ?
        UNION ALL
@@ -281,9 +279,9 @@ export async function recentPlays(limit: number): Promise<RecentTrack[]> {
      LEFT JOIN loved l ON l.artist = r.artist AND l.track = r.track
      ORDER BY r.played_at IS NULL DESC, r.played_at DESC
      LIMIT ?`,
-    [Date.now(), limit, limit],
-    recentPlaySchema,
-  );
+    args: [Date.now(), limit, limit],
+    rows: recentPlaySchema,
+  });
   return rows;
 }
 

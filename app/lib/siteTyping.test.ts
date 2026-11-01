@@ -20,10 +20,10 @@ const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 // Stands in for a ping that reached the other replica.
 async function typingElsewhere(username: string) {
-  await sqlite()("INSERT INTO typing (username, until) VALUES (?, ?)", [
-    username,
-    Date.now() + 4_000,
-  ]);
+  await sqlite()({
+    sql: "INSERT INTO typing (username, until) VALUES (?, ?)",
+    args: [username, Date.now() + 4_000],
+  });
 }
 
 async function stored() {

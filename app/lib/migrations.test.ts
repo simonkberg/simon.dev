@@ -31,20 +31,22 @@ function failNext(prefix: string, { afterRunning = false } = {}) {
 
 // Not every migration can run twice, so these build their state without one.
 async function holdLock(owner: string, expiresAt: number) {
-  for (const sql of BOOTSTRAP) await query(sql);
-  await query("INSERT INTO locks VALUES ('migrations', ?, ?)", [
-    owner,
-    expiresAt,
-  ]);
+  for (const sql of BOOTSTRAP) await query({ sql });
+  await query({
+    sql: "INSERT INTO locks VALUES ('migrations', ?, ?)",
+    args: [owner, expiresAt],
+  });
 }
 
 // As made before checksums were recorded, with only the first migration applied.
 async function applyFirstOnly() {
-  await query(
-    "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
-  );
-  await query(String(MIGRATIONS[0]));
-  await query("INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')");
+  await query({
+    sql: "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
+  });
+  await query({ sql: String(MIGRATIONS[0]) });
+  await query({
+    sql: "INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')",
+  });
 }
 
 async function appliedVersions(): Promise<unknown[]> {
@@ -55,8 +57,8 @@ async function appliedVersions(): Promise<unknown[]> {
 function lockOwners(): unknown[] {
   return vi
     .mocked(query)
-    .mock.calls.filter(([sql]) => sql.startsWith("INSERT INTO locks"))
-    .map(([, args]) => args?.[1]);
+    .mock.calls.filter(([{ sql }]) => sql.startsWith("INSERT INTO locks"))
+    .map(([{ args }]) => args?.[1]);
 }
 
 describe("runMigrations", () => {
@@ -72,9 +74,9 @@ describe("runMigrations", () => {
 
   it("should refuse to run when an applied migration was edited", async () => {
     await runMigrations();
-    await query(
-      "UPDATE migrations SET checksum = 'edited' WHERE version IN (1, 3)",
-    );
+    await query({
+      sql: "UPDATE migrations SET checksum = 'edited' WHERE version IN (1, 3)",
+    });
 
     await expect(runMigrations()).rejects.toThrow(
       "Applied migrations were edited: 1, 3",
@@ -84,10 +86,10 @@ describe("runMigrations", () => {
 
   it("should run on a database migrated by newer code, as after a rollback", async () => {
     await runMigrations();
-    await query(
-      "INSERT INTO migrations VALUES (?, '2025-01-01T00:00:00.000Z', 'from the future')",
-      [MIGRATIONS.length + 1],
-    );
+    await query({
+      sql: "INSERT INTO migrations VALUES (?, '2025-01-01T00:00:00.000Z', 'from the future')",
+      args: [MIGRATIONS.length + 1],
+    });
 
     await expect(runMigrations()).resolves.toBeUndefined();
   });

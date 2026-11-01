@@ -113,6 +113,14 @@ function encodeStatement({ sql, args = [] }: Statement): EncodedStatement {
   return { sql, args: args.map(encodeValue) };
 }
 
+function parseRows<T>(rows: Row[], schema: z.ZodType<T>, source: string) {
+  try {
+    return rows.map((row) => schema.parse(row));
+  } catch (cause) {
+    throw new Error(`Turso rows didn't match in ${source}`, { cause });
+  }
+}
+
 function decodeResult<T>(
   {
     cols,
@@ -121,6 +129,7 @@ function decodeResult<T>(
     last_insert_rowid,
   }: z.infer<typeof stmtResultSchema>,
   schema: z.ZodType<T> | undefined,
+  source: string,
 ): QueryResult<T> {
   const toRow = (row: (typeof rows)[number]): Row =>
     Object.fromEntries(
@@ -130,7 +139,7 @@ function decodeResult<T>(
       ]),
     );
   return {
-    rows: schema ? rows.map((row) => schema.parse(toRow(row))) : [],
+    rows: schema ? parseRows(rows.map(toRow), schema, source) : [],
     rowsAffected: affected_row_count,
     lastInsertRowId:
       last_insert_rowid === null ? null : Number(last_insert_rowid),
@@ -166,18 +175,16 @@ async function pipeline(request: PipelineRequest) {
 }
 
 export async function query<T = never>(
-  sql: string,
-  args: Value[] = [],
-  rows?: z.ZodType<T>,
+  statement: Statement<T>,
 ): Promise<QueryResult<T>> {
   const response = await pipeline({
     type: "execute",
-    stmt: encodeStatement({ sql, args }),
+    stmt: encodeStatement(statement),
   });
   if (response.type !== "execute") {
     throw new Error(`Turso returned unexpected ${response.type} result`);
   }
-  return decodeResult(response.result, rows);
+  return decodeResult(response.result, statement.rows, statement.sql);
 }
 
 /** Runs the statements in one request and one transaction: all of them apply, or none. */
@@ -223,12 +230,8 @@ export async function batch<const T extends readonly Statement[]>(
         `Turso query error in ${step}: ${error?.message ?? "no result"}`,
       );
     }
-    try {
-      return decodeResult(result, statements[index - 1]?.rows);
-    } catch (cause) {
-      // Rows are read once the batch has committed, so its writes stand.
-      throw new Error(`Turso rows didn't match in ${step}`, { cause });
-    }
+    // Rows are read once the batch has committed, so a mismatch leaves its writes standing.
+    return decodeResult(result, statements[index - 1]?.rows, step);
   });
   return results.slice(1, -1) as BatchResults<T>;
 }
@@ -236,7 +239,7 @@ export async function batch<const T extends readonly Statement[]>(
 export function keepWarm(): void {
   getGlobal("turso-keep-warm", () =>
     setInterval(() => {
-      query("SELECT 1").catch((err: unknown) => {
+      query({ sql: "SELECT 1" }).catch((err: unknown) => {
         log.warn({ err }, "Turso keep-warm query failed");
       });
     }, KEEP_WARM_MS).unref(),

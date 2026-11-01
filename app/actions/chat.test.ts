@@ -109,9 +109,9 @@ describe("getChatHistory", () => {
     vi.mocked(getChannelMessages).mockResolvedValue([
       createMessage({ id: "1" }),
     ]);
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'a')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'a')",
+    });
 
     expect(await getChatHistory()).toMatchObject({
       messages: [{ reactions: [{ emoji: "👍", count: 1, users: ["a"] }] }],

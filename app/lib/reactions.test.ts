@@ -97,9 +97,9 @@ describe("toggleReaction", () => {
   });
 
   it("drops a leftover tone when the user adds the one they already have", async () => {
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍🏽', 'alice'), ('1', '👍🏿', 'alice')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍🏽', 'alice'), ('1', '👍🏿', 'alice')",
+    });
 
     await addReaction("1", "👍🏿", alice);
 
@@ -153,9 +153,9 @@ describe("toggleReaction", () => {
   });
 
   it("leaves the mirror to the concurrent add that created the row", async () => {
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'alice')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'alice')",
+    });
     // The concurrent request's row lands between this one's DELETE and INSERT.
     vi.mocked(batch).mockResolvedValueOnce([emptyResult, emptyResult]);
     vi.mocked(query).mockResolvedValueOnce(emptyResult);

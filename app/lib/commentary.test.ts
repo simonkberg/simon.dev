@@ -111,12 +111,10 @@ function reply(text: string, end: LoopEnd = "end_turn") {
 }
 
 const store = (page: string, slot: string, text: string, version = VERSION) =>
-  query("INSERT INTO commentary VALUES (?, ?, ?, ?, 0)", [
-    page,
-    slot,
-    version,
-    text,
-  ]);
+  query({
+    sql: "INSERT INTO commentary VALUES (?, ?, ?, ?, 0)",
+    args: [page, slot, version, text],
+  });
 
 const stored = async () =>
   await selectRows(

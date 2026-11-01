@@ -272,8 +272,8 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   A reply's last round rules out tools, so it ends in text rather than running out of rounds.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
   `fetch`; `batch()` sends several statements in one request and one transaction. A statement
-  returns rows only through its zod schema (`query`'s third argument, a batch statement's
-  `rows`), which types them and does any transform; `app/lib/sql.ts` holds column schemas. Once
+  returns rows only through its zod schema (a statement's `rows`, for `query` as for
+  `batch`), which types them and does any transform; `app/lib/sql.ts` holds column schemas. Once
   migrations apply, `instrumentation.ts` runs `keepWarm()`, a `SELECT 1` each
   minute, since idle Turso stalls the next query past its timeout. `app/lib/migrations.ts`
   is an append-only list of statements applied at boot under a lock row in `locks`, each

@@ -25,14 +25,14 @@ export function createSqliteQuery(setup: readonly string[] = []): typeof query {
   const totalChanges = db.prepare("SELECT total_changes() AS n");
   const changes = () => Number(totalChanges.get()?.["n"]);
 
-  return async (sql, args, schema) => {
+  return async ({ sql, args = [], rows: schema }) => {
     const statement = db.prepare(sql);
     const before = changes();
     let rows: Row[] = [];
     if (statement.columns().length > 0) {
-      rows = statement.all(...(args ?? [])) as Row[];
+      rows = statement.all(...args) as Row[];
     } else {
-      statement.run(...(args ?? []));
+      statement.run(...args);
     }
     return {
       rows: schema ? rows.map((row) => schema.parse(row)) : [],
@@ -53,7 +53,7 @@ export async function selectRows(
   sql: string,
   args?: Value[],
 ): Promise<Row[]> {
-  return (await run(sql, args, rowSchema)).rows;
+  return (await run({ sql, args, rows: rowSchema })).rows;
 }
 
 // Gives the mocked query a fresh database before each test; call the result for it.
@@ -85,11 +85,11 @@ export function failQuery(
   const afterRunning = options.afterRunning === true;
   const once = afterRunning || options.once === true;
   let failed = false;
-  return async (sql, args, schema) => {
-    if (!sql.startsWith(prefix) || (once && failed))
-      return run(sql, args, schema);
+  return async (statement) => {
+    if (!statement.sql.startsWith(prefix) || (once && failed))
+      return run(statement);
     if (once) failed = true;
-    if (afterRunning) await run(sql, args, schema);
+    if (afterRunning) await run(statement);
     throw error;
   };
 }
@@ -107,15 +107,14 @@ export function sqliteBatch(run: typeof query): typeof batch {
   let queue: Promise<unknown> = Promise.resolve();
   return (statements) => {
     const done = queue.then(async () => {
-      await run("BEGIN");
+      await run({ sql: "BEGIN" });
       try {
         const results: QueryResult<unknown>[] = [];
-        for (const { sql, args, rows } of statements)
-          results.push(await run(sql, args, rows));
-        await run("COMMIT");
+        for (const statement of statements) results.push(await run(statement));
+        await run({ sql: "COMMIT" });
         return results as BatchResults<typeof statements>;
       } catch (err) {
-        await run("ROLLBACK").catch(() => {});
+        await run({ sql: "ROLLBACK" }).catch(() => {});
         throw err;
       }
     });

@@ -878,9 +878,9 @@ describe("createMessage", () => {
         ]),
         message("2", "2026-10-24T21:00:00Z"),
       ]);
-      await query(
-        "INSERT INTO reactions (message_id, emoji, username) VALUES ('3', '👍', 'simon-bot')",
-      );
+      await query({
+        sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('3', '👍', 'simon-bot')",
+      });
 
       expect(await runTool("get_chat_history", { limit: 5 })).toBe(
         [

@@ -142,10 +142,12 @@ function checksum(sql: string): string {
 // Tables made before checksums were recorded lack the column.
 async function addChecksumColumn(): Promise<void> {
   try {
-    await query("SELECT checksum FROM migrations LIMIT 0");
+    await query({ sql: "SELECT checksum FROM migrations LIMIT 0" });
   } catch (err) {
     // If the column was there after all, the probe's error is the real one.
-    await query("ALTER TABLE migrations ADD COLUMN checksum TEXT").catch(() => {
+    await query({
+      sql: "ALTER TABLE migrations ADD COLUMN checksum TEXT",
+    }).catch(() => {
       throw err;
     });
   }
@@ -157,11 +159,10 @@ const appliedSchema = z.object({
 });
 
 async function verifyApplied(): Promise<Set<number>> {
-  const { rows } = await query(
-    "SELECT version, checksum FROM migrations",
-    [],
-    appliedSchema,
-  );
+  const { rows } = await query({
+    sql: "SELECT version, checksum FROM migrations",
+    rows: appliedSchema,
+  });
   const changed: number[] = [];
 
   const applied = new Set<number>();
@@ -171,10 +172,10 @@ async function verifyApplied(): Promise<Set<number>> {
     if (sql === undefined) continue;
     // Applied before checksums existed: today's text becomes the baseline.
     if (stored === null) {
-      await query("UPDATE migrations SET checksum = ? WHERE version = ?", [
-        checksum(sql),
-        version,
-      ]);
+      await query({
+        sql: "UPDATE migrations SET checksum = ? WHERE version = ?",
+        args: [checksum(sql), version],
+      });
     } else if (stored !== checksum(sql)) {
       changed.push(version);
     }
@@ -208,7 +209,7 @@ async function applyPending(): Promise<void> {
 }
 
 export async function runMigrations(): Promise<void> {
-  for (const sql of BOOTSTRAP) await query(sql);
+  for (const sql of BOOTSTRAP) await query({ sql });
   const owner = crypto.randomUUID();
   await acquireLock(owner);
   try {

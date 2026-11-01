@@ -71,22 +71,24 @@ export async function addReaction(
   username: Username,
 ): Promise<void> {
   // The row goes in first so a concurrent removal counts it and keeps the mirror.
-  const inserted = await query(
-    "INSERT INTO reactions (message_id, emoji, username) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-    [messageId, emoji, username],
-  );
+  const inserted = await query({
+    sql: "INSERT INTO reactions (message_id, emoji, username) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+    args: [messageId, emoji, username],
+  });
   if (inserted.rowsAffected > 0) {
     try {
       // Discord turns away a message or emoji it doesn't know.
       await addBotReaction(messageId, emoji);
     } catch (err) {
       // Discord's error is the one the visitor needs, so a failed rollback only logs.
-      await query(DELETE_ROW, [messageId, emoji, username]).catch(
-        (rollbackErr: unknown) =>
-          log.warn(
-            { err: rollbackErr, messageId, emoji },
-            "Failed to roll back reaction",
-          ),
+      await query({
+        sql: DELETE_ROW,
+        args: [messageId, emoji, username],
+      }).catch((rollbackErr: unknown) =>
+        log.warn(
+          { err: rollbackErr, messageId, emoji },
+          "Failed to roll back reaction",
+        ),
       );
       throw err;
     }
@@ -103,11 +105,11 @@ async function removeOtherTones(
   username: Username,
 ): Promise<void> {
   const base = withoutSkinTone(emoji);
-  const { rows } = await query(
-    "SELECT emoji FROM reactions WHERE message_id = ? AND username = ? AND emoji != ?",
-    [messageId, username, emoji],
-    emojiSchema,
-  );
+  const { rows } = await query({
+    sql: "SELECT emoji FROM reactions WHERE message_id = ? AND username = ? AND emoji != ?",
+    args: [messageId, username, emoji],
+    rows: emojiSchema,
+  });
   for (const { emoji: other } of rows) {
     if (withoutSkinTone(other) === base) {
       await removeReaction(messageId, other, username);
@@ -184,13 +186,13 @@ export async function withSiteReactions<T extends Reactable<T>>(
   if (ids.length === 0) return items;
 
   try {
-    const { rows } = await query(
-      `SELECT message_id, emoji, username FROM reactions
+    const { rows } = await query({
+      sql: `SELECT message_id, emoji, username FROM reactions
        WHERE message_id IN (SELECT value FROM json_each(?))
        ORDER BY id`,
-      [JSON.stringify(ids)],
-      reactionSchema,
-    );
+      args: [JSON.stringify(ids)],
+      rows: reactionSchema,
+    });
 
     const site: SiteReactions = new Map();
     for (const { message_id: messageId, emoji, username } of rows) {

@@ -66,9 +66,9 @@ describe("rateLimit", () => {
   it("should reset from the oldest request of this key inside the window", async () => {
     vi.advanceTimersByTime(5_000);
     for (let i = 0; i < options.limit; i++) await rateLimit("a", options);
-    await query(
-      "INSERT INTO rate_limits (key, expires_at) VALUES ('a', 1005000), ('b', 1006000)",
-    );
+    await query({
+      sql: "INSERT INTO rate_limits (key, expires_at) VALUES ('a', 1005000), ('b', 1006000)",
+    });
 
     expect(await rateLimit("a", options)).toEqual({
       success: false,

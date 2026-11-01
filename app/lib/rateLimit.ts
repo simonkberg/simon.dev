@@ -27,7 +27,10 @@ function rejected(reset: number, now: number): RateLimitResult {
 // Each row carries its own expiry, so one prune is right for every window.
 async function prune(): Promise<void> {
   try {
-    await query("DELETE FROM rate_limits WHERE expires_at <= ?", [Date.now()]);
+    await query({
+      sql: "DELETE FROM rate_limits WHERE expires_at <= ?",
+      args: [Date.now()],
+    });
   } catch (err) {
     log.warn({ err }, "Failed to prune rate limits");
   }
@@ -47,23 +50,23 @@ export async function rateLimit(
 
   try {
     // One statement, so SQLite's single writer makes count and insert atomic.
-    const { rowsAffected } = await query(
-      `INSERT INTO rate_limits (key, expires_at)
+    const { rowsAffected } = await query({
+      sql: `INSERT INTO rate_limits (key, expires_at)
        SELECT ?, ?
        WHERE (SELECT count(*) FROM rate_limits WHERE key = ? AND expires_at > ?) < ?`,
-      [key, now + windowMs, key, now, limit],
-    );
+      args: [key, now + windowMs, key, now, limit],
+    });
     if (rowsAffected > 0) {
       // Only inserts add rows, so only they need to clear out old ones.
       void prune();
       return { success: true };
     }
 
-    const { rows } = await query(
-      "SELECT min(expires_at) AS reset FROM rate_limits WHERE key = ? AND expires_at > ?",
-      [key, now],
-      resetSchema,
-    );
+    const { rows } = await query({
+      sql: "SELECT min(expires_at) AS reset FROM rate_limits WHERE key = ? AND expires_at > ?",
+      args: [key, now],
+      rows: resetSchema,
+    });
     // No row means the oldest expired since the insert: retry now.
     const reset = rows[0]?.reset ?? now;
     blockedUntil().set(key, reset);

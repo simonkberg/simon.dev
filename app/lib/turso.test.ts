@@ -46,7 +46,7 @@ describe("query", () => {
   it("should send the statement with encoded args and the auth header", async () => {
     const requests = capture();
 
-    await query("SELECT ?, ?, ?, ?", ["text", 42, 1.5, null]);
+    await query({ sql: "SELECT ?, ?, ?, ?", args: ["text", 42, 1.5, null] });
 
     expect(requests[0]?.headers.get("authorization")).toBe(
       "Bearer test-turso-token",
@@ -96,7 +96,9 @@ describe("query", () => {
       }),
     );
 
-    await expect(query("SELECT 1", [], z.unknown())).resolves.toEqual({
+    await expect(
+      query({ sql: "SELECT 1", rows: z.unknown() }),
+    ).resolves.toEqual({
       rows: [
         {
           id: 7,
@@ -120,11 +122,10 @@ describe("query", () => {
       }),
     );
 
-    const { rows } = await query(
-      "SELECT 1",
-      [],
-      z.object({ at: z.number().transform((ms) => new Date(ms)) }),
-    );
+    const { rows } = await query({
+      sql: "SELECT 1",
+      rows: z.object({ at: z.number().transform((ms) => new Date(ms)) }),
+    });
 
     expect(rows).toEqual([{ at: new Date(7) }]);
   });
@@ -135,8 +136,8 @@ describe("query", () => {
     );
 
     await expect(
-      query("SELECT 1", [], z.object({ at: z.number() })),
-    ).rejects.toThrow(z.ZodError);
+      query({ sql: "SELECT 1", rows: z.object({ at: z.number() }) }),
+    ).rejects.toThrow("Turso rows didn't match in SELECT 1");
   });
 
   it("should return no rows without a schema", async () => {
@@ -147,7 +148,9 @@ describe("query", () => {
       }),
     );
 
-    await expect(query("SELECT 1")).resolves.toMatchObject({ rows: [] });
+    await expect(query({ sql: "SELECT 1" })).resolves.toMatchObject({
+      rows: [],
+    });
   });
 
   it("should throw on HTTP errors", async () => {
@@ -157,7 +160,7 @@ describe("query", () => {
       ),
     );
 
-    await expect(query("SELECT 1")).rejects.toThrow(
+    await expect(query({ sql: "SELECT 1" })).rejects.toThrow(
       "Turso API error: 500 Server Error",
     );
   });
@@ -170,7 +173,7 @@ describe("query", () => {
       ],
     });
 
-    await expect(query("SELECT * FROM nope")).rejects.toThrow(
+    await expect(query({ sql: "SELECT * FROM nope" })).rejects.toThrow(
       "Turso query error: no such table: nope",
     );
   });
@@ -178,7 +181,7 @@ describe("query", () => {
   it("should throw when the first result is not an execute result", async () => {
     capture({ results: [{ type: "ok", response: { type: "close" } }] });
 
-    await expect(query("SELECT 1")).rejects.toThrow(
+    await expect(query({ sql: "SELECT 1" })).rejects.toThrow(
       "Turso returned unexpected close result",
     );
   });
@@ -186,7 +189,7 @@ describe("query", () => {
   it("should throw when the response has no results", async () => {
     capture({ results: [] });
 
-    await expect(query("SELECT 1")).rejects.toThrow(
+    await expect(query({ sql: "SELECT 1" })).rejects.toThrow(
       "Turso returned no results",
     );
   });
@@ -204,7 +207,9 @@ describe("query", () => {
         ),
       );
 
-      await expect(freshQuery("SELECT 1")).resolves.toMatchObject({ rows: [] });
+      await expect(freshQuery({ sql: "SELECT 1" })).resolves.toMatchObject({
+        rows: [],
+      });
     },
   );
 });

@@ -207,9 +207,10 @@ describe("syncScrobbles", () => {
 
   it("should leave the sync to the replica holding the lock", async () => {
     lastfm = played(10);
-    await query("INSERT INTO locks VALUES ('scrobbles', 'other', ?)", [
-      NOW + 60_000,
-    ]);
+    await query({
+      sql: "INSERT INTO locks VALUES ('scrobbles', 'other', ?)",
+      args: [NOW + 60_000],
+    });
 
     await expect(syncScrobbles()).resolves.toBe(false);
 
@@ -237,10 +238,10 @@ describe("syncScrobbles loved tracks", () => {
     vi.mocked(userGetScrobbles).mockImplementation(fakeLastfm);
     // The backfill is done, so the loved tracks sync from here.
     await syncScrobbles();
-    await query(
-      "INSERT INTO loved VALUES ('Artist', 'Kept', ?), ('Artist', 'Unloved', ?), ('Artist', 'Loved again', ?)",
-      [NOW, NOW, NOW],
-    );
+    await query({
+      sql: "INSERT INTO loved VALUES ('Artist', 'Kept', ?), ('Artist', 'Unloved', ?), ('Artist', 'Loved again', ?)",
+      args: [NOW, NOW, NOW],
+    });
     vi.mocked(batch).mockClear();
   });
 
@@ -346,10 +347,10 @@ describe("startScrobbleSync", () => {
 
 describe("countScrobbles", () => {
   it("should count from `from` until `to`", async () => {
-    await query(
-      `INSERT INTO scrobbles VALUES
+    await query({
+      sql: `INSERT INTO scrobbles VALUES
        (999, 'A', 'T', ''), (1000, 'A', 'T', ''), (1999, 'B', 'T', ''), (2000, 'A', 'T', '')`,
-    );
+    });
 
     await expect(countScrobbles(new Date(1000), new Date(2000))).resolves.toBe(
       2,
@@ -359,10 +360,10 @@ describe("countScrobbles", () => {
 
 describe("playsIn", () => {
   it("should list what played from `from` until `to`, oldest first", async () => {
-    await query(
-      `INSERT INTO scrobbles VALUES
+    await query({
+      sql: `INSERT INTO scrobbles VALUES
        (2000, 'C', 'V', ''), (1000, 'A', 'T', ''), (999, 'Z', 'Z', ''), (1500, 'B', 'U', '')`,
-    );
+    });
 
     await expect(playsIn(new Date(1000), new Date(2000))).resolves.toEqual([
       { playedAt: new Date(1000), artist: "A", track: "T" },
@@ -374,19 +375,20 @@ describe("playsIn", () => {
 describe("recentPlays", () => {
   beforeEach(async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
-    await query(
-      `INSERT INTO scrobbles VALUES
+    await query({
+      sql: `INSERT INTO scrobbles VALUES
        (1000, 'A', 'Old', 'X'), (3000, 'A', 'Newest', 'X'), (2000, 'B', 'Loved', 'Y')`,
-    );
-    await query(
-      "INSERT INTO loved VALUES ('B', 'Loved', 1), ('C', 'Playing', 1)",
-    );
+    });
+    await query({
+      sql: "INSERT INTO loved VALUES ('B', 'Loved', 1), ('C', 'Playing', 1)",
+    });
   });
 
   const playingUntil = (until: number) =>
-    query("INSERT INTO now_playing VALUES (1, 'C', 'Playing', 'Z', ?)", [
-      until,
-    ]);
+    query({
+      sql: "INSERT INTO now_playing VALUES (1, 'C', 'Playing', 'Z', ?)",
+      args: [until],
+    });
 
   it("should list what plays now, then the latest plays, each marked loved or not", async () => {
     await playingUntil(NOW + 60_000);
@@ -429,11 +431,11 @@ describe("recentPlays", () => {
 
 describe("topPlayed", () => {
   beforeEach(async () => {
-    await query(
-      `INSERT INTO scrobbles VALUES
+    await query({
+      sql: `INSERT INTO scrobbles VALUES
        (1, 'B', 'X', 'Two'), (2, 'B', 'Y', 'Two'), (3, 'A', 'X', 'One'),
        (4, 'A', 'X', 'One'), (5, 'A', 'Y', ''), (6, 'A', 'Y', ''), (7, 'C', 'Z', 'Late')`,
-    );
+    });
   });
 
   it.each([
@@ -471,11 +473,11 @@ describe("topPlayed", () => {
 
 describe("topArtist", () => {
   it("should pick the most played artist, first by name on a tie", async () => {
-    await query(
-      `INSERT INTO scrobbles VALUES
+    await query({
+      sql: `INSERT INTO scrobbles VALUES
        (1, 'B', 'T', ''), (2, 'C', 'T', ''), (3, 'C', 'U', ''),
        (4, 'B', 'U', ''), (5, 'D', 'T', ''), (6, 'D', 'U', ''), (7, 'D', 'V', '')`,
-    );
+    });
 
     await expect(topArtist(new Date(0), new Date(5))).resolves.toEqual({
       name: "B",

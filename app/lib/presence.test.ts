@@ -21,10 +21,10 @@ const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 // Stands in for a stream on the other replica.
 async function seenElsewhere(username: string, at = Date.now()) {
-  await sqlite()(
-    "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
-    [`elsewhere-${username}`, username, at],
-  );
+  await sqlite()({
+    sql: "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
+    args: [`elsewhere-${username}`, username, at],
+  });
 }
 
 // One name per stored stream.
@@ -182,7 +182,7 @@ describe("joinPresence", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
 
     // Expired by the other replica meanwhile.
-    await sqlite()("DELETE FROM presence");
+    await sqlite()({ sql: "DELETE FROM presence" });
     vi.mocked(query).mockImplementation(sqlite());
     await heartbeat();
 

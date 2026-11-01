@@ -76,14 +76,14 @@ export async function plays(
 ): Promise<{ total: number; plays: Play[] }> {
   const { sql, args } = matching(filters, { joinLoved: true });
   const direction = order === "newest" ? "DESC" : "ASC";
-  const { rows } = await query(
+  const { rows } = await query({
     // The total is counted before the limit, so it counts every match.
-    `SELECT s.track AS name, s.artist, s.album, s.played_at AS playedAt, l.track IS NOT NULL AS loved,
+    sql: `SELECT s.track AS name, s.artist, s.album, s.played_at AS playedAt, l.track IS NOT NULL AS loved,
        COUNT(*) OVER () AS total
      ${sql} ORDER BY s.played_at ${direction} LIMIT ?`,
-    [...args, limit],
-    playSchema,
-  );
+    args: [...args, limit],
+    rows: playSchema,
+  });
   return {
     total: rows[0]?.total ?? 0,
     plays: rows.map(({ total, ...play }) => play),
@@ -119,12 +119,12 @@ export async function top(
 ): Promise<Top[]> {
   const { by, conditions } = groups[group];
   const { sql, args } = matching(filters, { conditions: [...conditions] });
-  const { rows } = await query(
-    `SELECT ${by}, COUNT(*) AS plays, MIN(s.played_at) AS firstPlayed, MAX(s.played_at) AS lastPlayed
+  const { rows } = await query({
+    sql: `SELECT ${by}, COUNT(*) AS plays, MIN(s.played_at) AS firstPlayed, MAX(s.played_at) AS lastPlayed
      ${sql} GROUP BY ${by} ORDER BY plays DESC, ${by} LIMIT ?`,
-    [...args, limit],
-    topSchema,
-  );
+    args: [...args, limit],
+    rows: topSchema,
+  });
   return rows;
 }
 
@@ -179,22 +179,22 @@ export async function playCounts(
 ): Promise<PlayCounts> {
   const { sql, args } = matching(filters);
   if (per === undefined) {
-    const { rows } = await query(
-      `SELECT COUNT(*) AS total ${sql}`,
+    const { rows } = await query({
+      sql: `SELECT COUNT(*) AS total ${sql}`,
       args,
-      totalSchema,
-    );
+      rows: totalSchema,
+    });
     return { total: Number(rows[0]?.total) };
   }
   const { key, name = key, sort = "key" } = periods[per];
-  const { rows } = await query(
+  const { rows } = await query({
     // The total is summed before the limit, so it counts every period.
-    `SELECT ${key} AS key, ${name} AS period, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
+    sql: `SELECT ${key} AS key, ${name} AS period, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
      GROUP BY key ORDER BY ${order === "plays" ? "plays DESC, " : ""}${sort} LIMIT ?`,
     // One more than asked, to tell whether there are more.
-    [...args, limit + 1],
-    countSchema,
-  );
+    args: [...args, limit + 1],
+    rows: countSchema,
+  });
   const counts = rows.map(({ total, ...count }) => count);
   const result: PlayCounts = {
     total: rows[0]?.total ?? 0,
