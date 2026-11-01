@@ -121,14 +121,17 @@ export async function top(
      ${sql} GROUP BY ${by} ORDER BY plays DESC, ${by} LIMIT ?`,
     [...args, limit],
   );
-  return rows.map((row) => ({
-    artist: String(row["artist"]),
-    ...(group === "track" && { track: String(row["track"]) }),
-    ...(group === "album" && { album: String(row["album"]) }),
-    plays: Number(row["plays"]),
-    firstPlayed: new Date(Number(row["first"])),
-    lastPlayed: new Date(Number(row["last"])),
-  }));
+  return rows.map((row) => {
+    const top: Top = {
+      artist: String(row["artist"]),
+      plays: Number(row["plays"]),
+      firstPlayed: new Date(Number(row["first"])),
+      lastPlayed: new Date(Number(row["last"])),
+    };
+    if (group === "track") top.track = String(row["track"]);
+    if (group === "album") top.album = String(row["album"]);
+    return top;
+  });
 }
 
 const weekdays = [
@@ -160,17 +163,19 @@ const periods: Record<Per, { key: string; name?: string; sort?: string }> = {
   year: { key: `strftime('%Y', ${LOCAL_TIME})` },
 };
 
+type PlayCounts = {
+  total: number;
+  counts?: { period: string; plays: number }[];
+  truncated?: boolean;
+};
+
 /** How many plays match, in all or per Stockholm hour, weekday, day, week, month or year. */
 export async function playCounts(
   filters: Filters,
   per: Per | undefined,
   order: "time" | "plays",
   limit: number,
-): Promise<{
-  total: number;
-  counts?: { period: string; plays: number }[];
-  truncated?: boolean;
-}> {
+): Promise<PlayCounts> {
   const { sql, args } = matching(filters);
   if (per === undefined) {
     const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
@@ -188,9 +193,10 @@ export async function playCounts(
     period: String(row["name"]),
     plays: Number(row["plays"]),
   }));
-  return {
+  const result: PlayCounts = {
     total: Number(rows[0]?.["total"] ?? 0),
     counts: counts.slice(0, limit),
-    ...(counts.length > limit && { truncated: true }),
   };
+  if (counts.length > limit) result.truncated = true;
+  return result;
 }

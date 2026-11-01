@@ -166,7 +166,7 @@ const userGetScrobblesResponseSchema = z
         (track): track is typeof track & { playedAt: Date } =>
           track.playedAt !== undefined,
       ),
-      ...(nowPlaying && { nowPlaying }),
+      nowPlaying,
     };
   });
 

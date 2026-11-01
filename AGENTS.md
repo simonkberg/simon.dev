@@ -318,6 +318,13 @@ nothing; if a block needs prose to follow, extract a function or rename a variab
 Keep one only when it explains _why_ — a workaround, a non-obvious constraint, a deliberate
 deviation someone would otherwise "fix". One short line.
 
+### Conditional Entries
+
+Build an object or array that gains entries on a condition imperatively: start with what is
+always there, then `push` or assign the rest under an `if`. Don't spread a ternary or `&&`
+(`...(x ? [y] : [])`, `...(x && { y })`) to keep it one expression; a variable won't hurt.
+A ternary between two values, or a `flatMap` that filters as it maps, is fine.
+
 ### Server Actions
 
 All in `app/actions/`, marked `"use server"`, returning a discriminated union on `status`

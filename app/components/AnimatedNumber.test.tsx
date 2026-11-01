@@ -59,14 +59,13 @@ describe("AnimatedNumber", () => {
       const restart = vi.fn();
       const animation = (properties: object) =>
         Object.defineProperty(properties, "currentTime", { set: restart });
-      vi.spyOn(count, "getAnimations").mockReturnValue([
-        // A transition on the same element stays put.
-        animation({}) as Animation,
-        // A count that follows its row, or reduced motion, has no grow of its own.
-        ...(growing
-          ? [animation({ animationName: "grow" }) as CSSAnimation]
-          : []),
-      ]);
+      // A transition on the same element stays put.
+      const animations = [animation({}) as Animation];
+      // A count that follows its row, or reduced motion, has no grow of its own.
+      if (growing) {
+        animations.push(animation({ animationName: "grow" }) as CSSAnimation);
+      }
+      vi.spyOn(count, "getAnimations").mockReturnValue(animations);
 
       setGrow(0.5);
       rerender(<AnimatedNumber value={200} />);

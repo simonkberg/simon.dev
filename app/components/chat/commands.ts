@@ -62,15 +62,16 @@ export const commands: readonly Command[] = [
       const result = await getNotesOnMe();
       if (result.status === "error") return result;
       const { username, notes } = result.data;
-      return {
-        status: "ok",
-        output: [
-          `You are ${username}.`,
-          ...(notes.length > 0
-            ? ["simon-bot remembers:", ...notes.map((note) => `- ${note}`)]
-            : ["simon-bot doesn't remember anything about you yet."]),
-        ],
-      };
+      const output = [`You are ${username}.`];
+      if (notes.length > 0) {
+        output.push(
+          "simon-bot remembers:",
+          ...notes.map((note) => `- ${note}`),
+        );
+      } else {
+        output.push("simon-bot doesn't remember anything about you yet.");
+      }
+      return { status: "ok", output };
     },
   },
   {
