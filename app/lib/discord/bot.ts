@@ -68,9 +68,10 @@ const SEEN_RETENTION_MS = 60 * 60 * 1000;
 
 async function pruneSeen(): Promise<void> {
   try {
-    await query("DELETE FROM seen_messages WHERE at <= ?", [
-      Date.now() - SEEN_RETENTION_MS,
-    ]);
+    await query({
+      sql: "DELETE FROM seen_messages WHERE at <= ?",
+      args: [Date.now() - SEEN_RETENTION_MS],
+    });
   } catch (err) {
     log.warn({ err }, "Failed to prune seen messages");
   }
@@ -90,10 +91,10 @@ async function toChatMessages(
 }
 
 async function markSeen(messageId: string): Promise<boolean> {
-  const { rowsAffected } = await query(
-    "INSERT OR IGNORE INTO seen_messages (id, at) VALUES (?, ?)",
-    [messageId, Date.now()],
-  );
+  const { rowsAffected } = await query({
+    sql: "INSERT OR IGNORE INTO seen_messages (id, at) VALUES (?, ?)",
+    args: [messageId, Date.now()],
+  });
   if (rowsAffected === 0) return false;
   void pruneSeen();
   return true;

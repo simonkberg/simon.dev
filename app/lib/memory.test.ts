@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { query } from "@/lib/turso";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
@@ -36,10 +36,10 @@ async function seed(
   content: string,
   createdAt = CREATED_AT,
 ) {
-  await query(
-    "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
-    [id, category, content, createdAt],
-  );
+  await query({
+    sql: "INSERT INTO memories (id, category, content, created_at) VALUES (?, ?, ?, ?)",
+    args: [id, category, content, createdAt],
+  });
 }
 
 async function fillCategory(category: string, count = MAX_PER_CATEGORY) {
@@ -49,7 +49,8 @@ async function fillCategory(category: string, count = MAX_PER_CATEGORY) {
 }
 
 async function stored(id: number) {
-  const { rows } = await query(
+  const rows = await selectRows(
+    query,
     "SELECT category, content FROM memories WHERE id = ?",
     [id],
   );
@@ -439,7 +440,7 @@ describe("line-break backfill", () => {
 
   async function backfill() {
     expect(BACKFILL[1]).toBe("DELETE FROM memories WHERE content = ''");
-    for (const statement of BACKFILL) await query(statement);
+    for (const statement of BACKFILL) await query({ sql: statement });
   }
 
   // Every other migration, so writes see today's schema.

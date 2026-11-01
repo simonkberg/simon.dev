@@ -1,7 +1,10 @@
 import "server-only";
+import { z } from "zod";
+
 import { networkOf } from "@/lib/identifiers";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
+import { flag } from "@/lib/sql";
 import { batch, query } from "@/lib/turso";
 
 // A spammer that has posted the same Calendly link for months.
@@ -12,10 +15,10 @@ export function isSpam(text: string): boolean {
 }
 
 async function insertBan(network: string): Promise<void> {
-  await query(
-    "INSERT INTO banned_networks (network, banned_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
-    [network, Date.now()],
-  );
+  await query({
+    sql: "INSERT INTO banned_networks (network, banned_at) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    args: [network, Date.now()],
+  });
 }
 
 // Both fail open, like the rate limiter: the spam itself is turned away regardless.
@@ -29,13 +32,16 @@ export async function ban(ip: string): Promise<void> {
   }
 }
 
+const bannedSchema = z.object({ banned: flag });
+
 export async function isBanned(ip: string): Promise<boolean> {
   try {
-    const { rows } = await query(
-      "SELECT 1 FROM banned_networks WHERE network = ?",
-      [networkOf(ip)],
-    );
-    if (rows.length === 0) return false;
+    const { rows } = await query({
+      sql: "SELECT EXISTS (SELECT 1 FROM banned_networks WHERE network = ?) AS banned",
+      args: [networkOf(ip)],
+      rows: bannedSchema,
+    });
+    if (!rows[0]?.banned) return false;
     log.info({ ip }, "Turned away a banned network");
     return true;
   } catch (err) {
@@ -44,15 +50,18 @@ export async function isBanned(ip: string): Promise<boolean> {
   }
 }
 
+const postSchema = z.object({ username: z.string(), ip: z.string() });
+
 /** Bans the network a site post came from, returning its author; undefined for a post it has no IP for. */
 export async function banPost(messageId: string): Promise<string | undefined> {
-  const { rows } = await query(
-    "SELECT username, ip FROM chat_posts WHERE message_id = ?",
-    [messageId],
-  );
-  const username = rows[0]?.["username"];
-  const ip = rows[0]?.["ip"];
-  if (typeof username !== "string" || typeof ip !== "string") return undefined;
+  const { rows } = await query({
+    sql: "SELECT username, ip FROM chat_posts WHERE message_id = ?",
+    args: [messageId],
+    rows: postSchema,
+  });
+  const [post] = rows;
+  if (post === undefined) return undefined;
+  const { username, ip } = post;
   const network = networkOf(ip);
   await insertBan(network);
   log.info({ messageId, username, ip, network }, "Banned a post's network");

@@ -7,7 +7,12 @@ import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { batch, query } from "@/lib/turso";
 import { createMessage } from "@/mocks/messages";
-import { emptyResult, failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import {
+  emptyResult,
+  failQuery,
+  sqliteBeforeEach,
+  selectRows,
+} from "@/mocks/sqlite";
 
 import { REACTION_EMOJI } from "./emoji";
 import { MIGRATIONS } from "./migrations";
@@ -33,7 +38,7 @@ const bob = "bob" as Username;
 const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 async function storedReactions() {
-  return (await sqlite()("SELECT * FROM reactions")).rows;
+  return await selectRows(sqlite(), "SELECT * FROM reactions");
 }
 
 describe("toggleReaction", () => {
@@ -65,7 +70,7 @@ describe("toggleReaction", () => {
   it("removes nothing when counting the rest fails", async () => {
     await toggleReaction("1", "👍", alice);
     vi.mocked(query).mockImplementation(
-      failQuery(sqlite(), "SELECT 1", { error: new Error("blip") }),
+      failQuery(sqlite(), "SELECT EXISTS", { error: new Error("blip") }),
     );
 
     await expect(toggleReaction("1", "👍", alice)).rejects.toThrow("blip");
@@ -92,9 +97,9 @@ describe("toggleReaction", () => {
   });
 
   it("drops a leftover tone when the user adds the one they already have", async () => {
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍🏽', 'alice'), ('1', '👍🏿', 'alice')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍🏽', 'alice'), ('1', '👍🏿', 'alice')",
+    });
 
     await addReaction("1", "👍🏿", alice);
 
@@ -148,9 +153,9 @@ describe("toggleReaction", () => {
   });
 
   it("leaves the mirror to the concurrent add that created the row", async () => {
-    await query(
-      "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'alice')",
-    );
+    await query({
+      sql: "INSERT INTO reactions (message_id, emoji, username) VALUES ('1', '👍', 'alice')",
+    });
     // The concurrent request's row lands between this one's DELETE and INSERT.
     vi.mocked(batch).mockResolvedValueOnce([emptyResult, emptyResult]);
     vi.mocked(query).mockResolvedValueOnce(emptyResult);

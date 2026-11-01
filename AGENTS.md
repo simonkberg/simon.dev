@@ -271,7 +271,9 @@ from `app/api/chat/sse/`), WakaTime, Last.fm and Anthropic. The non-obvious part
   defaulted fields aren't listed as required.
   A reply's last round rules out tools, so it ends in text rather than running out of rounds.
 - **Turso:** the only datastore. `app/lib/turso.ts` calls its HTTP pipeline endpoint with raw
-  `fetch`; `batch()` sends several statements in one request and one transaction. Once
+  `fetch`; `batch()` sends several statements in one request and one transaction. A statement
+  returns rows only through its zod schema (a statement's `rows`, for `query` as for
+  `batch`), which types them and does any transform; `app/lib/sql.ts` holds column schemas. Once
   migrations apply, `instrumentation.ts` runs `keepWarm()`, a `SELECT 1` each
   minute, since idle Turso stalls the next query past its timeout. `app/lib/migrations.ts`
   is an append-only list of statements applied at boot under a lock row in `locks`, each
@@ -397,7 +399,7 @@ Files that must not run on client import `"server-only"` at top (e.g., `app/lib/
 
 - **Environment:** happy-dom
 - **Location:** Co-located with source files (`*.test.ts`, `*.test.tsx`)
-- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, top albums in `mocks/listening.ts`, the mocked gateway's listener in `mocks/gateway.ts`, a router for Link and `useRouter` whose navigations stay pending until `arrive()` in `mocks/router.tsx`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
+- **Mocking:** MSW in `mocks/node.ts` (configured in `vitest.setup.ts`), env vars in `mocks/env.ts`, cookies in `mocks/headers.ts`, top albums in `mocks/listening.ts`, the mocked gateway's listener in `mocks/gateway.ts`, a router for Link and `useRouter` whose navigations stay pending until `arrive()` in `mocks/router.tsx`, Turso in `mocks/sqlite.ts` (in-memory `node:sqlite`; pass it `MIGRATIONS` for the schema; mock `@/lib/turso` with `mockTurso()` so `batch` runs through `query`; read what a test wrote with `selectRows`); happy-dom has no popover API, so `vitest.setup.ts` stubs `showPopover`/`hidePopover` to toggle `data-popover-open`; it also spies every `log` level before each test, so logs never print and tests assert with `expect(log.warn)` without their own spy
 - **React Compiler:** enabled in `vitest.config.ts` via `react({ compiler: true })`, so tests exercise auto-memoized components like production does
 
 > The Vitest setup uses the **native** (Rust) React Compiler from `oxc-transform-react`, an experimental optional peer of `@vitejs/plugin-react`. Next.js runs the same native compiler inside Turbopack (`reactCompiler` + `experimental.turbopackRustReactCompiler` in `next.config.ts`), so `babel-plugin-react-compiler` is not needed. The two are still configured independently.

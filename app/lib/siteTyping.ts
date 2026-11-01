@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { LruMap } from "@/lib/LruMap";
@@ -36,6 +38,10 @@ const siteTyping = () =>
     failing: false,
   }));
 
+const typistSchema = z
+  .object({ username: z.string() })
+  .transform(({ username }) => username);
+
 // Runs the writes, if any, and reads who is typing after them in the same request.
 async function read(
   state: SiteTyping,
@@ -47,9 +53,10 @@ async function read(
     {
       sql: "SELECT username FROM typing WHERE until > ? ORDER BY username",
       args: [Date.now()],
+      rows: typistSchema,
     },
   ]);
-  const typing = results.at(-1)!.rows.map((row) => String(row["username"]));
+  const typing = results.at(-1)!.rows;
   // Reads overlap between polls, pings and posts, so an older one mustn't undo a newer.
   if (state.listeners.size === 0 || seq < state.shown) return;
   state.shown = seq;

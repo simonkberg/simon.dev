@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { batch, query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { joinPresence } from "./presence";
@@ -21,15 +21,16 @@ const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 // Stands in for a stream on the other replica.
 async function seenElsewhere(username: string, at = Date.now()) {
-  await sqlite()(
-    "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
-    [`elsewhere-${username}`, username, at],
-  );
+  await sqlite()({
+    sql: "INSERT INTO presence (stream, username, seen_at) VALUES (?, ?, ?)",
+    args: [`elsewhere-${username}`, username, at],
+  });
 }
 
 // One name per stored stream.
 async function stored() {
-  const { rows } = await sqlite()(
+  const rows = await selectRows(
+    sqlite(),
     "SELECT username FROM presence ORDER BY username",
   );
   return rows.map((row) => row["username"]);
@@ -181,7 +182,7 @@ describe("joinPresence", () => {
     expect(listener).toHaveBeenLastCalledWith(["alice", "bob"]);
 
     // Expired by the other replica meanwhile.
-    await sqlite()("DELETE FROM presence");
+    await sqlite()({ sql: "DELETE FROM presence" });
     vi.mocked(query).mockImplementation(sqlite());
     await heartbeat();
 

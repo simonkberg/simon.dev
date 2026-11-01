@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { batch, query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { setTyping, stopTyping, subscribeToSiteTyping } from "./siteTyping";
@@ -20,14 +20,14 @@ const sqlite = sqliteBeforeEach(query, MIGRATIONS);
 
 // Stands in for a ping that reached the other replica.
 async function typingElsewhere(username: string) {
-  await sqlite()("INSERT INTO typing (username, until) VALUES (?, ?)", [
-    username,
-    Date.now() + 4_000,
-  ]);
+  await sqlite()({
+    sql: "INSERT INTO typing (username, until) VALUES (?, ?)",
+    args: [username, Date.now() + 4_000],
+  });
 }
 
 async function stored() {
-  const { rows } = await sqlite()("SELECT username, until FROM typing");
+  const rows = await selectRows(sqlite(), "SELECT username, until FROM typing");
   return rows;
 }
 

@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
@@ -40,6 +42,10 @@ function publish(state: Presence, here: readonly string[]): void {
   for (const listener of state.listeners) listener(here);
 }
 
+const visitorSchema = z
+  .object({ username: z.string() })
+  .transform(({ username }) => username);
+
 // Writes this replica's streams in one batch, so a stream's upserts and delete land in order.
 // Upserts, so a row that expired while heartbeats failed comes back.
 async function beat(state: Presence): Promise<void> {
@@ -62,12 +68,14 @@ async function beat(state: Presence): Promise<void> {
         sql: "DELETE FROM presence WHERE seen_at <= ?",
         args: [now - EXPIRY_MS],
       },
-      { sql: "SELECT DISTINCT username FROM presence ORDER BY username" },
+      {
+        sql: "SELECT DISTINCT username FROM presence ORDER BY username",
+        rows: visitorSchema,
+      },
     ]);
     for (const stream of left) state.left.delete(stream);
     if (state.listeners.size > 0) {
-      const here = rows.map((row) => String(row["username"]));
-      publish(state, here);
+      publish(state, rows);
     } else if (state.left.size === 0) {
       clearInterval(state.timer);
       state.timer = undefined;

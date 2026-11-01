@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { likeContains } from "@/lib/sql";
-import { batch, query, type Row, type Value } from "@/lib/turso";
+import { batch, query, type Value } from "@/lib/turso";
 
 export const CORE_CATEGORIES = {
   self: "who you are",
@@ -43,34 +43,22 @@ export const contentSchema = z
   .min(1)
   .max(MAX_CONTENT_LENGTH);
 
-const COLUMNS = "id, category, content, created_at, updated_at";
+const COLUMNS =
+  "id, category, content, created_at AS createdAt, updated_at AS updatedAt";
 
-const memoryRowSchema = z.object({
+const memorySchema = z.object({
   id: z.number(),
   category: z.string(),
   content: z.string(),
-  created_at: z.string().pipe(z.coerce.date()),
-  updated_at: z.string().pipe(z.coerce.date()).nullable(),
+  createdAt: z.string().pipe(z.coerce.date()),
+  updatedAt: z
+    .string()
+    .pipe(z.coerce.date())
+    .nullable()
+    .transform((date) => date ?? undefined),
 });
 
-export type Memory = {
-  id: number;
-  category: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date | undefined;
-};
-
-function toMemory(row: unknown): Memory {
-  const parsed = memoryRowSchema.parse(row);
-  return {
-    id: parsed.id,
-    category: parsed.category,
-    content: parsed.content,
-    createdAt: parsed.created_at,
-    updatedAt: parsed.updated_at ?? undefined,
-  };
-}
+export type Memory = z.infer<typeof memorySchema>;
 
 export function peopleCategory(username: string): string | undefined {
   const slug = username
@@ -88,17 +76,24 @@ export async function remember(input: {
   const content = contentSchema.parse(input.content);
 
   // One statement so parallel tool calls can't both slip past the cap.
-  const { rows } = await query(
-    `INSERT INTO memories (category, content, created_at)
+  const { rows } = await query({
+    sql: `INSERT INTO memories (category, content, created_at)
      SELECT ?, ?, ?
      WHERE (SELECT COUNT(*) FROM memories WHERE category = ?) < ?
      RETURNING ${COLUMNS}`,
-    [category, content, new Date().toISOString(), category, MAX_PER_CATEGORY],
-  );
-  const row = rows[0];
-  return row === undefined
+    args: [
+      category,
+      content,
+      new Date().toISOString(),
+      category,
+      MAX_PER_CATEGORY,
+    ],
+    rows: memorySchema,
+  });
+  const memory = rows[0];
+  return memory === undefined
     ? { status: "full", category }
-    : { status: "ok", memory: toMemory(row) };
+    : { status: "ok", memory };
 }
 
 export async function recall(input: {
@@ -120,12 +115,13 @@ export async function recall(input: {
 
   const where =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const { rows } = await query(
-    `SELECT ${COLUMNS} FROM memories
+  const { rows } = await query({
+    sql: `SELECT ${COLUMNS} FROM memories
      ${where} ORDER BY created_at DESC, id DESC LIMIT ?`,
-    [...args, input.limit ?? 20],
-  );
-  return rows.map(toMemory);
+    args: [...args, input.limit ?? 20],
+    rows: memorySchema,
+  });
+  return rows;
 }
 
 export type WriteMiss =
@@ -152,13 +148,15 @@ export function describeMiss(miss: WriteMiss) {
 }
 
 async function explainMiss(id: number): Promise<WriteMiss> {
-  const { rows } = await query(`SELECT ${COLUMNS} FROM memories WHERE id = ?`, [
-    id,
-  ]);
-  const row = rows[0];
-  return row === undefined
+  const { rows } = await query({
+    sql: `SELECT ${COLUMNS} FROM memories WHERE id = ?`,
+    args: [id],
+    rows: memorySchema,
+  });
+  const current = rows[0];
+  return current === undefined
     ? { status: "missing", id }
-    : { status: "stale", current: toMemory(row) };
+    : { status: "stale", current };
 }
 
 const LISTING_PREFIX = /^(?:-\s*)?#(\d+)\s+/;
@@ -187,15 +185,15 @@ export async function edit(input: {
     input.category === undefined ? null : categorySchema.parse(input.category);
   const read = asRead(input.id, input.oldContent);
   // A move into another category counts against that category's cap.
-  const { rows } = await query(
-    `UPDATE memories
+  const { rows } = await query({
+    sql: `UPDATE memories
      SET content = ?, category = COALESCE(?, category),
        updated_at = CASE WHEN content = ? THEN updated_at ELSE ? END
      WHERE id = ? AND content IN (?, ?)
        AND (COALESCE(?, category) = category
          OR (SELECT COUNT(*) FROM memories WHERE category = ?) < ?)
      RETURNING ${COLUMNS}`,
-    [
+    args: [
       newContent,
       category,
       newContent,
@@ -206,9 +204,10 @@ export async function edit(input: {
       category,
       MAX_PER_CATEGORY,
     ],
-  );
-  const row = rows[0];
-  if (row !== undefined) return { status: "ok", memory: toMemory(row) };
+    rows: memorySchema,
+  });
+  const memory = rows[0];
+  if (memory !== undefined) return { status: "ok", memory };
   const miss = await explainMiss(input.id);
   const unchanged =
     miss.status === "stale" && read.includes(miss.current.content);
@@ -219,10 +218,10 @@ export async function forget(input: {
   id: number;
   content: string;
 }): Promise<{ status: "ok" } | WriteMiss> {
-  const { rowsAffected } = await query(
-    "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
-    [input.id, ...asRead(input.id, input.content)],
-  );
+  const { rowsAffected } = await query({
+    sql: "DELETE FROM memories WHERE id = ? AND content IN (?, ?)",
+    args: [input.id, ...asRead(input.id, input.content)],
+  });
   return rowsAffected > 0 ? { status: "ok" } : explainMiss(input.id);
 }
 
@@ -231,26 +230,27 @@ const notesIn = (categories: readonly string[]) => ({
      WHERE category IN (${categories.map(() => "?").join(", ")})
      ORDER BY created_at, id`,
   args: [...categories],
+  rows: memorySchema,
 });
 
-const byCategory = (rows: Row[]) =>
-  Map.groupBy(rows.map(toMemory), (note) => note.category);
+const countSchema = z.object({ category: z.string(), count: z.number() });
+
+const byCategory = (notes: Memory[]) =>
+  Map.groupBy(notes, (note) => note.category);
 
 export async function readPersonNotes(username: string): Promise<Memory[]> {
   const category = peopleCategory(username);
   if (category === undefined) return [];
-  const { sql, args } = notesIn([category]);
-  const { rows } = await query(sql, args);
-  return rows.map(toMemory);
+  return (await query(notesIn([category]))).rows;
 }
 
 export async function forgetPerson(username: string): Promise<number> {
   const category = peopleCategory(username);
   if (category === undefined) return 0;
-  const { rowsAffected } = await query(
-    "DELETE FROM memories WHERE category = ?",
-    [category],
-  );
+  const { rowsAffected } = await query({
+    sql: "DELETE FROM memories WHERE category = ?",
+    args: [category],
+  });
   return rowsAffected;
 }
 
@@ -280,6 +280,7 @@ export async function buildMemoryContext(
           shownNotes,
           {
             sql: "SELECT category, COUNT(*) AS count FROM memories GROUP BY category ORDER BY category",
+            rows: countSchema,
           },
         ]
       : [shownNotes],
@@ -291,8 +292,8 @@ export async function buildMemoryContext(
   );
 
   const others = (counts?.rows ?? [])
-    .filter((row) => !shown.includes(String(row["category"])))
-    .map((row) => `${row["category"]} (${row["count"]})`);
+    .filter(({ category }) => !shown.includes(category))
+    .map(({ category, count }) => `${category} (${count})`);
   if (others.length > 0) {
     sections.push(
       `Other categories, use recall to read them: ${others.join(", ")}`,
@@ -314,8 +315,7 @@ export type PublicCategory = (typeof PUBLIC_CATEGORIES)[number];
 export async function readPublicNotes(): Promise<
   Record<PublicCategory, Memory[]>
 > {
-  const { sql, args } = notesIn(PUBLIC_CATEGORIES);
-  const notes = byCategory((await query(sql, args)).rows);
+  const notes = byCategory((await query(notesIn(PUBLIC_CATEGORIES))).rows);
   return Object.fromEntries(
     PUBLIC_CATEGORIES.map((category) => [category, notes.get(category) ?? []]),
   ) as Record<PublicCategory, Memory[]>;

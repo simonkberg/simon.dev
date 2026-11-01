@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   BOOTSTRAP,
@@ -31,39 +31,42 @@ function failNext(prefix: string, { afterRunning = false } = {}) {
 
 // Not every migration can run twice, so these build their state without one.
 async function holdLock(owner: string, expiresAt: number) {
-  for (const sql of BOOTSTRAP) await query(sql);
-  await query("INSERT INTO locks VALUES ('migrations', ?, ?)", [
-    owner,
-    expiresAt,
-  ]);
+  for (const sql of BOOTSTRAP) await query({ sql });
+  await query({
+    sql: "INSERT INTO locks VALUES ('migrations', ?, ?)",
+    args: [owner, expiresAt],
+  });
 }
 
 // As made before checksums were recorded, with only the first migration applied.
 async function applyFirstOnly() {
-  await query(
-    "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
-  );
-  await query(String(MIGRATIONS[0]));
-  await query("INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')");
+  await query({
+    sql: "CREATE TABLE migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)",
+  });
+  await query({ sql: String(MIGRATIONS[0]) });
+  await query({
+    sql: "INSERT INTO migrations VALUES (1, '2025-01-01T00:00:00.000Z')",
+  });
 }
 
 async function appliedVersions(): Promise<unknown[]> {
-  const { rows } = await query("SELECT version FROM migrations");
+  const rows = await selectRows(query, "SELECT version FROM migrations");
   return rows.map((row) => row["version"]);
 }
 
 function lockOwners(): unknown[] {
   return vi
     .mocked(query)
-    .mock.calls.filter(([sql]) => sql.startsWith("INSERT INTO locks"))
-    .map(([, args]) => args?.[1]);
+    .mock.calls.filter(([{ sql }]) => sql.startsWith("INSERT INTO locks"))
+    .map(([{ args }]) => args?.[1]);
 }
 
 describe("runMigrations", () => {
   it("should record a checksum for each applied migration", async () => {
     await runMigrations();
 
-    const { rows } = await query(
+    const rows = await selectRows(
+      query,
       "SELECT DISTINCT length(checksum) AS length FROM migrations",
     );
     expect(rows).toEqual([{ length: 64 }]);
@@ -71,22 +74,22 @@ describe("runMigrations", () => {
 
   it("should refuse to run when an applied migration was edited", async () => {
     await runMigrations();
-    await query(
-      "UPDATE migrations SET checksum = 'edited' WHERE version IN (1, 3)",
-    );
+    await query({
+      sql: "UPDATE migrations SET checksum = 'edited' WHERE version IN (1, 3)",
+    });
 
     await expect(runMigrations()).rejects.toThrow(
       "Applied migrations were edited: 1, 3",
     );
-    expect((await query("SELECT * FROM locks")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM locks")).toEqual([]);
   });
 
   it("should run on a database migrated by newer code, as after a rollback", async () => {
     await runMigrations();
-    await query(
-      "INSERT INTO migrations VALUES (?, '2025-01-01T00:00:00.000Z', 'from the future')",
-      [MIGRATIONS.length + 1],
-    );
+    await query({
+      sql: "INSERT INTO migrations VALUES (?, '2025-01-01T00:00:00.000Z', 'from the future')",
+      args: [MIGRATIONS.length + 1],
+    });
 
     await expect(runMigrations()).resolves.toBeUndefined();
   });
@@ -97,7 +100,8 @@ describe("runMigrations", () => {
     await runMigrations();
 
     expect(await appliedVersions()).toEqual(MIGRATIONS.map((_, i) => i + 1));
-    const { rows } = await query(
+    const rows = await selectRows(
+      query,
       "SELECT count(*) AS missing FROM migrations WHERE checksum IS NULL",
     );
     expect(rows).toEqual([{ missing: 0 }]);
@@ -122,7 +126,7 @@ describe("runMigrations", () => {
       { version: 1 },
       "Applied migration",
     );
-    expect((await query("SELECT * FROM locks")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM locks")).toEqual([]);
   });
 
   it("should use a different owner for each run", async () => {
@@ -158,7 +162,7 @@ describe("runMigrations", () => {
     await expectation;
 
     expect(await appliedVersions()).toEqual([]);
-    expect((await query("SELECT owner FROM locks")).rows).toEqual([
+    expect(await selectRows(query, "SELECT owner FROM locks")).toEqual([
       { owner: "other" },
     ]);
   });
@@ -194,7 +198,7 @@ describe("runMigrations", () => {
     failNext(String(MIGRATIONS[0]));
 
     await expect(runMigrations()).rejects.toThrow("boom");
-    expect((await query("SELECT * FROM locks")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM locks")).toEqual([]);
   });
 
   it("should roll back a migration it fails to record", async () => {
@@ -202,7 +206,8 @@ describe("runMigrations", () => {
 
     await expect(runMigrations()).rejects.toThrow("boom");
     expect(await appliedVersions()).toEqual([]);
-    const { rows } = await query(
+    const rows = await selectRows(
+      query,
       "SELECT name FROM sqlite_master WHERE name = 'memories'",
     );
     expect(rows).toEqual([]);

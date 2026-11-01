@@ -13,12 +13,10 @@ vi.mock(import("@/lib/turso"), async () =>
 sqliteBeforeEach(query, MIGRATIONS);
 
 const play = (at: string, artist: string, track: string, album = "") =>
-  query("INSERT INTO scrobbles VALUES (?, ?, ?, ?)", [
-    new Date(at).getTime(),
-    artist,
-    track,
-    album,
-  ]);
+  query({
+    sql: "INSERT INTO scrobbles VALUES (?, ?, ?, ?)",
+    args: [new Date(at).getTime(), artist, track, album],
+  });
 
 describe("plays", () => {
   beforeEach(async () => {
@@ -27,7 +25,7 @@ describe("plays", () => {
     // 00:30 on the 1st in Stockholm.
     await play("2015-12-31T23:30:00Z", "Radiohead", "Airbag", "OK Computer");
     await play("2016-01-01T12:00:00Z", "Smog", "Held", "Knock Knock");
-    await query("INSERT INTO loved VALUES ('Radiohead', 'Airbag', 1)");
+    await query({ sql: "INSERT INTO loved VALUES ('Radiohead', 'Airbag', 1)" });
   });
 
   it("should count and list matching plays from a time", async () => {

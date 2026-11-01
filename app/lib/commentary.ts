@@ -2,6 +2,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 // The `md` name is what marks the prompt as Markdown for Oxfmt.
 import md from "string-dedent";
+import { z } from "zod";
 
 import {
   getDayPlays,
@@ -122,23 +123,28 @@ export function parsePage(
   return inHistory(value, localDay(now));
 }
 
+const textSchema = z.object({ text: z.string() });
+const previousSchema = z.object({ slot: z.string(), text: z.string() });
+
 async function readText(page: string, slot: string) {
-  const { rows } = await query(
-    "SELECT text FROM commentary WHERE page = ? AND slot = ? AND version = ?",
-    [page, slot, VERSION],
-  );
-  return rows[0] === undefined ? undefined : String(rows[0]["text"]);
+  const { rows } = await query({
+    sql: "SELECT text FROM commentary WHERE page = ? AND slot = ? AND version = ?",
+    args: [page, slot, VERSION],
+    rows: textSchema,
+  });
+  return rows[0]?.text;
 }
 
 async function readPrevious(page: string, slot: string) {
-  const { rows } = await query(
-    "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
-    [page, slot, VERSION],
-  );
+  const { rows } = await query({
+    sql: "SELECT slot, text FROM commentary WHERE page = ? AND slot < ? AND version = ? ORDER BY slot DESC LIMIT 1",
+    args: [page, slot, VERSION],
+    rows: previousSchema,
+  });
   const row = rows[0];
   return (
     row !== undefined &&
-    `<previous slot="${escapeXml(String(row["slot"]))}">${escapeXml(String(row["text"]))}</previous>`
+    `<previous slot="${escapeXml(row.slot)}">${escapeXml(row.text)}</previous>`
   );
 }
 
@@ -367,11 +373,11 @@ export async function writeCommentary(
       log.info(slot, "Dropped commentary written past its slot");
       return text;
     }
-    await query(
-      `INSERT INTO commentary (page, slot, version, text, written_at) VALUES (?, ?, ?, ?, ?)
+    await query({
+      sql: `INSERT INTO commentary (page, slot, version, text, written_at) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT (page, slot) DO UPDATE SET version = excluded.version, text = excluded.text, written_at = excluded.written_at`,
-      [slot.page, slot.slot, VERSION, text, Date.now()],
-    );
+      args: [slot.page, slot.slot, VERSION, text, Date.now()],
+    });
     log.info({ ...slot, text }, "Wrote simon-bot's commentary");
     return text;
   } finally {

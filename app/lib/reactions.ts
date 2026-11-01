@@ -10,6 +10,7 @@ import {
 import { RGI_EMOJI, withoutSkinTone } from "@/lib/emoji";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
+import { flag } from "@/lib/sql";
 import { batch, query } from "@/lib/turso";
 
 /** One emoji as Discord stores a reaction's name. */
@@ -31,6 +32,14 @@ export async function toggleReaction(
   return "added";
 }
 
+const foundSchema = z.object({ found: flag });
+const emojiSchema = z.object({ emoji: z.string() });
+const reactionSchema = z.object({
+  message_id: z.string(),
+  emoji: z.string(),
+  username: z.string(),
+});
+
 async function removeReaction(
   messageId: string,
   emoji: string,
@@ -40,12 +49,13 @@ async function removeReaction(
   const [{ rowsAffected }, { rows: remaining }] = await batch([
     { sql: DELETE_ROW, args: [messageId, emoji, username] },
     {
-      sql: "SELECT 1 FROM reactions WHERE message_id = ? AND emoji = ? LIMIT 1",
+      sql: "SELECT EXISTS (SELECT 1 FROM reactions WHERE message_id = ? AND emoji = ?) AS found",
       args: [messageId, emoji],
+      rows: foundSchema,
     },
   ]);
   if (rowsAffected === 0) return false;
-  if (remaining.length === 0) {
+  if (!remaining[0]?.found) {
     // The site counts from Turso, so a stale mirror only shows on Discord.
     await removeBotReaction(messageId, emoji).catch((err: unknown) => {
       log.warn({ err, messageId, emoji }, "Failed to remove bot reaction");
@@ -61,22 +71,24 @@ export async function addReaction(
   username: Username,
 ): Promise<void> {
   // The row goes in first so a concurrent removal counts it and keeps the mirror.
-  const inserted = await query(
-    "INSERT INTO reactions (message_id, emoji, username) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-    [messageId, emoji, username],
-  );
+  const inserted = await query({
+    sql: "INSERT INTO reactions (message_id, emoji, username) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+    args: [messageId, emoji, username],
+  });
   if (inserted.rowsAffected > 0) {
     try {
       // Discord turns away a message or emoji it doesn't know.
       await addBotReaction(messageId, emoji);
     } catch (err) {
       // Discord's error is the one the visitor needs, so a failed rollback only logs.
-      await query(DELETE_ROW, [messageId, emoji, username]).catch(
-        (rollbackErr: unknown) =>
-          log.warn(
-            { err: rollbackErr, messageId, emoji },
-            "Failed to roll back reaction",
-          ),
+      await query({
+        sql: DELETE_ROW,
+        args: [messageId, emoji, username],
+      }).catch((rollbackErr: unknown) =>
+        log.warn(
+          { err: rollbackErr, messageId, emoji },
+          "Failed to roll back reaction",
+        ),
       );
       throw err;
     }
@@ -93,12 +105,12 @@ async function removeOtherTones(
   username: Username,
 ): Promise<void> {
   const base = withoutSkinTone(emoji);
-  const { rows } = await query(
-    "SELECT emoji FROM reactions WHERE message_id = ? AND username = ? AND emoji != ?",
-    [messageId, username, emoji],
-  );
-  for (const row of rows) {
-    const other = String(row["emoji"]);
+  const { rows } = await query({
+    sql: "SELECT emoji FROM reactions WHERE message_id = ? AND username = ? AND emoji != ?",
+    args: [messageId, username, emoji],
+    rows: emojiSchema,
+  });
+  for (const { emoji: other } of rows) {
     if (withoutSkinTone(other) === base) {
       await removeReaction(messageId, other, username);
     }
@@ -174,22 +186,21 @@ export async function withSiteReactions<T extends Reactable<T>>(
   if (ids.length === 0) return items;
 
   try {
-    const { rows } = await query(
-      `SELECT message_id, emoji, username FROM reactions
+    const { rows } = await query({
+      sql: `SELECT message_id, emoji, username FROM reactions
        WHERE message_id IN (SELECT value FROM json_each(?))
        ORDER BY id`,
-      [JSON.stringify(ids)],
-    );
+      args: [JSON.stringify(ids)],
+      rows: reactionSchema,
+    });
 
     const site: SiteReactions = new Map();
-    for (const row of rows) {
-      const messageId = String(row["message_id"]);
-      const emoji = String(row["emoji"]);
+    for (const { message_id: messageId, emoji, username } of rows) {
       const byEmoji = site.get(messageId) ?? new Map<string, string[]>();
       site.set(messageId, byEmoji);
       const users = byEmoji.get(emoji) ?? [];
       byEmoji.set(emoji, users);
-      users.push(String(row["username"]));
+      users.push(username);
     }
 
     return mergeReactions(items, site);

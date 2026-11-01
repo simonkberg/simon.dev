@@ -9,16 +9,19 @@ export async function tryLock(
 ): Promise<boolean> {
   const now = Date.now();
   // Matching our own owner makes a retry after a lost response succeed.
-  const { rowsAffected } = await query(
-    `INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
+  const { rowsAffected } = await query({
+    sql: `INSERT INTO locks (name, owner, expires_at) VALUES (?, ?, ?)
      ON CONFLICT (name) DO UPDATE
      SET owner = excluded.owner, expires_at = excluded.expires_at
      WHERE locks.expires_at < ? OR locks.owner = excluded.owner`,
-    [name, owner, now + ttlMs, now],
-  );
+    args: [name, owner, now + ttlMs, now],
+  });
   return rowsAffected > 0;
 }
 
 export async function releaseLock(name: string, owner: string): Promise<void> {
-  await query("DELETE FROM locks WHERE name = ? AND owner = ?", [name, owner]);
+  await query({
+    sql: "DELETE FROM locks WHERE name = ? AND owner = ?",
+    args: [name, owner],
+  });
 }
