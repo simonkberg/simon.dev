@@ -184,7 +184,7 @@ export async function playCounts(
       args,
       totalSchema,
     );
-    return { total: rows[0]?.total ?? 0 };
+    return { total: Number(rows[0]?.total) };
   }
   const { key, name = key, sort = "key" } = periods[per];
   const { rows } = await query(

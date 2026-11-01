@@ -227,7 +227,7 @@ export async function countScrobbles(from: Date, to: Date): Promise<number> {
     [from.getTime(), to.getTime()],
     countSchema,
   );
-  return rows[0]?.count ?? 0;
+  return Number(rows[0]?.count);
 }
 
 const playSchema = z.object({
