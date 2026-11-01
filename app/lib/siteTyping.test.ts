@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { batch, query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { setTyping, stopTyping, subscribeToSiteTyping } from "./siteTyping";
@@ -27,7 +27,7 @@ async function typingElsewhere(username: string) {
 }
 
 async function stored() {
-  const { rows } = await sqlite()("SELECT username, until FROM typing");
+  const rows = await selectRows(sqlite(), "SELECT username, until FROM typing");
   return rows;
 }
 

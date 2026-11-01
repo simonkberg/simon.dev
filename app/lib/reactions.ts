@@ -10,6 +10,7 @@ import {
 import { RGI_EMOJI, withoutSkinTone } from "@/lib/emoji";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
+import { flag } from "@/lib/sql";
 import { batch, query } from "@/lib/turso";
 
 /** One emoji as Discord stores a reaction's name. */
@@ -31,6 +32,14 @@ export async function toggleReaction(
   return "added";
 }
 
+const foundSchema = z.object({ found: flag });
+const emojiSchema = z.object({ emoji: z.string() });
+const reactionSchema = z.object({
+  message_id: z.string(),
+  emoji: z.string(),
+  username: z.string(),
+});
+
 async function removeReaction(
   messageId: string,
   emoji: string,
@@ -40,12 +49,13 @@ async function removeReaction(
   const [{ rowsAffected }, { rows: remaining }] = await batch([
     { sql: DELETE_ROW, args: [messageId, emoji, username] },
     {
-      sql: "SELECT 1 FROM reactions WHERE message_id = ? AND emoji = ? LIMIT 1",
+      sql: "SELECT EXISTS (SELECT 1 FROM reactions WHERE message_id = ? AND emoji = ?) AS found",
       args: [messageId, emoji],
+      rows: foundSchema,
     },
   ]);
   if (rowsAffected === 0) return false;
-  if (remaining.length === 0) {
+  if (!remaining[0]?.found) {
     // The site counts from Turso, so a stale mirror only shows on Discord.
     await removeBotReaction(messageId, emoji).catch((err: unknown) => {
       log.warn({ err, messageId, emoji }, "Failed to remove bot reaction");
@@ -96,9 +106,9 @@ async function removeOtherTones(
   const { rows } = await query(
     "SELECT emoji FROM reactions WHERE message_id = ? AND username = ? AND emoji != ?",
     [messageId, username, emoji],
+    emojiSchema,
   );
-  for (const row of rows) {
-    const other = String(row["emoji"]);
+  for (const { emoji: other } of rows) {
     if (withoutSkinTone(other) === base) {
       await removeReaction(messageId, other, username);
     }
@@ -179,17 +189,16 @@ export async function withSiteReactions<T extends Reactable<T>>(
        WHERE message_id IN (SELECT value FROM json_each(?))
        ORDER BY id`,
       [JSON.stringify(ids)],
+      reactionSchema,
     );
 
     const site: SiteReactions = new Map();
-    for (const row of rows) {
-      const messageId = String(row["message_id"]);
-      const emoji = String(row["emoji"]);
+    for (const { message_id: messageId, emoji, username } of rows) {
       const byEmoji = site.get(messageId) ?? new Map<string, string[]>();
       site.set(messageId, byEmoji);
       const users = byEmoji.get(emoji) ?? [];
       byEmoji.set(emoji, users);
-      users.push(String(row["username"]));
+      users.push(username);
     }
 
     return mergeReactions(items, site);

@@ -6,7 +6,7 @@ import { userGetLovedTracks, userGetScrobbles } from "@/lib/lastfm";
 import { log } from "@/lib/log";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { batch, query } from "@/lib/turso";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   countScrobbles,
@@ -72,7 +72,8 @@ const fakeLastfm: typeof userGetScrobbles = async (
 };
 
 async function stored(): Promise<number[]> {
-  const { rows } = await query(
+  const rows = await selectRows(
+    query,
     "SELECT played_at FROM scrobbles ORDER BY played_at DESC",
   );
   return rows.map((row) => Number(row["played_at"]));
@@ -224,7 +225,8 @@ describe("syncScrobbles loved tracks", () => {
   });
 
   async function storedLoved() {
-    const { rows } = await query(
+    const rows = await selectRows(
+      query,
       "SELECT track, loved_at FROM loved ORDER BY track",
     );
     return rows.map((row) => [row["track"], row["loved_at"]]);

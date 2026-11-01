@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import { ban, banPost, isBanned, isSpam, recordPost } from "./bans";
 import { MIGRATIONS } from "./migrations";
@@ -82,7 +82,9 @@ describe("banPost", () => {
 
   it("bans nobody for a post without an IP", async () => {
     expect(await banPost("1")).toBeUndefined();
-    expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM banned_networks")).toEqual(
+      [],
+    );
   });
 });
 
@@ -93,9 +95,9 @@ describe("recordPost", () => {
     vi.setSystemTime(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await recordPost("2", user, "192.0.2.2");
 
-    expect((await query("SELECT message_id FROM chat_posts")).rows).toEqual([
-      { message_id: "2" },
-    ]);
+    expect(
+      await selectRows(query, "SELECT message_id FROM chat_posts"),
+    ).toEqual([{ message_id: "2" }]);
   });
 
   it("fails open", async () => {

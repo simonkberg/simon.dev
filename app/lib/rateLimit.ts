@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+
 import { getGlobal } from "@/lib/global";
 import { log } from "@/lib/log";
 import { LruMap } from "@/lib/LruMap";
@@ -31,6 +33,8 @@ async function prune(): Promise<void> {
   }
 }
 
+const resetSchema = z.object({ reset: z.number().nullable() });
+
 // Fails open: the limiter being down shouldn't take its caller down with it.
 export async function rateLimit(
   key: string,
@@ -58,9 +62,10 @@ export async function rateLimit(
     const { rows } = await query(
       "SELECT min(expires_at) AS reset FROM rate_limits WHERE key = ? AND expires_at > ?",
       [key, now],
+      resetSchema,
     );
     // No row means the oldest expired since the insert: retry now.
-    const reset = Number(rows[0]?.["reset"] ?? now);
+    const reset = rows[0]?.reset ?? now;
     blockedUntil().set(key, reset);
     return rejected(reset, now);
   } catch (err) {

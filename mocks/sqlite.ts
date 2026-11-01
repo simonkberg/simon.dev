@@ -1,8 +1,16 @@
 import { DatabaseSync } from "node:sqlite";
 
 import { beforeEach, vi } from "vitest";
+import { z } from "zod";
 
-import type { batch, BatchResults, query, QueryResult, Row } from "@/lib/turso";
+import type {
+  batch,
+  BatchResults,
+  query,
+  QueryResult,
+  Row,
+  Value,
+} from "@/lib/turso";
 
 export const emptyResult: QueryResult = {
   rows: [],
@@ -17,7 +25,7 @@ export function createSqliteQuery(setup: readonly string[] = []): typeof query {
   const totalChanges = db.prepare("SELECT total_changes() AS n");
   const changes = () => Number(totalChanges.get()?.["n"]);
 
-  return async (sql, args) => {
+  return async (sql, args, schema) => {
     const statement = db.prepare(sql);
     const before = changes();
     let rows: Row[] = [];
@@ -26,8 +34,26 @@ export function createSqliteQuery(setup: readonly string[] = []): typeof query {
     } else {
       statement.run(...(args ?? []));
     }
-    return { rows, rowsAffected: changes() - before, lastInsertRowId: null };
+    return {
+      rows: schema ? rows.map((row) => schema.parse(row)) : [],
+      rowsAffected: changes() - before,
+      lastInsertRowId: null,
+    };
   };
+}
+
+const rowSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.null()]),
+);
+
+// Reads the test database as it stands, to assert on what the code under test wrote.
+export async function selectRows(
+  run: typeof query,
+  sql: string,
+  args?: Value[],
+): Promise<Row[]> {
+  return (await run(sql, args, rowSchema)).rows;
 }
 
 // Gives the mocked query a fresh database before each test; call the result for it.
@@ -59,18 +85,19 @@ export function failQuery(
   const afterRunning = options.afterRunning === true;
   const once = afterRunning || options.once === true;
   let failed = false;
-  return async (sql, args) => {
-    if (!sql.startsWith(prefix) || (once && failed)) return run(sql, args);
+  return async (sql, args, schema) => {
+    if (!sql.startsWith(prefix) || (once && failed))
+      return run(sql, args, schema);
     if (once) failed = true;
-    if (afterRunning) await run(sql, args);
+    if (afterRunning) await run(sql, args, schema);
     throw error;
   };
 }
 
 // Turso as a mock module: `batch` runs through `query`, so give `query` an implementation.
 export function mockTurso(): { query: typeof query; batch: typeof batch } {
-  const query = vi.fn<typeof import("@/lib/turso").query>();
-  // A mock's call signature drops batch's generic, though it runs the same function.
+  // A mock's call signature drops the generics, though it runs the same function.
+  const query = vi.fn() as typeof import("@/lib/turso").query;
   return { query, batch: vi.fn(sqliteBatch(query)) as typeof batch };
 }
 
@@ -82,9 +109,9 @@ export function sqliteBatch(run: typeof query): typeof batch {
     const done = queue.then(async () => {
       await run("BEGIN");
       try {
-        const results: QueryResult[] = [];
-        for (const { sql, args } of statements)
-          results.push(await run(sql, args));
+        const results: QueryResult<unknown>[] = [];
+        for (const { sql, args, rows } of statements)
+          results.push(await run(sql, args, rows));
         await run("COMMIT");
         return results as BatchResults<typeof statements>;
       } catch (err) {

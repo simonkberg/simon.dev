@@ -1,6 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 
+import { z } from "zod";
+
 import { releaseLock, tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
 import { batch, query } from "@/lib/turso";
@@ -149,23 +151,31 @@ async function addChecksumColumn(): Promise<void> {
   }
 }
 
+const appliedSchema = z.object({
+  version: z.number(),
+  checksum: z.string().nullable(),
+});
+
 async function verifyApplied(): Promise<Set<number>> {
-  const { rows } = await query("SELECT version, checksum FROM migrations");
+  const { rows } = await query(
+    "SELECT version, checksum FROM migrations",
+    [],
+    appliedSchema,
+  );
   const changed: number[] = [];
 
   const applied = new Set<number>();
-  for (const row of rows) {
-    const version = Number(row["version"]);
+  for (const { version, checksum: stored } of rows) {
     applied.add(version);
     const sql = MIGRATIONS[version - 1];
     if (sql === undefined) continue;
     // Applied before checksums existed: today's text becomes the baseline.
-    if (row["checksum"] === null) {
+    if (stored === null) {
       await query("UPDATE migrations SET checksum = ? WHERE version = ?", [
         checksum(sql),
         version,
       ]);
-    } else if (row["checksum"] !== checksum(sql)) {
+    } else if (stored !== checksum(sql)) {
       changed.push(version);
     }
   }

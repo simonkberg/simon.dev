@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "@/lib/log";
 import type { Username } from "@/lib/session";
 import { batch, query } from "@/lib/turso";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { joinPresence } from "./presence";
@@ -29,7 +29,8 @@ async function seenElsewhere(username: string, at = Date.now()) {
 
 // One name per stored stream.
 async function stored() {
-  const { rows } = await sqlite()(
+  const rows = await selectRows(
+    sqlite(),
     "SELECT username FROM presence ORDER BY username",
   );
   return rows.map((row) => row["username"]);

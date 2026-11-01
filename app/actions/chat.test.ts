@@ -22,7 +22,7 @@ import { MIGRATIONS } from "@/lib/migrations";
 import { getSession, type Username } from "@/lib/session";
 import { query } from "@/lib/turso";
 import { createMessage } from "@/mocks/messages";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 vi.mock(import("next/cache"), () => ({
   cacheLife: vi.fn(),
@@ -158,7 +158,10 @@ describe("postChatMessage", () => {
     await post();
 
     expect(
-      (await query("SELECT message_id, username, ip FROM chat_posts")).rows,
+      await selectRows(
+        query,
+        "SELECT message_id, username, ip FROM chat_posts",
+      ),
     ).toEqual([
       { message_id: "msg-123", username: "test-user", ip: "0.0.0.0" },
     ]);
@@ -187,7 +190,7 @@ describe("postChatMessage", () => {
     });
     expect(isDeniedRequest).toHaveBeenCalledWith("0.0.0.0", "postChatMessage");
     expect(postChannelMessage).not.toHaveBeenCalled();
-    expect((await query("SELECT * FROM rate_limits")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM rate_limits")).toEqual([]);
   });
 
   it("limits each IP separately", async () => {
@@ -237,7 +240,9 @@ describe("postChatMessage", () => {
       status: "error",
       error: "You've been banned :) blow your shit off smooth",
     });
-    expect((await query("SELECT * FROM banned_networks")).rows).toEqual([]);
+    expect(await selectRows(query, "SELECT * FROM banned_networks")).toEqual(
+      [],
+    );
   });
 
   it("returns error and logs when Discord API fails", async () => {
@@ -300,7 +305,10 @@ describe("reactToChatMessage", () => {
     expect(await reactToChatMessage("123", "👍")).toEqual({ status: "ok" });
 
     expect(
-      (await query("SELECT message_id, emoji, username FROM reactions")).rows,
+      await selectRows(
+        query,
+        "SELECT message_id, emoji, username FROM reactions",
+      ),
     ).toEqual([{ message_id: "123", emoji: "👍", username: "test-user" }]);
     expect(updateTag).toHaveBeenCalledWith("getChatHistory");
     expect(refresh).toHaveBeenCalled();

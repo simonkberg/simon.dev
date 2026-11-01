@@ -17,7 +17,7 @@ import { buildMemoryContext, PUBLIC_CATEGORIES } from "@/lib/memory";
 import { BOOTSTRAP, MIGRATIONS } from "@/lib/migrations";
 import { query } from "@/lib/turso";
 import { topAlbum } from "@/mocks/listening";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   getCommentary,
@@ -119,7 +119,10 @@ const store = (page: string, slot: string, text: string, version = VERSION) =>
   ]);
 
 const stored = async () =>
-  (await query("SELECT page, slot, text FROM commentary ORDER BY slot")).rows;
+  await selectRows(
+    query,
+    "SELECT page, slot, text FROM commentary ORDER BY slot",
+  );
 
 function input(): string {
   const content = vi.mocked(finalText).mock.calls[0]?.[0].messages[0]?.content;

@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { query } from "@/lib/turso";
-import { sqliteBeforeEach } from "@/mocks/sqlite";
+import { sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   buildMemoryContext,
@@ -49,7 +49,8 @@ async function fillCategory(category: string, count = MAX_PER_CATEGORY) {
 }
 
 async function stored(id: number) {
-  const { rows } = await query(
+  const rows = await selectRows(
+    query,
     "SELECT category, content FROM memories WHERE id = ?",
     [id],
   );

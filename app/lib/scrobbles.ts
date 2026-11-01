@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+
 import { config } from "@/config";
 import { getGlobal } from "@/lib/global";
 import {
@@ -10,6 +12,7 @@ import {
 import { type Group, top } from "@/lib/listeningQuery";
 import { tryLock } from "@/lib/locks";
 import { log } from "@/lib/log";
+import { epochMs, flag } from "@/lib/sql";
 import { batch, query, type Statement, type Value } from "@/lib/turso";
 
 const PAGE = 200;
@@ -88,12 +91,15 @@ async function storeNowPlaying(track: Page["nowPlaying"]): Promise<void> {
   );
 }
 
+const edgeSchema = z.object({ played_at: z.number().nullable() });
+
 async function storedEdge(edge: "MIN" | "MAX"): Promise<number | undefined> {
   const { rows } = await query(
     `SELECT ${edge}(played_at) AS played_at FROM scrobbles`,
+    [],
+    edgeSchema,
   );
-  const playedAt = rows[0]?.["played_at"];
-  return typeof playedAt === "number" ? playedAt : undefined;
+  return rows[0]?.played_at ?? undefined;
 }
 
 const toSecond = (ms: number) => ms - (ms % 1000);
@@ -146,7 +152,13 @@ async function lovedTracks() {
   return tracks;
 }
 
-type Love = { artist: string; track: string; lovedAt: number };
+const loveSchema = z.object({
+  artist: z.string(),
+  track: z.string(),
+  lovedAt: z.number(),
+});
+
+type Love = z.infer<typeof loveSchema>;
 
 const loveKey = ({ artist, track, lovedAt }: Love) =>
   JSON.stringify([artist, track, lovedAt]);
@@ -158,19 +170,18 @@ function missingFrom(loves: Love[], others: Love[]): Love[] {
 
 // Last.fm lists every loved track, so an unloved one goes too; only what changed is written.
 async function syncLoved(): Promise<void> {
-  const [tracks, { rows }] = await Promise.all([
+  const [tracks, { rows: stored }] = await Promise.all([
     lovedTracks(),
-    query("SELECT artist, track, loved_at FROM loved"),
+    query(
+      "SELECT artist, track, loved_at AS lovedAt FROM loved",
+      [],
+      loveSchema,
+    ),
   ]);
   const listed = tracks.map(({ artist, name, lovedAt }) => ({
     artist,
     track: name,
     lovedAt: lovedAt.getTime(),
-  }));
-  const stored = rows.map((row) => ({
-    artist: String(row["artist"]),
-    track: String(row["track"]),
-    lovedAt: Number(row["loved_at"]),
   }));
   const removed = missingFrom(stored, listed);
   const writes: Statement[] = removed.map(({ artist, track }) => ({
@@ -207,31 +218,54 @@ async function backfillPage(
   return tracks.at(-1)?.playedAt.getTime() ?? oldest;
 }
 
+const countSchema = z.object({ count: z.number() });
+
 /** Scrobbles played from `from` until `to`. */
 export async function countScrobbles(from: Date, to: Date): Promise<number> {
   const { rows } = await query(
     "SELECT COUNT(*) AS count FROM scrobbles WHERE played_at >= ? AND played_at < ?",
     [from.getTime(), to.getTime()],
+    countSchema,
   );
-  return Number(rows[0]?.["count"]);
+  return rows[0]?.count ?? 0;
 }
 
-export type Play = { playedAt: Date; artist: string; track: string };
+const playSchema = z.object({
+  playedAt: epochMs,
+  artist: z.string(),
+  track: z.string(),
+});
+
+export type Play = z.infer<typeof playSchema>;
 
 /** What played from `from` until `to`, oldest first. */
 export async function playsIn(from: Date, to: Date): Promise<Play[]> {
   const { rows } = await query(
-    "SELECT played_at, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
+    "SELECT played_at AS playedAt, artist, track FROM scrobbles WHERE played_at >= ? AND played_at < ? ORDER BY played_at, artist, track",
     [from.getTime(), to.getTime()],
+    playSchema,
   );
-  return rows.map((row) => ({
-    playedAt: new Date(Number(row["played_at"])),
-    artist: String(row["artist"]),
-    track: String(row["track"]),
-  }));
+  return rows;
 }
 
 export type { RecentTrack };
+
+const recentPlaySchema = z
+  .object({
+    played_at: epochMs.nullable(),
+    artist: z.string(),
+    track: z.string(),
+    album: z.string(),
+    loved: flag,
+  })
+  .transform(({ played_at, artist, track, album, loved }): RecentTrack => ({
+    name: track,
+    artist,
+    album,
+    playedAt: played_at ?? undefined,
+    nowPlaying: played_at === null,
+    loved,
+  }));
 
 /** What plays now, if a sync saw it lately, then the latest plays: `limit` in all, newest first. */
 export async function recentPlays(limit: number): Promise<RecentTrack[]> {
@@ -248,18 +282,9 @@ export async function recentPlays(limit: number): Promise<RecentTrack[]> {
      ORDER BY r.played_at IS NULL DESC, r.played_at DESC
      LIMIT ?`,
     [Date.now(), limit, limit],
+    recentPlaySchema,
   );
-  return rows.map((row) => ({
-    name: String(row["track"]),
-    artist: String(row["artist"]),
-    album: String(row["album"]),
-    playedAt:
-      row["played_at"] === null
-        ? undefined
-        : new Date(Number(row["played_at"])),
-    nowPlaying: row["played_at"] === null,
-    loved: Boolean(row["loved"]),
-  }));
+  return rows;
 }
 
 export type ChartItem = { name: string; playcount: number };

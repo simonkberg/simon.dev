@@ -1,5 +1,6 @@
 import { http, HttpResponse, type JsonBodyType } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { log } from "@/lib/log";
 import { server } from "@/mocks/node";
@@ -95,7 +96,7 @@ describe("query", () => {
       }),
     );
 
-    await expect(query("SELECT 1")).resolves.toEqual({
+    await expect(query("SELECT 1", [], z.unknown())).resolves.toEqual({
       rows: [
         {
           id: 7,
@@ -109,6 +110,44 @@ describe("query", () => {
       rowsAffected: 1,
       lastInsertRowId: 7,
     });
+  });
+
+  it("should return the rows as the schema parses them", async () => {
+    capture(
+      pipelineResponse({
+        cols: [{ name: "at" }],
+        rows: [[{ type: "integer", value: "7" }]],
+      }),
+    );
+
+    const { rows } = await query(
+      "SELECT 1",
+      [],
+      z.object({ at: z.number().transform((ms) => new Date(ms)) }),
+    );
+
+    expect(rows).toEqual([{ at: new Date(7) }]);
+  });
+
+  it("should throw when a row doesn't match the schema", async () => {
+    capture(
+      pipelineResponse({ cols: [{ name: "at" }], rows: [[{ type: "null" }]] }),
+    );
+
+    await expect(
+      query("SELECT 1", [], z.object({ at: z.number() })),
+    ).rejects.toThrow(z.ZodError);
+  });
+
+  it("should return no rows without a schema", async () => {
+    capture(
+      pipelineResponse({
+        cols: [{ name: "n" }],
+        rows: [[{ type: "integer", value: "1" }]],
+      }),
+    );
+
+    await expect(query("SELECT 1")).resolves.toMatchObject({ rows: [] });
   });
 
   it("should throw on HTTP errors", async () => {
@@ -202,10 +241,13 @@ describe("batch", () => {
     );
 
     await expect(
-      batch([{ sql: "SELECT ?", args: [1] }, { sql: "SELECT 2" }]),
+      batch([
+        { sql: "SELECT ?", args: [1], rows: z.object({ n: z.number() }) },
+        { sql: "SELECT 2" },
+      ]),
     ).resolves.toEqual([
       { rows: [{ n: 1 }], rowsAffected: 0, lastInsertRowId: null },
-      { rows: [{ n: 2 }], rowsAffected: 0, lastInsertRowId: null },
+      { rows: [], rowsAffected: 0, lastInsertRowId: null },
     ]);
     expect(requests[0]?.body).toEqual({
       requests: [

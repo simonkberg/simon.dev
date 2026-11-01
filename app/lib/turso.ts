@@ -11,8 +11,8 @@ const KEEP_WARM_MS = 60_000;
 
 export type Value = string | number | null;
 export type Row = Record<string, Value>;
-export type QueryResult = {
-  rows: Row[];
+export type QueryResult<T = never> = {
+  rows: T[];
   rowsAffected: number;
   lastInsertRowId: number | null;
 };
@@ -85,9 +85,16 @@ function pipelineUrl(): string {
   return `${base}/v2/pipeline`;
 }
 
-export type Statement = { sql: string; args?: Value[] };
+/** A statement's rows are read only through its `rows` schema: one without returns none. */
+export type Statement<T = unknown> = {
+  sql: string;
+  args?: Value[];
+  rows?: z.ZodType<T>;
+};
 export type BatchResults<T extends readonly Statement[]> = {
-  -readonly [K in keyof T]: QueryResult;
+  -readonly [K in keyof T]: T[K] extends { rows: z.ZodType<infer R> }
+    ? QueryResult<R>
+    : QueryResult;
 };
 
 type EncodedStatement = {
@@ -106,21 +113,24 @@ function encodeStatement({ sql, args = [] }: Statement): EncodedStatement {
   return { sql, args: args.map(encodeValue) };
 }
 
-function decodeResult({
-  cols,
-  rows,
-  affected_row_count,
-  last_insert_rowid,
-}: z.infer<typeof stmtResultSchema>): QueryResult {
+function decodeResult<T>(
+  {
+    cols,
+    rows,
+    affected_row_count,
+    last_insert_rowid,
+  }: z.infer<typeof stmtResultSchema>,
+  schema: z.ZodType<T> | undefined,
+): QueryResult<T> {
+  const toRow = (row: (typeof rows)[number]): Row =>
+    Object.fromEntries(
+      row.map((value, index) => [
+        cols[index]?.name ?? String(index),
+        decodeValue(value),
+      ]),
+    );
   return {
-    rows: rows.map((row) =>
-      Object.fromEntries(
-        row.map((value, index) => [
-          cols[index]?.name ?? String(index),
-          decodeValue(value),
-        ]),
-      ),
-    ),
+    rows: schema ? rows.map((row) => schema.parse(toRow(row))) : [],
     rowsAffected: affected_row_count,
     lastInsertRowId:
       last_insert_rowid === null ? null : Number(last_insert_rowid),
@@ -155,10 +165,11 @@ async function pipeline(request: PipelineRequest) {
   return result.response;
 }
 
-export async function query(
+export async function query<T = never>(
   sql: string,
   args: Value[] = [],
-): Promise<QueryResult> {
+  rows?: z.ZodType<T>,
+): Promise<QueryResult<T>> {
   const response = await pipeline({
     type: "execute",
     stmt: encodeStatement({ sql, args }),
@@ -166,7 +177,7 @@ export async function query(
   if (response.type !== "execute") {
     throw new Error(`Turso returned unexpected ${response.type} result`);
   }
-  return decodeResult(response.result);
+  return decodeResult(response.result, rows);
 }
 
 /** Runs the statements in one request and one transaction: all of them apply, or none. */
@@ -212,7 +223,7 @@ export async function batch<const T extends readonly Statement[]>(
         `Turso query error in ${step}: ${error?.message ?? "no result"}`,
       );
     }
-    return decodeResult(result);
+    return decodeResult(result, statements[index - 1]?.rows);
   });
   return results.slice(1, -1) as BatchResults<T>;
 }

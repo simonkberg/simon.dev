@@ -9,7 +9,7 @@ import { reflect } from "@/lib/reflection";
 import { query } from "@/lib/turso";
 import { message } from "@/mocks/discord";
 import { gatewayDispatcher } from "@/mocks/gateway";
-import { failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import { failQuery, sqliteBeforeEach, selectRows } from "@/mocks/sqlite";
 
 import {
   type ChainMessage,
@@ -260,7 +260,7 @@ describe("handleMessage", () => {
     vi.useFakeTimers({ now: 0 });
     vi.mocked(getMessageChain).mockResolvedValue([]);
     const seen = async () =>
-      (await query("SELECT id FROM seen_messages ORDER BY id")).rows;
+      await selectRows(query, "SELECT id FROM seen_messages ORDER BY id");
 
     await handleMessage(message("1", { content: "User1: simon-bot" }));
     vi.setSystemTime(60 * 60 * 1000 - 1);

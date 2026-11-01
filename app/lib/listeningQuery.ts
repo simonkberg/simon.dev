@@ -1,5 +1,7 @@
 import "server-only";
-import { likeContains } from "@/lib/sql";
+import { z } from "zod";
+
+import { epochMs, flag, likeContains } from "@/lib/sql";
 import { query, type Value } from "@/lib/turso";
 
 export type Filters = {
@@ -55,13 +57,16 @@ const summerTo = `datetime(date(${year} || '-10-25', 'weekday 0'), '+1 hour')`;
 // A play's Stockholm time, as SQLite knows no time zones.
 const LOCAL_TIME = `datetime(${seconds}, 'unixepoch', CASE WHEN ${utc} >= ${summerFrom} AND ${utc} < ${summerTo} THEN '+2 hours' ELSE '+1 hour' END)`;
 
-type Play = {
-  name: string;
-  artist: string;
-  album: string;
-  playedAt: Date;
-  loved: boolean;
-};
+const playSchema = z.object({
+  name: z.string(),
+  artist: z.string(),
+  album: z.string(),
+  playedAt: epochMs,
+  loved: flag,
+  total: z.number(),
+});
+
+type Play = Omit<z.infer<typeof playSchema>, "total">;
 
 /** How many plays match, and the newest or oldest `limit` of them. */
 export async function plays(
@@ -73,20 +78,15 @@ export async function plays(
   const direction = order === "newest" ? "DESC" : "ASC";
   const { rows } = await query(
     // The total is counted before the limit, so it counts every match.
-    `SELECT s.played_at, s.artist, s.track, s.album, l.track IS NOT NULL AS loved,
+    `SELECT s.track AS name, s.artist, s.album, s.played_at AS playedAt, l.track IS NOT NULL AS loved,
        COUNT(*) OVER () AS total
      ${sql} ORDER BY s.played_at ${direction} LIMIT ?`,
     [...args, limit],
+    playSchema,
   );
   return {
-    total: Number(rows[0]?.["total"] ?? 0),
-    plays: rows.map((row) => ({
-      name: String(row["track"]),
-      artist: String(row["artist"]),
-      album: String(row["album"]),
-      playedAt: new Date(Number(row["played_at"])),
-      loved: Boolean(row["loved"]),
-    })),
+    total: rows[0]?.total ?? 0,
+    plays: rows.map(({ total, ...play }) => play),
   };
 }
 
@@ -99,14 +99,17 @@ const groups = {
 
 export type Group = keyof typeof groups;
 
-type Top = {
-  artist: string;
-  track?: string;
-  album?: string;
-  plays: number;
-  firstPlayed: Date;
-  lastPlayed: Date;
-};
+// Only the group's own columns are selected, so an artist has no track or album.
+const topSchema = z.object({
+  artist: z.string(),
+  track: z.string().optional(),
+  album: z.string().optional(),
+  plays: z.number(),
+  firstPlayed: epochMs,
+  lastPlayed: epochMs,
+});
+
+type Top = z.infer<typeof topSchema>;
 
 /** The most played artists, tracks or albums among the matching plays, ties by artist, then title. */
 export async function top(
@@ -117,21 +120,12 @@ export async function top(
   const { by, conditions } = groups[group];
   const { sql, args } = matching(filters, { conditions: [...conditions] });
   const { rows } = await query(
-    `SELECT ${by}, COUNT(*) AS plays, MIN(s.played_at) AS first, MAX(s.played_at) AS last
+    `SELECT ${by}, COUNT(*) AS plays, MIN(s.played_at) AS firstPlayed, MAX(s.played_at) AS lastPlayed
      ${sql} GROUP BY ${by} ORDER BY plays DESC, ${by} LIMIT ?`,
     [...args, limit],
+    topSchema,
   );
-  return rows.map((row) => {
-    const top: Top = {
-      artist: String(row["artist"]),
-      plays: Number(row["plays"]),
-      firstPlayed: new Date(Number(row["first"])),
-      lastPlayed: new Date(Number(row["last"])),
-    };
-    if (group === "track") top.track = String(row["track"]);
-    if (group === "album") top.album = String(row["album"]);
-    return top;
-  });
+  return rows;
 }
 
 const weekdays = [
@@ -163,6 +157,13 @@ const periods: Record<Per, { key: string; name?: string; sort?: string }> = {
   year: { key: `strftime('%Y', ${LOCAL_TIME})` },
 };
 
+const totalSchema = z.object({ total: z.number() });
+const countSchema = z.object({
+  period: z.string(),
+  plays: z.number(),
+  total: z.number(),
+});
+
 type PlayCounts = {
   total: number;
   counts?: { period: string; plays: number }[];
@@ -178,23 +179,25 @@ export async function playCounts(
 ): Promise<PlayCounts> {
   const { sql, args } = matching(filters);
   if (per === undefined) {
-    const { rows } = await query(`SELECT COUNT(*) AS total ${sql}`, args);
-    return { total: Number(rows[0]?.["total"]) };
+    const { rows } = await query(
+      `SELECT COUNT(*) AS total ${sql}`,
+      args,
+      totalSchema,
+    );
+    return { total: rows[0]?.total ?? 0 };
   }
   const { key, name = key, sort = "key" } = periods[per];
   const { rows } = await query(
     // The total is summed before the limit, so it counts every period.
-    `SELECT ${key} AS key, ${name} AS name, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
+    `SELECT ${key} AS key, ${name} AS period, COUNT(*) AS plays, SUM(COUNT(*)) OVER () AS total ${sql}
      GROUP BY key ORDER BY ${order === "plays" ? "plays DESC, " : ""}${sort} LIMIT ?`,
     // One more than asked, to tell whether there are more.
     [...args, limit + 1],
+    countSchema,
   );
-  const counts = rows.map((row) => ({
-    period: String(row["name"]),
-    plays: Number(row["plays"]),
-  }));
+  const counts = rows.map(({ total, ...count }) => count);
   const result: PlayCounts = {
-    total: Number(rows[0]?.["total"] ?? 0),
+    total: rows[0]?.total ?? 0,
     counts: counts.slice(0, limit),
   };
   if (counts.length > limit) result.truncated = true;

@@ -4,7 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { log } from "@/lib/log";
 import { query } from "@/lib/turso";
-import { emptyResult, failQuery, sqliteBeforeEach } from "@/mocks/sqlite";
+import {
+  emptyResult,
+  failQuery,
+  sqliteBeforeEach,
+  selectRows,
+} from "@/mocks/sqlite";
 
 import { MIGRATIONS } from "./migrations";
 import { rateLimit } from "./rateLimit";
@@ -16,7 +21,7 @@ vi.mock(import("@/lib/turso"), async () =>
 const options = { limit: 3, windowMs: 30_000 };
 
 async function countRows(): Promise<unknown> {
-  const { rows } = await query("SELECT count(*) AS n FROM rate_limits");
+  const rows = await selectRows(query, "SELECT count(*) AS n FROM rate_limits");
   return rows[0]?.["n"];
 }
 
@@ -125,7 +130,10 @@ describe("rateLimit", () => {
 
     await rateLimit("c", options);
 
-    const { rows } = await query("SELECT key FROM rate_limits ORDER BY key");
+    const rows = await selectRows(
+      query,
+      "SELECT key FROM rate_limits ORDER BY key",
+    );
     expect(rows).toEqual([{ key: "c" }, { key: "long" }]);
   });
 
