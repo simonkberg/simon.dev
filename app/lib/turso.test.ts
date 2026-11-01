@@ -311,6 +311,14 @@ describe("batch", () => {
     );
   });
 
+  it("should name the statement whose rows don't match its schema", async () => {
+    capture(batchResponse([stmtResult(0), stmtResult(1), stmtResult(0), null]));
+
+    await expect(
+      batch([{ sql: "SELECT 1", rows: z.object({ n: z.string() }) }]),
+    ).rejects.toThrow("Turso rows didn't match in statement 1");
+  });
+
   it("should throw when the result is not a batch result", async () => {
     capture(pipelineResponse());
 

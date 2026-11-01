@@ -223,7 +223,12 @@ export async function batch<const T extends readonly Statement[]>(
         `Turso query error in ${step}: ${error?.message ?? "no result"}`,
       );
     }
-    return decodeResult(result, statements[index - 1]?.rows);
+    try {
+      return decodeResult(result, statements[index - 1]?.rows);
+    } catch (cause) {
+      // Rows are read once the batch has committed, so its writes stand.
+      throw new Error(`Turso rows didn't match in ${step}`, { cause });
+    }
   });
   return results.slice(1, -1) as BatchResults<T>;
 }
