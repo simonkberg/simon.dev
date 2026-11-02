@@ -88,6 +88,7 @@ export const MIGRATIONS: readonly string[] = [
     written_at INTEGER NOT NULL,
     PRIMARY KEY (page, slot)
   )`,
+  `CREATE INDEX IF NOT EXISTS commentary_version_written_at ON commentary (version, written_at)`,
 ];
 
 // Outside MIGRATIONS: the lock and the version list need these before it can run.

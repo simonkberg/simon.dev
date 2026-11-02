@@ -110,10 +110,15 @@ function reply(text: string, end: LoopEnd = "end_turn") {
   vi.mocked(finalText).mockResolvedValue({ text, end });
 }
 
-const store = (page: string, slot: string, text: string, version = VERSION) =>
+const store = (
+  page: string,
+  slot: string,
+  text: string,
+  { version = VERSION, writtenAt = 0 } = {},
+) =>
   query({
-    sql: "INSERT INTO commentary VALUES (?, ?, ?, ?, 0)",
-    args: [page, slot, version, text],
+    sql: "INSERT INTO commentary VALUES (?, ?, ?, ?, ?)",
+    args: [page, slot, version, text, writtenAt],
   });
 
 const stored = async () =>
@@ -194,7 +199,7 @@ describe("getCommentary", () => {
   });
 
   it("should reread soon when none matches the prompt's version", async () => {
-    await store("7day", "2026-10-31", "old prompt", 0);
+    await store("7day", "2026-10-31", "old prompt", { version: 0 });
 
     await expect(getCommentary("7day")).resolves.toEqual({
       status: "ok",
@@ -301,9 +306,25 @@ Oct 31: 3 (so far)
     expect(input()).not.toContain("<previous");
   });
 
+  it("should show the latest comments on any page, newest first", async () => {
+    await store("day", "2019-03-03", "older", { writtenAt: 1 });
+    await store("1month", "2026-10-26", "newer", { writtenAt: 2 });
+    await store("day", "2019-03-02", "old prompt", {
+      version: 0,
+      writtenAt: 3,
+    });
+
+    await writeCommentary("2019-03-04");
+
+    expect(input()).toContain(`<recent>
+newer
+older
+</recent>`);
+  });
+
   it("should replace a comment from an older prompt, without following one", async () => {
-    await store("7day", "2026-10-30", "older prompt", 0);
-    await store("7day", "2026-10-31", "old prompt", 0);
+    await store("7day", "2026-10-30", "older prompt", { version: 0 });
+    await store("7day", "2026-10-31", "old prompt", { version: 0 });
 
     await writeCommentary("7day");
 
