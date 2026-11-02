@@ -1813,6 +1813,7 @@ ul {
   max-width: var(--stats-max);
 
   > li {
+    --grow-delay: calc(var(--index) * min(15ms, 450ms / var(--count)));
     display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
@@ -1821,7 +1822,8 @@ ul {
     margin-inline: var(--stats-row-bleed);
     background: linear-gradient(
       90deg,
-      var(--stats-heat) calc(var(--value, 0) / var(--max, 1) * 100%),
+      var(--stats-heat)
+        calc(var(--value, 0) / var(--max, 1) * var(--grow) * 100%),
       transparent 0
     );
 
@@ -1844,7 +1846,10 @@ ul {
 
     &::after {
       display: var(--stats-fill);
-      width: max(3px, calc(var(--value, 0) / var(--max, 1) * 100%));
+      width: max(
+        3px,
+        calc(var(--value, 0) / var(--max, 1) * var(--grow) * 100%)
+      );
       background: repeating-linear-gradient(
         90deg,
         var(--accent) 0 3px,
@@ -2087,6 +2092,7 @@ ul {
 }
 
 /* A count follows the --grow it inherits, or grows on its own. */
+.stats > li,
 .stems > ol > li,
 .stems > .average,
 .lane-label,

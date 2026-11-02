@@ -29,15 +29,18 @@ export const StatsList = ({ stats }: StatsListProps) => {
   const max = Math.max(...result.stats.map((stat) => stat.percent)) || 1;
 
   return (
-    <ul className="stats" style={{ "--max": max } as CSSProperties}>
-      {result.stats.map((stat) => (
+    <ul
+      className="stats"
+      style={{ "--max": max, "--count": result.stats.length } as CSSProperties}
+    >
+      {result.stats.map((stat, index) => (
         <li
           key={stat.name}
-          style={{ "--value": stat.percent } as CSSProperties}
+          style={{ "--value": stat.percent, "--index": index } as CSSProperties}
         >
           <span className="label">{stat.name}</span>{" "}
           <span className="value">
-            <AnimatedNumber value={stat.percent} decimals={2} />%
+            <AnimatedNumber value={stat.percent} decimals={2} follow />%
           </span>
         </li>
       ))}
