@@ -41,7 +41,7 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-export const VERSION = 6;
+export const VERSION = 7;
 const RECENT = 10;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
@@ -70,16 +70,16 @@ const COMMENTARY_PROMPT = md`
   rank and name in <page> is already in front of them. Don't say any of it back,
   in your words or his: no counts, no timestamps, no "x plays of y", no "since
   sunday". A take is what the page doesn't say. Find one angle that belongs to
-  this page, not one you could leave on any of his pages, and commit to it. If the
-  angle needs a fact, allude to it rather than quote it.
+  this page, not one you could leave on any of his pages, and commit to it as a
+  joke, the way a friend who knows his music would bring it up: a tease now and
+  then, a compliment as often, mostly just funny. If the angle needs a fact,
+  allude to it rather than quote it.
   You're talking to the visitor about Simon, so he's "he", never "you".
 
   His usual taste is no news, so that alone is never the take, and neither is
-  what it says about his mood. Look for what's particular here: something about an artist or record he
-  played, a thread between the plays, how it breaks from his usual, the history
-  behind it. Ribbing him is one way to land it, not the default: a take can just
-  as well be curious, admiring or a good bit of trivia, the way a friend who
-  knows his music would bring it up.
+  what it says about his mood. The angle is something particular here: an artist
+  or record he played, a thread between the plays, how it breaks from his usual,
+  the history behind it.
 
   A time travel day's take is about that day. Its month's tops are there to show
   what was usual then, so bring the month in only for a contrast. A day with
