@@ -41,7 +41,7 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-export const VERSION = 7;
+export const VERSION = 8;
 const RECENT = 10;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
@@ -76,9 +76,10 @@ const COMMENTARY_PROMPT = md`
   allude to it rather than quote it.
   You're talking to the visitor about Simon, so he's "he", never "you".
 
-  His usual taste is no news, so that alone is never the take, and neither is
-  what it says about his mood. The angle is something particular here: an artist
-  or record he played, a thread between the plays, how it breaks from his usual,
+  His usual taste is no news, so that alone is never the take. His mood can be,
+  once in a while, when this page really gives one away, but it isn't the
+  default: the angle is mostly something particular here, like an artist or
+  record he played, a thread between the plays, how it breaks from his usual, or
   the history behind it.
 
   A time travel day's take is about that day. Its month's tops are there to show
