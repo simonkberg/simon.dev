@@ -41,7 +41,8 @@ import { hasSettled } from "@/lib/scrobbles";
 import { query } from "@/lib/turso";
 
 // Bump to have every page written again, after a change to the prompt.
-export const VERSION = 5;
+export const VERSION = 6;
+const RECENT = 10;
 const MAX_TOKENS = 4096;
 const TIMEOUT_MS = 30_000;
 const MAX_RETRY_SLEEP_MS = 10_000;
@@ -68,13 +69,25 @@ const COMMENTARY_PROMPT = md`
   The visitor reads your take right beside the page, so every number, date, time,
   rank and name in <page> is already in front of them. Don't say any of it back,
   in your words or his: no counts, no timestamps, no "x plays of y", no "since
-  sunday". A take is what the page doesn't say: why he plays what he plays, what
-  it gives away about him, what it says about his week or his taste. Find one
-  angle that belongs to this page, not one you could leave on any of his pages,
-  and commit to it as a joke, a roast or a compliment, the way a friend who knows
-  his music would rib him about it. If the angle needs a fact, allude to it
-  rather than quote it.
+  sunday". A take is what the page doesn't say. Find one angle that belongs to
+  this page, not one you could leave on any of his pages, and commit to it. If the
+  angle needs a fact, allude to it rather than quote it.
   You're talking to the visitor about Simon, so he's "he", never "you".
+
+  His usual taste is no news, so that alone is never the take, and neither is
+  what it says about his mood. Look for what's particular here: something about an artist or record he
+  played, a thread between the plays, how it breaks from his usual, the history
+  behind it. Ribbing him is one way to land it, not the default: a take can just
+  as well be curious, admiring or a good bit of trivia, the way a friend who
+  knows his music would bring it up.
+
+  A time travel day's take is about that day. Its month's tops are there to show
+  what was usual then, so bring the month in only for a contrast. A day with
+  nothing played can stay short.
+
+  <recent>, when there is one, holds the takes you wrote last, on any page.
+  Visitors read them one after another, so don't reuse their angles, images or
+  turns of phrase.
 
   Write one or two short sentences of plain text, no markdown: the page shows it
   as is. The last one is the punchline: stop there, with no shrug, aside, advice
@@ -133,6 +146,21 @@ async function readText(page: string, slot: string) {
     rows: textSchema,
   });
   return rows[0]?.text;
+}
+
+async function readRecent() {
+  const { rows } = await query({
+    sql: "SELECT text FROM commentary WHERE version = ? ORDER BY written_at DESC LIMIT ?",
+    args: [VERSION, RECENT],
+    rows: textSchema,
+  });
+  return (
+    rows.length > 0 &&
+    list(
+      "recent",
+      rows.map((row) => row.text),
+    )
+  );
 }
 
 async function readPrevious(page: string, slot: string) {
@@ -293,7 +321,7 @@ function describe(page: CommentaryPage): string {
 }
 
 async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
-  const [facts, previous] = await Promise.all([
+  const [facts, previous, recent] = await Promise.all([
     isValidPeriod(page)
       ? periodFacts(page)
       : page === "on-this-day"
@@ -301,6 +329,7 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
         : dayFacts(page),
     // A day's slot is the day itself, so an earlier one is another day, not this page before.
     slot.page !== "day" && readPrevious(slot.page, slot.slot),
+    readRecent(),
   ]);
   // A comment is kept until its slot ends, a day's for good, so none is written from part of the page.
   if (facts.includes(false))
@@ -310,6 +339,7 @@ async function pageInput(page: CommentaryPage, slot: Slot): Promise<string> {
     ...facts,
     "</page>",
     previous,
+    recent,
   ]
     .filter((line) => line !== false)
     .join("\n");
