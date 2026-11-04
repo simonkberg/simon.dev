@@ -29,7 +29,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@4845bacbb38b3c4b15d948f035349786f678e068 # v1.0.267
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
         # Keeps the skill's subagents in the foreground, so the run can't end before they report.
         env:
           CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
