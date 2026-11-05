@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@next/third-parties": "16.4.4",
-    "@tanstack/markdown": "1.1.1",
+    "@tanstack/markdown": "1.2.0",
     "comparator.ts": "2.0.0",
     "emojibase-data": "18.0.0",
     "jose": "6.2.15",
