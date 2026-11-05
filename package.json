@@ -25,12 +25,12 @@
     "typegen": "SKIP_ENV_VALIDATION=1 next typegen"
   },
   "dependencies": {
-    "@next/third-parties": "16.4.3",
+    "@next/third-parties": "16.4.4",
     "@tanstack/markdown": "1.1.1",
     "comparator.ts": "2.0.0",
     "emojibase-data": "18.0.0",
     "jose": "6.2.15",
-    "next": "16.4.3",
+    "next": "16.4.4",
     "pino": "10.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
