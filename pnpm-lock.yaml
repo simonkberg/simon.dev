@@ -170,8 +170,8 @@ importers:
         specifier: 16.4.3
         version: 16.4.3(next@16.4.3(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
       '@tanstack/markdown':
-        specifier: 1.0.1
-        version: 1.0.1(react@19.3.1)
+        specifier: 1.1.1
+        version: 1.1.1(react@19.3.1)
       comparator.ts:
         specifier: 2.0.0
         version: 2.0.0
@@ -1127,8 +1127,8 @@ packages:
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
 
-  '@tanstack/markdown@1.0.1':
-    resolution: {integrity: sha512-yjPiUxQ25kW9FDtEYaY5YDAmXBCfwq055+mg/mAP/bZIFrh+XyOI3olQKAmT6v3vM3rPPFTo4tsZaO+9INAcaQ==}
+  '@tanstack/markdown@1.1.1':
+    resolution: {integrity: sha512-611nn7ontZtoUDELqfDE5zXxg38ydhkqM/T3p19HpgpMQyjB1VnYndSfR+4WFCEXhfy4gBAEdzVOS/SELiIkJg==}
     peerDependencies:
       octane: '>=0.1.12'
       react: '>=18'
@@ -2885,7 +2885,7 @@ snapshots:
     dependencies:
       tslib: 2.9.1
 
-  '@tanstack/markdown@1.0.1(react@19.3.1)':
+  '@tanstack/markdown@1.1.1(react@19.3.1)':
     optionalDependencies:
       react: 19.3.1
 
