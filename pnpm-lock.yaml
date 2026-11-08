@@ -200,8 +200,8 @@ importers:
         specifier: 3.0.2
         version: 3.0.2
       ts-extras:
-        specifier: 1.3.0
-        version: 1.3.0
+        specifier: 2.0.0
+        version: 2.0.0
     devDependencies:
       '@edge-runtime/cookies':
         specifier: 6.0.0
@@ -2241,9 +2241,9 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
-  ts-extras@1.3.0:
-    resolution: {integrity: sha512-2o31AwfP5q7Sa0RN/KaSNBFkw0jRnWsqUY4W4SwBWrxbge9J6t9YBvJIRX2ZyVhpGj4zE5UYwNzTTBnIHeaDew==}
-    engines: {node: '>=20'}
+  ts-extras@2.0.0:
+    resolution: {integrity: sha512-6Od/iEjnYLACBp0IwwMZHew1vO5/fB7DuCFsBO88mGc71Qh05nlH2gFPNytBKFlbCg7RAdShRtVcXnQpgeFFZQ==}
+    engines: {node: '>=22'}
 
   tslib@2.9.1:
     resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
@@ -3776,7 +3776,7 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  ts-extras@1.3.0:
+  ts-extras@2.0.0:
     dependencies:
       type-fest: 5.10.0
 
