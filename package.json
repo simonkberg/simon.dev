@@ -58,7 +58,7 @@
     "jiti": "2.7.0",
     "lint-staged": "17.6.0",
     "msw": "3.0.4",
-    "oxc-transform-react": "0.157.0",
+    "oxc-transform-react": "0.158.0",
     "oxfmt": "0.77.0",
     "oxlint": "1.92.0",
     "oxlint-tsgolint": "7.0.2006",
