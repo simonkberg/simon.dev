@@ -207,8 +207,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0
       '@railway/cli':
-        specifier: 5.71.0
-        version: 5.71.0
+        specifier: 5.74.0
+        version: 5.74.0
       '@testing-library/dom':
         specifier: 10.4.2
         version: 10.4.2
@@ -1020,8 +1020,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@railway/cli@5.71.0':
-    resolution: {integrity: sha512-aLS50FAUwTENen3tBqBn9j3ID5OeYhdDcl+oSVv8mclntHD5yvF/Zh+2oD8emP/I4cUCEGDeDyJ8OVv4QBD9ww==}
+  '@railway/cli@5.74.0':
+    resolution: {integrity: sha512-IkUMxXw1+QtGSLVTfoV4c2Ax/MkeFOpeSP+mWsMCHBriKngkUsKXyGPZnTOS1OVxCG8DSOd8+4ECbIdQ/eV/Yg==}
     engines: {node: '>=16.0.0'}
     hasBin: true
 
@@ -2830,7 +2830,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@railway/cli@5.71.0':
+  '@railway/cli@5.74.0':
     dependencies:
       node-fetch: 3.3.2
       tar: 6.2.1
