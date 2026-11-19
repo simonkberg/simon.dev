@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@edge-runtime/cookies": "6.0.0",
-    "@railway/cli": "5.74.0",
+    "@railway/cli": "5.74.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
