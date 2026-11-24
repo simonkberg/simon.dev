@@ -61,7 +61,7 @@
     "oxc-transform-react": "0.158.0",
     "oxfmt": "0.79.0",
     "oxlint": "1.94.0",
-    "oxlint-tsgolint": "7.0.2007",
+    "oxlint-tsgolint": "7.0.2008",
     "pino-pretty": "13.2.0",
     "railway": "3.17.0",
     "typescript": "7.0.2",
