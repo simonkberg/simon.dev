@@ -209,8 +209,8 @@ importers:
         specifier: 3.0.2
         version: 3.0.2
       ts-extras:
-        specifier: 2.0.0
-        version: 2.0.0
+        specifier: 3.0.0
+        version: 3.0.0
     devDependencies:
       '@edge-runtime/cookies':
         specifier: 6.0.0
@@ -2274,8 +2274,8 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
-  ts-extras@2.0.0:
-    resolution: {integrity: sha512-6Od/iEjnYLACBp0IwwMZHew1vO5/fB7DuCFsBO88mGc71Qh05nlH2gFPNytBKFlbCg7RAdShRtVcXnQpgeFFZQ==}
+  ts-extras@3.0.0:
+    resolution: {integrity: sha512-n3A9eyRX5Ka84sLdAT/pQl7crCg2E9oMZkx3mrunqh1zDXuK5LXHFUG5VTaljbb0jAdOQVikP3WEU+W0vaJm/Q==}
     engines: {node: '>=22'}
 
   tslib@2.9.1:
@@ -2284,6 +2284,10 @@ packages:
   type-fest@5.10.0:
     resolution: {integrity: sha512-NoSdpq/WEiAg5sjmBkmV/hfxv6HJH4NqPNrqjtSO5CwRmpsDfaf4begxW34KdJykH/l1yHtwBWQkCRdoXO8mPA==}
     engines: {node: '>=20'}
+
+  type-fest@6.0.3:
+    resolution: {integrity: sha512-MOJXegkac3h+sWdVb6VY/ACclsa71z3BprNpedGV8ljIzYCo+LRWgyIkWhidKNoiNJOb6kUds1pNCyzQ2p6hJQ==}
+    engines: {node: '>=22'}
 
   typescript@7.0.2:
     resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
@@ -3846,13 +3850,17 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  ts-extras@2.0.0:
+  ts-extras@3.0.0:
     dependencies:
-      type-fest: 5.10.0
+      type-fest: 6.0.3
 
   tslib@2.9.1: {}
 
   type-fest@5.10.0:
+    dependencies:
+      tagged-tag: 1.0.0
+
+  type-fest@6.0.3:
     dependencies:
       tagged-tag: 1.0.0
 
